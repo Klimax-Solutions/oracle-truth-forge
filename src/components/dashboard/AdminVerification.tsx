@@ -6,15 +6,20 @@ import {
   XCircle, 
   Clock, 
   User, 
+  Users,
   TrendingUp,
-  Send,
   Loader2,
   ChevronDown,
   ChevronUp,
-  AlertTriangle
+  Shield,
+  Lock,
+  Play,
+  AlertTriangle,
+  Award
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
 interface VerificationRequest {
@@ -46,6 +51,7 @@ interface Cycle {
   trade_start: number;
   trade_end: number;
   total_trades: number;
+  phase: number;
 }
 
 interface Trade {
@@ -64,16 +70,45 @@ interface PendingRequest extends VerificationRequest {
   userEmail: string;
 }
 
+interface PlatformUser {
+  id: string;
+  email: string;
+  created_at: string;
+  currentCycle: Cycle | null;
+  userCycles: UserCycle[];
+  totalTrades: number;
+  totalRR: number;
+  status: "active" | "pending" | "completed";
+}
+
 export const AdminVerification = () => {
   const [requests, setRequests] = useState<PendingRequest[]>([]);
+  const [users, setUsers] = useState<PlatformUser[]>([]);
+  const [cycles, setCycles] = useState<Cycle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [processing, setProcessing] = useState<string | null>(null);
   const { toast } = useToast();
 
+  const fetchCycles = async () => {
+    const { data } = await supabase
+      .from("cycles")
+      .select("*")
+      .order("cycle_number", { ascending: true });
+    
+    if (data) {
+      setCycles(data as Cycle[]);
+    }
+    return data || [];
+  };
+
   const fetchRequests = async () => {
     setLoading(true);
+    
+    const cyclesData = await fetchCycles();
     
     // Fetch all pending verification requests
     const { data: requestsData, error: requestsError } = await supabase
@@ -93,11 +128,6 @@ export const AdminVerification = () => {
       setLoading(false);
       return;
     }
-
-    // Fetch cycles
-    const { data: cyclesData } = await supabase
-      .from("cycles")
-      .select("*");
 
     // Fetch user cycles
     const userCycleIds = requestsData.map(r => r.user_cycle_id);
@@ -131,7 +161,7 @@ export const AdminVerification = () => {
         cycle: cycle as Cycle | null,
         userCycle: userCycle as UserCycle | null,
         trades: trades as Trade[],
-        userEmail: request.user_id, // We'll just show user_id for now
+        userEmail: request.user_id,
       };
     });
 
@@ -139,8 +169,78 @@ export const AdminVerification = () => {
     setLoading(false);
   };
 
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    
+    // Get all user_cycles to find unique users
+    const { data: allUserCycles, error: userCyclesError } = await supabase
+      .from("user_cycles")
+      .select("*")
+      .order("created_at", { ascending: true });
+
+    if (userCyclesError) {
+      console.error("Error fetching user cycles:", userCyclesError);
+      setLoadingUsers(false);
+      return;
+    }
+
+    // Get unique user IDs
+    const uniqueUserIds = [...new Set(allUserCycles?.map(uc => uc.user_id) || [])];
+
+    // Fetch trades for all users
+    const { data: allTrades } = await supabase
+      .from("trades")
+      .select("*")
+      .order("trade_number", { ascending: true });
+
+    // Create user objects
+    const platformUsers: PlatformUser[] = uniqueUserIds.map(userId => {
+      const userCycles = allUserCycles?.filter(uc => uc.user_id === userId) || [];
+      const userTrades = allTrades?.filter(t => t.user_id === userId) || [];
+      
+      // Find current active cycle (in_progress or pending_review)
+      const activeCycle = userCycles.find(uc => 
+        uc.status === "in_progress" || uc.status === "pending_review"
+      );
+      
+      const currentCycleData = activeCycle 
+        ? cycles.find(c => c.id === activeCycle.cycle_id) 
+        : null;
+      
+      // Calculate total RR
+      const totalRR = userTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
+      
+      // Determine status
+      const hasPending = userCycles.some(uc => uc.status === "pending_review");
+      const allValidated = userCycles.every(uc => uc.status === "validated");
+      
+      let status: "active" | "pending" | "completed" = "active";
+      if (hasPending) status = "pending";
+      if (allValidated && userCycles.length === cycles.length) status = "completed";
+
+      return {
+        id: userId,
+        email: userId, // We'll use user_id as email placeholder
+        created_at: userCycles[0]?.created_at || new Date().toISOString(),
+        currentCycle: currentCycleData || null,
+        userCycles: userCycles as UserCycle[],
+        totalTrades: userTrades.length,
+        totalRR,
+        status,
+      };
+    });
+
+    setUsers(platformUsers);
+    setLoadingUsers(false);
+  };
+
   useEffect(() => {
-    fetchRequests();
+    const init = async () => {
+      await fetchCycles();
+      await fetchRequests();
+      await fetchUsers();
+    };
+    init();
   }, []);
 
   const handleApprove = async (request: PendingRequest) => {
@@ -185,8 +285,9 @@ export const AdminVerification = () => {
         description: `Le ${request.cycle.name} a été validé avec succès. Le cycle suivant est maintenant débloqué.`,
       });
 
-      // Refresh requests
+      // Refresh data
       fetchRequests();
+      fetchUsers();
     } catch (error) {
       console.error("Error approving request:", error);
       toast({
@@ -243,8 +344,9 @@ export const AdminVerification = () => {
         description: `Le ${request.cycle.name} a été refusé. L'utilisateur a été notifié.`,
       });
 
-      // Refresh requests
+      // Refresh data
       fetchRequests();
+      fetchUsers();
     } catch (error) {
       console.error("Error rejecting request:", error);
       toast({
@@ -266,7 +368,34 @@ export const AdminVerification = () => {
     return { totalRR, winRate, avgRR, wins, losses: trades.length - wins };
   };
 
-  if (loading) {
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "locked": return <Lock className="w-3.5 h-3.5 text-muted-foreground" />;
+      case "in_progress": return <Play className="w-3.5 h-3.5 text-blue-400" />;
+      case "pending_review": return <Clock className="w-3.5 h-3.5 text-orange-400" />;
+      case "validated": return <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />;
+      case "rejected": return <XCircle className="w-3.5 h-3.5 text-red-400" />;
+      default: return null;
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "locked": return "Verrouillé";
+      case "in_progress": return "En cours";
+      case "pending_review": return "En attente";
+      case "validated": return "Validé";
+      case "rejected": return "Refusé";
+      default: return status;
+    }
+  };
+
+  const getUserProgressPercentage = (user: PlatformUser) => {
+    const validatedCycles = user.userCycles.filter(uc => uc.status === "validated").length;
+    return (validatedCycles / cycles.length) * 100;
+  };
+
+  if (loading && loadingUsers) {
     return (
       <div className="h-full flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -278,208 +407,452 @@ export const AdminVerification = () => {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-border">
-        <h2 className="text-xl font-semibold text-foreground mb-1">
-          Panel Administrateur
-        </h2>
+        <div className="flex items-center gap-3 mb-1">
+          <Shield className="w-6 h-6 text-primary" />
+          <h2 className="text-xl font-semibold text-foreground">
+            Panel Administrateur
+          </h2>
+        </div>
         <p className="text-sm text-muted-foreground font-mono">
-          Vérification des demandes de validation de cycles
+          Gestion des utilisateurs et vérification des cycles Oracle
         </p>
       </div>
 
-      <div className="flex-1 p-6 overflow-auto">
-        {requests.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-center">
-            <CheckCircle className="w-12 h-12 text-emerald-500 mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              Aucune demande en attente
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Toutes les demandes de vérification ont été traitées.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-6">
-              <Clock className="w-5 h-5 text-orange-400" />
-              <span className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
-                {requests.length} demande{requests.length > 1 ? "s" : ""} en attente
-              </span>
-            </div>
+      <div className="flex-1 p-6 overflow-hidden">
+        <Tabs defaultValue="users" className="h-full flex flex-col">
+          <TabsList className="mb-4 self-start">
+            <TabsTrigger value="users" className="gap-2">
+              <Users className="w-4 h-4" />
+              Utilisateurs ({users.length})
+            </TabsTrigger>
+            <TabsTrigger value="verifications" className="gap-2">
+              <Clock className="w-4 h-4" />
+              Vérifications ({requests.length})
+            </TabsTrigger>
+          </TabsList>
 
-            {requests.map((request) => {
-              const stats = calculateStats(request.trades);
-              const isExpanded = expandedRequest === request.id;
-              const isProcessing = processing === request.id;
-
-              return (
-                <div
-                  key={request.id}
-                  className="border border-orange-500/40 bg-orange-500/5 rounded-md overflow-hidden"
-                >
-                  {/* Request Header */}
-                  <div 
-                    className="p-4 cursor-pointer hover:bg-orange-500/10 transition-colors"
-                    onClick={() => setExpandedRequest(isExpanded ? null : request.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center">
-                          <User className="w-5 h-5 text-orange-400" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-foreground">
-                            {request.cycle?.name || "Cycle inconnu"}
-                          </h4>
-                          <p className="text-xs text-muted-foreground font-mono">
-                            Demandé le {new Date(request.requested_at).toLocaleDateString("fr-FR", {
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className={cn(
-                            "text-lg font-bold",
-                            stats.totalRR >= 0 ? "text-emerald-400" : "text-red-400"
-                          )}>
-                            {stats.totalRR >= 0 ? "+" : ""}{stats.totalRR.toFixed(1)} RR
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {request.trades.length} trades
-                          </p>
-                        </div>
-                        {isExpanded ? (
-                          <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </div>
-                    </div>
+          {/* Users Tab */}
+          <TabsContent value="users" className="flex-1 overflow-auto mt-0">
+            {loadingUsers ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : users.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <Users className="w-12 h-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  Aucun utilisateur
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Aucun utilisateur n'est inscrit sur la plateforme.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Stats Summary */}
+                <div className="grid grid-cols-4 gap-3 mb-6">
+                  <div className="p-4 bg-card border border-border rounded-md">
+                    <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                      Total Membres
+                    </p>
+                    <p className="text-2xl font-bold text-foreground">{users.length}</p>
                   </div>
-
-                  {/* Expanded Content */}
-                  {isExpanded && (
-                    <div className="border-t border-orange-500/20 p-4 space-y-4">
-                      {/* Stats Grid */}
-                      <div className="grid grid-cols-4 gap-3">
-                        <div className="p-3 bg-card border border-border/40 rounded-md">
-                          <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
-                            Total RR
-                          </p>
-                          <p className={cn(
-                            "text-xl font-bold",
-                            stats.totalRR >= 0 ? "text-emerald-400" : "text-red-400"
-                          )}>
-                            {stats.totalRR >= 0 ? "+" : ""}{stats.totalRR.toFixed(1)}
-                          </p>
-                        </div>
-                        <div className="p-3 bg-card border border-border/40 rounded-md">
-                          <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
-                            Win Rate
-                          </p>
-                          <p className="text-xl font-bold text-foreground">
-                            {stats.winRate.toFixed(0)}%
-                          </p>
-                        </div>
-                        <div className="p-3 bg-card border border-border/40 rounded-md">
-                          <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
-                            RR Moyen
-                          </p>
-                          <p className="text-xl font-bold text-foreground">
-                            {stats.avgRR.toFixed(2)}
-                          </p>
-                        </div>
-                        <div className="p-3 bg-card border border-border/40 rounded-md">
-                          <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
-                            Ratio W/L
-                          </p>
-                          <p className="text-xl font-bold text-foreground">
-                            {stats.wins}/{stats.losses}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Trades Grid */}
-                      <div>
-                        <p className="text-xs font-mono uppercase text-muted-foreground mb-2">
-                          Détail des trades ({request.cycle?.trade_start}-{request.cycle?.trade_end})
-                        </p>
-                        <div className="grid grid-cols-10 gap-1 max-h-32 overflow-auto">
-                          {request.trades.map((trade) => (
-                            <div
-                              key={trade.id}
-                              className={cn(
-                                "p-1.5 border rounded text-center text-[10px] font-mono",
-                                trade.rr >= 0 
-                                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                                  : "bg-red-500/10 border-red-500/30 text-red-400"
-                              )}
-                            >
-                              <div className="font-bold">#{trade.trade_number}</div>
-                              <div>{trade.rr >= 0 ? "+" : ""}{trade.rr?.toFixed(1)}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Feedback */}
-                      <div>
-                        <label className="text-xs font-mono uppercase text-muted-foreground mb-2 block">
-                          Feedback (optionnel pour validation, requis pour refus)
-                        </label>
-                        <Textarea
-                          value={feedback[request.id] || ""}
-                          onChange={(e) => setFeedback(prev => ({
-                            ...prev,
-                            [request.id]: e.target.value,
-                          }))}
-                          placeholder="Laissez un commentaire pour l'utilisateur..."
-                          className="resize-none bg-card border-border/40"
-                          rows={3}
-                        />
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex gap-3">
-                        <Button
-                          className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                          onClick={() => handleApprove(request)}
-                          disabled={isProcessing}
-                        >
-                          {isProcessing ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                          )}
-                          Valider le Cycle
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          className="flex-1"
-                          onClick={() => handleReject(request)}
-                          disabled={isProcessing}
-                        >
-                          {isProcessing ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <XCircle className="w-4 h-4 mr-2" />
-                          )}
-                          Refuser (Corrections)
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                  <div className="p-4 bg-card border border-border rounded-md">
+                    <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                      En Attente
+                    </p>
+                    <p className="text-2xl font-bold text-orange-400">
+                      {users.filter(u => u.status === "pending").length}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-card border border-border rounded-md">
+                    <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                      Actifs
+                    </p>
+                    <p className="text-2xl font-bold text-blue-400">
+                      {users.filter(u => u.status === "active").length}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-card border border-border rounded-md">
+                    <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                      Diplômés Oracle
+                    </p>
+                    <p className="text-2xl font-bold text-emerald-400">
+                      {users.filter(u => u.status === "completed").length}
+                    </p>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+
+                {/* Users List */}
+                {users.map((user) => {
+                  const isExpanded = expandedUser === user.id;
+                  const progress = getUserProgressPercentage(user);
+
+                  return (
+                    <div
+                      key={user.id}
+                      className={cn(
+                        "border rounded-md overflow-hidden transition-colors",
+                        user.status === "pending" 
+                          ? "border-orange-500/40 bg-orange-500/5" 
+                          : user.status === "completed"
+                            ? "border-emerald-500/40 bg-emerald-500/5"
+                            : "border-border bg-card"
+                      )}
+                    >
+                      {/* User Header */}
+                      <div 
+                        className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                        onClick={() => setExpandedUser(isExpanded ? null : user.id)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className={cn(
+                              "w-10 h-10 rounded-full flex items-center justify-center",
+                              user.status === "pending" 
+                                ? "bg-orange-500/20" 
+                                : user.status === "completed"
+                                  ? "bg-emerald-500/20"
+                                  : "bg-primary/20"
+                            )}>
+                              {user.status === "completed" ? (
+                                <Award className="w-5 h-5 text-emerald-400" />
+                              ) : (
+                                <User className={cn(
+                                  "w-5 h-5",
+                                  user.status === "pending" ? "text-orange-400" : "text-primary"
+                                )} />
+                              )}
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-foreground text-sm">
+                                {user.email.includes("@") ? user.email : `Utilisateur ${user.id.slice(0, 8)}...`}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <p className="text-xs text-muted-foreground font-mono">
+                                  {user.currentCycle?.name || "Aucun cycle actif"}
+                                </p>
+                                {user.status === "pending" && (
+                                  <span className="px-1.5 py-0.5 text-[10px] font-mono uppercase bg-orange-500/20 text-orange-400 rounded">
+                                    Vérification
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-6">
+                            {/* Progress */}
+                            <div className="text-right">
+                              <p className="text-sm font-bold text-foreground">
+                                {progress.toFixed(0)}%
+                              </p>
+                              <p className="text-[10px] text-muted-foreground font-mono">
+                                Progression
+                              </p>
+                            </div>
+
+                            {/* Total RR */}
+                            <div className="text-right min-w-[80px]">
+                              <p className={cn(
+                                "text-sm font-bold",
+                                user.totalRR >= 0 ? "text-emerald-400" : "text-red-400"
+                              )}>
+                                {user.totalRR >= 0 ? "+" : ""}{user.totalRR.toFixed(1)} RR
+                              </p>
+                              <p className="text-[10px] text-muted-foreground font-mono">
+                                {user.totalTrades} trades
+                              </p>
+                            </div>
+
+                            {isExpanded ? (
+                              <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="mt-3 h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className={cn(
+                              "h-full rounded-full transition-all",
+                              user.status === "completed" ? "bg-emerald-500" : "bg-primary"
+                            )}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Expanded Content - Cycle Grid */}
+                      {isExpanded && (
+                        <div className="border-t border-border/50 p-4">
+                          <p className="text-xs font-mono uppercase text-muted-foreground mb-3">
+                            Détail des cycles
+                          </p>
+                          <div className="grid grid-cols-9 gap-2">
+                            {cycles.map((cycle) => {
+                              const userCycle = user.userCycles.find(uc => uc.cycle_id === cycle.id);
+                              const status = userCycle?.status || "locked";
+
+                              return (
+                                <div
+                                  key={cycle.id}
+                                  className={cn(
+                                    "p-3 border rounded-md text-center",
+                                    status === "locked" && "bg-muted/30 border-border/50 opacity-50",
+                                    status === "in_progress" && "bg-blue-500/10 border-blue-500/40",
+                                    status === "pending_review" && "bg-orange-500/10 border-orange-500/40",
+                                    status === "validated" && "bg-emerald-500/10 border-emerald-500/40",
+                                    status === "rejected" && "bg-red-500/10 border-red-500/40"
+                                  )}
+                                >
+                                  <div className="flex items-center justify-center mb-1">
+                                    {getStatusIcon(status)}
+                                  </div>
+                                  <p className="text-[10px] font-mono font-bold text-foreground">
+                                    {cycle.cycle_number === 0 ? "Éb." : `C${cycle.cycle_number}`}
+                                  </p>
+                                  <p className="text-[9px] text-muted-foreground">
+                                    {getStatusLabel(status)}
+                                  </p>
+                                  {userCycle && userCycle.total_rr !== null && (
+                                    <p className={cn(
+                                      "text-[10px] font-mono mt-1",
+                                      (userCycle.total_rr || 0) >= 0 ? "text-emerald-400" : "text-red-400"
+                                    )}>
+                                      {(userCycle.total_rr || 0) >= 0 ? "+" : ""}{(userCycle.total_rr || 0).toFixed(0)}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* User Info */}
+                          <div className="mt-4 pt-4 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
+                            <span className="font-mono">
+                              Inscrit le {new Date(user.created_at).toLocaleDateString("fr-FR", {
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                              })}
+                            </span>
+                            <span className="font-mono">
+                              ID: {user.id.slice(0, 8)}...
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Verifications Tab */}
+          <TabsContent value="verifications" className="flex-1 overflow-auto mt-0">
+            {loading ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : requests.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <CheckCircle className="w-12 h-12 text-emerald-500 mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  Aucune demande en attente
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Toutes les demandes de vérification ont été traitées.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-6">
+                  <AlertTriangle className="w-5 h-5 text-orange-400" />
+                  <span className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
+                    {requests.length} demande{requests.length > 1 ? "s" : ""} en attente de validation
+                  </span>
+                </div>
+
+                {requests.map((request) => {
+                  const stats = calculateStats(request.trades);
+                  const isExpanded = expandedRequest === request.id;
+                  const isProcessing = processing === request.id;
+
+                  return (
+                    <div
+                      key={request.id}
+                      className="border border-orange-500/40 bg-orange-500/5 rounded-md overflow-hidden"
+                    >
+                      {/* Request Header */}
+                      <div 
+                        className="p-4 cursor-pointer hover:bg-orange-500/10 transition-colors"
+                        onClick={() => setExpandedRequest(isExpanded ? null : request.id)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center">
+                              <User className="w-5 h-5 text-orange-400" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-foreground">
+                                {request.cycle?.name || "Cycle inconnu"}
+                              </h4>
+                              <p className="text-xs text-muted-foreground font-mono">
+                                Demandé le {new Date(request.requested_at).toLocaleDateString("fr-FR", {
+                                  day: "numeric",
+                                  month: "long",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <p className={cn(
+                                "text-lg font-bold",
+                                stats.totalRR >= 0 ? "text-emerald-400" : "text-red-400"
+                              )}>
+                                {stats.totalRR >= 0 ? "+" : ""}{stats.totalRR.toFixed(1)} RR
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {request.trades.length} trades
+                              </p>
+                            </div>
+                            {isExpanded ? (
+                              <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expanded Content */}
+                      {isExpanded && (
+                        <div className="border-t border-orange-500/20 p-4 space-y-4">
+                          {/* Stats Grid */}
+                          <div className="grid grid-cols-4 gap-3">
+                            <div className="p-3 bg-card border border-border/40 rounded-md">
+                              <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                                Total RR
+                              </p>
+                              <p className={cn(
+                                "text-xl font-bold",
+                                stats.totalRR >= 0 ? "text-emerald-400" : "text-red-400"
+                              )}>
+                                {stats.totalRR >= 0 ? "+" : ""}{stats.totalRR.toFixed(1)}
+                              </p>
+                            </div>
+                            <div className="p-3 bg-card border border-border/40 rounded-md">
+                              <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                                Win Rate
+                              </p>
+                              <p className="text-xl font-bold text-foreground">
+                                {stats.winRate.toFixed(0)}%
+                              </p>
+                            </div>
+                            <div className="p-3 bg-card border border-border/40 rounded-md">
+                              <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                                RR Moyen
+                              </p>
+                              <p className="text-xl font-bold text-foreground">
+                                {stats.avgRR.toFixed(2)}
+                              </p>
+                            </div>
+                            <div className="p-3 bg-card border border-border/40 rounded-md">
+                              <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                                Ratio W/L
+                              </p>
+                              <p className="text-xl font-bold text-foreground">
+                                {stats.wins}/{stats.losses}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Trades Grid */}
+                          <div>
+                            <p className="text-xs font-mono uppercase text-muted-foreground mb-2">
+                              Détail des trades ({request.cycle?.trade_start}-{request.cycle?.trade_end})
+                            </p>
+                            <div className="grid grid-cols-10 gap-1 max-h-32 overflow-auto">
+                              {request.trades.map((trade) => (
+                                <div
+                                  key={trade.id}
+                                  className={cn(
+                                    "p-1.5 border rounded text-center text-[10px] font-mono",
+                                    trade.rr >= 0 
+                                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                                      : "bg-red-500/10 border-red-500/30 text-red-400"
+                                  )}
+                                >
+                                  <div className="font-bold">#{trade.trade_number}</div>
+                                  <div>{trade.rr >= 0 ? "+" : ""}{trade.rr?.toFixed(1)}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Feedback */}
+                          <div>
+                            <label className="text-xs font-mono uppercase text-muted-foreground mb-2 block">
+                              Feedback (optionnel pour validation, requis pour refus)
+                            </label>
+                            <Textarea
+                              value={feedback[request.id] || ""}
+                              onChange={(e) => setFeedback(prev => ({
+                                ...prev,
+                                [request.id]: e.target.value,
+                              }))}
+                              placeholder="Laissez un commentaire pour l'utilisateur..."
+                              className="resize-none bg-card border-border/40"
+                              rows={3}
+                            />
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex gap-3">
+                            <Button
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                              onClick={() => handleApprove(request)}
+                              disabled={isProcessing}
+                            >
+                              {isProcessing ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                              )}
+                              Valider le Cycle
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              className="flex-1"
+                              onClick={() => handleReject(request)}
+                              disabled={isProcessing}
+                            >
+                              {isProcessing ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              ) : (
+                                <XCircle className="w-4 h-4 mr-2" />
+                              )}
+                              Refuser (Corrections)
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
