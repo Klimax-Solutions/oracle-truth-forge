@@ -101,10 +101,11 @@
 @layer components {
   /* Brutalist grid pattern - visible white lines */
   .grid-pattern {
+    background-color: #000;
     background-image: 
       linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-    background-size: 40px 40px;
+    background-size: 13px 13px;
   }
 
   .trading-grid {
