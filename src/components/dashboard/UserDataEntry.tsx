@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   Select,
   SelectContent,
@@ -202,10 +203,10 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     return time >= MIN_ENTRY_TIME && time <= MAX_TIME;
   };
 
-  // Validate exit time (15:20 - 22:00)
+  // Validate exit time (max 22:00 only)
   const validateExitTime = (time: string): boolean => {
     if (!time) return true; // Allow empty
-    return time >= MIN_ENTRY_TIME && time <= MAX_TIME;
+    return time <= MAX_TIME;
   };
 
   // Handle file selection
@@ -330,7 +331,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     if (formData.exit_time && !validateExitTime(formData.exit_time)) {
       toast({
         title: "Heure de sortie invalide",
-        description: `L'heure de sortie doit être entre ${MIN_ENTRY_TIME} et ${MAX_TIME}.`,
+        description: `L'heure de sortie doit être avant ${MAX_TIME}.`,
         variant: "destructive",
       });
       return;
@@ -678,42 +679,34 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
 
                 {/* Time fields with validation hints */}
                 <div className="space-y-2">
-                  <Label htmlFor="entry_time">
+                  <Label>
                     Heure Entrée
                     <span className="text-xs text-muted-foreground ml-1">(min {MIN_ENTRY_TIME})</span>
                   </Label>
-                  <Input
-                    id="entry_time"
-                    type="time"
+                  <TimePicker
                     value={formData.entry_time}
-                    min={MIN_ENTRY_TIME}
-                    onChange={(e) => setFormData({ ...formData, entry_time: e.target.value })}
-                    className={cn(
-                      formData.entry_time && !validateEntryTime(formData.entry_time) && "border-red-500"
-                    )}
+                    onChange={(value) => setFormData({ ...formData, entry_time: value })}
+                    minTime={MIN_ENTRY_TIME}
+                    maxTime={MAX_TIME}
+                    error={formData.entry_time !== "" && !validateEntryTime(formData.entry_time)}
                   />
                   {formData.entry_time && !validateEntryTime(formData.entry_time) && (
                     <p className="text-xs text-red-400">Minimum {MIN_ENTRY_TIME}</p>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="exit_time">
+                  <Label>
                     Heure Sortie
-                    <span className="text-xs text-muted-foreground ml-1">({MIN_ENTRY_TIME}-{MAX_TIME})</span>
+                    <span className="text-xs text-muted-foreground ml-1">(max {MAX_TIME})</span>
                   </Label>
-                  <Input
-                    id="exit_time"
-                    type="time"
+                  <TimePicker
                     value={formData.exit_time}
-                    min={MIN_ENTRY_TIME}
-                    max={MAX_TIME}
-                    onChange={(e) => setFormData({ ...formData, exit_time: e.target.value })}
-                    className={cn(
-                      formData.exit_time && !validateExitTime(formData.exit_time) && "border-red-500"
-                    )}
+                    onChange={(value) => setFormData({ ...formData, exit_time: value })}
+                    maxTime={MAX_TIME}
+                    error={formData.exit_time !== "" && !validateExitTime(formData.exit_time)}
                   />
                   {formData.exit_time && !validateExitTime(formData.exit_time) && (
-                    <p className="text-xs text-red-400">Entre {MIN_ENTRY_TIME} et {MAX_TIME}</p>
+                    <p className="text-xs text-red-400">Maximum {MAX_TIME}</p>
                   )}
                 </div>
                 <div className="space-y-2">
