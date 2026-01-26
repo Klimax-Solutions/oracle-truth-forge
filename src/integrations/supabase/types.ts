@@ -29,7 +29,8 @@ export type Database = {
           news_day: boolean | null
           news_label: string | null
           rr: number | null
-          screenshot_url: string | null
+          screenshot_m1: string | null
+          screenshot_m15_m5: string | null
           setup_type: string | null
           speculation_hl_valid: boolean | null
           stop_loss_points: string | null
@@ -54,7 +55,8 @@ export type Database = {
           news_day?: boolean | null
           news_label?: string | null
           rr?: number | null
-          screenshot_url?: string | null
+          screenshot_m1?: string | null
+          screenshot_m15_m5?: string | null
           setup_type?: string | null
           speculation_hl_valid?: boolean | null
           stop_loss_points?: string | null
@@ -79,7 +81,8 @@ export type Database = {
           news_day?: boolean | null
           news_label?: string | null
           rr?: number | null
-          screenshot_url?: string | null
+          screenshot_m1?: string | null
+          screenshot_m15_m5?: string | null
           setup_type?: string | null
           speculation_hl_valid?: boolean | null
           stop_loss_points?: string | null
