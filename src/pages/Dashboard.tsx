@@ -10,7 +10,7 @@ import { TradingJournal } from "@/components/dashboard/TradingJournal";
 import { RRDistributionChart } from "@/components/dashboard/RRDistributionChart";
 import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
-
+import { VideoSetup } from "@/components/dashboard/VideoSetup";
 interface Trade {
   id: string;
   trade_number: number;
@@ -109,6 +109,8 @@ const Dashboard = () => {
         return <RRDistributionChart trades={trades} />;
       case "timing":
         return <TimingAnalysis trades={trades} />;
+      case "videos":
+        return <VideoSetup />;
       default:
         return <OracleExecution trades={trades} />;
     }

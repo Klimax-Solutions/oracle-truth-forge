@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Database, Calendar, BarChart3, Clock, ChevronRight, Crosshair } from "lucide-react";
+import { Database, Calendar, BarChart3, Clock, ChevronRight, Crosshair, Video } from "lucide-react";
 import { useState } from "react";
 
 interface DashboardSidebarProps {
@@ -13,6 +13,7 @@ const tabs = [
   { id: "journal", label: "Journal de Trading", icon: Calendar },
   { id: "distribution", label: "Distribution RR", icon: BarChart3 },
   { id: "timing", label: "Timing Analysis", icon: Clock },
+  { id: "videos", label: "Vidéo du Setup Oracle", icon: Video },
 ];
 
 export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarProps) => {
