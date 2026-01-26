@@ -504,7 +504,7 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
 
         {/* ===== SECTION 3: CLICKABLE CARDS ===== */}
         <div>
-          <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-4 border-b border-border pb-2">
+          <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-4 border-b border-border/40 pb-2">
             Détails par Période (cliquez pour filtrer)
           </h3>
           
@@ -519,10 +519,10 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                   className={cn(
                     "p-4 border rounded-md text-left transition-all group bg-transparent",
                     day.rr > 0 
-                      ? "border-emerald-500 hover:border-emerald-400" 
+                      ? "border-emerald-500/40 hover:border-emerald-400" 
                       : day.rr < 0 
-                      ? "border-red-500 hover:border-red-400"
-                      : "border-border hover:border-muted-foreground/50"
+                      ? "border-red-500/40 hover:border-red-400"
+                      : "border-border/40 hover:border-muted-foreground/50"
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -550,10 +550,10 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                   className={cn(
                     "p-3 border rounded-md text-left transition-all group bg-transparent",
                     hour.rr > 0 
-                      ? "border-emerald-500 hover:border-emerald-400" 
+                      ? "border-emerald-500/40 hover:border-emerald-400" 
                       : hour.rr < 0 
-                      ? "border-red-500 hover:border-red-400"
-                      : "border-border hover:border-muted-foreground/50"
+                      ? "border-red-500/40 hover:border-red-400"
+                      : "border-border/40 hover:border-muted-foreground/50"
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -580,10 +580,10 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                   className={cn(
                     "p-3 border rounded-md text-left transition-all group bg-transparent",
                     week.rr > 0 
-                      ? "border-emerald-500 hover:border-emerald-400" 
+                      ? "border-emerald-500/40 hover:border-emerald-400" 
                       : week.rr < 0 
-                      ? "border-red-500 hover:border-red-400"
-                      : "border-border hover:border-muted-foreground/50"
+                      ? "border-red-500/40 hover:border-red-400"
+                      : "border-border/40 hover:border-muted-foreground/50"
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -610,10 +610,10 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                   className={cn(
                     "p-3 border rounded-md text-left transition-all group bg-transparent",
                     quarter.rr > 0 
-                      ? "border-emerald-500 hover:border-emerald-400" 
+                      ? "border-emerald-500/40 hover:border-emerald-400" 
                       : quarter.rr < 0 
-                      ? "border-red-500 hover:border-red-400"
-                      : "border-border hover:border-muted-foreground/50"
+                      ? "border-red-500/40 hover:border-red-400"
+                      : "border-border/40 hover:border-muted-foreground/50"
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -641,10 +641,10 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                   className={cn(
                     "p-4 border rounded-md text-left transition-all group bg-transparent",
                     year.rr > 0 
-                      ? "border-emerald-500 hover:border-emerald-400" 
+                      ? "border-emerald-500/40 hover:border-emerald-400" 
                       : year.rr < 0 
-                      ? "border-red-500 hover:border-red-400"
-                      : "border-border hover:border-muted-foreground/50"
+                      ? "border-red-500/40 hover:border-red-400"
+                      : "border-border/40 hover:border-muted-foreground/50"
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -664,28 +664,28 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
 
         {/* Summary stats */}
         <div className="grid grid-cols-4 gap-4">
-          <div className="border border-emerald-500 p-4 bg-transparent rounded-md">
+          <div className="border border-emerald-500/40 p-4 bg-transparent rounded-md">
             <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider mb-1">
               Total Cumulé
             </p>
             <p className="text-xl font-bold text-emerald-500">+{totalRR.toFixed(1)} RR</p>
             <p className="text-sm text-muted-foreground mt-1">≈ +{(totalRR * 1000).toLocaleString("fr-FR")} €</p>
           </div>
-          <div className="border border-emerald-500 p-4 bg-transparent rounded-md">
+          <div className="border border-emerald-500/40 p-4 bg-transparent rounded-md">
             <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider mb-1">
               Meilleur Jour
             </p>
             <p className="text-lg font-bold text-foreground">{stats.bestDay?.fullDay || "N/A"}</p>
             <p className="text-sm text-emerald-500 font-mono">+{stats.bestDay?.rr || 0} RR</p>
           </div>
-          <div className="border border-red-500 p-4 bg-transparent rounded-md">
+          <div className="border border-red-500/40 p-4 bg-transparent rounded-md">
             <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider mb-1">
               Pire Jour
             </p>
             <p className="text-lg font-bold text-foreground">{stats.worstDay?.fullDay || "N/A"}</p>
             <p className="text-sm text-red-500 font-mono">{stats.worstDay?.rr || 0} RR</p>
           </div>
-          <div className="border border-border p-4 bg-transparent rounded-md">
+          <div className="border border-border/40 p-4 bg-transparent rounded-md">
             <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider mb-1">
               Meilleure Heure
             </p>
