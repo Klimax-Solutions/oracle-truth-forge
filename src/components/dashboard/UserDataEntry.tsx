@@ -121,13 +121,12 @@ const SETUP_TYPES = ["A", "B", "C"];
 const ENTRY_MODELS = ["BOS", "MSS", "OB", "FVG", "EQH/L", "Liquidity Sweep", "Breaker", "Mitigation"];
 const DIRECTION_STRUCTURES = ["Continuation", "Retracement"];
 const ENTRY_TIMINGS = [
-  "15h-16h", "16h-17h", "17h-18h", "18h-19h", "19h-20h", "20h-21h"
+  "Open US 15:30", "London Close 16:00", "New York Close 20:00", "19h-20h", "20h-21h"
 ];
 
 // Time constraints
 const MIN_ENTRY_TIME = "15:20";
-const MIN_EXIT_TIME = "20:20";
-const MAX_EXIT_TIME = "20:40";
+const MAX_TIME = "22:00";
 
 interface UserDataEntryProps {
   tradeComparisons?: TradeComparison[];
@@ -139,8 +138,8 @@ const initialFormData: FormData = {
   trade_date: new Date().toISOString().split("T")[0],
   exit_date: new Date().toISOString().split("T")[0],
   direction: "Long",
-  entry_time: MIN_ENTRY_TIME,
-  exit_time: MIN_EXIT_TIME,
+  entry_time: "",
+  exit_time: "",
   entry_price: "",
   exit_price: "",
   stop_loss: "",
@@ -197,16 +196,16 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     return Math.max(...executions.map(e => e.trade_number)) + 1;
   };
 
-  // Validate entry time
+  // Validate entry time (15:20 - 22:00)
   const validateEntryTime = (time: string): boolean => {
     if (!time) return true; // Allow empty
-    return time >= MIN_ENTRY_TIME;
+    return time >= MIN_ENTRY_TIME && time <= MAX_TIME;
   };
 
-  // Validate exit time
+  // Validate exit time (15:20 - 22:00)
   const validateExitTime = (time: string): boolean => {
     if (!time) return true; // Allow empty
-    return time >= MIN_EXIT_TIME && time <= MAX_EXIT_TIME;
+    return time >= MIN_ENTRY_TIME && time <= MAX_TIME;
   };
 
   // Handle file selection
@@ -292,8 +291,8 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       trade_date: execution.trade_date,
       exit_date: execution.exit_date || execution.trade_date,
       direction: execution.direction,
-      entry_time: execution.entry_time || MIN_ENTRY_TIME,
-      exit_time: execution.exit_time || MIN_EXIT_TIME,
+      entry_time: execution.entry_time || "",
+      exit_time: execution.exit_time || "",
       entry_price: execution.entry_price?.toString() || "",
       exit_price: execution.exit_price?.toString() || "",
       stop_loss: execution.stop_loss?.toString() || "",
@@ -331,7 +330,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     if (formData.exit_time && !validateExitTime(formData.exit_time)) {
       toast({
         title: "Heure de sortie invalide",
-        description: `L'heure de sortie doit être entre ${MIN_EXIT_TIME} et ${MAX_EXIT_TIME}.`,
+        description: `L'heure de sortie doit être entre ${MIN_ENTRY_TIME} et ${MAX_TIME}.`,
         variant: "destructive",
       });
       return;
@@ -700,21 +699,21 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                 <div className="space-y-2">
                   <Label htmlFor="exit_time">
                     Heure Sortie
-                    <span className="text-xs text-muted-foreground ml-1">({MIN_EXIT_TIME}-{MAX_EXIT_TIME})</span>
+                    <span className="text-xs text-muted-foreground ml-1">({MIN_ENTRY_TIME}-{MAX_TIME})</span>
                   </Label>
                   <Input
                     id="exit_time"
                     type="time"
                     value={formData.exit_time}
-                    min={MIN_EXIT_TIME}
-                    max={MAX_EXIT_TIME}
+                    min={MIN_ENTRY_TIME}
+                    max={MAX_TIME}
                     onChange={(e) => setFormData({ ...formData, exit_time: e.target.value })}
                     className={cn(
                       formData.exit_time && !validateExitTime(formData.exit_time) && "border-red-500"
                     )}
                   />
                   {formData.exit_time && !validateExitTime(formData.exit_time) && (
-                    <p className="text-xs text-red-400">Entre {MIN_EXIT_TIME} et {MAX_EXIT_TIME}</p>
+                    <p className="text-xs text-red-400">Entre {MIN_ENTRY_TIME} et {MAX_TIME}</p>
                   )}
                 </div>
                 <div className="space-y-2">
