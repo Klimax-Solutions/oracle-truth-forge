@@ -22,7 +22,7 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
   return (
     <aside 
       className={cn(
-        "border-r border-neutral-800 bg-neutral-950 flex flex-col transition-all duration-300 ease-out",
+        "border-r border-border bg-card flex flex-col transition-all duration-300 ease-out",
         isExpanded ? "w-64" : "w-16"
       )}
       onMouseEnter={() => setIsExpanded(true)}
@@ -30,21 +30,21 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
     >
       {/* Header */}
       <div className={cn(
-        "p-4 border-b border-neutral-800 transition-all duration-300",
+        "p-4 border-b border-border transition-all duration-300",
         isExpanded ? "p-6" : "p-4"
       )}>
         {isExpanded ? (
           <>
-            <p className="text-xs font-mono uppercase tracking-[0.3em] text-neutral-500 mb-2">
+            <p className="text-xs font-mono uppercase tracking-[0.3em] text-muted-foreground mb-2">
               Database
             </p>
-            <h1 className="text-2xl font-semibold tracking-tight text-white">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               Oracle<sup className="text-sm font-normal align-super ml-0.5">™</sup>
             </h1>
           </>
         ) : (
           <div className="flex items-center justify-center">
-            <span className="text-xl font-bold text-white">O</span>
+            <span className="text-xl font-bold text-foreground">O</span>
           </div>
         )}
       </div>
@@ -60,8 +60,8 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
               "text-sm font-mono uppercase tracking-wider",
               isExpanded ? "px-4 py-3" : "px-0 py-3 justify-center",
               activeTab === tab.id
-                ? "bg-white text-black"
-                : "text-neutral-500 hover:text-white hover:bg-neutral-800"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
             )}
           >
             <tab.icon className="w-4 h-4 flex-shrink-0" />
@@ -73,14 +73,14 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
       {/* Expand indicator */}
       {!isExpanded && (
         <div className="p-4 flex justify-center">
-          <ChevronRight className="w-4 h-4 text-neutral-600 animate-pulse" />
+          <ChevronRight className="w-4 h-4 text-muted-foreground animate-pulse" />
         </div>
       )}
 
       {/* Footer */}
       {isExpanded && (
-        <div className="p-4 border-t border-neutral-800">
-          <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider text-center">
+        <div className="p-4 border-t border-border">
+          <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider text-center">
             Oracle™ © 2026
           </p>
         </div>
