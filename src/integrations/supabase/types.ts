@@ -253,6 +253,11 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: undefined
       }
+      is_admin: { Args: never; Returns: boolean }
+      unlock_next_cycle: {
+        Args: { p_current_cycle_number: number; p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       cycle_status:

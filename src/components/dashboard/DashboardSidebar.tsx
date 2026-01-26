@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
-import { Database, Calendar, BarChart3, Clock, ChevronRight, Crosshair, Video } from "lucide-react";
-import { useState } from "react";
+import { Database, Calendar, BarChart3, Clock, ChevronRight, Crosshair, Video, ShieldCheck } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DashboardSidebarProps {
   activeTab: string;
@@ -16,8 +17,23 @@ const tabs = [
   { id: "videos", label: "Vidéo du Setup Oracle", icon: Video },
 ];
 
+const adminTab = { id: "admin", label: "Vérifications Admin", icon: ShieldCheck };
+
 export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email === "jules.philipon@gmail.com") {
+        setIsAdmin(true);
+      }
+    };
+    checkAdmin();
+  }, []);
+
+  const allTabs = isAdmin ? [...tabs, adminTab] : tabs;
 
   return (
     <aside 
@@ -44,7 +60,7 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
 
       {/* Tabs */}
       <nav className="flex-1 p-2 space-y-1">
-        {tabs.map((tab) => (
+        {allTabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
@@ -54,7 +70,8 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
               isExpanded ? "px-4 py-3" : "px-0 py-3 justify-center",
               activeTab === tab.id
                 ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent",
+              tab.id === "admin" && "border-t border-border/40 mt-2 pt-4"
             )}
           >
             <tab.icon className="w-4 h-4 flex-shrink-0" />

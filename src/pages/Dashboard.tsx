@@ -12,6 +12,7 @@ import { RRDistributionChart } from "@/components/dashboard/RRDistributionChart"
 import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
+import { AdminVerification } from "@/components/dashboard/AdminVerification";
 
 interface Trade {
   id: string;
@@ -141,6 +142,8 @@ const Dashboard = () => {
         return <TimingAnalysis trades={trades} onNavigateToDatabase={handleNavigateToDatabase} />;
       case "videos":
         return <VideoSetup />;
+      case "admin":
+        return <AdminVerification />;
       default:
         return <OracleExecution trades={trades} />;
     }
