@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Target, Zap, BarChart2 } from "lucide-react";
+import { useTheme } from "next-themes";
 
 interface Trade {
   id: string;
@@ -18,6 +19,21 @@ interface RRDistributionChartProps {
 }
 
 export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  
+  // Theme-aware colors for charts
+  const chartColors = {
+    axis: isDark ? "#525252" : "#a3a3a3",
+    axisLine: isDark ? "#262626" : "#e5e5e5",
+    tooltip: {
+      bg: isDark ? "#171717" : "#ffffff",
+      border: isDark ? "#262626" : "#e5e5e5",
+      text: isDark ? "#ffffff" : "#171717",
+    },
+    bar: isDark ? "#ffffff" : "#171717",
+  };
+
   const stats = useMemo(() => {
     // RR distribution buckets
     const buckets: Record<string, number> = {
@@ -129,16 +145,14 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
     };
   }, [trades]);
 
-  const COLORS = ["#22c55e", "#ef4444"];
-  // Same green as RR Total (emerald) and same red as Worst (red-400)
-  const DIRECTION_COLORS = ["#22c55e", "#ef4444"]; // Green for Long, Red for Short
+  const DIRECTION_COLORS = ["#22c55e", "#ef4444"];
 
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-neutral-800">
-        <h2 className="text-xl font-semibold text-white mb-1">Distribution RR</h2>
-        <p className="text-sm text-neutral-500 font-mono">Analyse complète des Risk-Reward</p>
+      <div className="p-6 border-b border-border">
+        <h2 className="text-xl font-semibold text-foreground mb-1">Distribution RR</h2>
+        <p className="text-sm text-muted-foreground font-mono">Analyse complète des Risk-Reward</p>
       </div>
 
       <div className="flex-1 p-6 overflow-auto space-y-6">
@@ -147,45 +161,45 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
           <div className="border border-emerald-500/30 p-4 bg-emerald-500/10 rounded-md">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-4 h-4 text-emerald-500" />
-              <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">RR Total</span>
+              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">RR Total</span>
             </div>
             <p className="text-2xl font-bold text-emerald-400">+{stats.totalRR.toFixed(0)}</p>
           </div>
-          <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+          <div className="border border-border p-4 bg-card rounded-md">
             <div className="flex items-center gap-2 mb-2">
-              <Target className="w-4 h-4 text-neutral-500" />
-              <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">RR Moyen</span>
+              <Target className="w-4 h-4 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">RR Moyen</span>
             </div>
-            <p className="text-2xl font-bold text-white">{stats.avgRR.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-foreground">{stats.avgRR.toFixed(2)}</p>
           </div>
-          <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+          <div className="border border-border p-4 bg-card rounded-md">
             <div className="flex items-center gap-2 mb-2">
               <Zap className="w-4 h-4 text-emerald-500" />
-              <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">Meilleur</span>
+              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Meilleur</span>
             </div>
             <p className="text-2xl font-bold text-emerald-400">+{stats.maxRR.toFixed(2)}</p>
           </div>
-          <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+          <div className="border border-border p-4 bg-card rounded-md">
             <div className="flex items-center gap-2 mb-2">
               <TrendingDown className="w-4 h-4 text-red-500" />
-              <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">Pire</span>
+              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Pire</span>
             </div>
             <p className="text-2xl font-bold text-red-400">{stats.minRR.toFixed(2)}</p>
           </div>
-          <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+          <div className="border border-border p-4 bg-card rounded-md">
             <div className="flex items-center gap-2 mb-2">
-              <BarChart2 className="w-4 h-4 text-neutral-500" />
-              <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">Écart-type</span>
+              <BarChart2 className="w-4 h-4 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Écart-type</span>
             </div>
-            <p className="text-2xl font-bold text-white">{stats.stdDev.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-foreground">{stats.stdDev.toFixed(2)}</p>
           </div>
         </div>
 
         {/* Charts row 1 */}
         <div className="grid grid-cols-2 gap-4">
           {/* Distribution chart */}
-          <div className="border border-neutral-800 p-5 bg-neutral-950 rounded-md">
-            <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
+          <div className="border border-border p-5 bg-card rounded-md">
+            <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
               Distribution par RR
             </h3>
             <div className="h-44">
@@ -193,38 +207,38 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
                 <BarChart data={stats.distributionData}>
                   <XAxis 
                     dataKey="range" 
-                    tick={{ fill: "#a3a3a3", fontSize: 11 }}
-                    axisLine={{ stroke: "#262626" }}
+                    tick={{ fill: chartColors.axis, fontSize: 11 }}
+                    axisLine={{ stroke: chartColors.axisLine }}
                     tickLine={false}
                   />
                   <YAxis 
-                    tick={{ fill: "#525252", fontSize: 10 }}
-                    axisLine={{ stroke: "#262626" }}
+                    tick={{ fill: chartColors.axis, fontSize: 10 }}
+                    axisLine={{ stroke: chartColors.axisLine }}
                     tickLine={false}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#171717",
-                      border: "1px solid #262626",
+                      backgroundColor: chartColors.tooltip.bg,
+                      border: `1px solid ${chartColors.tooltip.border}`,
                       borderRadius: 8,
-                      color: "#ffffff",
+                      color: chartColors.tooltip.text,
                     }}
-                    itemStyle={{ color: "#ffffff" }}
-                    labelStyle={{ color: "#ffffff" }}
+                    itemStyle={{ color: chartColors.tooltip.text }}
+                    labelStyle={{ color: chartColors.tooltip.text }}
                     formatter={(value: number, name: string, props: any) => [
                       `${value} trades (${props.payload.percentage}%)`, 
                       "Nombre"
                     ]}
                   />
-                  <Bar dataKey="count" fill="#ffffff" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill={chartColors.bar} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
           {/* Direction pie chart */}
-          <div className="border border-neutral-800 p-5 bg-neutral-950 rounded-md">
-            <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
+          <div className="border border-border p-5 bg-card rounded-md">
+            <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
               RR par Direction
             </h3>
             <div className="h-44 flex items-center">
@@ -246,13 +260,13 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
                     </Pie>
                     <Tooltip 
                       contentStyle={{
-                        backgroundColor: "#171717",
-                        border: "1px solid #262626",
+                        backgroundColor: chartColors.tooltip.bg,
+                        border: `1px solid ${chartColors.tooltip.border}`,
                         borderRadius: 4,
-                        color: "#ffffff",
+                        color: chartColors.tooltip.text,
                       }}
-                      itemStyle={{ color: "#ffffff" }}
-                      labelStyle={{ color: "#ffffff" }}
+                      itemStyle={{ color: chartColors.tooltip.text }}
+                      labelStyle={{ color: chartColors.tooltip.text }}
                       formatter={(value: number, name: string, props: any) => [
                         `${value} trades (+${props.payload.rr.toFixed(1)} RR)`,
                         name
@@ -269,11 +283,11 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
                       style={{ backgroundColor: DIRECTION_COLORS[idx] }}
                     />
                     <div>
-                      <p className="text-sm text-white font-medium">{dir.name}</p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-sm text-foreground font-medium">{dir.name}</p>
+                      <p className="text-xs text-muted-foreground">
                         {dir.value} trades • +{dir.rr.toFixed(1)} RR
                       </p>
-                      <p className="text-xs text-neutral-600">
+                      <p className="text-xs text-muted-foreground/60">
                         Moy: {dir.avgRR.toFixed(2)} RR
                       </p>
                     </div>
@@ -285,8 +299,8 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
         </div>
 
         {/* Cumulative RR chart */}
-        <div className="border border-neutral-800 p-5 bg-neutral-950 rounded-md">
-          <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
+        <div className="border border-border p-5 bg-card rounded-md">
+          <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
             Évolution Cumulative RR
           </h3>
           <div className="h-48">
@@ -300,22 +314,22 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
                 </defs>
                 <XAxis 
                   dataKey="trade" 
-                  tick={{ fill: "#525252", fontSize: 10 }}
-                  axisLine={{ stroke: "#262626" }}
+                  tick={{ fill: chartColors.axis, fontSize: 10 }}
+                  axisLine={{ stroke: chartColors.axisLine }}
                   tickLine={false}
                 />
                 <YAxis 
-                  tick={{ fill: "#525252", fontSize: 10 }}
-                  axisLine={{ stroke: "#262626" }}
+                  tick={{ fill: chartColors.axis, fontSize: 10 }}
+                  axisLine={{ stroke: chartColors.axisLine }}
                   tickLine={false}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#171717",
-                    border: "1px solid #262626",
+                    backgroundColor: chartColors.tooltip.bg,
+                    border: `1px solid ${chartColors.tooltip.border}`,
                     borderRadius: 4,
                   }}
-                  labelStyle={{ color: "#a3a3a3" }}
+                  labelStyle={{ color: chartColors.axis }}
                   formatter={(value: number) => [`${value} RR`, "Cumul"]}
                 />
                 <Area 
@@ -333,8 +347,8 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
         {/* Charts row 2 */}
         <div className="grid grid-cols-2 gap-4">
           {/* Rolling average */}
-          <div className="border border-neutral-800 p-5 bg-neutral-950 rounded-md">
-            <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
+          <div className="border border-border p-5 bg-card rounded-md">
+            <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
               Moyenne Mobile (20 trades)
             </h3>
             <div className="h-40">
@@ -342,24 +356,24 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
                 <LineChart data={stats.rollingData}>
                   <XAxis 
                     dataKey="trade" 
-                    tick={{ fill: "#525252", fontSize: 10 }}
-                    axisLine={{ stroke: "#262626" }}
+                    tick={{ fill: chartColors.axis, fontSize: 10 }}
+                    axisLine={{ stroke: chartColors.axisLine }}
                     tickLine={false}
                   />
                   <YAxis 
-                    tick={{ fill: "#525252", fontSize: 10 }}
-                    axisLine={{ stroke: "#262626" }}
+                    tick={{ fill: chartColors.axis, fontSize: 10 }}
+                    axisLine={{ stroke: chartColors.axisLine }}
                     tickLine={false}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#171717",
-                      border: "1px solid #262626",
+                      backgroundColor: chartColors.tooltip.bg,
+                      border: `1px solid ${chartColors.tooltip.border}`,
                       borderRadius: 8,
-                      color: "#ffffff",
+                      color: chartColors.tooltip.text,
                     }}
-                    itemStyle={{ color: "#ffffff" }}
-                    labelStyle={{ color: "#ffffff" }}
+                    itemStyle={{ color: chartColors.tooltip.text }}
+                    labelStyle={{ color: chartColors.tooltip.text }}
                     formatter={(value: number) => [`${value} RR`, "Moyenne"]}
                   />
                   <Line 
@@ -375,22 +389,22 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
           </div>
 
           {/* Setup performance */}
-          <div className="border border-neutral-800 p-5 bg-neutral-950 rounded-md">
-            <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
+          <div className="border border-border p-5 bg-card rounded-md">
+            <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
               Performance par Setup
             </h3>
             <div className="space-y-2 max-h-40 overflow-auto scrollbar-hide">
               {stats.setupData.slice(0, 6).map((setup, idx) => (
                 <div 
                   key={setup.setup}
-                  className="flex items-center justify-between py-2 border-b border-neutral-800 last:border-0"
+                  className="flex items-center justify-between py-2 border-b border-border last:border-0"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-neutral-600 font-mono w-4">{idx + 1}</span>
-                    <span className="text-sm text-white truncate max-w-[150px]">{setup.setup}</span>
+                    <span className="text-xs text-muted-foreground font-mono w-4">{idx + 1}</span>
+                    <span className="text-sm text-foreground truncate max-w-[150px]">{setup.setup}</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="text-xs text-neutral-500">{setup.count} trades</span>
+                    <span className="text-xs text-muted-foreground">{setup.count} trades</span>
                     <span className={cn(
                       "text-sm font-mono font-medium",
                       setup.rr > 0 ? "text-emerald-400" : "text-red-400"

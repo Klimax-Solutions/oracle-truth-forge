@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -54,32 +55,34 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden">
-      {/* Grid pattern overlay */}
-      <div className="absolute inset-0 grid-pattern" />
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Theme toggle */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
 
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6">
         {/* Header */}
         <div className="text-center mb-16">
-          <p className="text-xs font-mono uppercase tracking-[0.4em] text-neutral-500 mb-6">
+          <p className="text-xs font-mono uppercase tracking-[0.4em] text-muted-foreground mb-6">
             Authentification
           </p>
-          <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-white">
+          <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-foreground">
             Oracle<sup className="text-xl md:text-2xl font-normal align-super ml-1">™</sup>
           </h1>
         </div>
 
         {/* Divider */}
-        <div className="w-full max-w-md h-px bg-neutral-800 mb-12" />
+        <div className="w-full max-w-md h-px bg-border mb-12" />
 
         {/* Auth form */}
         <div className="w-full max-w-md">
-          <div className="border border-neutral-800 bg-neutral-950 p-8">
+          <div className="border border-border bg-card p-8 rounded-md">
             <div className="mb-8">
-              <h2 className="text-lg font-bold text-white mb-1">
+              <h2 className="text-lg font-bold text-foreground mb-1">
                 {isLogin ? "Connexion" : "Créer un compte"}
               </h2>
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-muted-foreground">
                 {isLogin
                   ? "Accédez à votre base de données"
                   : "Rejoignez la plateforme Oracle"}
@@ -88,7 +91,7 @@ const Auth = () => {
 
             <form onSubmit={handleAuth} className="space-y-6">
               <div className="space-y-2">
-                <label className="text-xs font-mono uppercase tracking-widest text-neutral-500">
+                <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
                   Email
                 </label>
                 <Input
@@ -97,12 +100,12 @@ const Auth = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="vous@exemple.com"
                   required
-                  className="h-12 bg-black border-neutral-800 text-white placeholder:text-neutral-600 focus:border-neutral-600 rounded-none"
+                  className="h-12 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring rounded-md"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-mono uppercase tracking-widest text-neutral-500">
+                <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
                   Mot de passe
                 </label>
                 <div className="relative">
@@ -113,12 +116,12 @@ const Auth = () => {
                     placeholder="••••••••"
                     required
                     minLength={6}
-                    className="h-12 bg-black border-neutral-800 text-white placeholder:text-neutral-600 focus:border-neutral-600 rounded-none pr-12"
+                    className="h-12 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring rounded-md pr-12"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {showPassword ? (
                       <EyeOff className="w-5 h-5" />
@@ -131,7 +134,7 @@ const Auth = () => {
 
               <Button
                 type="submit"
-                className="w-full h-12 bg-white text-black font-bold hover:bg-neutral-200 rounded-none transition-colors"
+                className="w-full h-12 bg-primary text-primary-foreground font-bold hover:bg-primary/90 rounded-md transition-colors"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -148,7 +151,7 @@ const Auth = () => {
               <button
                 type="button"
                 onClick={() => setIsLogin(!isLogin)}
-                className="text-sm text-neutral-500 hover:text-white transition-colors"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 {isLogin
                   ? "Pas de compte ? Créer un compte"
@@ -159,7 +162,7 @@ const Auth = () => {
         </div>
 
         {/* Footer */}
-        <p className="mt-16 text-xs text-neutral-600 font-mono uppercase tracking-[0.3em]">
+        <p className="mt-16 text-xs text-muted-foreground font-mono uppercase tracking-[0.3em]">
           Oracle © 2026 — Accès confidentiel
         </p>
       </div>

@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { useState, useMemo } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
+import { useChartColors } from "@/hooks/useChartColors";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,6 +53,7 @@ interface Filters {
 }
 
 export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) => {
+  const chartColors = useChartColors();
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [filters, setFilters] = useState<Filters>(initialFilters || {
     direction: [],
@@ -166,22 +168,22 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
   return (
     <div className="h-full flex flex-col">
       {/* Header with stats - redesigned */}
-      <div className="p-4 border-b border-neutral-800 bg-neutral-950">
+      <div className="p-4 border-b border-border bg-card">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-3">
-              <span className="text-base font-bold text-white">{totalTrades}</span>
-              <span className="text-[10px] text-neutral-500 font-mono uppercase">trades</span>
+              <span className="text-base font-bold text-foreground">{totalTrades}</span>
+              <span className="text-[10px] text-muted-foreground font-mono uppercase">trades</span>
             </div>
-            <div className="w-px h-5 bg-neutral-800" />
+            <div className="w-px h-5 bg-border" />
             <div className="flex items-center gap-3">
               <span className="text-base font-bold text-emerald-400">+{totalRR.toFixed(1)}</span>
-              <span className="text-[10px] text-neutral-500 font-mono uppercase">RR</span>
+              <span className="text-[10px] text-muted-foreground font-mono uppercase">RR</span>
             </div>
-            <div className="w-px h-5 bg-neutral-800" />
+            <div className="w-px h-5 bg-border" />
             <div className="flex items-center gap-2">
               <span className="text-xs text-emerald-400 font-mono">{longTrades} LONG</span>
-              <span className="text-neutral-700">•</span>
+              <span className="text-muted-foreground">•</span>
               <span className="text-xs text-red-400 font-mono">{shortTrades} SHORT</span>
             </div>
           </div>
@@ -191,7 +193,7 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
             {activeFiltersCount > 0 && (
               <button
                 onClick={clearFilters}
-                className="px-2.5 py-1.5 text-[10px] text-neutral-400 hover:text-white bg-neutral-800/50 hover:bg-neutral-700 rounded-md transition-colors flex items-center gap-1"
+                className="px-2.5 py-1.5 text-[10px] text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-accent rounded-md transition-colors flex items-center gap-1"
               >
                 <X className="w-3 h-3" />
                 {activeFiltersCount}
@@ -203,20 +205,20 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                 <button className={cn(
                   "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
                   filters.direction.length > 0
-                    ? "bg-white text-black"
-                    : "bg-neutral-800/50 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}>
                   Direction
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md min-w-[140px] p-1">
+              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[140px] p-1">
                 {filterOptions.direction.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.direction.includes(option)}
                     onCheckedChange={() => toggleFilter("direction", option)}
-                    className="text-neutral-300 text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
+                    className="text-foreground text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>

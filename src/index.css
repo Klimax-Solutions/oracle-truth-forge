@@ -110,20 +110,39 @@
 }
 
 @layer components {
-  /* Brutalist grid pattern - visible white lines */
+  /* Grid patterns */
   .grid-pattern {
-    background-color: #000;
+    background-color: hsl(var(--background));
     background-image: 
-      linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px);
     background-size: 4px 4px;
   }
 
   .trading-grid {
     background-image: 
-      linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px);
     background-size: 40px 40px;
+  }
+
+  /* Theme-aware chart tooltip colors */
+  :root {
+    --chart-axis: #a3a3a3;
+    --chart-axis-line: #e5e5e5;
+    --chart-tooltip-bg: #ffffff;
+    --chart-tooltip-border: #e5e5e5;
+    --chart-tooltip-text: #171717;
+    --chart-bar: #171717;
+  }
+
+  .dark {
+    --chart-axis: #525252;
+    --chart-axis-line: #262626;
+    --chart-tooltip-bg: #171717;
+    --chart-tooltip-border: #262626;
+    --chart-tooltip-text: #ffffff;
+    --chart-bar: #ffffff;
   }
 }
 

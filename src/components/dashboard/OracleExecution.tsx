@@ -61,9 +61,9 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-neutral-800">
-        <h2 className="text-xl font-semibold text-white mb-1">Exécution d'Oracle</h2>
-        <p className="text-sm text-neutral-500 font-mono">Progression des 8 cycles vers les 314 trades</p>
+      <div className="p-6 border-b border-border">
+        <h2 className="text-xl font-semibold text-foreground mb-1">Exécution d'Oracle</h2>
+        <p className="text-sm text-muted-foreground font-mono">Progression des 8 cycles vers les 314 trades</p>
       </div>
 
       <div className="flex-1 p-6 overflow-auto space-y-8">
@@ -72,13 +72,13 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
           <div className="border border-emerald-500/30 p-5 bg-emerald-500/10 rounded-md">
             <div className="flex items-center gap-2 mb-3">
               <Target className="w-4 h-4 text-emerald-500" />
-              <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">
+              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
                 Progression Totale
               </span>
             </div>
-            <p className="text-3xl font-bold text-white">{totalProgress}</p>
-            <p className="text-sm text-neutral-500">/ 314 trades</p>
-            <div className="mt-3 h-2 bg-neutral-800 rounded-full overflow-hidden">
+            <p className="text-3xl font-bold text-foreground">{totalProgress}</p>
+            <p className="text-sm text-muted-foreground">/ 314 trades</p>
+            <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
               <div 
                 className="h-full bg-emerald-500 rounded-full transition-all"
                 style={{ width: `${overallProgress}%` }}
@@ -86,49 +86,49 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
             </div>
           </div>
 
-          <div className="border border-neutral-800 p-5 bg-neutral-950 rounded-md">
+          <div className="border border-border p-5 bg-card rounded-md">
             <div className="flex items-center gap-2 mb-3">
-              <CheckCircle className="w-4 h-4 text-neutral-500" />
-              <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">
+              <CheckCircle className="w-4 h-4 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
                 Cycles Complétés
               </span>
             </div>
-            <p className="text-3xl font-bold text-white">{completedCycles}</p>
-            <p className="text-sm text-neutral-500">/ 8 cycles</p>
+            <p className="text-3xl font-bold text-foreground">{completedCycles}</p>
+            <p className="text-sm text-muted-foreground">/ 8 cycles</p>
           </div>
 
-          <div className="border border-neutral-800 p-5 bg-neutral-950 rounded-md">
+          <div className="border border-border p-5 bg-card rounded-md">
             <div className="flex items-center gap-2 mb-3">
-              <TrendingUp className="w-4 h-4 text-neutral-500" />
-              <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">
+              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
                 RR Cumulé
               </span>
             </div>
             <p className="text-3xl font-bold text-emerald-400">+{totalRR.toFixed(1)}</p>
-            <p className="text-sm text-neutral-500">≈ +{(totalRR * 1000).toLocaleString("fr-FR")} €</p>
+            <p className="text-sm text-muted-foreground">≈ +{(totalRR * 1000).toLocaleString("fr-FR")} €</p>
           </div>
 
-          <div className="border border-neutral-800 p-5 bg-neutral-950 rounded-md">
+          <div className="border border-border p-5 bg-card rounded-md">
             <div className="flex items-center gap-2 mb-3">
-              <Circle className="w-4 h-4 text-neutral-500" />
-              <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">
+              <Circle className="w-4 h-4 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
                 RR Moyen
               </span>
             </div>
-            <p className="text-3xl font-bold text-white">
+            <p className="text-3xl font-bold text-foreground">
               {trades.length > 0 ? (totalRR / trades.length).toFixed(2) : "0"}
             </p>
-            <p className="text-sm text-neutral-500">par trade</p>
+            <p className="text-sm text-muted-foreground">par trade</p>
           </div>
         </div>
 
         {/* Cycles Phase 1 (4x25) */}
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500">
+            <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
               Phase 1 — 100 Trades
             </h3>
-            <span className="text-[10px] px-2 py-0.5 bg-neutral-800 text-neutral-400 rounded-md">
+            <span className="text-[10px] px-2 py-0.5 bg-muted text-muted-foreground rounded-md">
               4 cycles × 25 trades
             </span>
           </div>
@@ -141,39 +141,39 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
                   cycle.isComplete 
                     ? "bg-emerald-500/20 border-emerald-500/30" 
                     : cycle.completedTrades > 0
-                    ? "bg-neutral-900 border-neutral-700"
-                    : "bg-neutral-950 border-neutral-800"
+                    ? "bg-accent border-border"
+                    : "bg-card border-border"
                 )}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-mono uppercase text-neutral-400">{cycle.name}</span>
+                  <span className="text-sm font-mono uppercase text-muted-foreground">{cycle.name}</span>
                   {cycle.isComplete && (
                     <CheckCircle className="w-4 h-4 text-emerald-400" />
                   )}
                 </div>
                 
                 <div className="flex items-baseline gap-1 mb-2">
-                  <span className="text-2xl font-bold text-white">{cycle.completedTrades}</span>
-                  <span className="text-sm text-neutral-600">/ {cycle.target}</span>
+                  <span className="text-2xl font-bold text-foreground">{cycle.completedTrades}</span>
+                  <span className="text-sm text-muted-foreground">/ {cycle.target}</span>
                 </div>
                 
-                <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden mb-3">
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-3">
                   <div 
                     className={cn(
                       "h-full rounded-full transition-all",
-                      cycle.isComplete ? "bg-emerald-500" : "bg-white"
+                      cycle.isComplete ? "bg-emerald-500" : "bg-foreground"
                     )}
                     style={{ width: `${cycle.progress}%` }}
                   />
                 </div>
                 
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-neutral-500">
+                  <span className="text-muted-foreground">
                     Trades {cycle.startTrade}-{cycle.endTrade}
                   </span>
                   <span className={cn(
                     "font-mono",
-                    cycle.totalRR > 0 ? "text-emerald-400" : "text-neutral-400"
+                    cycle.totalRR > 0 ? "text-emerald-400" : "text-muted-foreground"
                   )}>
                     +{cycle.totalRR.toFixed(1)} RR
                   </span>
@@ -186,10 +186,10 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
         {/* Cycles Phase 2 (4x50/64) */}
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500">
+            <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
               Phase 2 — 214 Trades
             </h3>
-            <span className="text-[10px] px-2 py-0.5 bg-neutral-800 text-neutral-400 rounded-md">
+            <span className="text-[10px] px-2 py-0.5 bg-muted text-muted-foreground rounded-md">
               3 cycles × 50 + 1 cycle × 64 trades
             </span>
           </div>
@@ -202,39 +202,39 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
                   cycle.isComplete 
                     ? "bg-emerald-500/20 border-emerald-500/30" 
                     : cycle.completedTrades > 0
-                    ? "bg-neutral-900 border-neutral-700"
-                    : "bg-neutral-950 border-neutral-800"
+                    ? "bg-accent border-border"
+                    : "bg-card border-border"
                 )}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-mono uppercase text-neutral-400">{cycle.name}</span>
+                  <span className="text-sm font-mono uppercase text-muted-foreground">{cycle.name}</span>
                   {cycle.isComplete && (
                     <CheckCircle className="w-4 h-4 text-emerald-400" />
                   )}
                 </div>
                 
                 <div className="flex items-baseline gap-1 mb-2">
-                  <span className="text-2xl font-bold text-white">{cycle.completedTrades}</span>
-                  <span className="text-sm text-neutral-600">/ {cycle.target}</span>
+                  <span className="text-2xl font-bold text-foreground">{cycle.completedTrades}</span>
+                  <span className="text-sm text-muted-foreground">/ {cycle.target}</span>
                 </div>
                 
-                <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden mb-3">
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-3">
                   <div 
                     className={cn(
                       "h-full rounded-full transition-all",
-                      cycle.isComplete ? "bg-emerald-500" : "bg-white"
+                      cycle.isComplete ? "bg-emerald-500" : "bg-foreground"
                     )}
                     style={{ width: `${cycle.progress}%` }}
                   />
                 </div>
                 
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-neutral-500">
+                  <span className="text-muted-foreground">
                     Trades {cycle.startTrade}-{cycle.endTrade}
                   </span>
                   <span className={cn(
                     "font-mono",
-                    cycle.totalRR > 0 ? "text-emerald-400" : "text-neutral-400"
+                    cycle.totalRR > 0 ? "text-emerald-400" : "text-muted-foreground"
                   )}>
                     +{cycle.totalRR.toFixed(1)} RR
                   </span>
@@ -245,36 +245,36 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
         </div>
 
         {/* Summary */}
-        <div className="border border-neutral-800 p-6 bg-neutral-950 rounded-md">
-          <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
+        <div className="border border-border p-6 bg-card rounded-md">
+          <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
             Récapitulatif des Cycles
           </h3>
           <div className="space-y-2">
             {cycleStats.map((cycle) => (
               <div 
                 key={cycle.id}
-                className="flex items-center gap-4 py-2 border-b border-neutral-800 last:border-0"
+                className="flex items-center gap-4 py-2 border-b border-border last:border-0"
               >
                 <div className={cn(
                   "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
                   cycle.isComplete 
                     ? "bg-emerald-500/20 text-emerald-400" 
-                    : "bg-neutral-800 text-neutral-500"
+                    : "bg-muted text-muted-foreground"
                 )}>
                   {cycle.id}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-white">{cycle.name}</span>
-                    <span className="text-xs text-neutral-500">
+                    <span className="text-sm text-foreground">{cycle.name}</span>
+                    <span className="text-xs text-muted-foreground">
                       {cycle.completedTrades}/{cycle.target} trades
                     </span>
                   </div>
-                  <div className="h-1 bg-neutral-800 rounded-full overflow-hidden mt-1">
+                  <div className="h-1 bg-muted rounded-full overflow-hidden mt-1">
                     <div 
                       className={cn(
                         "h-full rounded-full",
-                        cycle.isComplete ? "bg-emerald-500" : "bg-white/50"
+                        cycle.isComplete ? "bg-emerald-500" : "bg-foreground/50"
                       )}
                       style={{ width: `${cycle.progress}%` }}
                     />
@@ -282,7 +282,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
                 </div>
                 <span className={cn(
                   "text-sm font-mono w-20 text-right",
-                  cycle.totalRR > 0 ? "text-emerald-400" : "text-neutral-500"
+                  cycle.totalRR > 0 ? "text-emerald-400" : "text-muted-foreground"
                 )}>
                   +{cycle.totalRR.toFixed(1)} RR
                 </span>

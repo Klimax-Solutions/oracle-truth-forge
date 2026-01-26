@@ -83,19 +83,19 @@ export const VideoSetup = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-neutral-800">
+      <div className="p-6 border-b border-border">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-white mb-1">Vidéo du Setup Oracle</h2>
-            <p className="text-sm text-neutral-500 font-mono">
+            <h2 className="text-xl font-semibold text-foreground mb-1">Vidéo du Setup Oracle</h2>
+            <p className="text-sm text-muted-foreground font-mono">
               Bibliothèque de vidéos explicatives
-              {!isAdmin && <span className="ml-2 text-neutral-600">(Mode lecture seule)</span>}
+              {!isAdmin && <span className="ml-2 text-muted-foreground/60">(Mode lecture seule)</span>}
             </p>
           </div>
           {isAdmin && (
             <Button
               onClick={() => setIsAddingVideo(true)}
-              className="bg-white text-black hover:bg-neutral-200 rounded-md gap-2"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md gap-2"
             >
               <Plus className="w-4 h-4" />
               Ajouter une vidéo
@@ -106,13 +106,13 @@ export const VideoSetup = () => {
 
       {/* Add video modal - Admin only */}
       {isAddingVideo && isAdmin && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-6">
-          <div className="bg-neutral-900 border border-neutral-700 rounded-lg w-full max-w-2xl p-6">
+        <div className="fixed inset-0 bg-background/80 z-50 flex items-center justify-center p-6">
+          <div className="bg-card border border-border rounded-lg w-full max-w-2xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">Ajouter une vidéo</h3>
+              <h3 className="text-lg font-semibold text-foreground">Ajouter une vidéo</h3>
               <button 
                 onClick={() => setIsAddingVideo(false)}
-                className="text-neutral-500 hover:text-white"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -120,24 +120,24 @@ export const VideoSetup = () => {
             
             <div className="space-y-4">
               <div>
-                <label className="text-sm text-neutral-400 block mb-2">Titre de la vidéo</label>
+                <label className="text-sm text-muted-foreground block mb-2">Titre de la vidéo</label>
                 <input
                   type="text"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="Ex: Introduction au Setup Oracle"
-                  className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-4 py-3 text-white placeholder:text-neutral-500 focus:border-white focus:outline-none"
+                  className="w-full bg-background border border-border rounded-md px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
                 />
               </div>
               
               <div>
-                <label className="text-sm text-neutral-400 block mb-2">Code Embed (YouTube, Vimeo)</label>
+                <label className="text-sm text-muted-foreground block mb-2">Code Embed (YouTube, Vimeo)</label>
                 <textarea
                   value={newEmbedCode}
                   onChange={(e) => setNewEmbedCode(e.target.value)}
                   placeholder={'Collez le code embed iframe ici, ou une URL YouTube...\n\nExemple: <iframe src="https://www.youtube.com/embed/..."></iframe>'}
                   rows={4}
-                  className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-4 py-3 text-white placeholder:text-neutral-500 focus:border-white focus:outline-none resize-none font-mono text-sm"
+                  className="w-full bg-background border border-border rounded-md px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none resize-none font-mono text-sm"
                 />
               </div>
 
@@ -145,13 +145,13 @@ export const VideoSetup = () => {
                 <Button
                   variant="ghost"
                   onClick={() => setIsAddingVideo(false)}
-                  className="flex-1 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-md"
+                  className="flex-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md"
                 >
                   Annuler
                 </Button>
                 <Button
                   onClick={handleAddVideo}
-                  className="flex-1 bg-white text-black hover:bg-neutral-200 rounded-md"
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md"
                 >
                   Ajouter
                 </Button>
@@ -165,11 +165,11 @@ export const VideoSetup = () => {
       <div className="flex-1 p-6 overflow-auto scrollbar-hide">
         {videos.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center">
-            <div className="w-20 h-20 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center mb-6">
-              <Video className="w-10 h-10 text-neutral-600" />
+            <div className="w-20 h-20 rounded-full bg-accent border border-border flex items-center justify-center mb-6">
+              <Video className="w-10 h-10 text-muted-foreground" />
             </div>
-            <h3 className="text-xl font-medium text-white mb-2">Aucune vidéo</h3>
-            <p className="text-neutral-500 max-w-md mb-6">
+            <h3 className="text-xl font-medium text-foreground mb-2">Aucune vidéo</h3>
+            <p className="text-muted-foreground max-w-md mb-6">
               {isAdmin 
                 ? "Ajoutez des vidéos explicatives du Setup Oracle pour les consulter à tout moment."
                 : "Aucune vidéo n'a été ajoutée pour le moment. Revenez plus tard."}
@@ -178,7 +178,7 @@ export const VideoSetup = () => {
               <Button
                 onClick={() => setIsAddingVideo(true)}
                 variant="outline"
-                className="border-neutral-700 text-white hover:bg-neutral-800 rounded-md gap-2"
+                className="border-border text-foreground hover:bg-accent rounded-md gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Ajouter votre première vidéo
@@ -190,10 +190,10 @@ export const VideoSetup = () => {
             {videos.map((video) => (
               <div
                 key={video.id}
-                className="group border border-neutral-800 bg-neutral-950 rounded-lg overflow-hidden hover:border-neutral-700 transition-all"
+                className="group border border-border bg-card rounded-lg overflow-hidden hover:border-ring transition-all"
               >
                 {/* Video embed */}
-                <div className="relative aspect-video bg-black">
+                <div className="relative aspect-video bg-background">
                   <iframe
                     src={video.embedCode}
                     className="w-full h-full"
@@ -206,20 +206,20 @@ export const VideoSetup = () => {
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-base font-medium text-white truncate">{video.title}</h4>
-                      <p className="text-xs text-neutral-500 mt-1">
+                      <h4 className="text-base font-medium text-foreground truncate">{video.title}</h4>
+                      <p className="text-xs text-muted-foreground mt-1">
                         Ajouté le {video.createdAt.toLocaleDateString("fr-FR")}
                       </p>
                     </div>
                     {isAdmin ? (
                       <button
                         onClick={() => handleDeleteVideo(video.id)}
-                        className="p-2 text-neutral-600 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                        className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     ) : (
-                      <div className="p-2 text-neutral-700">
+                      <div className="p-2 text-muted-foreground/50">
                         <Lock className="w-4 h-4" />
                       </div>
                     )}
