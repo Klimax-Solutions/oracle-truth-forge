@@ -13,6 +13,7 @@ import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
 import { AdminVerification } from "@/components/dashboard/AdminVerification";
+import { UserDataEntry } from "@/components/dashboard/UserDataEntry";
 
 interface Trade {
   id: string;
@@ -132,6 +133,8 @@ const Dashboard = () => {
     switch (activeTab) {
       case "execution":
         return <OracleExecution trades={trades} />;
+      case "data-entry":
+        return <UserDataEntry />;
       case "oracle":
         return <OracleDatabase trades={trades} initialFilters={databaseFilters} />;
       case "journal":

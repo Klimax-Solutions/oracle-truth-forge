@@ -214,6 +214,66 @@ export type Database = {
           },
         ]
       }
+      user_executions: {
+        Row: {
+          created_at: string
+          direction: string
+          entry_price: number | null
+          entry_time: string | null
+          exit_price: number | null
+          exit_time: string | null
+          id: string
+          notes: string | null
+          result: string | null
+          rr: number | null
+          setup_type: string | null
+          stop_loss: number | null
+          take_profit: number | null
+          trade_date: string
+          trade_number: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          entry_price?: number | null
+          entry_time?: string | null
+          exit_price?: number | null
+          exit_time?: string | null
+          id?: string
+          notes?: string | null
+          result?: string | null
+          rr?: number | null
+          setup_type?: string | null
+          stop_loss?: number | null
+          take_profit?: number | null
+          trade_date: string
+          trade_number: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          entry_price?: number | null
+          entry_time?: string | null
+          exit_price?: number | null
+          exit_time?: string | null
+          id?: string
+          notes?: string | null
+          result?: string | null
+          rr?: number | null
+          setup_type?: string | null
+          stop_loss?: number | null
+          take_profit?: number | null
+          trade_date?: string
+          trade_number?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       verification_requests: {
         Row: {
           admin_comments: string | null
