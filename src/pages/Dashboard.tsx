@@ -9,12 +9,12 @@ const setups = [
   {
     title: "Oracle",
     number: "01",
-    description: "Setup principal avec 300 trades analysés et documentés. Système de vérification complet.",
-    href: "/setup/oracle",
+    description: "Base de données NAS100 avec 314 trades analysés et documentés.",
+    href: "/oracle-m",
     stats: {
-      trades: 300,
+      trades: 314,
       rr: 2300,
-      winRate: 67,
+      winRate: 100,
     },
   },
 ];
