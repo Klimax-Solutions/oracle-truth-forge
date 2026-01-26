@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, SkipForward } from "lucide-react";
+import { ChevronLeft, ChevronRight, SkipForward, Clock, Target, Calendar, TrendingUp, TrendingDown, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie } from "recharts";
 
 interface Trade {
   id: string;
@@ -11,7 +12,14 @@ interface Trade {
   direction: string;
   rr: number;
   entry_time: string;
+  exit_time?: string;
+  trade_duration?: string;
   setup_type: string;
+  entry_model?: string;
+  entry_timing?: string;
+  stop_loss_size?: string;
+  news_day?: boolean;
+  news_label?: string;
 }
 
 interface TradingJournalProps {
@@ -21,7 +29,6 @@ interface TradingJournalProps {
 const DAYS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
 export const TradingJournal = ({ trades }: TradingJournalProps) => {
-  // Find the last trade date to set initial month
   const lastTrade = useMemo(() => {
     if (trades.length === 0) return null;
     return trades.reduce((latest, t) => 
@@ -36,11 +43,11 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
     return new Date();
   });
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  // Get trades grouped by date
   const tradesByDate = useMemo(() => {
     const map = new Map<string, Trade[]>();
     trades.forEach((trade) => {
@@ -53,7 +60,6 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
     return map;
   }, [trades]);
 
-  // Generate calendar days
   const calendarDays = useMemo(() => {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
@@ -97,62 +103,81 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
 
   const selectedDayData = selectedDate ? getDayData(selectedDate) : null;
 
+  // Get cumulative RR for selected trade context
+  const getTradeContext = (trade: Trade) => {
+    const tradeIndex = trades.findIndex(t => t.id === trade.id);
+    const tradesUpToNow = trades.slice(0, tradeIndex + 1);
+    const cumulativeRR = tradesUpToNow.reduce((sum, t) => sum + (t.rr || 0), 0);
+    
+    // Get last 10 trades for mini chart
+    const recentTrades = trades.slice(Math.max(0, tradeIndex - 9), tradeIndex + 1);
+    let runningTotal = tradesUpToNow.slice(0, -recentTrades.length).reduce((sum, t) => sum + (t.rr || 0), 0);
+    const chartData = recentTrades.map(t => {
+      runningTotal += t.rr || 0;
+      return {
+        trade: t.trade_number,
+        rr: runningTotal,
+        current: t.id === trade.id
+      };
+    });
+
+    return { cumulativeRR, chartData, tradeIndex };
+  };
+
   return (
     <div className="h-full flex">
-      {/* Calendar - Compact */}
-      <div className="w-[480px] border-r border-neutral-800 flex flex-col">
+      {/* Calendar - Larger */}
+      <div className="w-[560px] border-r border-neutral-800 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-neutral-800">
-          <span className="text-sm font-mono uppercase tracking-wider text-neutral-400">
-            Journal
+        <div className="flex items-center justify-between p-5 border-b border-neutral-800">
+          <span className="text-base font-mono uppercase tracking-wider text-neutral-400">
+            Journal de Trading
           </span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={goToLastTrade}
-              className="text-xs text-neutral-500 hover:text-white hover:bg-neutral-800 gap-1"
-            >
-              <SkipForward className="w-3 h-3" />
-              Dernier trade
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={goToLastTrade}
+            className="text-xs text-neutral-500 hover:text-white hover:bg-neutral-800 gap-1"
+          >
+            <SkipForward className="w-3 h-3" />
+            Dernier trade
+          </Button>
         </div>
 
         {/* Month navigation */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
           <Button
             variant="ghost"
             size="icon"
             onClick={prevMonth}
-            className="w-8 h-8 text-neutral-500 hover:text-white hover:bg-neutral-800"
+            className="w-9 h-9 text-neutral-500 hover:text-white hover:bg-neutral-800"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-5 h-5" />
           </Button>
-          <span className="text-sm font-medium capitalize">{formatMonthYear(currentDate)}</span>
+          <span className="text-base font-medium capitalize">{formatMonthYear(currentDate)}</span>
           <Button
             variant="ghost"
             size="icon"
             onClick={nextMonth}
-            className="w-8 h-8 text-neutral-500 hover:text-white hover:bg-neutral-800"
+            className="w-9 h-9 text-neutral-500 hover:text-white hover:bg-neutral-800"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-5 h-5" />
           </Button>
         </div>
 
         {/* Calendar grid */}
-        <div className="flex-1 p-3 overflow-auto">
+        <div className="flex-1 p-4 overflow-auto">
           {/* Day headers */}
-          <div className="grid grid-cols-7 mb-1">
+          <div className="grid grid-cols-7 mb-2">
             {DAYS.map((day) => (
-              <div key={day} className="py-1 text-center text-[10px] font-mono uppercase text-neutral-600">
+              <div key={day} className="py-2 text-center text-xs font-mono uppercase text-neutral-600">
                 {day}
               </div>
             ))}
           </div>
 
-          {/* Calendar cells - Compact */}
-          <div className="grid grid-cols-7 gap-0.5">
+          {/* Calendar cells */}
+          <div className="grid grid-cols-7 gap-1">
             {calendarDays.map((date, idx) => {
               if (!date) {
                 return <div key={idx} className="aspect-square" />;
@@ -167,9 +192,12 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
               return (
                 <button
                   key={idx}
-                  onClick={() => setSelectedDate(date)}
+                  onClick={() => {
+                    setSelectedDate(date);
+                    setSelectedTrade(null);
+                  }}
                   className={cn(
-                    "aspect-square border transition-all text-xs",
+                    "aspect-square border transition-all",
                     "flex flex-col items-center justify-center",
                     isSelected
                       ? "border-white bg-neutral-900"
@@ -181,17 +209,17 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                   )}
                 >
                   <span className={cn(
-                    "text-[11px] font-medium",
+                    "text-sm font-medium",
                     hasTrades ? "text-white" : "text-neutral-600"
                   )}>
                     {date.getDate()}
                   </span>
                   {hasTrades && (
                     <span className={cn(
-                      "text-[9px] font-mono",
+                      "text-[10px] font-mono",
                       totalRR >= 0 ? "text-emerald-400" : "text-red-400"
                     )}>
-                      +{totalRR.toFixed(0)}
+                      +{totalRR.toFixed(1)}
                     </span>
                   )}
                 </button>
@@ -200,44 +228,55 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t border-neutral-800">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 bg-emerald-500/30" />
-              <span className="text-[10px] text-neutral-500">Profit</span>
+          <div className="flex items-center justify-center gap-6 mt-5 pt-4 border-t border-neutral-800">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-emerald-500/30" />
+              <span className="text-xs text-neutral-500">Profit</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 bg-red-500/30" />
-              <span className="text-[10px] text-neutral-500">Loss</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-red-500/30" />
+              <span className="text-xs text-neutral-500">Loss</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Details panel */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {selectedDayData && selectedDayData.trades.length > 0 ? (
           <>
             {/* Day header */}
-            <div className="p-4 border-b border-neutral-800 bg-emerald-500/10">
+            <div className="p-5 border-b border-neutral-800 bg-emerald-500/10">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-mono uppercase tracking-wider text-neutral-400">
-                  {selectedDate?.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                <span className="text-base font-mono uppercase tracking-wider text-neutral-400">
+                  {selectedDate?.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
                 </span>
-                <span className={cn(
-                  "text-2xl font-bold",
-                  selectedDayData.totalRR >= 0 ? "text-emerald-400" : "text-red-400"
-                )}>
-                  +{selectedDayData.totalRR.toFixed(2)} RR
-                </span>
+                <div className="text-right">
+                  <span className={cn(
+                    "text-3xl font-bold",
+                    selectedDayData.totalRR >= 0 ? "text-emerald-400" : "text-red-400"
+                  )}>
+                    +{selectedDayData.totalRR.toFixed(2)} RR
+                  </span>
+                  <p className="text-sm text-neutral-500">
+                    ≈ +{(selectedDayData.totalRR * 1000).toLocaleString("fr-FR")} € sur 100K
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Trades list */}
-            <div className="flex-1 overflow-auto p-4 space-y-2">
+            <div className="p-4 border-b border-neutral-800 space-y-2">
               {selectedDayData.trades.map((trade) => (
-                <div
+                <button
                   key={trade.id}
-                  className="flex items-center justify-between py-3 px-4 bg-neutral-900 border border-neutral-800"
+                  onClick={() => setSelectedTrade(selectedTrade?.id === trade.id ? null : trade)}
+                  className={cn(
+                    "w-full flex items-center justify-between py-3 px-4 border transition-all text-left",
+                    selectedTrade?.id === trade.id
+                      ? "border-white bg-neutral-900"
+                      : "border-neutral-800 bg-neutral-950 hover:border-neutral-600"
+                  )}
                 >
                   <div className="flex items-center gap-4">
                     <span className="text-neutral-600 font-mono text-sm">#{trade.trade_number}</span>
@@ -250,7 +289,6 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                       {trade.direction}
                     </span>
                     <span className="text-xs text-neutral-500">{trade.entry_time}</span>
-                    <span className="text-xs text-neutral-600">{trade.setup_type}</span>
                   </div>
                   <span className={cn(
                     "font-mono font-bold",
@@ -258,21 +296,191 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                   )}>
                     +{trade.rr?.toFixed(2)} RR
                   </span>
-                </div>
+                </button>
               ))}
             </div>
 
-            {/* Capital simulation */}
-            <div className="p-4 border-t border-neutral-800 bg-neutral-950">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-neutral-500 font-mono uppercase tracking-wider">
-                  Capital 100K (1% risque)
-                </p>
-                <p className="text-xl font-bold text-white">
-                  +{(selectedDayData.totalRR * 1000).toLocaleString("fr-FR")} €
+            {/* Selected trade details with graphs */}
+            {selectedTrade && (
+              <div className="flex-1 overflow-auto p-4 space-y-4">
+                {(() => {
+                  const context = getTradeContext(selectedTrade);
+                  return (
+                    <>
+                      {/* Trade header */}
+                      <div className="flex items-center gap-4 p-4 border border-neutral-800 bg-neutral-950">
+                        <div className={cn(
+                          "w-12 h-12 flex items-center justify-center border",
+                          selectedTrade.direction === "Long" 
+                            ? "border-emerald-500/50 bg-emerald-500/10" 
+                            : "border-red-500/50 bg-red-500/10"
+                        )}>
+                          {selectedTrade.direction === "Long" 
+                            ? <TrendingUp className="w-6 h-6 text-emerald-400" />
+                            : <TrendingDown className="w-6 h-6 text-red-400" />
+                          }
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xl font-bold text-white">
+                            Trade #{selectedTrade.trade_number}
+                          </p>
+                          <p className="text-sm text-neutral-500">
+                            {selectedTrade.setup_type || "Setup standard"} • {selectedTrade.entry_model || "Model standard"}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-emerald-400">+{selectedTrade.rr?.toFixed(2)} RR</p>
+                          <p className="text-sm text-neutral-500">≈ +{((selectedTrade.rr || 0) * 1000).toLocaleString("fr-FR")} €</p>
+                        </div>
+                      </div>
+
+                      {/* Stats row */}
+                      <div className="grid grid-cols-4 gap-3">
+                        <div className="border border-neutral-800 p-3 bg-neutral-950">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Clock className="w-4 h-4 text-neutral-500" />
+                            <span className="text-xs text-neutral-600 font-mono uppercase">Entrée</span>
+                          </div>
+                          <p className="text-lg font-bold text-white">{selectedTrade.entry_time || "—"}</p>
+                        </div>
+                        <div className="border border-neutral-800 p-3 bg-neutral-950">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Clock className="w-4 h-4 text-neutral-500" />
+                            <span className="text-xs text-neutral-600 font-mono uppercase">Sortie</span>
+                          </div>
+                          <p className="text-lg font-bold text-white">{selectedTrade.exit_time || "—"}</p>
+                        </div>
+                        <div className="border border-neutral-800 p-3 bg-neutral-950">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Target className="w-4 h-4 text-neutral-500" />
+                            <span className="text-xs text-neutral-600 font-mono uppercase">Durée</span>
+                          </div>
+                          <p className="text-lg font-bold text-white">{selectedTrade.trade_duration || "—"}</p>
+                        </div>
+                        <div className="border border-neutral-800 p-3 bg-neutral-950">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Calendar className="w-4 h-4 text-neutral-500" />
+                            <span className="text-xs text-neutral-600 font-mono uppercase">News</span>
+                          </div>
+                          <p className="text-lg font-bold text-white">
+                            {selectedTrade.news_day ? (selectedTrade.news_label || "Oui") : "Non"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Cumulative RR chart */}
+                      <div className="border border-neutral-800 p-4 bg-neutral-950">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-sm font-mono uppercase tracking-wider text-neutral-500">
+                            Progression RR (10 derniers trades)
+                          </h4>
+                          <span className="text-lg font-bold text-emerald-400">
+                            Cumul: +{context.cumulativeRR.toFixed(2)} RR
+                          </span>
+                        </div>
+                        <div className="h-40">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={context.chartData}>
+                              <defs>
+                                <linearGradient id="colorCumRR" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                                </linearGradient>
+                              </defs>
+                              <XAxis 
+                                dataKey="trade" 
+                                tick={{ fill: "#525252", fontSize: 10 }}
+                                axisLine={{ stroke: "#262626" }}
+                                tickLine={false}
+                              />
+                              <YAxis 
+                                tick={{ fill: "#525252", fontSize: 10 }}
+                                axisLine={{ stroke: "#262626" }}
+                                tickLine={false}
+                              />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: "#171717",
+                                  border: "1px solid #262626",
+                                  borderRadius: 0,
+                                }}
+                                labelStyle={{ color: "#a3a3a3" }}
+                                formatter={(value: number) => [`${value.toFixed(2)} RR`, "Cumul"]}
+                              />
+                              <Area 
+                                type="monotone" 
+                                dataKey="rr" 
+                                stroke="#22c55e" 
+                                fillOpacity={1}
+                                fill="url(#colorCumRR)"
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                      {/* Trade details */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="border border-neutral-800 p-4 bg-neutral-950">
+                          <h4 className="text-xs font-mono uppercase tracking-wider text-neutral-600 mb-3">
+                            Paramètres d'entrée
+                          </h4>
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-sm text-neutral-500">Entry Timing</span>
+                              <span className="text-sm text-white">{selectedTrade.entry_timing || "—"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-neutral-500">Stop Loss</span>
+                              <span className="text-sm text-white">{selectedTrade.stop_loss_size || "—"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-neutral-500">Setup Type</span>
+                              <span className="text-sm text-white">{selectedTrade.setup_type || "—"}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="border border-neutral-800 p-4 bg-neutral-950">
+                          <h4 className="text-xs font-mono uppercase tracking-wider text-neutral-600 mb-3">
+                            Position dans la série
+                          </h4>
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-sm text-neutral-500">Trade #</span>
+                              <span className="text-sm text-white">{context.tradeIndex + 1} / {trades.length}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-neutral-500">RR avant ce trade</span>
+                              <span className="text-sm text-white">+{(context.cumulativeRR - (selectedTrade.rr || 0)).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-neutral-500">RR après ce trade</span>
+                              <span className="text-sm text-emerald-400">+{context.cumulativeRR.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Screenshot placeholder */}
+                      <div className="border border-dashed border-neutral-700 p-8 bg-neutral-950 text-center">
+                        <Image className="w-10 h-10 text-neutral-700 mx-auto mb-3" />
+                        <p className="text-sm text-neutral-600">Screenshot du trade</p>
+                        <p className="text-xs text-neutral-700 mt-1">À venir</p>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Placeholder when no trade selected */}
+            {!selectedTrade && (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-sm text-neutral-600 font-mono">
+                  Cliquez sur un trade pour voir les détails
                 </p>
               </div>
-            </div>
+            )}
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-neutral-600">

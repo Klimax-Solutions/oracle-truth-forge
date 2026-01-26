@@ -1,5 +1,4 @@
-import { Database, ArrowRight, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowRight, Zap, TrendingUp, BarChart2 } from "lucide-react";
 
 interface OracleLandingProps {
   onEnterDatabase: () => void;
@@ -8,78 +7,104 @@ interface OracleLandingProps {
 }
 
 export const OracleLanding = ({ onEnterDatabase, totalTrades, totalRR }: OracleLandingProps) => {
+  const avgRR = totalTrades > 0 ? (totalRR / totalTrades).toFixed(2) : "0";
+  
   return (
-    <div className="h-full flex flex-col items-center justify-center p-8">
-      <div className="max-w-2xl w-full">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 border border-neutral-700 mb-6">
-            <Database className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-4">
-            Oracle<sup className="text-lg font-normal align-super ml-1">™</sup>
-            <span className="text-neutral-500 ml-2">01</span>
-          </h1>
-          <p className="text-neutral-500 text-lg max-w-md mx-auto">
-            Base de données NAS100 — Méthodologie de trading systématique
-          </p>
-        </div>
-
-        {/* Stats */}
-        <div className="flex items-center justify-center gap-12 mb-12">
-          <div className="text-center">
-            <p className="text-4xl font-bold text-white">{totalTrades}</p>
-            <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider mt-1">
-              Trades documentés
+    <div className="h-full flex flex-col">
+      {/* Hero section */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="max-w-4xl w-full">
+          {/* Title */}
+          <div className="mb-16">
+            <p className="text-xs font-mono uppercase tracking-[0.4em] text-neutral-600 mb-4">
+              Base de données NAS100
+            </p>
+            <h1 className="text-6xl md:text-8xl font-bold tracking-tighter text-white mb-4">
+              ORACLE<span className="text-neutral-600">_01</span>
+            </h1>
+            <p className="text-lg text-neutral-500 max-w-xl">
+              Méthodologie de trading systématique. Données vérifiées et documentées.
             </p>
           </div>
-          <div className="w-px h-12 bg-neutral-800" />
-          <div className="text-center">
-            <p className="text-4xl font-bold text-emerald-500">+{totalRR.toFixed(0)}</p>
-            <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider mt-1">
-              RR Total
-            </p>
-          </div>
-        </div>
 
-        {/* Main CTA */}
-        <div className="space-y-4">
+          {/* Stats grid */}
+          <div className="grid grid-cols-3 gap-6 mb-12">
+            <div className="border border-neutral-800 p-6 bg-neutral-950 group hover:border-neutral-600 transition-colors">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 border border-neutral-700 flex items-center justify-center">
+                  <BarChart2 className="w-5 h-5 text-neutral-400" />
+                </div>
+              </div>
+              <p className="text-4xl font-bold text-white mb-1">{totalTrades}</p>
+              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">
+                Trades documentés
+              </p>
+            </div>
+
+            <div className="border border-emerald-500/30 p-6 bg-emerald-500/5 group hover:bg-emerald-500/10 transition-colors">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 border border-emerald-500/50 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-emerald-400" />
+                </div>
+              </div>
+              <p className="text-4xl font-bold text-emerald-400 mb-1">+{totalRR.toFixed(0)}</p>
+              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">
+                RR Total
+              </p>
+            </div>
+
+            <div className="border border-neutral-800 p-6 bg-neutral-950 group hover:border-neutral-600 transition-colors">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 border border-neutral-700 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-neutral-400" />
+                </div>
+              </div>
+              <p className="text-4xl font-bold text-white mb-1">{avgRR}</p>
+              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">
+                RR Moyen
+              </p>
+            </div>
+          </div>
+
+          {/* Main CTA */}
           <button
             onClick={onEnterDatabase}
-            className="w-full group border border-neutral-700 bg-neutral-900 hover:bg-neutral-800 hover:border-neutral-600 p-6 transition-all flex items-center justify-between"
+            className="w-full group border-2 border-white bg-white text-black hover:bg-transparent hover:text-white p-8 transition-all duration-300 flex items-center justify-between"
           >
             <div className="text-left">
-              <p className="text-lg font-semibold text-white mb-1">Accéder aux trades</p>
-              <p className="text-sm text-neutral-500">Consulter la base de données complète</p>
+              <p className="text-2xl font-bold mb-2">Accéder aux trades</p>
+              <p className="text-sm opacity-70 group-hover:opacity-100 transition-opacity">
+                Consulter la base de données complète des {totalTrades} trades
+              </p>
             </div>
-            <ArrowRight className="w-5 h-5 text-neutral-500 group-hover:text-white group-hover:translate-x-1 transition-all" />
+            <ArrowRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
           </button>
 
-          {/* Future setups placeholder */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="border border-neutral-800 border-dashed p-6 flex flex-col items-center justify-center text-center opacity-50">
-              <Plus className="w-6 h-6 text-neutral-600 mb-2" />
-              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">
-                Setup 02
-              </p>
-              <p className="text-xs text-neutral-700 mt-1">À venir</p>
-            </div>
-            <div className="border border-neutral-800 border-dashed p-6 flex flex-col items-center justify-center text-center opacity-50">
-              <Plus className="w-6 h-6 text-neutral-600 mb-2" />
-              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">
-                Setup 03
-              </p>
-              <p className="text-xs text-neutral-700 mt-1">À venir</p>
-            </div>
+          {/* Future setups */}
+          <div className="grid grid-cols-3 gap-4 mt-6">
+            {["02", "03", "04"].map((num) => (
+              <div 
+                key={num}
+                className="border border-dashed border-neutral-800 p-4 text-center opacity-40 hover:opacity-60 transition-opacity cursor-not-allowed"
+              >
+                <p className="text-xs font-mono text-neutral-600 uppercase tracking-wider">
+                  Setup {num}
+                </p>
+                <p className="text-[10px] text-neutral-700 mt-1">À venir</p>
+              </div>
+            ))}
           </div>
         </div>
+      </div>
 
-        {/* Info */}
-        <div className="mt-12 p-4 border border-neutral-800 bg-neutral-950">
-          <p className="text-xs text-neutral-500 text-center font-mono">
-            Données vérifiées et documentées • 100% Win Rate • Méthodologie Oracle™
-          </p>
-        </div>
+      {/* Bottom bar */}
+      <div className="border-t border-neutral-800 px-8 py-4 flex items-center justify-between">
+        <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">
+          100% Win Rate • Méthodologie Oracle™
+        </p>
+        <p className="text-xs text-neutral-700 font-mono">
+          v1.0
+        </p>
       </div>
     </div>
   );
