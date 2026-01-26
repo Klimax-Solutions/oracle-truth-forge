@@ -223,12 +223,14 @@ export type Database = {
           entry_price: number | null
           entry_time: string | null
           entry_timing: string | null
+          exit_date: string | null
           exit_price: number | null
           exit_time: string | null
           id: string
           notes: string | null
           result: string | null
           rr: number | null
+          screenshot_url: string | null
           setup_type: string | null
           stop_loss: number | null
           take_profit: number | null
@@ -245,12 +247,14 @@ export type Database = {
           entry_price?: number | null
           entry_time?: string | null
           entry_timing?: string | null
+          exit_date?: string | null
           exit_price?: number | null
           exit_time?: string | null
           id?: string
           notes?: string | null
           result?: string | null
           rr?: number | null
+          screenshot_url?: string | null
           setup_type?: string | null
           stop_loss?: number | null
           take_profit?: number | null
@@ -267,12 +271,14 @@ export type Database = {
           entry_price?: number | null
           entry_time?: string | null
           entry_timing?: string | null
+          exit_date?: string | null
           exit_price?: number | null
           exit_time?: string | null
           id?: string
           notes?: string | null
           result?: string | null
           rr?: number | null
+          screenshot_url?: string | null
           setup_type?: string | null
           stop_loss?: number | null
           take_profit?: number | null

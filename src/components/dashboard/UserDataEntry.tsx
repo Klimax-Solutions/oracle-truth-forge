@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,8 @@ import {
   AlertTriangle,
   AlertCircle,
   CheckCircle2,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
 
 interface UserExecution {
@@ -57,6 +59,7 @@ interface UserExecution {
   direction: "Long" | "Short";
   entry_time: string | null;
   exit_time: string | null;
+  exit_date: string | null;
   entry_price: number | null;
   exit_price: number | null;
   stop_loss: number | null;
@@ -68,6 +71,7 @@ interface UserExecution {
   direction_structure: string | null;
   entry_timing: string | null;
   notes: string | null;
+  screenshot_url: string | null;
 }
 
 interface OracleTrade {
@@ -95,6 +99,7 @@ interface TradeComparison {
 interface FormData {
   trade_number: string;
   trade_date: string;
+  exit_date: string;
   direction: "Long" | "Short";
   entry_time: string;
   exit_time: string;
@@ -116,9 +121,13 @@ const SETUP_TYPES = ["A", "B", "C"];
 const ENTRY_MODELS = ["BOS", "MSS", "OB", "FVG", "EQH/L", "Liquidity Sweep", "Breaker", "Mitigation"];
 const DIRECTION_STRUCTURES = ["Continuation", "Retracement"];
 const ENTRY_TIMINGS = [
-  "7h-8h", "8h-9h", "9h-10h", "10h-11h", "11h-12h", 
-  "12h-13h", "13h-14h", "14h-15h", "15h-16h", "16h-17h"
+  "15h-16h", "16h-17h", "17h-18h", "18h-19h", "19h-20h", "20h-21h"
 ];
+
+// Time constraints
+const MIN_ENTRY_TIME = "15:20";
+const MIN_EXIT_TIME = "20:20";
+const MAX_EXIT_TIME = "20:40";
 
 interface UserDataEntryProps {
   tradeComparisons?: TradeComparison[];
@@ -128,9 +137,10 @@ interface UserDataEntryProps {
 const initialFormData: FormData = {
   trade_number: "",
   trade_date: new Date().toISOString().split("T")[0],
+  exit_date: new Date().toISOString().split("T")[0],
   direction: "Long",
-  entry_time: "",
-  exit_time: "",
+  entry_time: MIN_ENTRY_TIME,
+  exit_time: MIN_EXIT_TIME,
   entry_price: "",
   exit_price: "",
   stop_loss: "",
@@ -148,9 +158,14 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
   const [executions, setExecutions] = useState<UserExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [existingScreenshot, setExistingScreenshot] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   // Fetch user executions
@@ -182,6 +197,81 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     return Math.max(...executions.map(e => e.trade_number)) + 1;
   };
 
+  // Validate entry time
+  const validateEntryTime = (time: string): boolean => {
+    if (!time) return true; // Allow empty
+    return time >= MIN_ENTRY_TIME;
+  };
+
+  // Validate exit time
+  const validateExitTime = (time: string): boolean => {
+    if (!time) return true; // Allow empty
+    return time >= MIN_EXIT_TIME && time <= MAX_EXIT_TIME;
+  };
+
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Fichier trop volumineux",
+          description: "La taille maximale est de 5 MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setScreenshotFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setScreenshotPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Upload screenshot to storage
+  const uploadScreenshot = async (userId: string, tradeNumber: number): Promise<string | null> => {
+    if (!screenshotFile) return existingScreenshot;
+
+    setUploading(true);
+    const fileExt = screenshotFile.name.split('.').pop();
+    const fileName = `${userId}/execution_${tradeNumber}_${Date.now()}.${fileExt}`;
+
+    const { data, error } = await supabase.storage
+      .from('trade-screenshots')
+      .upload(fileName, screenshotFile, { upsert: true });
+
+    setUploading(false);
+
+    if (error) {
+      console.error("Error uploading screenshot:", error);
+      toast({
+        title: "Erreur d'upload",
+        description: "Impossible d'envoyer le screenshot.",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('trade-screenshots')
+      .getPublicUrl(data.path);
+
+    return publicUrl;
+  };
+
+  // Clear screenshot
+  const clearScreenshot = () => {
+    setScreenshotFile(null);
+    setScreenshotPreview(null);
+    setExistingScreenshot(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   // Open dialog for new entry
   const handleNewEntry = () => {
     setFormData({
@@ -189,6 +279,9 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       trade_number: getNextTradeNumber().toString(),
     });
     setEditingId(null);
+    setScreenshotFile(null);
+    setScreenshotPreview(null);
+    setExistingScreenshot(null);
     setIsDialogOpen(true);
   };
 
@@ -197,9 +290,10 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     setFormData({
       trade_number: execution.trade_number.toString(),
       trade_date: execution.trade_date,
+      exit_date: execution.exit_date || execution.trade_date,
       direction: execution.direction,
-      entry_time: execution.entry_time || "",
-      exit_time: execution.exit_time || "",
+      entry_time: execution.entry_time || MIN_ENTRY_TIME,
+      exit_time: execution.exit_time || MIN_EXIT_TIME,
       entry_price: execution.entry_price?.toString() || "",
       exit_price: execution.exit_price?.toString() || "",
       stop_loss: execution.stop_loss?.toString() || "",
@@ -213,6 +307,9 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       notes: execution.notes || "",
     });
     setEditingId(execution.id);
+    setScreenshotFile(null);
+    setScreenshotPreview(null);
+    setExistingScreenshot(execution.screenshot_url);
     setIsDialogOpen(true);
   };
 
@@ -221,12 +318,35 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // Validate times
+    if (formData.entry_time && !validateEntryTime(formData.entry_time)) {
+      toast({
+        title: "Heure d'entrée invalide",
+        description: `L'heure d'entrée doit être à partir de ${MIN_ENTRY_TIME}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.exit_time && !validateExitTime(formData.exit_time)) {
+      toast({
+        title: "Heure de sortie invalide",
+        description: `L'heure de sortie doit être entre ${MIN_EXIT_TIME} et ${MAX_EXIT_TIME}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSaving(true);
+
+    // Upload screenshot if present
+    const screenshotUrl = await uploadScreenshot(user.id, parseInt(formData.trade_number));
 
     const executionData = {
       user_id: user.id,
       trade_number: parseInt(formData.trade_number),
       trade_date: formData.trade_date,
+      exit_date: formData.exit_date || null,
       direction: formData.direction,
       entry_time: formData.entry_time || null,
       exit_time: formData.exit_time || null,
@@ -241,6 +361,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       direction_structure: formData.direction_structure || null,
       entry_timing: formData.entry_timing || null,
       notes: formData.notes || null,
+      screenshot_url: screenshotUrl,
     };
 
     try {
@@ -333,7 +454,8 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
 
     const headers = [
       "Trade #",
-      "Date",
+      "Date Entrée",
+      "Date Sortie",
       "Direction",
       "Heure Entrée",
       "Heure Sortie",
@@ -344,6 +466,9 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       "RR",
       "Résultat",
       "Setup",
+      "Entry Model",
+      "Structure",
+      "Timing",
       "Notes",
     ];
 
@@ -353,6 +478,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
         [
           e.trade_number,
           e.trade_date,
+          e.exit_date || "",
           e.direction,
           e.entry_time || "",
           e.exit_time || "",
@@ -363,6 +489,9 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
           e.rr || "",
           e.result || "",
           e.setup_type || "",
+          e.entry_model || "",
+          e.direction_structure || "",
+          e.entry_timing || "",
           `"${(e.notes || "").replace(/"/g, '""')}"`,
         ].join(",")
       ),
@@ -390,6 +519,9 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     totalRR: executions.reduce((sum, e) => sum + (e.rr || 0), 0),
   };
   const winRate = stats.total > 0 ? (stats.wins / stats.total) * 100 : 0;
+
+  // Check if exit is same day
+  const isSameDay = formData.trade_date === formData.exit_date;
 
   if (loading) {
     return (
@@ -423,13 +555,16 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                 Nouveau Trade
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? `Modifier Trade #${formData.trade_number}` : "Nouveau Trade"}
                 </DialogTitle>
               </DialogHeader>
-              <div className="grid grid-cols-3 gap-4 py-4">
+              
+              {/* Form Grid */}
+              <div className="grid grid-cols-4 gap-4 py-4">
+                {/* Basic Info */}
                 <div className="space-y-2">
                   <Label htmlFor="trade_number">N° Trade</Label>
                   <Input
@@ -440,13 +575,25 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="trade_date">Date</Label>
+                  <Label htmlFor="trade_date">Date Entrée</Label>
                   <Input
                     id="trade_date"
                     type="date"
                     value={formData.trade_date}
                     onChange={(e) => setFormData({ ...formData, trade_date: e.target.value })}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="exit_date">Date Sortie</Label>
+                  <Input
+                    id="exit_date"
+                    type="date"
+                    value={formData.exit_date}
+                    onChange={(e) => setFormData({ ...formData, exit_date: e.target.value })}
+                  />
+                  {!isSameDay && formData.exit_date && (
+                    <p className="text-xs text-orange-400">Sortie J+{Math.ceil((new Date(formData.exit_date).getTime() - new Date(formData.trade_date).getTime()) / (1000 * 60 * 60 * 24))}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="direction">Direction</Label>
@@ -497,7 +644,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="entry_model">Entry Model</Label>
                   <Select
@@ -530,6 +676,47 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Time fields with validation hints */}
+                <div className="space-y-2">
+                  <Label htmlFor="entry_time">
+                    Heure Entrée
+                    <span className="text-xs text-muted-foreground ml-1">(min {MIN_ENTRY_TIME})</span>
+                  </Label>
+                  <Input
+                    id="entry_time"
+                    type="time"
+                    value={formData.entry_time}
+                    min={MIN_ENTRY_TIME}
+                    onChange={(e) => setFormData({ ...formData, entry_time: e.target.value })}
+                    className={cn(
+                      formData.entry_time && !validateEntryTime(formData.entry_time) && "border-red-500"
+                    )}
+                  />
+                  {formData.entry_time && !validateEntryTime(formData.entry_time) && (
+                    <p className="text-xs text-red-400">Minimum {MIN_ENTRY_TIME}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="exit_time">
+                    Heure Sortie
+                    <span className="text-xs text-muted-foreground ml-1">({MIN_EXIT_TIME}-{MAX_EXIT_TIME})</span>
+                  </Label>
+                  <Input
+                    id="exit_time"
+                    type="time"
+                    value={formData.exit_time}
+                    min={MIN_EXIT_TIME}
+                    max={MAX_EXIT_TIME}
+                    onChange={(e) => setFormData({ ...formData, exit_time: e.target.value })}
+                    className={cn(
+                      formData.exit_time && !validateExitTime(formData.exit_time) && "border-red-500"
+                    )}
+                  />
+                  {formData.exit_time && !validateExitTime(formData.exit_time) && (
+                    <p className="text-xs text-red-400">Entre {MIN_EXIT_TIME} et {MAX_EXIT_TIME}</p>
+                  )}
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="result">Résultat</Label>
                   <Select
@@ -546,26 +733,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* Time fields */}
-                <div className="space-y-2">
-                  <Label htmlFor="entry_time">Heure Entrée</Label>
-                  <Input
-                    id="entry_time"
-                    type="time"
-                    value={formData.entry_time}
-                    onChange={(e) => setFormData({ ...formData, entry_time: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="exit_time">Heure Sortie</Label>
-                  <Input
-                    id="exit_time"
-                    type="time"
-                    value={formData.exit_time}
-                    onChange={(e) => setFormData({ ...formData, exit_time: e.target.value })}
-                  />
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="rr">RR</Label>
                   <Input
@@ -574,10 +741,17 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     step="0.1"
                     value={formData.rr}
                     onChange={(e) => setFormData({ ...formData, rr: e.target.value })}
+                    placeholder="Ex: 2.5"
                   />
                 </div>
 
-                {/* Price fields */}
+                {/* Manual Price fields */}
+                <div className="col-span-4">
+                  <div className="border-t border-border pt-4 mt-2">
+                    <p className="text-sm font-medium text-foreground mb-3">Données Manuelles</p>
+                  </div>
+                </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="entry_price">Prix Entrée</Label>
                   <Input
@@ -586,6 +760,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     step="0.00001"
                     value={formData.entry_price}
                     onChange={(e) => setFormData({ ...formData, entry_price: e.target.value })}
+                    placeholder="Ex: 1.08542"
                   />
                 </div>
                 <div className="space-y-2">
@@ -596,6 +771,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     step="0.00001"
                     value={formData.exit_price}
                     onChange={(e) => setFormData({ ...formData, exit_price: e.target.value })}
+                    placeholder="Ex: 1.08650"
                   />
                 </div>
                 <div className="space-y-2">
@@ -606,6 +782,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     step="0.00001"
                     value={formData.stop_loss}
                     onChange={(e) => setFormData({ ...formData, stop_loss: e.target.value })}
+                    placeholder="Ex: 1.08500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -616,10 +793,58 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     step="0.00001"
                     value={formData.take_profit}
                     onChange={(e) => setFormData({ ...formData, take_profit: e.target.value })}
+                    placeholder="Ex: 1.08700"
                   />
                 </div>
 
-                <div className="col-span-2 space-y-2">
+                {/* Screenshot Upload */}
+                <div className="col-span-4 space-y-2">
+                  <Label>Screenshot</Label>
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        {screenshotFile ? "Changer le screenshot" : "Ajouter un screenshot"}
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Max 5 MB - Pour vous souvenir du trade
+                      </p>
+                    </div>
+                    {(screenshotPreview || existingScreenshot) && (
+                      <div className="relative">
+                        <img
+                          src={screenshotPreview || existingScreenshot || ""}
+                          alt="Screenshot preview"
+                          className="w-24 h-24 object-cover rounded-md border border-border"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6"
+                          onClick={clearScreenshot}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div className="col-span-4 space-y-2">
                   <Label htmlFor="notes">Notes</Label>
                   <Textarea
                     id="notes"
@@ -630,18 +855,20 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   />
                 </div>
               </div>
+
+              {/* Actions */}
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   <X className="w-4 h-4 mr-2" />
                   Annuler
                 </Button>
-                <Button onClick={handleSave} disabled={saving}>
-                  {saving ? (
+                <Button onClick={handleSave} disabled={saving || uploading}>
+                  {(saving || uploading) ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
                     <Save className="w-4 h-4 mr-2" />
                   )}
-                  Enregistrer
+                  {uploading ? "Upload..." : "Enregistrer"}
                 </Button>
               </div>
             </DialogContent>
@@ -737,6 +964,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   <TableHead>RR</TableHead>
                   <TableHead>Résultat</TableHead>
                   <TableHead>Setup</TableHead>
+                  <TableHead className="w-12"></TableHead>
                   <TableHead className="w-24 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -809,7 +1037,14 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        {new Date(execution.trade_date).toLocaleDateString("fr-FR")}
+                        <div>
+                          {new Date(execution.trade_date).toLocaleDateString("fr-FR")}
+                          {execution.exit_date && execution.exit_date !== execution.trade_date && (
+                            <span className="text-xs text-orange-400 ml-1">
+                              → {new Date(execution.exit_date).toLocaleDateString("fr-FR")}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <span className={cn(
@@ -853,6 +1088,29 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {execution.setup_type || "-"}
+                      </TableCell>
+                      <TableCell>
+                        {execution.screenshot_url && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <a 
+                                href={execution.screenshot_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-foreground"
+                              >
+                                <ImageIcon className="w-4 h-4" />
+                              </a>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">
+                              <img 
+                                src={execution.screenshot_url} 
+                                alt="Screenshot" 
+                                className="max-w-xs max-h-48 rounded"
+                              />
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
