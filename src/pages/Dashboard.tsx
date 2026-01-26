@@ -39,6 +39,7 @@ interface TimingFilters {
   quarter?: string[];
   year?: string[];
   hour?: string;
+  week?: string;
 }
 
 const Dashboard = () => {
