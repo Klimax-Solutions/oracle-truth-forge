@@ -130,7 +130,8 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
   }, [trades]);
 
   const COLORS = ["#22c55e", "#ef4444"];
-  const DIRECTION_COLORS = ["#3b82f6", "#f97316"]; // Blue for Long, Orange for Short
+  // Same green as RR Total (emerald) and same red as Worst (red-400)
+  const DIRECTION_COLORS = ["#22c55e", "#ef4444"]; // Green for Long, Red for Short
 
   return (
     <div className="h-full flex flex-col">

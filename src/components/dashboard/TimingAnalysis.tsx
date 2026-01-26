@@ -286,7 +286,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
               <div 
                 key={day.fullDay} 
                 className={cn(
-                  "p-4 border transition-all rounded-md",
+                  "p-4 border rounded-md",
                   day.rr > 0 
                     ? "bg-emerald-500/20 border-emerald-500/30" 
                     : day.rr < 0 
@@ -295,9 +295,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                 )}
               >
                 <p className="text-sm font-mono uppercase text-neutral-400 mb-2">{day.fullDay}</p>
-                <p className={cn(
-                  "text-xl font-bold text-white",
-                )}>
+                <p className="text-xl font-bold text-white">
                   {day.rr > 0 ? "+" : ""}{day.rr.toFixed(2)}
                 </p>
                 <p className="text-xs text-neutral-500 mt-1">{day.trades} trades</p>
@@ -307,31 +305,74 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
           </div>
         </div>
 
-        {/* Hour cards - compact grid */}
+        {/* Hour bar chart + cards */}
         <div>
           <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
             Détail par Heure
           </h3>
-          <div className="grid grid-cols-8 gap-2">
-            {stats.hourData.map((hour) => (
-              <div 
-                key={hour.hourKey}
-                className={cn(
-                  "p-3 border transition-colors rounded-md",
-                  hour.rr > 0 
-                    ? "bg-emerald-500/20 border-emerald-500/30" 
-                    : hour.rr < 0 
-                    ? "bg-red-500/20 border-red-500/30"
-                    : "bg-neutral-900 border-neutral-800"
-                )}
-              >
-                <p className="text-xs font-mono uppercase text-neutral-400 mb-1">{hour.hour}</p>
-                <p className="text-base font-bold text-white">
-                  {hour.rr > 0 ? "+" : ""}{hour.rr.toFixed(1)}
-                </p>
-                <p className="text-[10px] text-neutral-500">{hour.trades} tr</p>
+          <div className="grid grid-cols-2 gap-4">
+            {/* Hour bar chart */}
+            <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+              <div className="h-44">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.hourData}>
+                    <XAxis 
+                      dataKey="hour" 
+                      tick={{ fill: "#a3a3a3", fontSize: 10 }}
+                      axisLine={{ stroke: "#262626" }}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      tick={{ fill: "#525252", fontSize: 10 }}
+                      axisLine={{ stroke: "#262626" }}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#171717",
+                        border: "1px solid #262626",
+                        borderRadius: 4,
+                        color: "#ffffff",
+                      }}
+                      itemStyle={{ color: "#ffffff" }}
+                      labelStyle={{ color: "#ffffff" }}
+                      formatter={(value: number, name: string, props: any) => [
+                        `${value.toFixed(2)} RR (${props.payload.trades} trades)`,
+                        "Total"
+                      ]}
+                    />
+                    <Bar dataKey="rr" radius={[3, 3, 0, 0]}>
+                      {stats.hourData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.rr >= 0 ? "#22c55e" : "#ef4444"} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-            ))}
+            </div>
+
+            {/* Hour cards grid */}
+            <div className="grid grid-cols-4 gap-2">
+              {stats.hourData.slice(0, 8).map((hour) => (
+                <div 
+                  key={hour.hourKey}
+                  className={cn(
+                    "p-3 border rounded-md",
+                    hour.rr > 0 
+                      ? "bg-emerald-500/20 border-emerald-500/30" 
+                      : hour.rr < 0 
+                      ? "bg-red-500/20 border-red-500/30"
+                      : "bg-neutral-900 border-neutral-800"
+                  )}
+                >
+                  <p className="text-xs font-mono uppercase text-neutral-400 mb-1">{hour.hour}</p>
+                  <p className="text-base font-bold text-white">
+                    {hour.rr > 0 ? "+" : ""}{hour.rr.toFixed(1)}
+                  </p>
+                  <p className="text-[10px] text-neutral-500">{hour.trades} tr</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -393,7 +434,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                 <div 
                   key={week.week}
                   className={cn(
-                    "p-3 border transition-colors rounded-md",
+                    "p-3 border rounded-md",
                     week.rr > 0 
                       ? "bg-emerald-500/20 border-emerald-500/30" 
                       : week.rr < 0 
@@ -472,7 +513,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                 <div 
                   key={quarter.quarter}
                   className={cn(
-                    "p-3 border transition-colors rounded-md",
+                    "p-3 border rounded-md",
                     quarter.rr > 0 
                       ? "bg-emerald-500/20 border-emerald-500/30" 
                       : quarter.rr < 0 
@@ -544,7 +585,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                 <div 
                   key={year.year}
                   className={cn(
-                    "p-4 border transition-all rounded-md",
+                    "p-4 border rounded-md",
                     year.rr > 0 
                       ? "bg-emerald-500/20 border-emerald-500/30" 
                       : year.rr < 0 
