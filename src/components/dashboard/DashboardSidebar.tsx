@@ -30,22 +30,15 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
     >
       {/* Header */}
       <div className={cn(
-        "p-4 border-b border-border transition-all duration-300",
+        "p-4 border-b border-border transition-all duration-300 flex items-center justify-center",
         isExpanded ? "p-6" : "p-4"
       )}>
         {isExpanded ? (
-          <>
-            <p className="text-xs font-mono uppercase tracking-[0.3em] text-muted-foreground mb-2">
-              Database
-            </p>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              Oracle<sup className="text-sm font-normal align-super ml-0.5">™</sup>
-            </h1>
-          </>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground text-center">
+            Oracle<sup className="text-sm font-normal align-super ml-0.5">™</sup>
+          </h1>
         ) : (
-          <div className="flex items-center justify-center">
-            <span className="text-xl font-bold text-foreground">O</span>
-          </div>
+          <span className="text-xl font-bold text-foreground">O</span>
         )}
       </div>
 
