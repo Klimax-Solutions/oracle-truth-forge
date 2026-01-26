@@ -7,7 +7,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { OracleLanding } from "@/components/dashboard/OracleLanding";
 import { OracleDatabase } from "@/components/dashboard/OracleDatabase";
 import { TradingJournal } from "@/components/dashboard/TradingJournal";
-import { WinRateChart } from "@/components/dashboard/WinRateChart";
+
 import { RRDistributionChart } from "@/components/dashboard/RRDistributionChart";
 import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
 
@@ -118,8 +118,6 @@ const Dashboard = () => {
         );
       case "journal":
         return <TradingJournal trades={trades} />;
-      case "winrate":
-        return <WinRateChart trades={trades} />;
       case "distribution":
         return <RRDistributionChart trades={trades} />;
       case "timing":
