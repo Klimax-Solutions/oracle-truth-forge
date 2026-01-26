@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,8 @@ interface TimingAnalysisProps {
 const DAYS_ORDER = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 
 export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
+  const [hoveredHour, setHoveredHour] = useState<string | null>(null);
+
   const stats = useMemo(() => {
     // By day of week
     const byDay: Record<string, { trades: number; totalRR: number }> = {};
@@ -59,6 +61,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
       .sort(([a], [b]) => parseInt(a) - parseInt(b))
       .map(([hour, data]) => ({
         hour: `${hour}h`,
+        hourKey: hour,
         trades: data.trades,
         rr: parseFloat(data.totalRR.toFixed(2)),
         avgRR: data.trades > 0 ? parseFloat((data.totalRR / data.trades).toFixed(2)) : 0,
@@ -85,7 +88,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
       </div>
 
       <div className="flex-1 p-6 overflow-auto">
-        {/* Day cards - Redesigned with colored backgrounds */}
+        {/* Day cards */}
         <div className="mb-8">
           <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
             Performance par Jour
@@ -145,10 +148,45 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
           </div>
         </div>
 
-        {/* By hour chart - Improved visibility */}
-        <div className="border border-neutral-800 p-6 bg-neutral-900">
+        {/* By hour - Cards like days */}
+        <div className="mb-6">
           <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
             Performance par Heure
+          </h3>
+          <div className="grid grid-cols-6 gap-2">
+            {stats.hourData.map((hour) => (
+              <div 
+                key={hour.hourKey}
+                className={cn(
+                  "p-3 border transition-all cursor-pointer",
+                  hour.rr > 0 
+                    ? "bg-emerald-500/20 border-emerald-500/30 hover:bg-emerald-500/30" 
+                    : hour.rr < 0 
+                    ? "bg-red-500/20 border-red-500/30 hover:bg-red-500/30"
+                    : "bg-neutral-900 border-neutral-800 hover:bg-neutral-800"
+                )}
+                onMouseEnter={() => setHoveredHour(hour.hourKey)}
+                onMouseLeave={() => setHoveredHour(null)}
+              >
+                <p className="text-xs font-mono uppercase text-neutral-400 mb-1">{hour.hour}</p>
+                <p className={cn(
+                  "text-lg font-bold transition-colors",
+                  hoveredHour === hour.hourKey 
+                    ? "text-white" 
+                    : hour.rr > 0 ? "text-emerald-400" : hour.rr < 0 ? "text-red-400" : "text-white"
+                )}>
+                  {hour.rr > 0 ? "+" : ""}{hour.rr.toFixed(1)}
+                </p>
+                <p className="text-[10px] text-neutral-500">{hour.trades} trades</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* By hour chart */}
+        <div className="border border-neutral-800 p-6 bg-neutral-900">
+          <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
+            Graphique par Heure
           </h3>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
