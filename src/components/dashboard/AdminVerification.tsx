@@ -63,16 +63,22 @@ interface Trade {
   user_id: string;
 }
 
+interface Profile {
+  id: string;
+  user_id: string;
+  display_name: string | null;
+}
+
 interface PendingRequest extends VerificationRequest {
   cycle: Cycle | null;
   userCycle: UserCycle | null;
   trades: Trade[];
-  userEmail: string;
+  userName: string;
 }
 
 interface PlatformUser {
   id: string;
-  email: string;
+  displayName: string;
   created_at: string;
   currentCycle: Cycle | null;
   userCycles: UserCycle[];
@@ -84,6 +90,7 @@ interface PlatformUser {
 export const AdminVerification = () => {
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [users, setUsers] = useState<PlatformUser[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -105,10 +112,22 @@ export const AdminVerification = () => {
     return data || [];
   };
 
+  const fetchProfiles = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*");
+    
+    if (data) {
+      setProfiles(data as Profile[]);
+    }
+    return data || [];
+  };
+
   const fetchRequests = async () => {
     setLoading(true);
     
     const cyclesData = await fetchCycles();
+    const profilesData = await fetchProfiles();
     
     // Fetch all pending verification requests
     const { data: requestsData, error: requestsError } = await supabase
@@ -148,6 +167,7 @@ export const AdminVerification = () => {
     const enrichedRequests: PendingRequest[] = requestsData.map(request => {
       const userCycle = userCyclesData?.find(uc => uc.id === request.user_cycle_id) || null;
       const cycle = cyclesData?.find(c => c.id === request.cycle_id) || null;
+      const profile = profilesData?.find(p => p.user_id === request.user_id);
       
       const trades = tradesData?.filter(t => 
         t.user_id === request.user_id && 
@@ -161,7 +181,7 @@ export const AdminVerification = () => {
         cycle: cycle as Cycle | null,
         userCycle: userCycle as UserCycle | null,
         trades: trades as Trade[],
-        userEmail: request.user_id,
+        userName: profile?.display_name || `Utilisateur ${request.user_id.slice(0, 8)}`,
       };
     });
 
@@ -171,6 +191,11 @@ export const AdminVerification = () => {
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
+    
+    // Fetch profiles
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("*");
     
     // Get all user_cycles to find unique users
     const { data: allUserCycles, error: userCyclesError } = await supabase
@@ -197,6 +222,7 @@ export const AdminVerification = () => {
     const platformUsers: PlatformUser[] = uniqueUserIds.map(userId => {
       const userCycles = allUserCycles?.filter(uc => uc.user_id === userId) || [];
       const userTrades = allTrades?.filter(t => t.user_id === userId) || [];
+      const profile = profilesData?.find(p => p.user_id === userId);
       
       // Find current active cycle (in_progress or pending_review)
       const activeCycle = userCycles.find(uc => 
@@ -220,7 +246,7 @@ export const AdminVerification = () => {
 
       return {
         id: userId,
-        email: userId, // We'll use user_id as email placeholder
+        displayName: profile?.display_name || `Utilisateur ${userId.slice(0, 8)}`,
         created_at: userCycles[0]?.created_at || new Date().toISOString(),
         currentCycle: currentCycleData || null,
         userCycles: userCycles as UserCycle[],
@@ -526,7 +552,7 @@ export const AdminVerification = () => {
                             </div>
                             <div>
                               <h4 className="font-semibold text-foreground text-sm">
-                                {user.email.includes("@") ? user.email : `Utilisateur ${user.id.slice(0, 8)}...`}
+                                {user.displayName}
                               </h4>
                               <div className="flex items-center gap-2 mt-0.5">
                                 <p className="text-xs text-muted-foreground font-mono">
