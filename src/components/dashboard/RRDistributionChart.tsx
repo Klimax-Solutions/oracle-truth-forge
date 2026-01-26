@@ -130,6 +130,7 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
   }, [trades]);
 
   const COLORS = ["#22c55e", "#ef4444"];
+  const DIRECTION_COLORS = ["#3b82f6", "#f97316"]; // Blue for Long, Orange for Short
 
   return (
     <div className="h-full flex flex-col">
@@ -237,7 +238,7 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
                       strokeWidth={0}
                     >
                       {stats.directionData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={DIRECTION_COLORS[index % DIRECTION_COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip 
@@ -245,7 +246,10 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
                         backgroundColor: "#171717",
                         border: "1px solid #262626",
                         borderRadius: 4,
+                        color: "#ffffff",
                       }}
+                      itemStyle={{ color: "#ffffff" }}
+                      labelStyle={{ color: "#ffffff" }}
                       formatter={(value: number, name: string, props: any) => [
                         `${value} trades (+${props.payload.rr.toFixed(1)} RR)`,
                         name
@@ -259,7 +263,7 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
                   <div key={dir.name} className="flex items-center gap-3">
                     <div 
                       className="w-3 h-3 rounded-sm" 
-                      style={{ backgroundColor: COLORS[idx] }}
+                      style={{ backgroundColor: DIRECTION_COLORS[idx] }}
                     />
                     <div>
                       <p className="text-sm text-white font-medium">{dir.name}</p>
@@ -369,7 +373,7 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
             <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
               Performance par Setup
             </h3>
-            <div className="space-y-2 max-h-40 overflow-auto">
+            <div className="space-y-2 max-h-40 overflow-auto scrollbar-hide">
               {stats.setupData.slice(0, 6).map((setup, idx) => (
                 <div 
                   key={setup.setup}

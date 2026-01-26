@@ -103,25 +103,29 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
 
   const selectedDayData = selectedDate ? getDayData(selectedDate) : null;
 
-  // Get cumulative RR for selected trade context
+  // Get cumulative RR for selected trade context - ISOLATED last 10 trades
   const getTradeContext = (trade: Trade) => {
     const tradeIndex = trades.findIndex(t => t.id === trade.id);
     const tradesUpToNow = trades.slice(0, tradeIndex + 1);
     const cumulativeRR = tradesUpToNow.reduce((sum, t) => sum + (t.rr || 0), 0);
     
-    // Get last 10 trades for mini chart
+    // Get last 10 trades and show ISOLATED cumul (as if trades 1-10)
     const recentTrades = trades.slice(Math.max(0, tradeIndex - 9), tradeIndex + 1);
-    let runningTotal = tradesUpToNow.slice(0, -recentTrades.length).reduce((sum, t) => sum + (t.rr || 0), 0);
-    const chartData = recentTrades.map(t => {
-      runningTotal += t.rr || 0;
+    let isolatedCumul = 0;
+    const chartData = recentTrades.map((t, idx) => {
+      isolatedCumul += t.rr || 0;
       return {
-        trade: t.trade_number,
-        rr: runningTotal,
+        trade: idx + 1, // Trades 1-10 isolated
+        tradeNum: t.trade_number,
+        rr: parseFloat(isolatedCumul.toFixed(2)),
+        individual: t.rr || 0,
         current: t.id === trade.id
       };
     });
+    
+    const isolatedTotal = recentTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
 
-    return { cumulativeRR, chartData, tradeIndex };
+    return { cumulativeRR, chartData, tradeIndex, isolatedTotal };
   };
 
   return (
@@ -370,54 +374,106 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                         </div>
                       </div>
 
-                      {/* Cumulative RR chart */}
-                      <div className="border border-neutral-800 p-4 bg-neutral-950">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-sm font-mono uppercase tracking-wider text-neutral-500">
-                            Progression RR (10 derniers trades)
-                          </h4>
-                          <span className="text-lg font-bold text-emerald-400">
-                            Cumul: +{context.cumulativeRR.toFixed(2)} RR
-                          </span>
+                      {/* RR charts - improved with bar chart and isolated cumul */}
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Bar chart - individual RR per trade */}
+                        <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-mono uppercase tracking-wider text-neutral-500">
+                              RR par Trade (10 derniers)
+                            </h4>
+                          </div>
+                          <div className="h-36">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={context.chartData}>
+                                <XAxis 
+                                  dataKey="trade" 
+                                  tick={{ fill: "#525252", fontSize: 10 }}
+                                  axisLine={{ stroke: "#262626" }}
+                                  tickLine={false}
+                                />
+                                <YAxis 
+                                  tick={{ fill: "#525252", fontSize: 10 }}
+                                  axisLine={{ stroke: "#262626" }}
+                                  tickLine={false}
+                                />
+                                <Tooltip
+                                  contentStyle={{
+                                    backgroundColor: "#171717",
+                                    border: "1px solid #262626",
+                                    borderRadius: 4,
+                                  }}
+                                  labelStyle={{ color: "#a3a3a3" }}
+                                  formatter={(value: number, name: string, props: any) => [
+                                    `${value.toFixed(2)} RR`,
+                                    `Trade #${props.payload.tradeNum}`
+                                  ]}
+                                />
+                                <Bar 
+                                  dataKey="individual" 
+                                  radius={[3, 3, 0, 0]}
+                                >
+                                  {context.chartData.map((entry, index) => (
+                                    <Cell 
+                                      key={`cell-${index}`} 
+                                      fill={entry.current ? "#ffffff" : entry.individual >= 0 ? "#22c55e" : "#ef4444"} 
+                                    />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
                         </div>
-                        <div className="h-40">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={context.chartData}>
-                              <defs>
-                                <linearGradient id="colorCumRR" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                                </linearGradient>
-                              </defs>
-                              <XAxis 
-                                dataKey="trade" 
-                                tick={{ fill: "#525252", fontSize: 10 }}
-                                axisLine={{ stroke: "#262626" }}
-                                tickLine={false}
-                              />
-                              <YAxis 
-                                tick={{ fill: "#525252", fontSize: 10 }}
-                                axisLine={{ stroke: "#262626" }}
-                                tickLine={false}
-                              />
-                              <Tooltip
-                                contentStyle={{
-                                  backgroundColor: "#171717",
-                                  border: "1px solid #262626",
-                                  borderRadius: 0,
-                                }}
-                                labelStyle={{ color: "#a3a3a3" }}
-                                formatter={(value: number) => [`${value.toFixed(2)} RR`, "Cumul"]}
-                              />
-                              <Area 
-                                type="monotone" 
-                                dataKey="rr" 
-                                stroke="#22c55e" 
-                                fillOpacity={1}
-                                fill="url(#colorCumRR)"
-                              />
-                            </AreaChart>
-                          </ResponsiveContainer>
+
+                        {/* Cumulative RR chart - ISOLATED */}
+                        <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-mono uppercase tracking-wider text-neutral-500">
+                              Cumul Isolé (10 trades)
+                            </h4>
+                            <span className="text-base font-bold text-emerald-400">
+                              +{context.isolatedTotal.toFixed(2)} RR
+                            </span>
+                          </div>
+                          <div className="h-36">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={context.chartData}>
+                                <defs>
+                                  <linearGradient id="colorCumRR" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                                  </linearGradient>
+                                </defs>
+                                <XAxis 
+                                  dataKey="trade" 
+                                  tick={{ fill: "#525252", fontSize: 10 }}
+                                  axisLine={{ stroke: "#262626" }}
+                                  tickLine={false}
+                                />
+                                <YAxis 
+                                  tick={{ fill: "#525252", fontSize: 10 }}
+                                  axisLine={{ stroke: "#262626" }}
+                                  tickLine={false}
+                                />
+                                <Tooltip
+                                  contentStyle={{
+                                    backgroundColor: "#171717",
+                                    border: "1px solid #262626",
+                                    borderRadius: 4,
+                                  }}
+                                  labelStyle={{ color: "#a3a3a3" }}
+                                  formatter={(value: number) => [`${value.toFixed(2)} RR`, "Cumul"]}
+                                />
+                                <Area 
+                                  type="monotone" 
+                                  dataKey="rr" 
+                                  stroke="#22c55e" 
+                                  fillOpacity={1}
+                                  fill="url(#colorCumRR)"
+                                />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </div>
                         </div>
                       </div>
 

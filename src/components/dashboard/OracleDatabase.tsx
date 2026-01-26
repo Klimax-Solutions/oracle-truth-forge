@@ -157,9 +157,9 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
             </div>
             <div className="w-px h-5 bg-neutral-800" />
             <div className="flex items-center gap-2">
-              <span className="text-xs text-emerald-400 font-mono">{longTrades} longues</span>
+              <span className="text-xs text-emerald-400 font-mono">{longTrades} LONG</span>
               <span className="text-neutral-700">•</span>
-              <span className="text-xs text-red-400 font-mono">{shortTrades} short</span>
+              <span className="text-xs text-red-400 font-mono">{shortTrades} SHORT</span>
             </div>
           </div>
 
@@ -187,13 +187,13 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-800 z-50 rounded-md min-w-[140px] p-1">
                 {filterOptions.direction.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.direction.includes(option)}
                     onCheckedChange={() => toggleFilter("direction", option)}
-                    className="text-neutral-300 text-xs"
+                    className="text-neutral-300 text-xs rounded-sm px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -213,13 +213,13 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-800 z-50 rounded-md min-w-[140px] p-1">
                 {filterOptions.setup_type.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.setup_type.includes(option)}
                     onCheckedChange={() => toggleFilter("setup_type", option)}
-                    className="text-neutral-300 text-xs"
+                    className="text-neutral-300 text-xs rounded-sm px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -239,13 +239,13 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md max-h-64 overflow-y-auto">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-800 z-50 rounded-md min-w-[160px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
                 {filterOptions.entry_model.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.entry_model.includes(option)}
                     onCheckedChange={() => toggleFilter("entry_model", option)}
-                    className="text-neutral-300 text-xs"
+                    className="text-neutral-300 text-xs rounded-sm px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -265,13 +265,13 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-800 z-50 rounded-md min-w-[140px] p-1">
                 {filterOptions.direction_structure.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.direction_structure.includes(option)}
                     onCheckedChange={() => toggleFilter("direction_structure", option)}
-                    className="text-neutral-300 text-xs"
+                    className="text-neutral-300 text-xs rounded-sm px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -291,13 +291,13 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md max-h-64 overflow-y-auto">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-800 z-50 rounded-md min-w-[140px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
                 {filterOptions.entry_timing.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.entry_timing.includes(option)}
                     onCheckedChange={() => toggleFilter("entry_timing", option)}
-                    className="text-neutral-300 text-xs"
+                    className="text-neutral-300 text-xs rounded-sm px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>

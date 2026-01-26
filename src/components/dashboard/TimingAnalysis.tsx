@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area } from "recharts";
+import { useMemo } from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, PieChart, Pie, LineChart, Line } from "recharts";
 import { cn } from "@/lib/utils";
 
 interface Trade {
@@ -183,18 +183,110 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
         <p className="text-sm text-neutral-500 font-mono">Performance par période et heure d'entrée</p>
       </div>
 
-      <div className="flex-1 p-6 overflow-auto space-y-8">
-        {/* Day cards */}
+      <div className="flex-1 p-6 overflow-auto scrollbar-hide space-y-8">
+        {/* Charts row - Day bar chart + Hour line chart */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Day performance bar chart */}
+          <div className="border border-neutral-800 p-5 bg-neutral-950 rounded-md">
+            <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
+              Performance par Jour
+            </h3>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.dayData}>
+                  <XAxis 
+                    dataKey="day" 
+                    tick={{ fill: "#a3a3a3", fontSize: 11 }}
+                    axisLine={{ stroke: "#262626" }}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    tick={{ fill: "#525252", fontSize: 10 }}
+                    axisLine={{ stroke: "#262626" }}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#171717",
+                      border: "1px solid #262626",
+                      borderRadius: 4,
+                      color: "#ffffff",
+                    }}
+                    itemStyle={{ color: "#ffffff" }}
+                    labelStyle={{ color: "#ffffff" }}
+                    formatter={(value: number, name: string, props: any) => [
+                      `${value.toFixed(2)} RR (${props.payload.trades} trades)`,
+                      props.payload.fullDay
+                    ]}
+                  />
+                  <Bar dataKey="rr" radius={[3, 3, 0, 0]}>
+                    {stats.dayData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.rr >= 0 ? "#22c55e" : "#ef4444"} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Hour performance line chart */}
+          <div className="border border-neutral-800 p-5 bg-neutral-950 rounded-md">
+            <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
+              Performance par Heure
+            </h3>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={stats.hourData}>
+                  <XAxis 
+                    dataKey="hour" 
+                    tick={{ fill: "#a3a3a3", fontSize: 10 }}
+                    axisLine={{ stroke: "#262626" }}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    tick={{ fill: "#525252", fontSize: 10 }}
+                    axisLine={{ stroke: "#262626" }}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#171717",
+                      border: "1px solid #262626",
+                      borderRadius: 4,
+                      color: "#ffffff",
+                    }}
+                    itemStyle={{ color: "#ffffff" }}
+                    labelStyle={{ color: "#ffffff" }}
+                    formatter={(value: number, name: string, props: any) => [
+                      `${value.toFixed(2)} RR (${props.payload.trades} trades)`,
+                      "Total"
+                    ]}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="rr" 
+                    stroke="#a855f7" 
+                    strokeWidth={2}
+                    dot={{ fill: "#a855f7", strokeWidth: 0, r: 3 }}
+                    activeDot={{ r: 5, fill: "#ffffff" }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Day cards - compact */}
         <div>
           <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
-            Performance par Jour
+            Détail par Jour
           </h3>
           <div className="grid grid-cols-5 gap-3">
             {stats.dayData.map((day) => (
               <div 
                 key={day.fullDay} 
                 className={cn(
-                  "p-4 border transition-all rounded-sm",
+                  "p-4 border transition-all rounded-md",
                   day.rr > 0 
                     ? "bg-emerald-500/20 border-emerald-500/30" 
                     : day.rr < 0 
@@ -204,32 +296,28 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
               >
                 <p className="text-sm font-mono uppercase text-neutral-400 mb-2">{day.fullDay}</p>
                 <p className={cn(
-                  "text-2xl font-bold",
-                  day.rr > 0 ? "text-emerald-400" : day.rr < 0 ? "text-red-400" : "text-white"
+                  "text-xl font-bold text-white",
                 )}>
                   {day.rr > 0 ? "+" : ""}{day.rr.toFixed(2)}
                 </p>
-                <p className="text-xs text-neutral-500 mt-1">RR Total</p>
-                <div className="mt-3 pt-3 border-t border-neutral-700/50">
-                  <p className="text-xs text-neutral-400">{day.trades} trades</p>
-                  <p className="text-xs text-neutral-500">≈ {day.euros >= 0 ? "+" : ""}{day.euros.toLocaleString("fr-FR")} €</p>
-                </div>
+                <p className="text-xs text-neutral-500 mt-1">{day.trades} trades</p>
+                <p className="text-xs text-emerald-400/80">≈ {day.euros >= 0 ? "+" : ""}{day.euros.toLocaleString("fr-FR")} €</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Hour cards - same green style, no hover background change */}
+        {/* Hour cards - compact grid */}
         <div>
           <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
-            Performance par Heure
+            Détail par Heure
           </h3>
-          <div className="grid grid-cols-6 gap-2">
+          <div className="grid grid-cols-8 gap-2">
             {stats.hourData.map((hour) => (
               <div 
                 key={hour.hourKey}
                 className={cn(
-                  "p-3 border transition-colors cursor-pointer rounded-sm group",
+                  "p-3 border transition-colors rounded-md",
                   hour.rr > 0 
                     ? "bg-emerald-500/20 border-emerald-500/30" 
                     : hour.rr < 0 
@@ -238,40 +326,89 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                 )}
               >
                 <p className="text-xs font-mono uppercase text-neutral-400 mb-1">{hour.hour}</p>
-                <p className="text-lg font-bold text-white">
+                <p className="text-base font-bold text-white">
                   {hour.rr > 0 ? "+" : ""}{hour.rr.toFixed(1)}
                 </p>
-                <p className="text-[10px] text-neutral-500">{hour.trades} trades</p>
+                <p className="text-[10px] text-neutral-500">{hour.trades} tr</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Week performance - cards like days */}
+        {/* Week performance - line chart + cards */}
         <div>
           <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
             Performance par Semaine (12 dernières)
           </h3>
-          <div className="grid grid-cols-6 gap-2">
-            {stats.weekData.map((week) => (
-              <div 
-                key={week.week}
-                className={cn(
-                  "p-3 border transition-colors rounded-sm",
-                  week.rr > 0 
-                    ? "bg-emerald-500/20 border-emerald-500/30" 
-                    : week.rr < 0 
-                    ? "bg-red-500/20 border-red-500/30"
-                    : "bg-neutral-900 border-neutral-800"
-                )}
-              >
-                <p className="text-[10px] font-mono uppercase text-neutral-400 mb-1">{week.label}</p>
-                <p className="text-base font-bold text-white">
-                  {week.rr > 0 ? "+" : ""}{week.rr.toFixed(1)}
-                </p>
-                <p className="text-[10px] text-neutral-500">{week.trades} trades</p>
+          <div className="grid grid-cols-2 gap-4">
+            {/* Week line chart */}
+            <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+              <div className="h-40">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={stats.weekData}>
+                    <defs>
+                      <linearGradient id="colorWeek" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis 
+                      dataKey="label" 
+                      tick={{ fill: "#737373", fontSize: 9 }}
+                      axisLine={{ stroke: "#404040" }}
+                      tickLine={false}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis 
+                      tick={{ fill: "#737373", fontSize: 10 }}
+                      axisLine={{ stroke: "#404040" }}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#171717",
+                        border: "1px solid #404040",
+                        borderRadius: 4,
+                        color: "#ffffff",
+                      }}
+                      itemStyle={{ color: "#ffffff" }}
+                      labelStyle={{ color: "#ffffff" }}
+                      formatter={(value: number) => [`${value.toFixed(2)} RR`, "Total"]}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="rr" 
+                      stroke="#22c55e" 
+                      fillOpacity={1}
+                      fill="url(#colorWeek)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
-            ))}
+            </div>
+
+            {/* Week cards - compact grid */}
+            <div className="grid grid-cols-4 gap-2">
+              {stats.weekData.slice(-8).map((week) => (
+                <div 
+                  key={week.week}
+                  className={cn(
+                    "p-3 border transition-colors rounded-md",
+                    week.rr > 0 
+                      ? "bg-emerald-500/20 border-emerald-500/30" 
+                      : week.rr < 0 
+                      ? "bg-red-500/20 border-red-500/30"
+                      : "bg-neutral-900 border-neutral-800"
+                  )}
+                >
+                  <p className="text-[10px] font-mono uppercase text-neutral-400 mb-1">{week.label}</p>
+                  <p className="text-sm font-bold text-white">
+                    {week.rr > 0 ? "+" : ""}{week.rr.toFixed(1)}
+                  </p>
+                  <p className="text-[10px] text-neutral-500">{week.trades} tr</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -325,7 +462,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
             </div>
           </div>
 
-          {/* Quarter performance - cards like days */}
+          {/* Quarter performance - cards with consistent green */}
           <div>
             <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
               Performance par Trimestre
@@ -335,7 +472,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                 <div 
                   key={quarter.quarter}
                   className={cn(
-                    "p-3 border transition-colors rounded-sm",
+                    "p-3 border transition-colors rounded-md",
                     quarter.rr > 0 
                       ? "bg-emerald-500/20 border-emerald-500/30" 
                       : quarter.rr < 0 
@@ -344,7 +481,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                   )}
                 >
                   <p className="text-xs font-mono uppercase text-neutral-400 mb-1">{quarter.label}</p>
-                  <p className="text-xl font-bold text-white">
+                  <p className="text-lg font-bold text-white">
                     {quarter.rr > 0 ? "+" : ""}{quarter.rr.toFixed(1)}
                   </p>
                   <p className="text-[10px] text-neutral-500 mt-1">{quarter.trades} trades</p>
@@ -355,69 +492,106 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
           </div>
         </div>
 
-        {/* Year performance */}
+        {/* Year performance - bar chart + cards */}
         <div>
           <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
             Performance par Année
           </h3>
-          <div className="grid grid-cols-4 gap-3">
-            {stats.yearData.map((year) => (
-              <div 
-                key={year.year}
-                className={cn(
-                  "p-4 border transition-all rounded-sm",
-                  year.rr > 0 
-                    ? "bg-emerald-500/20 border-emerald-500/30" 
-                    : year.rr < 0 
-                    ? "bg-red-500/20 border-red-500/30"
-                    : "bg-neutral-900 border-neutral-800"
-                )}
-              >
-                <p className="text-sm font-mono uppercase text-neutral-400 mb-2">{year.year}</p>
-                <p className={cn(
-                  "text-2xl font-bold",
-                  year.rr > 0 ? "text-emerald-400" : year.rr < 0 ? "text-red-400" : "text-white"
-                )}>
-                  {year.rr > 0 ? "+" : ""}{year.rr.toFixed(1)}
-                </p>
-                <p className="text-xs text-neutral-500 mt-1">RR Total</p>
-                <div className="mt-3 pt-3 border-t border-neutral-700/50">
-                  <p className="text-xs text-neutral-400">{year.trades} trades</p>
+          <div className="grid grid-cols-2 gap-4">
+            {/* Year bar chart */}
+            <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+              <div className="h-40">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.yearData}>
+                    <XAxis 
+                      dataKey="year" 
+                      tick={{ fill: "#a3a3a3", fontSize: 11 }}
+                      axisLine={{ stroke: "#262626" }}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      tick={{ fill: "#525252", fontSize: 10 }}
+                      axisLine={{ stroke: "#262626" }}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#171717",
+                        border: "1px solid #262626",
+                        borderRadius: 4,
+                        color: "#ffffff",
+                      }}
+                      itemStyle={{ color: "#ffffff" }}
+                      labelStyle={{ color: "#ffffff" }}
+                      formatter={(value: number, name: string, props: any) => [
+                        `${value.toFixed(2)} RR (${props.payload.trades} trades)`,
+                        props.payload.year
+                      ]}
+                    />
+                    <Bar dataKey="rr" radius={[3, 3, 0, 0]}>
+                      {stats.yearData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.rr >= 0 ? "#22c55e" : "#ef4444"} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Year cards */}
+            <div className="grid grid-cols-2 gap-3">
+              {stats.yearData.map((year) => (
+                <div 
+                  key={year.year}
+                  className={cn(
+                    "p-4 border transition-all rounded-md",
+                    year.rr > 0 
+                      ? "bg-emerald-500/20 border-emerald-500/30" 
+                      : year.rr < 0 
+                      ? "bg-red-500/20 border-red-500/30"
+                      : "bg-neutral-900 border-neutral-800"
+                  )}
+                >
+                  <p className="text-sm font-mono uppercase text-neutral-400 mb-2">{year.year}</p>
+                  <p className="text-xl font-bold text-white">
+                    {year.rr > 0 ? "+" : ""}{year.rr.toFixed(1)} RR
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-1">{year.trades} trades</p>
                   <p className="text-xs text-emerald-400/80">≈ {year.euros >= 0 ? "+" : ""}{year.euros.toLocaleString("fr-FR")} €</p>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Summary stats */}
         <div className="grid grid-cols-4 gap-4">
-          <div className="border border-emerald-500/30 p-4 bg-emerald-500/10 rounded-sm">
+          <div className="border border-emerald-500/30 p-4 bg-emerald-500/10 rounded-md">
             <p className="text-xs text-neutral-500 font-mono uppercase tracking-wider mb-1">
               Total Cumulé
             </p>
-            <p className="text-2xl font-bold text-emerald-400">+{totalRR.toFixed(1)} RR</p>
+            <p className="text-xl font-bold text-emerald-400">+{totalRR.toFixed(1)} RR</p>
             <p className="text-sm text-neutral-500 mt-1">≈ +{(totalRR * 1000).toLocaleString("fr-FR")} €</p>
           </div>
-          <div className="border border-emerald-500/30 p-4 bg-emerald-500/10 rounded-sm">
+          <div className="border border-emerald-500/30 p-4 bg-emerald-500/10 rounded-md">
             <p className="text-xs text-neutral-500 font-mono uppercase tracking-wider mb-1">
               Meilleur Jour
             </p>
-            <p className="text-xl font-bold text-white">{stats.bestDay?.fullDay || "N/A"}</p>
+            <p className="text-lg font-bold text-white">{stats.bestDay?.fullDay || "N/A"}</p>
             <p className="text-sm text-emerald-400 font-mono">+{stats.bestDay?.rr || 0} RR</p>
           </div>
-          <div className="border border-red-500/30 p-4 bg-red-500/10 rounded-sm">
+          <div className="border border-red-500/30 p-4 bg-red-500/10 rounded-md">
             <p className="text-xs text-neutral-500 font-mono uppercase tracking-wider mb-1">
               Pire Jour
             </p>
-            <p className="text-xl font-bold text-white">{stats.worstDay?.fullDay || "N/A"}</p>
+            <p className="text-lg font-bold text-white">{stats.worstDay?.fullDay || "N/A"}</p>
             <p className="text-sm text-red-400 font-mono">{stats.worstDay?.rr || 0} RR</p>
           </div>
-          <div className="border border-neutral-700 p-4 bg-neutral-900 rounded-sm">
+          <div className="border border-neutral-700 p-4 bg-neutral-900 rounded-md">
             <p className="text-xs text-neutral-500 font-mono uppercase tracking-wider mb-1">
               Meilleure Heure
             </p>
-            <p className="text-xl font-bold text-white">{stats.bestHour?.hour || "N/A"}</p>
+            <p className="text-lg font-bold text-white">{stats.bestHour?.hour || "N/A"}</p>
             <p className="text-sm text-neutral-400 font-mono">+{stats.bestHour?.rr || 0} RR</p>
           </div>
         </div>
