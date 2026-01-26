@@ -121,7 +121,7 @@ const SETUP_TYPES = ["A", "B", "C"];
 const ENTRY_MODELS = ["BOS", "MSS", "OB", "FVG", "EQH/L", "Liquidity Sweep", "Breaker", "Mitigation"];
 const DIRECTION_STRUCTURES = ["Continuation", "Retracement"];
 const ENTRY_TIMINGS = [
-  "Open US 15:30", "London Close 16:00", "New York Close 20:00", "19h-20h", "20h-21h"
+  "Open US 15:30", "London Close 16:00", "New York Close 20:00"
 ];
 
 // Time constraints
