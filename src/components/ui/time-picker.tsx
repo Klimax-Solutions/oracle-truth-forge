@@ -115,8 +115,7 @@ export function TimePicker({
             </div>
             <div 
               ref={hourRef}
-              className="flex-1 overflow-y-auto py-1"
-              style={{ scrollbarWidth: 'thin' }}
+              className="flex-1 overflow-y-auto py-1 scrollbar-hide"
             >
               {HOURS.map((hour) => {
                 const isDisabled = minTime && `${hour}:59` < minTime;
@@ -149,8 +148,7 @@ export function TimePicker({
             </div>
             <div 
               ref={minuteRef}
-              className="flex-1 overflow-y-auto py-1"
-              style={{ scrollbarWidth: 'thin' }}
+              className="flex-1 overflow-y-auto py-1 scrollbar-hide"
             >
               {MINUTES.map((minute) => {
                 const isDisabled = isTimeDisabled(selectedHour, minute);
