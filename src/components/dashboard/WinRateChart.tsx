@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
 
 interface Trade {
   id: string;
@@ -39,15 +38,10 @@ export const WinRateChart = ({ trades }: WinRateChartProps) => {
     };
   }, [trades]);
 
-  const pieData = [
-    { name: "Wins", value: stats.wins, color: "#22c55e" },
-    { name: "Losses", value: stats.losses, color: "#ef4444" },
-  ];
-
-  const directionData = [
-    { name: "Long", value: stats.longTrades, color: "#22c55e" },
-    { name: "Short", value: stats.shortTrades, color: "#ef4444" },
-  ];
+  // Calculate circle properties
+  const radius = 80;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (stats.winRate / 100) * circumference;
 
   return (
     <div className="h-full flex flex-col">
@@ -58,45 +52,52 @@ export const WinRateChart = ({ trades }: WinRateChartProps) => {
       </div>
 
       <div className="flex-1 p-6 overflow-auto">
-        {/* Main win rate */}
+        {/* Main win rate with custom circle */}
         <div className="grid grid-cols-3 gap-6 mb-8">
-          <div className="col-span-2 border border-neutral-800 p-6 bg-neutral-950">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="text-center mt-4">
-              <p className="text-5xl font-bold text-white">{stats.winRate.toFixed(1)}%</p>
-              <p className="text-sm text-neutral-500 font-mono uppercase tracking-wider mt-2">
-                Win Rate Global
-              </p>
+          <div className="col-span-2 border border-neutral-800 p-8 bg-neutral-950 flex flex-col items-center">
+            {/* Custom SVG Circle */}
+            <div className="relative w-52 h-52">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
+                {/* Background circle */}
+                <circle
+                  cx="100"
+                  cy="100"
+                  r={radius}
+                  fill="none"
+                  stroke="#262626"
+                  strokeWidth="12"
+                />
+                {/* Progress circle */}
+                <circle
+                  cx="100"
+                  cy="100"
+                  r={radius}
+                  fill="none"
+                  stroke="#22c55e"
+                  strokeWidth="12"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  className="transition-all duration-1000"
+                />
+              </svg>
+              {/* Center text */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <p className="text-5xl font-bold text-white">{stats.winRate.toFixed(0)}%</p>
+                <p className="text-xs text-neutral-500 font-mono uppercase mt-1">Win Rate</p>
+              </div>
             </div>
           </div>
 
           <div className="space-y-4">
-            <div className="border border-neutral-800 p-4 bg-neutral-950">
-              <p className="text-3xl font-bold text-emerald-500">{stats.wins}</p>
+            <div className="border border-neutral-800 p-4 bg-emerald-500/10">
+              <p className="text-3xl font-bold text-emerald-400">{stats.wins}</p>
               <p className="text-xs text-neutral-500 font-mono uppercase tracking-wider">
                 Trades Gagnants
               </p>
             </div>
-            <div className="border border-neutral-800 p-4 bg-neutral-950">
-              <p className="text-3xl font-bold text-red-500">{stats.losses}</p>
+            <div className="border border-neutral-800 p-4 bg-red-500/10">
+              <p className="text-3xl font-bold text-red-400">{stats.losses}</p>
               <p className="text-xs text-neutral-500 font-mono uppercase tracking-wider">
                 Trades Perdants
               </p>
@@ -116,12 +117,12 @@ export const WinRateChart = ({ trades }: WinRateChartProps) => {
             Win Rate par Direction
           </h3>
           <div className="grid grid-cols-2 gap-4">
-            <div className="border border-neutral-800 p-6 bg-neutral-950">
+            <div className="border border-neutral-800 p-6 bg-emerald-500/5">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-mono uppercase text-emerald-500">Long</span>
+                <span className="text-sm font-mono uppercase text-emerald-400">Long</span>
                 <span className="text-2xl font-bold text-white">{stats.longWinRate.toFixed(1)}%</span>
               </div>
-              <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
+              <div className="h-2 bg-neutral-800 overflow-hidden">
                 <div
                   className="h-full bg-emerald-500 transition-all"
                   style={{ width: `${stats.longWinRate}%` }}
@@ -129,12 +130,12 @@ export const WinRateChart = ({ trades }: WinRateChartProps) => {
               </div>
               <p className="text-xs text-neutral-500 mt-2">{stats.longTrades} trades</p>
             </div>
-            <div className="border border-neutral-800 p-6 bg-neutral-950">
+            <div className="border border-neutral-800 p-6 bg-red-500/5">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-mono uppercase text-red-500">Short</span>
+                <span className="text-sm font-mono uppercase text-red-400">Short</span>
                 <span className="text-2xl font-bold text-white">{stats.shortWinRate.toFixed(1)}%</span>
               </div>
-              <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
+              <div className="h-2 bg-neutral-800 overflow-hidden">
                 <div
                   className="h-full bg-red-500 transition-all"
                   style={{ width: `${stats.shortWinRate}%` }}
