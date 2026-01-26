@@ -203,7 +203,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                     setSelectedTrade(dayTrades.length > 0 ? dayTrades[0] : null);
                   }}
                   className={cn(
-                    "aspect-square border transition-all",
+                    "aspect-square border transition-all rounded-md",
                     "flex flex-col items-center justify-center",
                     isSelected
                       ? "border-white bg-neutral-900"
@@ -236,11 +236,11 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
           {/* Legend */}
           <div className="flex items-center justify-center gap-6 mt-5 pt-4 border-t border-neutral-800">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-emerald-500/30" />
+              <div className="w-3 h-3 bg-emerald-500/30 rounded-md" />
               <span className="text-xs text-neutral-500">Profit</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-red-500/30" />
+              <div className="w-3 h-3 bg-red-500/30 rounded-md" />
               <span className="text-xs text-neutral-500">Loss</span>
             </div>
           </div>
@@ -278,7 +278,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                   key={trade.id}
                   onClick={() => setSelectedTrade(selectedTrade?.id === trade.id ? null : trade)}
                   className={cn(
-                    "w-full flex items-center justify-between py-3 px-4 border transition-all text-left",
+                    "w-full flex items-center justify-between py-3 px-4 border transition-all text-left rounded-md",
                     selectedTrade?.id === trade.id
                       ? "border-white bg-neutral-900"
                       : "border-neutral-800 bg-neutral-950 hover:border-neutral-600"
@@ -314,11 +314,11 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                   return (
                     <>
                       {/* Trade header */}
-                      <div className="flex items-center gap-4 p-4 border border-neutral-800 bg-neutral-950">
+                      <div className="flex items-center gap-4 p-4 border border-neutral-800 bg-neutral-950 rounded-md">
                         <div className={cn(
-                          "w-12 h-12 flex items-center justify-center border",
+                          "w-12 h-12 flex items-center justify-center border rounded-md",
                           selectedTrade.direction === "Long" 
-                            ? "border-emerald-500/50 bg-emerald-500/10" 
+                            ? "border-emerald-500/50 bg-emerald-500/10"
                             : "border-red-500/50 bg-red-500/10"
                         )}>
                           {selectedTrade.direction === "Long" 
@@ -342,28 +342,28 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
 
                       {/* Stats row */}
                       <div className="grid grid-cols-4 gap-3">
-                        <div className="border border-neutral-800 p-3 bg-neutral-950">
+                        <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
                           <div className="flex items-center gap-2 mb-2">
                             <Clock className="w-4 h-4 text-neutral-500" />
                             <span className="text-xs text-neutral-600 font-mono uppercase">Entrée</span>
                           </div>
                           <p className="text-lg font-bold text-white">{selectedTrade.entry_time || "—"}</p>
                         </div>
-                        <div className="border border-neutral-800 p-3 bg-neutral-950">
+                        <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
                           <div className="flex items-center gap-2 mb-2">
                             <Clock className="w-4 h-4 text-neutral-500" />
                             <span className="text-xs text-neutral-600 font-mono uppercase">Sortie</span>
                           </div>
                           <p className="text-lg font-bold text-white">{selectedTrade.exit_time || "—"}</p>
                         </div>
-                        <div className="border border-neutral-800 p-3 bg-neutral-950">
+                        <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
                           <div className="flex items-center gap-2 mb-2">
                             <Target className="w-4 h-4 text-neutral-500" />
                             <span className="text-xs text-neutral-600 font-mono uppercase">Durée</span>
                           </div>
                           <p className="text-lg font-bold text-white">{selectedTrade.trade_duration || "—"}</p>
                         </div>
-                        <div className="border border-neutral-800 p-3 bg-neutral-950">
+                        <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
                           <div className="flex items-center gap-2 mb-2">
                             <Calendar className="w-4 h-4 text-neutral-500" />
                             <span className="text-xs text-neutral-600 font-mono uppercase">News</span>
@@ -377,7 +377,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                       {/* RR charts - improved with bar chart and isolated cumul */}
                       <div className="grid grid-cols-2 gap-4">
                         {/* Bar chart - individual RR per trade */}
-                        <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-sm">
+                        <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
                           <div className="flex items-center justify-between mb-4">
                             <h4 className="text-sm font-mono uppercase tracking-wider text-neutral-500">
                               RR par Trade (10 derniers)
@@ -426,7 +426,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                         </div>
 
                         {/* Cumulative RR chart - ISOLATED */}
-                        <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-sm">
+                        <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
                           <div className="flex items-center justify-between mb-4">
                             <h4 className="text-sm font-mono uppercase tracking-wider text-neutral-500">
                               Cumul Isolé (10 trades)
@@ -479,7 +479,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
 
                       {/* Trade details */}
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="border border-neutral-800 p-4 bg-neutral-950">
+                        <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
                           <h4 className="text-xs font-mono uppercase tracking-wider text-neutral-600 mb-3">
                             Paramètres d'entrée
                           </h4>
@@ -498,7 +498,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                             </div>
                           </div>
                         </div>
-                        <div className="border border-neutral-800 p-4 bg-neutral-950">
+                        <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
                           <h4 className="text-xs font-mono uppercase tracking-wider text-neutral-600 mb-3">
                             Position dans la série
                           </h4>
@@ -520,7 +520,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                       </div>
 
                       {/* Screenshot placeholder */}
-                      <div className="border border-dashed border-neutral-700 p-8 bg-neutral-950 text-center">
+                      <div className="border border-dashed border-neutral-700 p-8 bg-neutral-950 text-center rounded-md">
                         <Image className="w-10 h-10 text-neutral-700 mx-auto mb-3" />
                         <p className="text-sm text-neutral-600">Screenshot du trade</p>
                         <p className="text-xs text-neutral-700 mt-1">À venir</p>
