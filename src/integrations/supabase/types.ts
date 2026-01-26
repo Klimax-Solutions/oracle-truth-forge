@@ -218,8 +218,11 @@ export type Database = {
         Row: {
           created_at: string
           direction: string
+          direction_structure: string | null
+          entry_model: string | null
           entry_price: number | null
           entry_time: string | null
+          entry_timing: string | null
           exit_price: number | null
           exit_time: string | null
           id: string
@@ -237,8 +240,11 @@ export type Database = {
         Insert: {
           created_at?: string
           direction: string
+          direction_structure?: string | null
+          entry_model?: string | null
           entry_price?: number | null
           entry_time?: string | null
+          entry_timing?: string | null
           exit_price?: number | null
           exit_time?: string | null
           id?: string
@@ -256,8 +262,11 @@ export type Database = {
         Update: {
           created_at?: string
           direction?: string
+          direction_structure?: string | null
+          entry_model?: string | null
           entry_price?: number | null
           entry_time?: string | null
+          entry_timing?: string | null
           exit_price?: number | null
           exit_time?: string | null
           id?: string
