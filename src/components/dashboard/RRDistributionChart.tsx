@@ -206,15 +206,17 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
                     contentStyle={{
                       backgroundColor: "#171717",
                       border: "1px solid #262626",
-                      borderRadius: 4,
+                      borderRadius: 8,
+                      color: "#ffffff",
                     }}
-                    labelStyle={{ color: "#a3a3a3" }}
+                    itemStyle={{ color: "#ffffff" }}
+                    labelStyle={{ color: "#ffffff" }}
                     formatter={(value: number, name: string, props: any) => [
                       `${value} trades (${props.payload.percentage}%)`, 
                       "Nombre"
                     ]}
                   />
-                  <Bar dataKey="count" fill="#ffffff" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="count" fill="#ffffff" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -353,8 +355,11 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
                     contentStyle={{
                       backgroundColor: "#171717",
                       border: "1px solid #262626",
-                      borderRadius: 4,
+                      borderRadius: 8,
+                      color: "#ffffff",
                     }}
+                    itemStyle={{ color: "#ffffff" }}
+                    labelStyle={{ color: "#ffffff" }}
                     formatter={(value: number) => [`${value} RR`, "Moyenne"]}
                   />
                   <Line 

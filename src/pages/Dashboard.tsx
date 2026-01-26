@@ -11,6 +11,7 @@ import { RRDistributionChart } from "@/components/dashboard/RRDistributionChart"
 import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
+
 interface Trade {
   id: string;
   trade_number: number;
@@ -33,11 +34,19 @@ interface Trade {
   news_label: string;
 }
 
+interface TimingFilters {
+  day_of_week?: string[];
+  quarter?: string[];
+  year?: string[];
+  hour?: string;
+}
+
 const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [activeTab, setActiveTab] = useState("execution");
+  const [databaseFilters, setDatabaseFilters] = useState<any>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -86,6 +95,25 @@ const Dashboard = () => {
     navigate("/auth");
   };
 
+  const handleNavigateToDatabase = (filters: TimingFilters) => {
+    // Convert timing filters to database filters format
+    const newFilters: any = {
+      direction: [],
+      direction_structure: [],
+      setup_type: [],
+      entry_model: [],
+      entry_timing: [],
+      trade_duration: [],
+      rr_range: [],
+      stop_loss_size: [],
+      day_of_week: filters.day_of_week || [],
+      quarter: filters.quarter || [],
+      year: filters.year || [],
+    };
+    
+    setDatabaseFilters(newFilters);
+    setActiveTab("oracle");
+  };
 
   if (loading) {
     return (
@@ -95,20 +123,18 @@ const Dashboard = () => {
     );
   }
 
-  const totalRR = trades.reduce((sum, t) => sum + (t.rr || 0), 0);
-
   const renderContent = () => {
     switch (activeTab) {
       case "execution":
         return <OracleExecution trades={trades} />;
       case "oracle":
-        return <OracleDatabase trades={trades} />;
+        return <OracleDatabase trades={trades} initialFilters={databaseFilters} />;
       case "journal":
         return <TradingJournal trades={trades} />;
       case "distribution":
         return <RRDistributionChart trades={trades} />;
       case "timing":
-        return <TimingAnalysis trades={trades} />;
+        return <TimingAnalysis trades={trades} onNavigateToDatabase={handleNavigateToDatabase} />;
       case "videos":
         return <VideoSetup />;
       default:

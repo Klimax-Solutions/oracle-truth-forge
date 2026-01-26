@@ -1,6 +1,7 @@
-import { useMemo } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, PieChart, Pie, LineChart, Line } from "recharts";
+import { useMemo, useState } from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, LineChart, Line } from "recharts";
 import { cn } from "@/lib/utils";
+import { ExternalLink } from "lucide-react";
 
 interface Trade {
   id: string;
@@ -13,11 +14,12 @@ interface Trade {
 
 interface TimingAnalysisProps {
   trades: Trade[];
+  onNavigateToDatabase?: (filters: { day_of_week?: string[]; quarter?: string[]; year?: string[]; hour?: string }) => void;
 }
 
 const DAYS_ORDER = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 
-export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
+export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisProps) => {
 
   const stats = useMemo(() => {
     // By day of week
@@ -161,6 +163,18 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
         euros: data.totalRR * 1000,
       }));
 
+    // Cumulative year data for line chart
+    let cumulativeYearRR = 0;
+    const yearCumulativeData = yearData.map(y => {
+      cumulativeYearRR += y.rr;
+      return {
+        year: y.year,
+        cumulative: parseFloat(cumulativeYearRR.toFixed(2)),
+        rr: y.rr,
+        trades: y.trades,
+      };
+    });
+
     // Best day and hour
     const bestDay = dayData.reduce((best, curr) => 
       curr.rr > best.rr ? curr : best, dayData[0]);
@@ -170,17 +184,29 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
       ? hourData.reduce((best, curr) => curr.rr > best.rr ? curr : best, hourData[0])
       : { hour: "N/A", rr: 0 };
 
-    return { dayData, hourData, weekData, monthData, quarterData, yearData, bestDay, worstDay, bestHour };
+    return { dayData, hourData, weekData, monthData, quarterData, yearData, yearCumulativeData, bestDay, worstDay, bestHour };
   }, [trades]);
 
   const totalRR = trades.reduce((sum, t) => sum + (t.rr || 0), 0);
+
+  const handleDayClick = (day: string) => {
+    onNavigateToDatabase?.({ day_of_week: [day] });
+  };
+
+  const handleQuarterClick = (quarter: string) => {
+    onNavigateToDatabase?.({ quarter: [quarter] });
+  };
+
+  const handleYearClick = (year: string) => {
+    onNavigateToDatabase?.({ year: [year] });
+  };
 
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-neutral-800">
         <h2 className="text-xl font-semibold text-white mb-1">Timing Analysis</h2>
-        <p className="text-sm text-neutral-500 font-mono">Performance par période et heure d'entrée</p>
+        <p className="text-sm text-neutral-500 font-mono">Performance par période et heure d'entrée • Cliquez sur un élément pour voir les trades</p>
       </div>
 
       <div className="flex-1 p-6 overflow-auto scrollbar-hide space-y-8">
@@ -209,7 +235,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                     contentStyle={{
                       backgroundColor: "#171717",
                       border: "1px solid #262626",
-                      borderRadius: 4,
+                      borderRadius: 8,
                       color: "#ffffff",
                     }}
                     itemStyle={{ color: "#ffffff" }}
@@ -219,7 +245,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                       props.payload.fullDay
                     ]}
                   />
-                  <Bar dataKey="rr" radius={[3, 3, 0, 0]}>
+                  <Bar dataKey="rr" radius={[4, 4, 0, 0]}>
                     {stats.dayData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.rr >= 0 ? "#22c55e" : "#ef4444"} />
                     ))}
@@ -252,7 +278,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                     contentStyle={{
                       backgroundColor: "#171717",
                       border: "1px solid #262626",
-                      borderRadius: 4,
+                      borderRadius: 8,
                       color: "#ffffff",
                     }}
                     itemStyle={{ color: "#ffffff" }}
@@ -276,31 +302,35 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
           </div>
         </div>
 
-        {/* Day cards - compact */}
+        {/* Day cards - clickable */}
         <div>
           <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
-            Détail par Jour
+            Détail par Jour <span className="text-neutral-600">(cliquez pour filtrer)</span>
           </h3>
           <div className="grid grid-cols-5 gap-3">
             {stats.dayData.map((day) => (
-              <div 
+              <button 
                 key={day.fullDay} 
+                onClick={() => handleDayClick(day.fullDay)}
                 className={cn(
-                  "p-4 border rounded-md",
+                  "p-4 border rounded-md text-left transition-all group",
                   day.rr > 0 
-                    ? "bg-emerald-500/20 border-emerald-500/30" 
+                    ? "bg-emerald-500/20 border-emerald-500/30 hover:border-emerald-400" 
                     : day.rr < 0 
-                    ? "bg-red-500/20 border-red-500/30"
-                    : "bg-neutral-900 border-neutral-800"
+                    ? "bg-red-500/20 border-red-500/30 hover:border-red-400"
+                    : "bg-neutral-900 border-neutral-800 hover:border-neutral-600"
                 )}
               >
-                <p className="text-sm font-mono uppercase text-neutral-400 mb-2">{day.fullDay}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-mono uppercase text-neutral-400 mb-2">{day.fullDay}</p>
+                  <ExternalLink className="w-3 h-3 text-neutral-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
                 <p className="text-xl font-bold text-white">
                   {day.rr > 0 ? "+" : ""}{day.rr.toFixed(2)}
                 </p>
                 <p className="text-xs text-neutral-500 mt-1">{day.trades} trades</p>
                 <p className="text-xs text-emerald-400/80">≈ {day.euros >= 0 ? "+" : ""}{day.euros.toLocaleString("fr-FR")} €</p>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -331,7 +361,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                       contentStyle={{
                         backgroundColor: "#171717",
                         border: "1px solid #262626",
-                        borderRadius: 4,
+                        borderRadius: 8,
                         color: "#ffffff",
                       }}
                       itemStyle={{ color: "#ffffff" }}
@@ -341,7 +371,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                         "Total"
                       ]}
                     />
-                    <Bar dataKey="rr" radius={[3, 3, 0, 0]}>
+                    <Bar dataKey="rr" radius={[4, 4, 0, 0]}>
                       {stats.hourData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.rr >= 0 ? "#22c55e" : "#ef4444"} />
                       ))}
@@ -409,7 +439,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                       contentStyle={{
                         backgroundColor: "#171717",
                         border: "1px solid #404040",
-                        borderRadius: 4,
+                        borderRadius: 8,
                         color: "#ffffff",
                       }}
                       itemStyle={{ color: "#ffffff" }}
@@ -460,7 +490,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
             <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
               Performance par Mois
             </h3>
-            <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-sm">
+            <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
               <div className="h-40">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={stats.monthData}>
@@ -486,8 +516,11 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                       contentStyle={{
                         backgroundColor: "#171717",
                         border: "1px solid #404040",
-                        borderRadius: 2,
+                        borderRadius: 8,
+                        color: "#ffffff",
                       }}
+                      itemStyle={{ color: "#ffffff" }}
+                      labelStyle={{ color: "#ffffff" }}
                       formatter={(value: number) => [`${value.toFixed(2)} RR`, "Total"]}
                     />
                     <Area 
@@ -503,44 +536,49 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
             </div>
           </div>
 
-          {/* Quarter performance - cards with consistent green */}
+          {/* Quarter performance - clickable cards */}
           <div>
             <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
-              Performance par Trimestre
+              Performance par Trimestre <span className="text-neutral-600">(cliquez pour filtrer)</span>
             </h3>
             <div className="grid grid-cols-4 gap-2">
               {stats.quarterData.map((quarter) => (
-                <div 
+                <button 
                   key={quarter.quarter}
+                  onClick={() => handleQuarterClick(quarter.label)}
                   className={cn(
-                    "p-3 border rounded-md",
+                    "p-3 border rounded-md text-left transition-all group",
                     quarter.rr > 0 
-                      ? "bg-emerald-500/20 border-emerald-500/30" 
+                      ? "bg-emerald-500/20 border-emerald-500/30 hover:border-emerald-400" 
                       : quarter.rr < 0 
-                      ? "bg-red-500/20 border-red-500/30"
-                      : "bg-neutral-900 border-neutral-800"
+                      ? "bg-red-500/20 border-red-500/30 hover:border-red-400"
+                      : "bg-neutral-900 border-neutral-800 hover:border-neutral-600"
                   )}
                 >
-                  <p className="text-xs font-mono uppercase text-neutral-400 mb-1">{quarter.label}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-mono uppercase text-neutral-400 mb-1">{quarter.label}</p>
+                    <ExternalLink className="w-2.5 h-2.5 text-neutral-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <p className="text-lg font-bold text-white">
                     {quarter.rr > 0 ? "+" : ""}{quarter.rr.toFixed(1)}
                   </p>
                   <p className="text-[10px] text-neutral-500 mt-1">{quarter.trades} trades</p>
                   <p className="text-[10px] text-emerald-400/80">≈ {quarter.euros >= 0 ? "+" : ""}{quarter.euros.toLocaleString("fr-FR")} €</p>
-                </div>
+                </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Year performance - bar chart + cards */}
+        {/* Year performance - bar chart + line chart + clickable cards */}
         <div>
           <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
-            Performance par Année
+            Performance par Année <span className="text-neutral-600">(cliquez pour filtrer)</span>
           </h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             {/* Year bar chart */}
             <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+              <p className="text-xs text-neutral-600 font-mono uppercase mb-3">RR par Année</p>
               <div className="h-40">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stats.yearData}>
@@ -559,7 +597,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                       contentStyle={{
                         backgroundColor: "#171717",
                         border: "1px solid #262626",
-                        borderRadius: 4,
+                        borderRadius: 8,
                         color: "#ffffff",
                       }}
                       itemStyle={{ color: "#ffffff" }}
@@ -569,7 +607,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
                         props.payload.year
                       ]}
                     />
-                    <Bar dataKey="rr" radius={[3, 3, 0, 0]}>
+                    <Bar dataKey="rr" radius={[4, 4, 0, 0]}>
                       {stats.yearData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.rr >= 0 ? "#22c55e" : "#ef4444"} />
                       ))}
@@ -579,27 +617,75 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
               </div>
             </div>
 
+            {/* Year cumulative line chart */}
+            <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+              <p className="text-xs text-neutral-600 font-mono uppercase mb-3">Évolution Cumulative</p>
+              <div className="h-40">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={stats.yearCumulativeData}>
+                    <XAxis 
+                      dataKey="year" 
+                      tick={{ fill: "#a3a3a3", fontSize: 11 }}
+                      axisLine={{ stroke: "#262626" }}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      tick={{ fill: "#525252", fontSize: 10 }}
+                      axisLine={{ stroke: "#262626" }}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#171717",
+                        border: "1px solid #262626",
+                        borderRadius: 8,
+                        color: "#ffffff",
+                      }}
+                      itemStyle={{ color: "#ffffff" }}
+                      labelStyle={{ color: "#ffffff" }}
+                      formatter={(value: number, name: string) => [
+                        `${value.toFixed(2)} RR`,
+                        name === "cumulative" ? "Cumul" : "Année"
+                      ]}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="cumulative" 
+                      stroke="#22c55e" 
+                      strokeWidth={2}
+                      dot={{ fill: "#22c55e", strokeWidth: 0, r: 4 }}
+                      activeDot={{ r: 6, fill: "#ffffff" }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
             {/* Year cards */}
             <div className="grid grid-cols-2 gap-3">
               {stats.yearData.map((year) => (
-                <div 
+                <button 
                   key={year.year}
+                  onClick={() => handleYearClick(year.year)}
                   className={cn(
-                    "p-4 border rounded-md",
+                    "p-4 border rounded-md text-left transition-all group",
                     year.rr > 0 
-                      ? "bg-emerald-500/20 border-emerald-500/30" 
+                      ? "bg-emerald-500/20 border-emerald-500/30 hover:border-emerald-400" 
                       : year.rr < 0 
-                      ? "bg-red-500/20 border-red-500/30"
-                      : "bg-neutral-900 border-neutral-800"
+                      ? "bg-red-500/20 border-red-500/30 hover:border-red-400"
+                      : "bg-neutral-900 border-neutral-800 hover:border-neutral-600"
                   )}
                 >
-                  <p className="text-sm font-mono uppercase text-neutral-400 mb-2">{year.year}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-mono uppercase text-neutral-400 mb-2">{year.year}</p>
+                    <ExternalLink className="w-3 h-3 text-neutral-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <p className="text-xl font-bold text-white">
                     {year.rr > 0 ? "+" : ""}{year.rr.toFixed(1)} RR
                   </p>
                   <p className="text-xs text-neutral-500 mt-1">{year.trades} trades</p>
                   <p className="text-xs text-emerald-400/80">≈ {year.euros >= 0 ? "+" : ""}{year.euros.toLocaleString("fr-FR")} €</p>
-                </div>
+                </button>
               ))}
             </div>
           </div>
