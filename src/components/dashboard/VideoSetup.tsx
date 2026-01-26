@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Plus, Play, Trash2, X, Video } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Trash2, X, Video, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface VideoItem {
   id: string;
@@ -15,6 +15,22 @@ export const VideoSetup = () => {
   const [isAddingVideo, setIsAddingVideo] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newEmbedCode, setNewEmbedCode] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  // Check if current user is admin (for now, specific emails are admin)
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setUserEmail(user.email);
+        // Admin check - you can customize this list
+        const adminEmails = ["jules.philipon@gmail.com"];
+        setIsAdmin(adminEmails.includes(user.email));
+      }
+    };
+    checkAdmin();
+  }, []);
 
   const extractVideoUrl = (embedCode: string): string | null => {
     // Try to extract src from iframe
@@ -71,20 +87,25 @@ export const VideoSetup = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-white mb-1">Vidéo du Setup Oracle</h2>
-            <p className="text-sm text-neutral-500 font-mono">Bibliothèque de vidéos explicatives</p>
+            <p className="text-sm text-neutral-500 font-mono">
+              Bibliothèque de vidéos explicatives
+              {!isAdmin && <span className="ml-2 text-neutral-600">(Mode lecture seule)</span>}
+            </p>
           </div>
-          <Button
-            onClick={() => setIsAddingVideo(true)}
-            className="bg-white text-black hover:bg-neutral-200 rounded-md gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Ajouter une vidéo
-          </Button>
+          {isAdmin && (
+            <Button
+              onClick={() => setIsAddingVideo(true)}
+              className="bg-white text-black hover:bg-neutral-200 rounded-md gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Ajouter une vidéo
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Add video modal */}
-      {isAddingVideo && (
+      {/* Add video modal - Admin only */}
+      {isAddingVideo && isAdmin && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-6">
           <div className="bg-neutral-900 border border-neutral-700 rounded-lg w-full max-w-2xl p-6">
             <div className="flex items-center justify-between mb-6">
@@ -149,16 +170,20 @@ export const VideoSetup = () => {
             </div>
             <h3 className="text-xl font-medium text-white mb-2">Aucune vidéo</h3>
             <p className="text-neutral-500 max-w-md mb-6">
-              Ajoutez des vidéos explicatives du Setup Oracle pour les consulter à tout moment.
+              {isAdmin 
+                ? "Ajoutez des vidéos explicatives du Setup Oracle pour les consulter à tout moment."
+                : "Aucune vidéo n'a été ajoutée pour le moment. Revenez plus tard."}
             </p>
-            <Button
-              onClick={() => setIsAddingVideo(true)}
-              variant="outline"
-              className="border-neutral-700 text-white hover:bg-neutral-800 rounded-md gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Ajouter votre première vidéo
-            </Button>
+            {isAdmin && (
+              <Button
+                onClick={() => setIsAddingVideo(true)}
+                variant="outline"
+                className="border-neutral-700 text-white hover:bg-neutral-800 rounded-md gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Ajouter votre première vidéo
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -186,12 +211,18 @@ export const VideoSetup = () => {
                         Ajouté le {video.createdAt.toLocaleDateString("fr-FR")}
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleDeleteVideo(video.id)}
-                      className="p-2 text-neutral-600 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {isAdmin ? (
+                      <button
+                        onClick={() => handleDeleteVideo(video.id)}
+                        className="p-2 text-neutral-600 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <div className="p-2 text-neutral-700">
+                        <Lock className="w-4 h-4" />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

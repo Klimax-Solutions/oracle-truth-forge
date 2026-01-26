@@ -1,15 +1,13 @@
 import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useMemo } from "react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 
 interface Trade {
@@ -36,6 +34,7 @@ interface Trade {
 
 interface OracleDatabaseProps {
   trades: Trade[];
+  initialFilters?: Filters;
 }
 
 interface Filters {
@@ -47,11 +46,14 @@ interface Filters {
   trade_duration: string[];
   rr_range: string[];
   stop_loss_size: string[];
+  day_of_week: string[];
+  quarter: string[];
+  year: string[];
 }
 
-export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
+export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) => {
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
-  const [filters, setFilters] = useState<Filters>({
+  const [filters, setFilters] = useState<Filters>(initialFilters || {
     direction: [],
     direction_structure: [],
     setup_type: [],
@@ -60,6 +62,9 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
     trade_duration: [],
     rr_range: [],
     stop_loss_size: [],
+    day_of_week: [],
+    quarter: [],
+    year: [],
   });
 
   // Extract unique values for filters
@@ -81,6 +86,16 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
       if (filters.entry_model.length > 0) {
         const tradeModels = trade.entry_model?.split(", ") || [];
         if (!filters.entry_model.some(m => tradeModels.includes(m))) return false;
+      }
+      if (filters.day_of_week.length > 0 && !filters.day_of_week.includes(trade.day_of_week)) return false;
+      if (filters.quarter.length > 0) {
+        const date = new Date(trade.trade_date);
+        const quarter = `Q${Math.floor(date.getMonth() / 3) + 1} ${date.getFullYear()}`;
+        if (!filters.quarter.includes(quarter)) return false;
+      }
+      if (filters.year.length > 0) {
+        const year = new Date(trade.trade_date).getFullYear().toString();
+        if (!filters.year.includes(year)) return false;
       }
       return true;
     });
@@ -112,6 +127,9 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
       trade_duration: [],
       rr_range: [],
       stop_loss_size: [],
+      day_of_week: [],
+      quarter: [],
+      year: [],
     });
   };
 
@@ -120,24 +138,29 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
     return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
   };
 
-  // Get trade context for charts (like TradingJournal)
+  // Get trade context for charts - ISOLATED 10 last trades (like TradingJournal)
   const getTradeContext = (trade: Trade) => {
     const tradeIndex = trades.findIndex(t => t.id === trade.id);
     const tradesUpToNow = trades.slice(0, tradeIndex + 1);
     const cumulativeRR = tradesUpToNow.reduce((sum, t) => sum + (t.rr || 0), 0);
     
+    // Get last 10 trades and show ISOLATED cumul (as if trades 1-10)
     const recentTrades = trades.slice(Math.max(0, tradeIndex - 9), tradeIndex + 1);
-    let runningTotal = tradesUpToNow.slice(0, -recentTrades.length).reduce((sum, t) => sum + (t.rr || 0), 0);
-    const chartData = recentTrades.map(t => {
-      runningTotal += t.rr || 0;
+    let isolatedCumul = 0;
+    const chartData = recentTrades.map((t, idx) => {
+      isolatedCumul += t.rr || 0;
       return {
-        trade: t.trade_number,
-        rr: runningTotal,
+        trade: idx + 1, // Trades 1-10 isolated
+        tradeNum: t.trade_number,
+        rr: parseFloat(isolatedCumul.toFixed(2)),
+        individual: t.rr || 0,
         current: t.id === trade.id
       };
     });
+    
+    const isolatedTotal = recentTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
 
-    return { cumulativeRR, chartData, tradeIndex };
+    return { cumulativeRR, chartData, tradeIndex, isolatedTotal };
   };
 
   return (
@@ -187,13 +210,13 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-800 z-50 rounded-md min-w-[140px] p-1">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md min-w-[140px] p-1">
                 {filterOptions.direction.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.direction.includes(option)}
                     onCheckedChange={() => toggleFilter("direction", option)}
-                    className="text-neutral-300 text-xs rounded-sm px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
+                    className="text-neutral-300 text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -213,13 +236,13 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-800 z-50 rounded-md min-w-[140px] p-1">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md min-w-[140px] p-1">
                 {filterOptions.setup_type.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.setup_type.includes(option)}
                     onCheckedChange={() => toggleFilter("setup_type", option)}
-                    className="text-neutral-300 text-xs rounded-sm px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
+                    className="text-neutral-300 text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -239,13 +262,13 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-800 z-50 rounded-md min-w-[160px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md min-w-[160px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
                 {filterOptions.entry_model.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.entry_model.includes(option)}
                     onCheckedChange={() => toggleFilter("entry_model", option)}
-                    className="text-neutral-300 text-xs rounded-sm px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
+                    className="text-neutral-300 text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -265,13 +288,13 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-800 z-50 rounded-md min-w-[140px] p-1">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md min-w-[140px] p-1">
                 {filterOptions.direction_structure.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.direction_structure.includes(option)}
                     onCheckedChange={() => toggleFilter("direction_structure", option)}
-                    className="text-neutral-300 text-xs rounded-sm px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
+                    className="text-neutral-300 text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -291,13 +314,13 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-800 z-50 rounded-md min-w-[140px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md min-w-[140px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
                 {filterOptions.entry_timing.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.entry_timing.includes(option)}
                     onCheckedChange={() => toggleFilter("entry_timing", option)}
-                    className="text-neutral-300 text-xs rounded-sm px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
+                    className="text-neutral-300 text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -323,7 +346,7 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
               <div
                 key={trade.id}
                 className={cn(
-                  "border transition-all rounded-sm overflow-hidden",
+                  "border transition-all rounded-md overflow-hidden",
                   selectedTrade?.id === trade.id
                     ? "border-white bg-neutral-900"
                     : "border-neutral-800 hover:border-neutral-700 bg-neutral-950"
@@ -369,7 +392,7 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                   </div>
                 </div>
 
-                {/* Expanded details - like TradingJournal */}
+                {/* Expanded details - like TradingJournal with isolated charts */}
                 {selectedTrade?.id === trade.id && (
                   <div className="border-t border-neutral-800 p-4 space-y-4">
                     {(() => {
@@ -377,9 +400,9 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                       return (
                         <>
                           {/* Trade header */}
-                          <div className="flex items-center gap-4 p-4 border border-neutral-800 bg-neutral-950 rounded-sm">
+                          <div className="flex items-center gap-4 p-4 border border-neutral-800 bg-neutral-950 rounded-md">
                             <div className={cn(
-                              "w-12 h-12 flex items-center justify-center border rounded-sm",
+                              "w-12 h-12 flex items-center justify-center border rounded-md",
                               trade.direction === "Long" 
                                 ? "border-emerald-500/50 bg-emerald-500/10" 
                                 : "border-red-500/50 bg-red-500/10"
@@ -405,28 +428,28 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
 
                           {/* Stats row */}
                           <div className="grid grid-cols-4 gap-3">
-                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-sm">
+                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
                               <div className="flex items-center gap-2 mb-2">
                                 <Clock className="w-4 h-4 text-neutral-500" />
                                 <span className="text-[10px] text-neutral-600 font-mono uppercase">Entrée</span>
                               </div>
                               <p className="text-base font-bold text-white">{trade.entry_time || "—"}</p>
                             </div>
-                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-sm">
+                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
                               <div className="flex items-center gap-2 mb-2">
                                 <Clock className="w-4 h-4 text-neutral-500" />
                                 <span className="text-[10px] text-neutral-600 font-mono uppercase">Sortie</span>
                               </div>
                               <p className="text-base font-bold text-white">{trade.exit_time || "—"}</p>
                             </div>
-                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-sm">
+                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
                               <div className="flex items-center gap-2 mb-2">
                                 <Target className="w-4 h-4 text-neutral-500" />
                                 <span className="text-[10px] text-neutral-600 font-mono uppercase">Durée</span>
                               </div>
                               <p className="text-base font-bold text-white">{trade.trade_duration || "—"}</p>
                             </div>
-                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-sm">
+                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
                               <div className="flex items-center gap-2 mb-2">
                                 <Calendar className="w-4 h-4 text-neutral-500" />
                                 <span className="text-[10px] text-neutral-600 font-mono uppercase">News</span>
@@ -439,73 +462,138 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
 
                           {/* Additional info */}
                           <div className="grid grid-cols-3 gap-3">
-                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-sm">
+                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
                               <span className="text-[10px] text-neutral-600 font-mono uppercase">Structure</span>
                               <p className="text-sm font-medium text-white mt-1">{trade.direction_structure || "—"}</p>
                             </div>
-                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-sm">
+                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
                               <span className="text-[10px] text-neutral-600 font-mono uppercase">Entry Timing</span>
                               <p className="text-sm font-medium text-white mt-1">{trade.entry_timing || "—"}</p>
                             </div>
-                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-sm">
+                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
                               <span className="text-[10px] text-neutral-600 font-mono uppercase">Stop Loss</span>
                               <p className="text-sm font-medium text-white mt-1">{trade.stop_loss_size || "—"}</p>
                             </div>
                           </div>
 
-                          {/* Cumulative RR chart */}
-                          <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-sm">
-                            <div className="flex items-center justify-between mb-4">
-                              <h4 className="text-xs font-mono uppercase tracking-wider text-neutral-500">
-                                Progression RR (10 derniers trades)
-                              </h4>
-                              <span className="text-base font-bold text-emerald-400">
-                                Cumul: +{context.cumulativeRR.toFixed(2)} RR
-                              </span>
+                          {/* RR charts - BAR + ISOLATED CUMUL (like TradingJournal) */}
+                          <div className="grid grid-cols-2 gap-4">
+                            {/* Bar chart - individual RR per trade */}
+                            <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+                              <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-xs font-mono uppercase tracking-wider text-neutral-500">
+                                  RR par Trade (10 derniers)
+                                </h4>
+                              </div>
+                              <div className="h-36">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <BarChart data={context.chartData}>
+                                    <XAxis 
+                                      dataKey="trade" 
+                                      tick={{ fill: "#525252", fontSize: 10 }}
+                                      axisLine={{ stroke: "#262626" }}
+                                      tickLine={false}
+                                    />
+                                    <YAxis 
+                                      tick={{ fill: "#525252", fontSize: 10 }}
+                                      axisLine={{ stroke: "#262626" }}
+                                      tickLine={false}
+                                    />
+                                    <Tooltip
+                                      contentStyle={{
+                                        backgroundColor: "#171717",
+                                        border: "1px solid #262626",
+                                        borderRadius: 4,
+                                        color: "#ffffff",
+                                      }}
+                                      itemStyle={{ color: "#ffffff" }}
+                                      labelStyle={{ color: "#ffffff" }}
+                                      formatter={(value: number, name: string, props: any) => [
+                                        `${value.toFixed(2)} RR`,
+                                        `Trade #${props.payload.tradeNum}`
+                                      ]}
+                                    />
+                                    <Bar 
+                                      dataKey="individual" 
+                                      radius={[3, 3, 0, 0]}
+                                    >
+                                      {context.chartData.map((entry, index) => (
+                                        <Cell 
+                                          key={`cell-${index}`} 
+                                          fill={entry.current ? "#ffffff" : "#22c55e"}
+                                        />
+                                      ))}
+                                    </Bar>
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </div>
                             </div>
-                            <div className="h-32">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={context.chartData}>
-                                  <defs>
-                                    <linearGradient id="colorCumRROracle" x1="0" y1="0" x2="0" y2="1">
-                                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                                    </linearGradient>
-                                  </defs>
-                                  <XAxis 
-                                    dataKey="trade" 
-                                    tick={{ fill: "#525252", fontSize: 10 }}
-                                    axisLine={{ stroke: "#262626" }}
-                                    tickLine={false}
-                                  />
-                                  <YAxis 
-                                    tick={{ fill: "#525252", fontSize: 10 }}
-                                    axisLine={{ stroke: "#262626" }}
-                                    tickLine={false}
-                                  />
-                                  <Tooltip
-                                    contentStyle={{
-                                      backgroundColor: "#171717",
-                                      border: "1px solid #262626",
-                                      borderRadius: 2,
-                                    }}
-                                    labelStyle={{ color: "#a3a3a3" }}
-                                    formatter={(value: number) => [`${value.toFixed(2)} RR`, "Cumul"]}
-                                  />
-                                  <Area 
-                                    type="monotone" 
-                                    dataKey="rr" 
-                                    stroke="#22c55e" 
-                                    fillOpacity={1}
-                                    fill="url(#colorCumRROracle)"
-                                  />
-                                </AreaChart>
-                              </ResponsiveContainer>
+
+                            {/* Isolated cumulative RR chart */}
+                            <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+                              <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-xs font-mono uppercase tracking-wider text-neutral-500">
+                                  Cumul Isolé (10 derniers)
+                                </h4>
+                                <span className="text-base font-bold text-emerald-400">
+                                  +{context.isolatedTotal.toFixed(2)} RR
+                                </span>
+                              </div>
+                              <div className="h-36">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <AreaChart data={context.chartData}>
+                                    <defs>
+                                      <linearGradient id="colorIsolatedRR" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                                      </linearGradient>
+                                    </defs>
+                                    <XAxis 
+                                      dataKey="trade" 
+                                      tick={{ fill: "#525252", fontSize: 10 }}
+                                      axisLine={{ stroke: "#262626" }}
+                                      tickLine={false}
+                                    />
+                                    <YAxis 
+                                      tick={{ fill: "#525252", fontSize: 10 }}
+                                      axisLine={{ stroke: "#262626" }}
+                                      tickLine={false}
+                                    />
+                                    <Tooltip
+                                      contentStyle={{
+                                        backgroundColor: "#171717",
+                                        border: "1px solid #262626",
+                                        borderRadius: 4,
+                                        color: "#ffffff",
+                                      }}
+                                      itemStyle={{ color: "#ffffff" }}
+                                      labelStyle={{ color: "#ffffff" }}
+                                      formatter={(value: number, name: string, props: any) => [
+                                        `${value.toFixed(2)} RR`,
+                                        `Trade #${props.payload.tradeNum}`
+                                      ]}
+                                    />
+                                    <Area 
+                                      type="monotone" 
+                                      dataKey="rr" 
+                                      stroke="#22c55e" 
+                                      fillOpacity={1}
+                                      fill="url(#colorIsolatedRR)"
+                                    />
+                                  </AreaChart>
+                                </ResponsiveContainer>
+                              </div>
                             </div>
                           </div>
 
+                          {/* Total cumulative RR note */}
+                          <div className="flex items-center justify-between p-3 border border-neutral-800 bg-neutral-950 rounded-md">
+                            <span className="text-xs text-neutral-500 font-mono uppercase">Cumul Total (depuis Trade #1)</span>
+                            <span className="text-base font-bold text-emerald-400">+{context.cumulativeRR.toFixed(2)} RR</span>
+                          </div>
+
                           {/* Screenshot placeholder */}
-                          <div className="border border-dashed border-neutral-700 p-6 bg-neutral-950/50 rounded-sm flex flex-col items-center justify-center">
+                          <div className="border border-dashed border-neutral-700 p-6 bg-neutral-950/50 rounded-md flex flex-col items-center justify-center">
                             <Image className="w-8 h-8 text-neutral-600 mb-2" />
                             <p className="text-sm text-neutral-500">Screenshot à venir</p>
                             <p className="text-[10px] text-neutral-600 mt-1">Emplacement réservé pour les captures</p>
