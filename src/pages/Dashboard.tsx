@@ -1,27 +1,43 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { SetupCard } from "@/components/SetupCard";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { OracleDatabase } from "@/components/dashboard/OracleDatabase";
+import { TradingJournal } from "@/components/dashboard/TradingJournal";
+import { WinRateChart } from "@/components/dashboard/WinRateChart";
+import { StreaksChart } from "@/components/dashboard/StreaksChart";
+import { RRDistributionChart } from "@/components/dashboard/RRDistributionChart";
+import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
 
-const setups = [
-  {
-    title: "Oracle",
-    number: "01",
-    description: "Base de données NAS100 avec 314 trades analysés et documentés.",
-    href: "/oracle-m",
-    stats: {
-      trades: 314,
-      rr: 2300,
-      winRate: 100,
-    },
-  },
-];
+interface Trade {
+  id: string;
+  trade_number: number;
+  trade_date: string;
+  day_of_week: string;
+  direction: string;
+  direction_structure: string;
+  entry_time: string;
+  exit_time: string;
+  trade_duration: string;
+  rr: number;
+  stop_loss_size: string;
+  setup_type: string;
+  entry_timing: string;
+  entry_model: string;
+  target_timing: string;
+  speculation_hl_valid: boolean;
+  target_hl_valid: boolean;
+  news_day: boolean;
+  news_label: string;
+}
 
 const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [activeTab, setActiveTab] = useState("oracle");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,6 +64,23 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  useEffect(() => {
+    const fetchTrades = async () => {
+      const { data, error } = await supabase
+        .from("trades")
+        .select("*")
+        .order("trade_number", { ascending: true });
+
+      if (data) {
+        setTrades(data as Trade[]);
+      }
+    };
+
+    if (user) {
+      fetchTrades();
+    }
+  }, [user]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
@@ -61,21 +94,41 @@ const Dashboard = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-black relative overflow-hidden">
-      {/* Grid pattern overlay */}
-      <div className="absolute inset-0 grid-pattern" />
+  const renderContent = () => {
+    switch (activeTab) {
+      case "oracle":
+        return <OracleDatabase trades={trades} />;
+      case "journal":
+        return <TradingJournal trades={trades} />;
+      case "winrate":
+        return <WinRateChart trades={trades} />;
+      case "streaks":
+        return <StreaksChart trades={trades} />;
+      case "distribution":
+        return <RRDistributionChart trades={trades} />;
+      case "timing":
+        return <TimingAnalysis trades={trades} />;
+      default:
+        return <OracleDatabase trades={trades} />;
+    }
+  };
 
-      <div className="relative z-10 min-h-screen flex flex-col">
-        {/* Minimal header */}
-        <header className="border-b border-neutral-800">
-          <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+  return (
+    <div className="min-h-screen bg-black flex">
+      {/* Sidebar */}
+      <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-h-screen">
+        {/* Header */}
+        <header className="border-b border-neutral-800 bg-neutral-950">
+          <div className="px-6 py-4 flex items-center justify-between">
             <span className="text-xs font-mono uppercase tracking-widest text-neutral-500">
               {user?.email}
             </span>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleLogout}
               className="text-neutral-500 hover:text-white hover:bg-transparent"
             >
@@ -84,50 +137,12 @@ const Dashboard = () => {
           </div>
         </header>
 
-        {/* Main content */}
-        <main className="flex-1 container mx-auto px-6 py-24">
-          {/* Title section */}
-          <div className="text-center mb-16">
-            <p className="text-xs font-mono uppercase tracking-[0.4em] text-neutral-500 mb-6">
-              Database
-            </p>
-            <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white">
-              Hub central
-            </h1>
-          </div>
-
-          {/* Divider */}
-          <div className="w-full h-px bg-neutral-800 mb-16" />
-
-          {/* Cards Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {setups.map((setup) => (
-              <SetupCard key={setup.number} {...setup} />
-            ))}
-
-            {/* Placeholder cards */}
-            <div className="border border-neutral-800 border-dashed p-8 flex flex-col items-center justify-center min-h-[220px]">
-              <span className="text-5xl font-black text-neutral-800 mb-4">02</span>
-              <p className="text-xs text-neutral-600 text-center font-mono uppercase tracking-wider">
-                À venir
-              </p>
-            </div>
-
-            <div className="border border-neutral-800 border-dashed p-8 flex flex-col items-center justify-center min-h-[220px]">
-              <span className="text-5xl font-black text-neutral-800 mb-4">03</span>
-              <p className="text-xs text-neutral-600 text-center font-mono uppercase tracking-wider">
-                À venir
-              </p>
-            </div>
+        {/* Content area */}
+        <main className="flex-1 overflow-hidden bg-black">
+          <div className="h-full grid-pattern">
+            {renderContent()}
           </div>
         </main>
-
-        {/* Footer */}
-        <footer className="border-t border-neutral-800 py-8">
-          <p className="text-center text-xs text-neutral-600 font-mono uppercase tracking-[0.3em]">
-            Oracle © 2026 — Accès confidentiel
-          </p>
-        </footer>
       </div>
     </div>
   );
