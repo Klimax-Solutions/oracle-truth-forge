@@ -64,6 +64,9 @@ interface UserExecution {
   rr: number | null;
   result: "Win" | "Loss" | "BE" | null;
   setup_type: string | null;
+  entry_model: string | null;
+  direction_structure: string | null;
+  entry_timing: string | null;
   notes: string | null;
 }
 
@@ -102,8 +105,20 @@ interface FormData {
   rr: string;
   result: "Win" | "Loss" | "BE" | "";
   setup_type: string;
+  entry_model: string;
+  direction_structure: string;
+  entry_timing: string;
   notes: string;
 }
+
+// Oracle filter options
+const SETUP_TYPES = ["A", "B", "C"];
+const ENTRY_MODELS = ["BOS", "MSS", "OB", "FVG", "EQH/L", "Liquidity Sweep", "Breaker", "Mitigation"];
+const DIRECTION_STRUCTURES = ["Continuation", "Retracement"];
+const ENTRY_TIMINGS = [
+  "7h-8h", "8h-9h", "9h-10h", "10h-11h", "11h-12h", 
+  "12h-13h", "13h-14h", "14h-15h", "15h-16h", "16h-17h"
+];
 
 interface UserDataEntryProps {
   tradeComparisons?: TradeComparison[];
@@ -123,6 +138,9 @@ const initialFormData: FormData = {
   rr: "",
   result: "",
   setup_type: "",
+  entry_model: "",
+  direction_structure: "",
+  entry_timing: "",
   notes: "",
 };
 
@@ -189,6 +207,9 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       rr: execution.rr?.toString() || "",
       result: execution.result || "",
       setup_type: execution.setup_type || "",
+      entry_model: execution.entry_model || "",
+      direction_structure: execution.direction_structure || "",
+      entry_timing: execution.entry_timing || "",
       notes: execution.notes || "",
     });
     setEditingId(execution.id);
@@ -216,6 +237,9 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       rr: formData.rr ? parseFloat(formData.rr) : null,
       result: formData.result || null,
       setup_type: formData.setup_type || null,
+      entry_model: formData.entry_model || null,
+      direction_structure: formData.direction_structure || null,
+      entry_timing: formData.entry_timing || null,
       notes: formData.notes || null,
     };
 
@@ -440,6 +464,90 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   </Select>
                 </div>
 
+                {/* Oracle Filter Fields */}
+                <div className="space-y-2">
+                  <Label htmlFor="setup_type">Setup Type</Label>
+                  <Select
+                    value={formData.setup_type}
+                    onValueChange={(v) => setFormData({ ...formData, setup_type: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SETUP_TYPES.map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="direction_structure">Structure</Label>
+                  <Select
+                    value={formData.direction_structure}
+                    onValueChange={(v) => setFormData({ ...formData, direction_structure: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DIRECTION_STRUCTURES.map(struct => (
+                        <SelectItem key={struct} value={struct}>{struct}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="entry_model">Entry Model</Label>
+                  <Select
+                    value={formData.entry_model}
+                    onValueChange={(v) => setFormData({ ...formData, entry_model: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ENTRY_MODELS.map(model => (
+                        <SelectItem key={model} value={model}>{model}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="entry_timing">Timing</Label>
+                  <Select
+                    value={formData.entry_timing}
+                    onValueChange={(v) => setFormData({ ...formData, entry_timing: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ENTRY_TIMINGS.map(timing => (
+                        <SelectItem key={timing} value={timing}>{timing}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="result">Résultat</Label>
+                  <Select
+                    value={formData.result}
+                    onValueChange={(v) => setFormData({ ...formData, result: v as "Win" | "Loss" | "BE" | "" })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Win">Win</SelectItem>
+                      <SelectItem value="Loss">Loss</SelectItem>
+                      <SelectItem value="BE">Break Even</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Time fields */}
                 <div className="space-y-2">
                   <Label htmlFor="entry_time">Heure Entrée</Label>
                   <Input
@@ -459,22 +567,17 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="result">Résultat</Label>
-                  <Select
-                    value={formData.result}
-                    onValueChange={(v) => setFormData({ ...formData, result: v as "Win" | "Loss" | "BE" | "" })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Win">Win</SelectItem>
-                      <SelectItem value="Loss">Loss</SelectItem>
-                      <SelectItem value="BE">Break Even</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="rr">RR</Label>
+                  <Input
+                    id="rr"
+                    type="number"
+                    step="0.1"
+                    value={formData.rr}
+                    onChange={(e) => setFormData({ ...formData, rr: e.target.value })}
+                  />
                 </div>
 
+                {/* Price fields */}
                 <div className="space-y-2">
                   <Label htmlFor="entry_price">Prix Entrée</Label>
                   <Input
@@ -496,17 +599,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="rr">RR</Label>
-                  <Input
-                    id="rr"
-                    type="number"
-                    step="0.1"
-                    value={formData.rr}
-                    onChange={(e) => setFormData({ ...formData, rr: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="stop_loss">Stop Loss</Label>
                   <Input
                     id="stop_loss"
@@ -526,24 +618,15 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     onChange={(e) => setFormData({ ...formData, take_profit: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="setup_type">Type de Setup</Label>
-                  <Input
-                    id="setup_type"
-                    value={formData.setup_type}
-                    onChange={(e) => setFormData({ ...formData, setup_type: e.target.value })}
-                    placeholder="ex: Oracle Standard"
-                  />
-                </div>
 
-                <div className="col-span-3 space-y-2">
+                <div className="col-span-2 space-y-2">
                   <Label htmlFor="notes">Notes</Label>
                   <Textarea
                     id="notes"
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     placeholder="Observations, contexte du trade..."
-                    rows={3}
+                    rows={2}
                   />
                 </div>
               </div>

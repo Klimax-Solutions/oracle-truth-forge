@@ -55,22 +55,31 @@ interface UserCycle {
   admin_feedback: string | null;
 }
 
+interface UserExecution {
+  id: string;
+  trade_number: number;
+  rr: number | null;
+}
+
 interface CycleWithProgress extends Cycle {
   userCycle: UserCycle | null;
   currentTrades: Trade[];
+  userExecutions: UserExecution[];
   currentRR: number;
+  userRR: number;
   progress: number;
 }
 
 export const OracleExecution = ({ trades }: OracleExecutionProps) => {
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [userCycles, setUserCycles] = useState<UserCycle[]>([]);
+  const [userExecutions, setUserExecutions] = useState<UserExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedCycle, setExpandedCycle] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
-  // Fetch cycles and user cycles
+  // Fetch cycles, user cycles, and user executions
   useEffect(() => {
     const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -99,59 +108,104 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
         setUserCycles(userCyclesData as UserCycle[]);
       }
 
+      // Fetch user executions for progress tracking
+      const { data: userExecsData } = await supabase
+        .from("user_executions")
+        .select("id, trade_number, rr")
+        .eq("user_id", user.id)
+        .order("trade_number", { ascending: true });
+
+      if (userExecsData) {
+        setUserExecutions(userExecsData as UserExecution[]);
+      }
+
       setLoading(false);
     };
 
     fetchData();
+
+    // Subscribe to user_executions changes for real-time progress updates
+    const channel = supabase
+      .channel('user_executions_progress')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_executions' }, async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data } = await supabase
+          .from("user_executions")
+          .select("id, trade_number, rr")
+          .eq("user_id", user.id)
+          .order("trade_number", { ascending: true });
+
+        if (data) {
+          setUserExecutions(data as UserExecution[]);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  // Combine cycles with user progress
+  // Combine cycles with user progress (using user_executions for progress)
   const cyclesWithProgress: CycleWithProgress[] = useMemo(() => {
     return cycles.map(cycle => {
       const userCycle = userCycles.find(uc => uc.cycle_id === cycle.id) || null;
+      // Oracle trades (for reference)
       const currentTrades = trades.filter(
         t => t.trade_number >= cycle.trade_start && t.trade_number <= cycle.trade_end
       );
       const currentRR = currentTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
-      const progress = Math.min((currentTrades.length / cycle.total_trades) * 100, 100);
+      
+      // User executions (for progress tracking)
+      const cycleUserExecutions = userExecutions.filter(
+        e => e.trade_number >= cycle.trade_start && e.trade_number <= cycle.trade_end
+      );
+      const userRR = cycleUserExecutions.reduce((sum, e) => sum + (e.rr || 0), 0);
+      // Progress is based on user executions, not Oracle trades
+      const progress = Math.min((cycleUserExecutions.length / cycle.total_trades) * 100, 100);
 
       return {
         ...cycle,
         userCycle,
         currentTrades,
+        userExecutions: cycleUserExecutions,
         currentRR,
+        userRR,
         progress,
       };
     });
-  }, [cycles, userCycles, trades]);
+  }, [cycles, userCycles, userExecutions, trades]);
 
   // Separate ébauche from main cycles
   const ebauche = cyclesWithProgress.find(c => c.cycle_number === 0);
   const phase1Cycles = cyclesWithProgress.filter(c => c.phase === 1);
   const phase2Cycles = cyclesWithProgress.filter(c => c.phase === 2);
 
-  // Calculate totals
-  const totalTrades = trades.length;
-  const totalRR = trades.reduce((sum, t) => sum + (t.rr || 0), 0);
+  // Calculate totals based on user executions
+  const totalUserTrades = userExecutions.length;
+  const totalUserRR = userExecutions.reduce((sum, e) => sum + (e.rr || 0), 0);
   const completedCycles = cyclesWithProgress.filter(
     c => c.userCycle?.status === 'validated'
   ).length;
-  const averageRR = totalTrades > 0 ? totalRR / totalTrades : 0;
+  const averageUserRR = totalUserTrades > 0 ? totalUserRR / totalUserTrades : 0;
 
   // Get current active cycle
   const currentCycle = cyclesWithProgress.find(
     c => c.userCycle?.status === 'in_progress' || c.userCycle?.status === 'rejected'
   );
 
-  // Request verification
+  // Request verification - now based on user executions count
   const handleRequestVerification = async (cycleData: CycleWithProgress) => {
     if (!cycleData.userCycle) return;
     
-    const isComplete = cycleData.currentTrades.length >= cycleData.total_trades;
+    // Check if user has entered enough trades (based on user_executions)
+    const isComplete = cycleData.userExecutions.length >= cycleData.total_trades;
     if (!isComplete) {
       toast({
         title: "Cycle incomplet",
-        description: `Vous devez compléter les ${cycleData.total_trades} trades avant de demander la vérification.`,
+        description: `Vous devez saisir ${cycleData.total_trades} trades dans "Saisie des Trades" avant de demander la vérification. (${cycleData.userExecutions.length}/${cycleData.total_trades})`,
         variant: "destructive",
       });
       return;
@@ -284,12 +338,12 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
                 Progression Totale
               </span>
             </div>
-            <p className="text-3xl font-bold text-foreground">{totalTrades}</p>
-            <p className="text-sm text-muted-foreground">/ 314 trades</p>
+            <p className="text-3xl font-bold text-foreground">{totalUserTrades}</p>
+            <p className="text-sm text-muted-foreground">/ 314 trades saisis</p>
             <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
               <div 
                 className="h-full bg-emerald-500 rounded-full transition-all"
-                style={{ width: `${(totalTrades / 314) * 100}%` }}
+                style={{ width: `${(totalUserTrades / 314) * 100}%` }}
               />
             </div>
           </div>
@@ -309,17 +363,17 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="w-4 h-4 text-muted-foreground" />
               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
-                RR Cumulé
+                Votre RR Cumulé
               </span>
             </div>
             <p className={cn(
               "text-3xl font-bold",
-              totalRR >= 0 ? "text-emerald-400" : "text-red-400"
+              totalUserRR >= 0 ? "text-emerald-400" : "text-red-400"
             )}>
-              {totalRR >= 0 ? "+" : ""}{totalRR.toFixed(1)}
+              {totalUserRR >= 0 ? "+" : ""}{totalUserRR.toFixed(1)}
             </p>
             <p className="text-sm text-muted-foreground">
-              ≈ {totalRR >= 0 ? "+" : ""}{(totalRR * 1000).toLocaleString("fr-FR")} €
+              ≈ {totalUserRR >= 0 ? "+" : ""}{(totalUserRR * 1000).toLocaleString("fr-FR")} €
             </p>
           </div>
 
@@ -331,7 +385,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
               </span>
             </div>
             <p className="text-3xl font-bold text-foreground">
-              {averageRR.toFixed(2)}
+              {averageUserRR.toFixed(2)}
             </p>
             <p className="text-sm text-muted-foreground">par trade</p>
           </div>
@@ -374,15 +428,15 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="text-right">
+                <div className="text-right">
                     <p className="text-sm font-mono text-foreground">
-                      {ebauche.currentTrades.length} / {ebauche.total_trades}
+                      {ebauche.userExecutions.length} / {ebauche.total_trades}
                     </p>
                     <p className={cn(
                       "text-xs font-mono",
-                      ebauche.currentRR >= 0 ? "text-emerald-400" : "text-red-400"
+                      ebauche.userRR >= 0 ? "text-emerald-400" : "text-red-400"
                     )}>
-                      {ebauche.currentRR >= 0 ? "+" : ""}{ebauche.currentRR.toFixed(1)} RR
+                      {ebauche.userRR >= 0 ? "+" : ""}{ebauche.userRR.toFixed(1)} RR
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -435,7 +489,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
                           e.stopPropagation();
                           handleRequestVerification(ebauche);
                         }}
-                        disabled={ebauche.currentTrades.length < ebauche.total_trades || submitting}
+                        disabled={ebauche.userExecutions.length < ebauche.total_trades || submitting}
                       >
                         {submitting ? (
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -527,15 +581,15 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
                 📋 {currentCycle.name} — Trades {currentCycle.trade_start}-{currentCycle.trade_end}
               </h3>
               <span className="text-sm text-muted-foreground">
-                {currentCycle.currentTrades.length} / {currentCycle.total_trades} complétés
+                {currentCycle.userExecutions.length} / {currentCycle.total_trades} saisis
               </span>
             </div>
             
             <div className="grid grid-cols-5 gap-2 max-h-64 overflow-auto">
               {Array.from({ length: currentCycle.total_trades }, (_, i) => {
                 const tradeNumber = currentCycle.trade_start + i;
-                const trade = currentCycle.currentTrades.find(t => t.trade_number === tradeNumber);
-                const isCompleted = !!trade;
+                const userExec = currentCycle.userExecutions.find(e => e.trade_number === tradeNumber);
+                const isCompleted = !!userExec;
                 
                 return (
                   <div
@@ -543,7 +597,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
                     className={cn(
                       "p-2 border rounded text-center text-xs font-mono",
                       isCompleted 
-                        ? trade.rr >= 0 
+                        ? (userExec.rr || 0) >= 0 
                           ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
                           : "bg-red-500/10 border-red-500/30 text-red-400"
                         : "bg-muted/30 border-border/40 text-muted-foreground"
@@ -551,7 +605,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
                   >
                     <div className="font-bold">#{tradeNumber}</div>
                     {isCompleted ? (
-                      <div>{trade.rr >= 0 ? "+" : ""}{trade.rr?.toFixed(1)} RR</div>
+                      <div>{(userExec.rr || 0) >= 0 ? "+" : ""}{userExec.rr?.toFixed(1) || "0"} RR</div>
                     ) : (
                       <div>—</div>
                     )}
@@ -593,7 +647,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
                     <div className="flex items-center gap-2">
                       {getStatusIcon(cycle.userCycle?.status)}
                       <span className="text-xs text-muted-foreground">
-                        {cycle.currentTrades.length}/{cycle.total_trades} trades
+                        {cycle.userExecutions.length}/{cycle.total_trades} saisis
                       </span>
                     </div>
                   </div>
@@ -613,11 +667,11 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
                 </div>
                 <span className={cn(
                   "text-sm font-mono w-20 text-right",
-                  cycle.currentRR > 0 ? "text-emerald-400" 
-                  : cycle.currentRR < 0 ? "text-red-400"
+                  cycle.userRR > 0 ? "text-emerald-400" 
+                  : cycle.userRR < 0 ? "text-red-400"
                   : "text-muted-foreground"
                 )}>
-                  {cycle.currentRR >= 0 ? "+" : ""}{cycle.currentRR.toFixed(1)} RR
+                  {cycle.userRR >= 0 ? "+" : ""}{cycle.userRR.toFixed(1)} RR
                 </span>
               </div>
             ))}
@@ -670,7 +724,7 @@ const CycleCard = ({
       
       <div className="flex items-baseline gap-1 mb-2">
         <span className="text-2xl font-bold text-foreground">
-          {cycle.currentTrades.length}
+          {cycle.userExecutions.length}
         </span>
         <span className="text-sm text-muted-foreground">/ {cycle.total_trades}</span>
       </div>
@@ -701,11 +755,11 @@ const CycleCard = ({
         </span>
         <span className={cn(
           "font-mono",
-          cycle.currentRR > 0 ? "text-emerald-400" 
-          : cycle.currentRR < 0 ? "text-red-400"
+          cycle.userRR > 0 ? "text-emerald-400" 
+          : cycle.userRR < 0 ? "text-red-400"
           : "text-muted-foreground"
         )}>
-          {isLocked ? "— RR" : `${cycle.currentRR >= 0 ? "+" : ""}${cycle.currentRR.toFixed(1)} RR`}
+          {isLocked ? "— RR" : `${cycle.userRR >= 0 ? "+" : ""}${cycle.userRR.toFixed(1)} RR`}
         </span>
       </div>
 
@@ -727,15 +781,15 @@ const CycleCard = ({
                 e.stopPropagation();
                 onRequestVerification();
               }}
-              disabled={cycle.currentTrades.length < cycle.total_trades || submitting}
+              disabled={cycle.userExecutions.length < cycle.total_trades || submitting}
             >
               {submitting ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
                 <Send className="w-4 h-4 mr-2" />
               )}
-              {cycle.currentTrades.length < cycle.total_trades 
-                ? `${cycle.total_trades - cycle.currentTrades.length} trades restants`
+              {cycle.userExecutions.length < cycle.total_trades 
+                ? `${cycle.total_trades - cycle.userExecutions.length} trades restants`
                 : "Demander la vérification"
               }
             </Button>
