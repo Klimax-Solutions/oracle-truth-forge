@@ -18,7 +18,6 @@ interface TimingAnalysisProps {
 const DAYS_ORDER = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 
 export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
-  const [hoveredHour, setHoveredHour] = useState<string | null>(null);
 
   const stats = useMemo(() => {
     // By day of week
@@ -220,7 +219,7 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
           </div>
         </div>
 
-        {/* Hour cards - same green style */}
+        {/* Hour cards - same green style, no hover background change */}
         <div>
           <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
             Performance par Heure
@@ -230,23 +229,16 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
               <div 
                 key={hour.hourKey}
                 className={cn(
-                  "p-3 border transition-all cursor-pointer rounded-sm",
+                  "p-3 border transition-colors cursor-pointer rounded-sm group",
                   hour.rr > 0 
-                    ? "bg-emerald-500/20 border-emerald-500/30 hover:bg-emerald-500/30" 
+                    ? "bg-emerald-500/20 border-emerald-500/30" 
                     : hour.rr < 0 
-                    ? "bg-red-500/20 border-red-500/30 hover:bg-red-500/30"
-                    : "bg-neutral-900 border-neutral-800 hover:bg-neutral-800"
+                    ? "bg-red-500/20 border-red-500/30"
+                    : "bg-neutral-900 border-neutral-800"
                 )}
-                onMouseEnter={() => setHoveredHour(hour.hourKey)}
-                onMouseLeave={() => setHoveredHour(null)}
               >
                 <p className="text-xs font-mono uppercase text-neutral-400 mb-1">{hour.hour}</p>
-                <p className={cn(
-                  "text-lg font-bold transition-colors",
-                  hoveredHour === hour.hourKey 
-                    ? "text-white" 
-                    : hour.rr > 0 ? "text-emerald-400" : hour.rr < 0 ? "text-red-400" : "text-white"
-                )}>
+                <p className="text-lg font-bold text-white">
                   {hour.rr > 0 ? "+" : ""}{hour.rr.toFixed(1)}
                 </p>
                 <p className="text-[10px] text-neutral-500">{hour.trades} trades</p>
@@ -255,49 +247,31 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
           </div>
         </div>
 
-        {/* Week performance */}
+        {/* Week performance - cards like days */}
         <div>
           <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
             Performance par Semaine (12 dernières)
           </h3>
-          <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-sm">
-            <div className="h-40">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.weekData}>
-                  <XAxis 
-                    dataKey="label" 
-                    tick={{ fill: "#a3a3a3", fontSize: 9 }}
-                    axisLine={{ stroke: "#404040" }}
-                    tickLine={false}
-                    angle={-45}
-                    textAnchor="end"
-                    height={50}
-                  />
-                  <YAxis 
-                    tick={{ fill: "#737373", fontSize: 10 }}
-                    axisLine={{ stroke: "#404040" }}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#171717",
-                      border: "1px solid #404040",
-                      borderRadius: 2,
-                    }}
-                    labelStyle={{ color: "#e5e5e5" }}
-                    formatter={(value: number) => [`${value.toFixed(2)} RR (${(value * 1000).toLocaleString("fr-FR")} €)`, "Total"]}
-                  />
-                  <Bar dataKey="rr" radius={[2, 2, 0, 0]}>
-                    {stats.weekData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.rr >= 0 ? "#22c55e" : "#ef4444"} 
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          <div className="grid grid-cols-6 gap-2">
+            {stats.weekData.map((week) => (
+              <div 
+                key={week.week}
+                className={cn(
+                  "p-3 border transition-colors rounded-sm",
+                  week.rr > 0 
+                    ? "bg-emerald-500/20 border-emerald-500/30" 
+                    : week.rr < 0 
+                    ? "bg-red-500/20 border-red-500/30"
+                    : "bg-neutral-900 border-neutral-800"
+                )}
+              >
+                <p className="text-[10px] font-mono uppercase text-neutral-400 mb-1">{week.label}</p>
+                <p className="text-base font-bold text-white">
+                  {week.rr > 0 ? "+" : ""}{week.rr.toFixed(1)}
+                </p>
+                <p className="text-[10px] text-neutral-500">{week.trades} trades</p>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -351,45 +325,32 @@ export const TimingAnalysis = ({ trades }: TimingAnalysisProps) => {
             </div>
           </div>
 
-          {/* Quarter performance */}
+          {/* Quarter performance - cards like days */}
           <div>
             <h3 className="text-sm font-mono uppercase tracking-wider text-neutral-500 mb-4">
               Performance par Trimestre
             </h3>
-            <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-sm">
-              <div className="h-40">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats.quarterData}>
-                    <XAxis 
-                      dataKey="label" 
-                      tick={{ fill: "#a3a3a3", fontSize: 10 }}
-                      axisLine={{ stroke: "#404040" }}
-                      tickLine={false}
-                    />
-                    <YAxis 
-                      tick={{ fill: "#737373", fontSize: 10 }}
-                      axisLine={{ stroke: "#404040" }}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#171717",
-                        border: "1px solid #404040",
-                        borderRadius: 2,
-                      }}
-                      formatter={(value: number) => [`${value.toFixed(2)} RR (${(value * 1000).toLocaleString("fr-FR")} €)`, "Total"]}
-                    />
-                    <Bar dataKey="rr" radius={[2, 2, 0, 0]}>
-                      {stats.quarterData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={entry.rr >= 0 ? "#22c55e" : "#ef4444"} 
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            <div className="grid grid-cols-4 gap-2">
+              {stats.quarterData.map((quarter) => (
+                <div 
+                  key={quarter.quarter}
+                  className={cn(
+                    "p-3 border transition-colors rounded-sm",
+                    quarter.rr > 0 
+                      ? "bg-emerald-500/20 border-emerald-500/30" 
+                      : quarter.rr < 0 
+                      ? "bg-red-500/20 border-red-500/30"
+                      : "bg-neutral-900 border-neutral-800"
+                  )}
+                >
+                  <p className="text-xs font-mono uppercase text-neutral-400 mb-1">{quarter.label}</p>
+                  <p className="text-xl font-bold text-white">
+                    {quarter.rr > 0 ? "+" : ""}{quarter.rr.toFixed(1)}
+                  </p>
+                  <p className="text-[10px] text-neutral-500 mt-1">{quarter.trades} trades</p>
+                  <p className="text-[10px] text-emerald-400/80">≈ {quarter.euros >= 0 ? "+" : ""}{quarter.euros.toLocaleString("fr-FR")} €</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>

@@ -7,9 +7,9 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { OracleLanding } from "@/components/dashboard/OracleLanding";
 import { OracleDatabase } from "@/components/dashboard/OracleDatabase";
 import { TradingJournal } from "@/components/dashboard/TradingJournal";
-
 import { RRDistributionChart } from "@/components/dashboard/RRDistributionChart";
 import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
+import { OracleExecution } from "@/components/dashboard/OracleExecution";
 
 interface Trade {
   id: string;
@@ -37,7 +37,7 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [activeTab, setActiveTab] = useState("oracle");
+  const [activeTab, setActiveTab] = useState("execution");
   const [showOracleData, setShowOracleData] = useState(false);
   const navigate = useNavigate();
 
@@ -106,6 +106,8 @@ const Dashboard = () => {
 
   const renderContent = () => {
     switch (activeTab) {
+      case "execution":
+        return <OracleExecution trades={trades} />;
       case "oracle":
         return showOracleData ? (
           <OracleDatabase trades={trades} />
@@ -123,11 +125,7 @@ const Dashboard = () => {
       case "timing":
         return <TimingAnalysis trades={trades} />;
       default:
-        return <OracleLanding 
-          onEnterDatabase={() => setShowOracleData(true)}
-          totalTrades={trades.length}
-          totalRR={totalRR}
-        />;
+        return <OracleExecution trades={trades} />;
     }
   };
 
@@ -157,7 +155,7 @@ const Dashboard = () => {
 
         {/* Content area */}
         <main className="flex-1 overflow-hidden bg-black">
-          <div className="h-full grid-pattern">
+          <div className="h-full">
             {renderContent()}
           </div>
         </main>

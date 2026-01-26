@@ -255,7 +255,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                 </span>
                 <div className="text-right">
                   <span className={cn(
-                    "text-3xl font-bold",
+                    "text-xl font-bold",
                     selectedDayData.totalRR >= 0 ? "text-emerald-400" : "text-red-400"
                   )}>
                     +{selectedDayData.totalRR.toFixed(2)} RR

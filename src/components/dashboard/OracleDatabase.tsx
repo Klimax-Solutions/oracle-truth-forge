@@ -146,52 +146,54 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
       <div className="p-4 border-b border-neutral-800 bg-neutral-950">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-4">
-              <span className="text-xl font-bold text-white">{totalTrades}</span>
-              <span className="text-xs text-neutral-500 font-mono uppercase">trades</span>
-            </div>
-            <div className="w-px h-6 bg-neutral-800" />
-            <div className="flex items-center gap-4">
-              <span className="text-xl font-bold text-emerald-400">+{totalRR.toFixed(1)}</span>
-              <span className="text-xs text-neutral-500 font-mono uppercase">RR</span>
-            </div>
-            <div className="w-px h-6 bg-neutral-800" />
             <div className="flex items-center gap-3">
-              <span className="text-sm text-emerald-400 font-mono">{longTrades}L</span>
-              <span className="text-neutral-600">/</span>
-              <span className="text-sm text-red-400 font-mono">{shortTrades}S</span>
+              <span className="text-base font-bold text-white">{totalTrades}</span>
+              <span className="text-[10px] text-neutral-500 font-mono uppercase">trades</span>
+            </div>
+            <div className="w-px h-5 bg-neutral-800" />
+            <div className="flex items-center gap-3">
+              <span className="text-base font-bold text-emerald-400">+{totalRR.toFixed(1)}</span>
+              <span className="text-[10px] text-neutral-500 font-mono uppercase">RR</span>
+            </div>
+            <div className="w-px h-5 bg-neutral-800" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-emerald-400 font-mono">{longTrades} longues</span>
+              <span className="text-neutral-700">•</span>
+              <span className="text-xs text-red-400 font-mono">{shortTrades} short</span>
             </div>
           </div>
 
-          {/* Filters */}
-          <div className="flex items-center gap-2">
+          {/* Filters - Modern design with rounded corners */}
+          <div className="flex items-center gap-1.5">
             {activeFiltersCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
                 onClick={clearFilters}
-                className="text-xs text-neutral-500 hover:text-white"
+                className="px-2.5 py-1.5 text-[10px] text-neutral-400 hover:text-white bg-neutral-800/50 hover:bg-neutral-700 rounded-md transition-colors flex items-center gap-1"
               >
-                <X className="w-3 h-3 mr-1" />
-                Clear ({activeFiltersCount})
-              </Button>
+                <X className="w-3 h-3" />
+                {activeFiltersCount}
+              </button>
             )}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="text-xs border-neutral-700 bg-neutral-900 hover:bg-neutral-800">
-                  <Filter className="w-3 h-3 mr-2" />
+                <button className={cn(
+                  "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
+                  filters.direction.length > 0
+                    ? "bg-white text-black"
+                    : "bg-neutral-800/50 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                )}>
                   Direction
-                  <ChevronDown className="w-3 h-3 ml-2" />
-                </Button>
+                  <ChevronDown className="w-3 h-3" />
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md">
                 {filterOptions.direction.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.direction.includes(option)}
                     onCheckedChange={() => toggleFilter("direction", option)}
-                    className="text-neutral-300"
+                    className="text-neutral-300 text-xs"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -201,19 +203,23 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="text-xs border-neutral-700 bg-neutral-900 hover:bg-neutral-800">
-                  <Filter className="w-3 h-3 mr-2" />
+                <button className={cn(
+                  "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
+                  filters.setup_type.length > 0
+                    ? "bg-white text-black"
+                    : "bg-neutral-800/50 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                )}>
                   Setup
-                  <ChevronDown className="w-3 h-3 ml-2" />
-                </Button>
+                  <ChevronDown className="w-3 h-3" />
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md">
                 {filterOptions.setup_type.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.setup_type.includes(option)}
                     onCheckedChange={() => toggleFilter("setup_type", option)}
-                    className="text-neutral-300"
+                    className="text-neutral-300 text-xs"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -223,19 +229,23 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="text-xs border-neutral-700 bg-neutral-900 hover:bg-neutral-800">
-                  <Filter className="w-3 h-3 mr-2" />
+                <button className={cn(
+                  "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
+                  filters.entry_model.length > 0
+                    ? "bg-white text-black"
+                    : "bg-neutral-800/50 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                )}>
                   Entry Model
-                  <ChevronDown className="w-3 h-3 ml-2" />
-                </Button>
+                  <ChevronDown className="w-3 h-3" />
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 max-h-64 overflow-y-auto">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md max-h-64 overflow-y-auto">
                 {filterOptions.entry_model.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.entry_model.includes(option)}
                     onCheckedChange={() => toggleFilter("entry_model", option)}
-                    className="text-neutral-300"
+                    className="text-neutral-300 text-xs"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -245,19 +255,23 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="text-xs border-neutral-700 bg-neutral-900 hover:bg-neutral-800">
-                  <Filter className="w-3 h-3 mr-2" />
+                <button className={cn(
+                  "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
+                  filters.direction_structure.length > 0
+                    ? "bg-white text-black"
+                    : "bg-neutral-800/50 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                )}>
                   Structure
-                  <ChevronDown className="w-3 h-3 ml-2" />
-                </Button>
+                  <ChevronDown className="w-3 h-3" />
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md">
                 {filterOptions.direction_structure.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.direction_structure.includes(option)}
                     onCheckedChange={() => toggleFilter("direction_structure", option)}
-                    className="text-neutral-300"
+                    className="text-neutral-300 text-xs"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -267,19 +281,23 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="text-xs border-neutral-700 bg-neutral-900 hover:bg-neutral-800">
-                  <Filter className="w-3 h-3 mr-2" />
-                  Entry Timing
-                  <ChevronDown className="w-3 h-3 ml-2" />
-                </Button>
+                <button className={cn(
+                  "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
+                  filters.entry_timing.length > 0
+                    ? "bg-white text-black"
+                    : "bg-neutral-800/50 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                )}>
+                  Timing
+                  <ChevronDown className="w-3 h-3" />
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 max-h-64 overflow-y-auto">
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md max-h-64 overflow-y-auto">
                 {filterOptions.entry_timing.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.entry_timing.includes(option)}
                     onCheckedChange={() => toggleFilter("entry_timing", option)}
-                    className="text-neutral-300"
+                    className="text-neutral-300 text-xs"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -346,8 +364,8 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                   </div>
 
                   <div className="text-right">
-                    <p className="text-lg font-bold text-emerald-400">+{trade.rr?.toFixed(2) || "0"}</p>
-                    <p className="text-[10px] text-neutral-600 font-mono uppercase">RR</p>
+                    <p className="text-sm font-bold text-emerald-400">+{trade.rr?.toFixed(2) || "0"}</p>
+                    <p className="text-[9px] text-neutral-600 font-mono uppercase">RR</p>
                   </div>
                 </div>
 
