@@ -231,20 +231,20 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                 <button className={cn(
                   "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
                   filters.setup_type.length > 0
-                    ? "bg-white text-black"
-                    : "bg-neutral-800/50 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}>
                   Setup
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md min-w-[140px] p-1">
+              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[140px] p-1">
                 {filterOptions.setup_type.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.setup_type.includes(option)}
                     onCheckedChange={() => toggleFilter("setup_type", option)}
-                    className="text-neutral-300 text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
+                    className="text-foreground text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -257,20 +257,20 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                 <button className={cn(
                   "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
                   filters.entry_model.length > 0
-                    ? "bg-white text-black"
-                    : "bg-neutral-800/50 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}>
                   Entry Model
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md min-w-[160px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
+              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[160px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
                 {filterOptions.entry_model.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.entry_model.includes(option)}
                     onCheckedChange={() => toggleFilter("entry_model", option)}
-                    className="text-neutral-300 text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
+                    className="text-foreground text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -283,20 +283,20 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                 <button className={cn(
                   "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
                   filters.direction_structure.length > 0
-                    ? "bg-white text-black"
-                    : "bg-neutral-800/50 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}>
                   Structure
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md min-w-[140px] p-1">
+              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[140px] p-1">
                 {filterOptions.direction_structure.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.direction_structure.includes(option)}
                     onCheckedChange={() => toggleFilter("direction_structure", option)}
-                    className="text-neutral-300 text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
+                    className="text-foreground text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -309,20 +309,20 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                 <button className={cn(
                   "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
                   filters.entry_timing.length > 0
-                    ? "bg-white text-black"
-                    : "bg-neutral-800/50 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}>
                   Timing
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-700 z-50 rounded-md min-w-[140px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
+              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[140px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
                 {filterOptions.entry_timing.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.entry_timing.includes(option)}
                     onCheckedChange={() => toggleFilter("entry_timing", option)}
-                    className="text-neutral-300 text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-neutral-800 focus:text-white data-[state=checked]:bg-neutral-800 data-[state=checked]:text-white"
+                    className="text-foreground text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -337,8 +337,8 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
       <div className="flex-1 overflow-auto p-4">
         {filteredTrades.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-neutral-500 text-lg mb-4">Aucun trade correspondant aux filtres</p>
-            <Button variant="ghost" onClick={clearFilters} className="text-neutral-400">
+            <p className="text-muted-foreground text-lg mb-4">Aucun trade correspondant aux filtres</p>
+            <Button variant="ghost" onClick={clearFilters} className="text-muted-foreground">
               Réinitialiser les filtres
             </Button>
           </div>
@@ -350,8 +350,8 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                 className={cn(
                   "border transition-all rounded-md overflow-hidden",
                   selectedTrade?.id === trade.id
-                    ? "border-white bg-neutral-900"
-                    : "border-neutral-800 hover:border-neutral-700 bg-neutral-950"
+                    ? "border-foreground bg-muted"
+                    : "border-border hover:border-muted-foreground/50 bg-card"
                 )}
               >
                 {/* Main row - clickable */}
@@ -360,14 +360,14 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                   className="px-5 py-3 flex items-center justify-between cursor-pointer"
                 >
                   <div className="flex items-center gap-5">
-                    <span className="text-lg font-bold text-neutral-600 w-10">
+                    <span className="text-lg font-bold text-muted-foreground/50 w-10">
                       {String(trade.trade_number).padStart(3, "0")}
                     </span>
 
                     <div
                       className={cn(
                         "flex items-center gap-2 w-16",
-                        trade.direction === "Long" ? "text-emerald-400" : "text-red-400"
+                        trade.direction === "Long" ? "text-emerald-500" : "text-red-500"
                       )}
                     >
                       {trade.direction === "Long" ? (
@@ -379,30 +379,30 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                     </div>
 
                     <div className="hidden md:block">
-                      <p className="text-sm text-white">{formatDate(trade.trade_date)}</p>
-                      <p className="text-[10px] text-neutral-600">{trade.day_of_week}</p>
+                      <p className="text-sm text-foreground">{formatDate(trade.trade_date)}</p>
+                      <p className="text-[10px] text-muted-foreground">{trade.day_of_week}</p>
                     </div>
 
                     <div className="hidden lg:block">
-                      <p className="text-[10px] text-neutral-500 font-mono">{trade.setup_type || "—"}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono">{trade.setup_type || "—"}</p>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <p className="text-sm font-bold text-emerald-400">+{trade.rr?.toFixed(2) || "0"}</p>
-                    <p className="text-[9px] text-neutral-600 font-mono uppercase">RR</p>
+                    <p className="text-sm font-bold text-emerald-500">+{trade.rr?.toFixed(2) || "0"}</p>
+                    <p className="text-[9px] text-muted-foreground font-mono uppercase">RR</p>
                   </div>
                 </div>
 
                 {/* Expanded details - like TradingJournal with isolated charts */}
                 {selectedTrade?.id === trade.id && (
-                  <div className="border-t border-neutral-800 p-4 space-y-4">
+                  <div className="border-t border-border/34 p-4 space-y-4">
                     {(() => {
                       const context = getTradeContext(trade);
                       return (
                         <>
                           {/* Trade header */}
-                          <div className="flex items-center gap-4 p-4 border border-neutral-800 bg-neutral-950 rounded-md">
+                          <div className="flex items-center gap-4 p-4 border border-border bg-card rounded-md">
                             <div className={cn(
                               "w-12 h-12 flex items-center justify-center border rounded-md",
                               trade.direction === "Long" 
@@ -410,53 +410,53 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                                 : "border-red-500/50 bg-red-500/10"
                             )}>
                               {trade.direction === "Long" 
-                                ? <TrendingUp className="w-6 h-6 text-emerald-400" />
-                                : <TrendingDown className="w-6 h-6 text-red-400" />
+                                ? <TrendingUp className="w-6 h-6 text-emerald-500" />
+                                : <TrendingDown className="w-6 h-6 text-red-500" />
                               }
                             </div>
                             <div className="flex-1">
-                              <p className="text-lg font-bold text-white">
+                              <p className="text-lg font-bold text-foreground">
                                 Trade #{trade.trade_number}
                               </p>
-                              <p className="text-sm text-neutral-500">
+                              <p className="text-sm text-muted-foreground">
                                 {trade.setup_type || "Setup standard"} • {trade.entry_model || "Model standard"}
                               </p>
                             </div>
                             <div className="text-right">
-                              <p className="text-xl font-bold text-emerald-400">+{trade.rr?.toFixed(2)} RR</p>
-                              <p className="text-sm text-neutral-500">≈ +{((trade.rr || 0) * 1000).toLocaleString("fr-FR")} €</p>
+                              <p className="text-xl font-bold text-emerald-500">+{trade.rr?.toFixed(2)} RR</p>
+                              <p className="text-sm text-muted-foreground">≈ +{((trade.rr || 0) * 1000).toLocaleString("fr-FR")} €</p>
                             </div>
                           </div>
 
                           {/* Stats row */}
                           <div className="grid grid-cols-4 gap-3">
-                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
+                            <div className="border border-border bg-card p-3 rounded-md">
                               <div className="flex items-center gap-2 mb-2">
-                                <Clock className="w-4 h-4 text-neutral-500" />
-                                <span className="text-[10px] text-neutral-600 font-mono uppercase">Entrée</span>
+                                <Clock className="w-4 h-4 text-muted-foreground" />
+                                <span className="text-[10px] text-muted-foreground font-mono uppercase">Entrée</span>
                               </div>
-                              <p className="text-base font-bold text-white">{trade.entry_time || "—"}</p>
+                              <p className="text-base font-bold text-foreground">{trade.entry_time || "—"}</p>
                             </div>
-                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
+                            <div className="border border-border bg-card p-3 rounded-md">
                               <div className="flex items-center gap-2 mb-2">
-                                <Clock className="w-4 h-4 text-neutral-500" />
-                                <span className="text-[10px] text-neutral-600 font-mono uppercase">Sortie</span>
+                                <Clock className="w-4 h-4 text-muted-foreground" />
+                                <span className="text-[10px] text-muted-foreground font-mono uppercase">Sortie</span>
                               </div>
-                              <p className="text-base font-bold text-white">{trade.exit_time || "—"}</p>
+                              <p className="text-base font-bold text-foreground">{trade.exit_time || "—"}</p>
                             </div>
-                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
+                            <div className="border border-border bg-card p-3 rounded-md">
                               <div className="flex items-center gap-2 mb-2">
-                                <Target className="w-4 h-4 text-neutral-500" />
-                                <span className="text-[10px] text-neutral-600 font-mono uppercase">Durée</span>
+                                <Target className="w-4 h-4 text-muted-foreground" />
+                                <span className="text-[10px] text-muted-foreground font-mono uppercase">Durée</span>
                               </div>
-                              <p className="text-base font-bold text-white">{trade.trade_duration || "—"}</p>
+                              <p className="text-base font-bold text-foreground">{trade.trade_duration || "—"}</p>
                             </div>
-                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
+                            <div className="border border-border bg-card p-3 rounded-md">
                               <div className="flex items-center gap-2 mb-2">
-                                <Calendar className="w-4 h-4 text-neutral-500" />
-                                <span className="text-[10px] text-neutral-600 font-mono uppercase">News</span>
+                                <Calendar className="w-4 h-4 text-muted-foreground" />
+                                <span className="text-[10px] text-muted-foreground font-mono uppercase">News</span>
                               </div>
-                              <p className="text-base font-bold text-white">
+                              <p className="text-base font-bold text-foreground">
                                 {trade.news_day ? (trade.news_label || "Oui") : "Non"}
                               </p>
                             </div>
@@ -464,26 +464,26 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
 
                           {/* Additional info */}
                           <div className="grid grid-cols-3 gap-3">
-                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
-                              <span className="text-[10px] text-neutral-600 font-mono uppercase">Structure</span>
-                              <p className="text-sm font-medium text-white mt-1">{trade.direction_structure || "—"}</p>
+                            <div className="border border-border bg-card p-3 rounded-md">
+                              <span className="text-[10px] text-muted-foreground font-mono uppercase">Structure</span>
+                              <p className="text-sm font-medium text-foreground mt-1">{trade.direction_structure || "—"}</p>
                             </div>
-                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
-                              <span className="text-[10px] text-neutral-600 font-mono uppercase">Entry Timing</span>
-                              <p className="text-sm font-medium text-white mt-1">{trade.entry_timing || "—"}</p>
+                            <div className="border border-border bg-card p-3 rounded-md">
+                              <span className="text-[10px] text-muted-foreground font-mono uppercase">Entry Timing</span>
+                              <p className="text-sm font-medium text-foreground mt-1">{trade.entry_timing || "—"}</p>
                             </div>
-                            <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
-                              <span className="text-[10px] text-neutral-600 font-mono uppercase">Stop Loss</span>
-                              <p className="text-sm font-medium text-white mt-1">{trade.stop_loss_size || "—"}</p>
+                            <div className="border border-border bg-card p-3 rounded-md">
+                              <span className="text-[10px] text-muted-foreground font-mono uppercase">Stop Loss</span>
+                              <p className="text-sm font-medium text-foreground mt-1">{trade.stop_loss_size || "—"}</p>
                             </div>
                           </div>
 
                           {/* RR charts - BAR + ISOLATED CUMUL (like TradingJournal) */}
                           <div className="grid grid-cols-2 gap-4">
                             {/* Bar chart - individual RR per trade */}
-                            <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+                            <div className="border border-border p-4 bg-card rounded-md">
                               <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-xs font-mono uppercase tracking-wider text-neutral-500">
+                                <h4 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
                                   RR par Trade (10 derniers)
                                 </h4>
                               </div>
@@ -492,24 +492,24 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                                   <BarChart data={context.chartData}>
                                     <XAxis 
                                       dataKey="trade" 
-                                      tick={{ fill: "#525252", fontSize: 10 }}
-                                      axisLine={{ stroke: "#262626" }}
+                                      tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
+                                      axisLine={{ stroke: "var(--chart-axis-line)" }}
                                       tickLine={false}
                                     />
                                     <YAxis 
-                                      tick={{ fill: "#525252", fontSize: 10 }}
-                                      axisLine={{ stroke: "#262626" }}
+                                      tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
+                                      axisLine={{ stroke: "var(--chart-axis-line)" }}
                                       tickLine={false}
                                     />
                                     <Tooltip
                                       contentStyle={{
-                                        backgroundColor: "#171717",
-                                        border: "1px solid #262626",
+                                        backgroundColor: "var(--chart-tooltip-bg)",
+                                        border: "1px solid var(--chart-tooltip-border)",
                                         borderRadius: 4,
-                                        color: "#ffffff",
+                                        color: "var(--chart-tooltip-text)",
                                       }}
-                                      itemStyle={{ color: "#ffffff" }}
-                                      labelStyle={{ color: "#ffffff" }}
+                                      itemStyle={{ color: "var(--chart-tooltip-text)" }}
+                                      labelStyle={{ color: "var(--chart-tooltip-text)" }}
                                       formatter={(value: number, name: string, props: any) => [
                                         `${value.toFixed(2)} RR`,
                                         `Trade #${props.payload.tradeNum}`
@@ -522,7 +522,7 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                                       {context.chartData.map((entry, index) => (
                                         <Cell 
                                           key={`cell-${index}`} 
-                                          fill={entry.current ? "#ffffff" : "#22c55e"}
+                                          fill={entry.current ? "var(--chart-bar)" : "#22c55e"}
                                         />
                                       ))}
                                     </Bar>
@@ -532,12 +532,12 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                             </div>
 
                             {/* Isolated cumulative RR chart */}
-                            <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+                            <div className="border border-border p-4 bg-card rounded-md">
                               <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-xs font-mono uppercase tracking-wider text-neutral-500">
+                                <h4 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
                                   Cumul Isolé (10 derniers)
                                 </h4>
-                                <span className="text-base font-bold text-emerald-400">
+                                <span className="text-base font-bold text-emerald-500">
                                   +{context.isolatedTotal.toFixed(2)} RR
                                 </span>
                               </div>
@@ -552,24 +552,24 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                                     </defs>
                                     <XAxis 
                                       dataKey="trade" 
-                                      tick={{ fill: "#525252", fontSize: 10 }}
-                                      axisLine={{ stroke: "#262626" }}
+                                      tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
+                                      axisLine={{ stroke: "var(--chart-axis-line)" }}
                                       tickLine={false}
                                     />
                                     <YAxis 
-                                      tick={{ fill: "#525252", fontSize: 10 }}
-                                      axisLine={{ stroke: "#262626" }}
+                                      tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
+                                      axisLine={{ stroke: "var(--chart-axis-line)" }}
                                       tickLine={false}
                                     />
                                     <Tooltip
                                       contentStyle={{
-                                        backgroundColor: "#171717",
-                                        border: "1px solid #262626",
+                                        backgroundColor: "var(--chart-tooltip-bg)",
+                                        border: "1px solid var(--chart-tooltip-border)",
                                         borderRadius: 4,
-                                        color: "#ffffff",
+                                        color: "var(--chart-tooltip-text)",
                                       }}
-                                      itemStyle={{ color: "#ffffff" }}
-                                      labelStyle={{ color: "#ffffff" }}
+                                      itemStyle={{ color: "var(--chart-tooltip-text)" }}
+                                      labelStyle={{ color: "var(--chart-tooltip-text)" }}
                                       formatter={(value: number, name: string, props: any) => [
                                         `${value.toFixed(2)} RR`,
                                         `Trade #${props.payload.tradeNum}`
@@ -589,16 +589,16 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                           </div>
 
                           {/* Total cumulative RR note */}
-                          <div className="flex items-center justify-between p-3 border border-neutral-800 bg-neutral-950 rounded-md">
-                            <span className="text-xs text-neutral-500 font-mono uppercase">Cumul Total (depuis Trade #1)</span>
-                            <span className="text-base font-bold text-emerald-400">+{context.cumulativeRR.toFixed(2)} RR</span>
+                          <div className="flex items-center justify-between p-3 border border-border bg-card rounded-md">
+                            <span className="text-xs text-muted-foreground font-mono uppercase">Cumul Total (depuis Trade #1)</span>
+                            <span className="text-base font-bold text-emerald-500">+{context.cumulativeRR.toFixed(2)} RR</span>
                           </div>
 
                           {/* Screenshot placeholder */}
-                          <div className="border border-dashed border-neutral-700 p-6 bg-neutral-950/50 rounded-md flex flex-col items-center justify-center">
-                            <Image className="w-8 h-8 text-neutral-600 mb-2" />
-                            <p className="text-sm text-neutral-500">Screenshot à venir</p>
-                            <p className="text-[10px] text-neutral-600 mt-1">Emplacement réservé pour les captures</p>
+                          <div className="border border-dashed border-border p-6 bg-muted/50 rounded-md flex flex-col items-center justify-center">
+                            <Image className="w-8 h-8 text-muted-foreground mb-2" />
+                            <p className="text-sm text-muted-foreground">Screenshot à venir</p>
+                            <p className="text-[10px] text-muted-foreground/70 mt-1">Emplacement réservé pour les captures</p>
                           </div>
                         </>
                       );

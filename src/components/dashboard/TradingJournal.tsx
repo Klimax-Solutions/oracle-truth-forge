@@ -151,10 +151,10 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
   return (
     <div className="h-full flex">
       {/* Calendar - Larger */}
-      <div className="w-[560px] border-r border-neutral-800 flex flex-col">
+      <div className="w-[560px] border-r border-border/34 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-neutral-800">
-          <span className="text-base font-mono uppercase tracking-wider text-neutral-400">
+        <div className="flex items-center justify-between p-5 border-b border-border/34">
+          <span className="text-base font-mono uppercase tracking-wider text-muted-foreground">
             Journal de Trading
           </span>
           <div className="flex items-center gap-2">
@@ -162,7 +162,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
               variant="ghost"
               size="sm"
               onClick={goToFirstTrade}
-              className="text-xs text-neutral-500 hover:text-white hover:bg-neutral-800 gap-1"
+              className="text-xs text-muted-foreground hover:text-foreground hover:bg-accent gap-1"
             >
               <SkipBack className="w-3 h-3" />
               Premier trade
@@ -171,7 +171,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
               variant="ghost"
               size="sm"
               onClick={goToLastTrade}
-              className="text-xs text-neutral-500 hover:text-white hover:bg-neutral-800 gap-1"
+              className="text-xs text-muted-foreground hover:text-foreground hover:bg-accent gap-1"
             >
               <SkipForward className="w-3 h-3" />
               Dernier trade
@@ -180,21 +180,21 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
         </div>
 
         {/* Month navigation */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border/34">
           <Button
             variant="ghost"
             size="icon"
             onClick={prevMonth}
-            className="w-9 h-9 text-neutral-500 hover:text-white hover:bg-neutral-800"
+            className="w-9 h-9 text-muted-foreground hover:text-foreground hover:bg-accent"
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
-          <span className="text-base font-medium capitalize">{formatMonthYear(currentDate)}</span>
+          <span className="text-base font-medium capitalize text-foreground">{formatMonthYear(currentDate)}</span>
           <Button
             variant="ghost"
             size="icon"
             onClick={nextMonth}
-            className="w-9 h-9 text-neutral-500 hover:text-white hover:bg-neutral-800"
+            className="w-9 h-9 text-muted-foreground hover:text-foreground hover:bg-accent"
           >
             <ChevronRight className="w-5 h-5" />
           </Button>
@@ -205,7 +205,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
           {/* Day headers */}
           <div className="grid grid-cols-7 mb-2">
             {DAYS.map((day) => (
-              <div key={day} className="py-2 text-center text-xs font-mono uppercase text-neutral-600">
+              <div key={day} className="py-2 text-center text-xs font-mono uppercase text-muted-foreground">
                 {day}
               </div>
             ))}
@@ -237,24 +237,24 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                     "aspect-square border transition-all rounded-md",
                     "flex flex-col items-center justify-center",
                     isSelected
-                      ? "border-white bg-neutral-900"
+                      ? "border-foreground bg-muted"
                       : hasProfit
                       ? "border-transparent bg-emerald-500/20"
                       : hasLoss
                       ? "border-transparent bg-red-500/20"
-                      : "border-neutral-800 hover:border-neutral-600"
+                      : "border-border hover:border-muted-foreground/50"
                   )}
                 >
                   <span className={cn(
                     "text-sm font-medium",
-                    hasTrades ? "text-white" : "text-neutral-600"
+                    hasTrades ? "text-foreground" : "text-muted-foreground"
                   )}>
                     {date.getDate()}
                   </span>
                   {hasTrades && (
                     <span className={cn(
                       "text-[10px] font-mono",
-                      totalRR >= 0 ? "text-emerald-400" : "text-red-400"
+                      totalRR >= 0 ? "text-emerald-500" : "text-red-500"
                     )}>
                       +{totalRR.toFixed(1)}
                     </span>
@@ -265,14 +265,14 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center justify-center gap-6 mt-5 pt-4 border-t border-neutral-800">
+          <div className="flex items-center justify-center gap-6 mt-5 pt-4 border-t border-border/34">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-emerald-500/30 rounded-md" />
-              <span className="text-xs text-neutral-500">Profit</span>
+              <span className="text-xs text-muted-foreground">Profit</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-red-500/30 rounded-md" />
-              <span className="text-xs text-neutral-500">Loss</span>
+              <span className="text-xs text-muted-foreground">Loss</span>
             </div>
           </div>
         </div>
@@ -283,19 +283,19 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
         {selectedDayData && selectedDayData.trades.length > 0 ? (
           <>
             {/* Day header */}
-            <div className="p-5 border-b border-neutral-800 bg-emerald-500/10">
+            <div className="p-5 border-b border-border/34 bg-emerald-500/10">
               <div className="flex items-center justify-between">
-                <span className="text-base font-mono uppercase tracking-wider text-neutral-400">
+                <span className="text-base font-mono uppercase tracking-wider text-muted-foreground">
                   {selectedDate?.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
                 </span>
                 <div className="text-right">
                   <span className={cn(
                     "text-xl font-bold",
-                    selectedDayData.totalRR >= 0 ? "text-emerald-400" : "text-red-400"
+                    selectedDayData.totalRR >= 0 ? "text-emerald-500" : "text-red-500"
                   )}>
                     +{selectedDayData.totalRR.toFixed(2)} RR
                   </span>
-                  <p className="text-sm text-neutral-500">
+                  <p className="text-sm text-muted-foreground">
                     ≈ +{(selectedDayData.totalRR * 1000).toLocaleString("fr-FR")} € sur 100K
                   </p>
                 </div>
@@ -303,7 +303,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
             </div>
 
             {/* Trades list */}
-            <div className="p-4 border-b border-neutral-800 space-y-2">
+            <div className="p-4 border-b border-border/34 space-y-2">
               {selectedDayData.trades.map((trade) => (
                 <button
                   key={trade.id}
@@ -311,25 +311,25 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                   className={cn(
                     "w-full flex items-center justify-between py-3 px-4 border transition-all text-left rounded-md",
                     selectedTrade?.id === trade.id
-                      ? "border-white bg-neutral-900"
-                      : "border-neutral-800 bg-neutral-950 hover:border-neutral-600"
+                      ? "border-foreground bg-muted"
+                      : "border-border bg-card hover:border-muted-foreground/50"
                   )}
                 >
                   <div className="flex items-center gap-4">
-                    <span className="text-neutral-600 font-mono text-sm">#{trade.trade_number}</span>
+                    <span className="text-muted-foreground font-mono text-sm">#{trade.trade_number}</span>
                     <span className={cn(
                       "text-xs font-mono uppercase px-2 py-0.5",
                       trade.direction === "Long" 
-                        ? "text-emerald-400 bg-emerald-500/10" 
-                        : "text-red-400 bg-red-500/10"
+                        ? "text-emerald-500 bg-emerald-500/10" 
+                        : "text-red-500 bg-red-500/10"
                     )}>
                       {trade.direction}
                     </span>
-                    <span className="text-xs text-neutral-500">{trade.entry_time}</span>
+                    <span className="text-xs text-muted-foreground">{trade.entry_time}</span>
                   </div>
                   <span className={cn(
                     "font-mono font-bold",
-                    (trade.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400"
+                    (trade.rr || 0) >= 0 ? "text-emerald-500" : "text-red-500"
                   )}>
                     +{trade.rr?.toFixed(2)} RR
                   </span>
@@ -345,7 +345,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                   return (
                     <>
                       {/* Trade header */}
-                      <div className="flex items-center gap-4 p-4 border border-neutral-800 bg-neutral-950 rounded-md">
+                      <div className="flex items-center gap-4 p-4 border border-border bg-card rounded-md">
                         <div className={cn(
                           "w-12 h-12 flex items-center justify-center border rounded-md",
                           selectedTrade.direction === "Long" 
@@ -353,53 +353,53 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                             : "border-red-500/50 bg-red-500/10"
                         )}>
                           {selectedTrade.direction === "Long" 
-                            ? <TrendingUp className="w-6 h-6 text-emerald-400" />
-                            : <TrendingDown className="w-6 h-6 text-red-400" />
+                            ? <TrendingUp className="w-6 h-6 text-emerald-500" />
+                            : <TrendingDown className="w-6 h-6 text-red-500" />
                           }
                         </div>
                         <div className="flex-1">
-                          <p className="text-xl font-bold text-white">
+                          <p className="text-xl font-bold text-foreground">
                             Trade #{selectedTrade.trade_number}
                           </p>
-                          <p className="text-sm text-neutral-500">
+                          <p className="text-sm text-muted-foreground">
                             {selectedTrade.setup_type || "Setup standard"} • {selectedTrade.entry_model || "Model standard"}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-2xl font-bold text-emerald-400">+{selectedTrade.rr?.toFixed(2)} RR</p>
-                          <p className="text-sm text-neutral-500">≈ +{((selectedTrade.rr || 0) * 1000).toLocaleString("fr-FR")} €</p>
+                          <p className="text-2xl font-bold text-emerald-500">+{selectedTrade.rr?.toFixed(2)} RR</p>
+                          <p className="text-sm text-muted-foreground">≈ +{((selectedTrade.rr || 0) * 1000).toLocaleString("fr-FR")} €</p>
                         </div>
                       </div>
 
                       {/* Stats row */}
                       <div className="grid grid-cols-4 gap-3">
-                        <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
+                        <div className="border border-border p-3 bg-card rounded-md">
                           <div className="flex items-center gap-2 mb-2">
-                            <Clock className="w-4 h-4 text-neutral-500" />
-                            <span className="text-xs text-neutral-600 font-mono uppercase">Entrée</span>
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground font-mono uppercase">Entrée</span>
                           </div>
-                          <p className="text-lg font-bold text-white">{selectedTrade.entry_time || "—"}</p>
+                          <p className="text-lg font-bold text-foreground">{selectedTrade.entry_time || "—"}</p>
                         </div>
-                        <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
+                        <div className="border border-border p-3 bg-card rounded-md">
                           <div className="flex items-center gap-2 mb-2">
-                            <Clock className="w-4 h-4 text-neutral-500" />
-                            <span className="text-xs text-neutral-600 font-mono uppercase">Sortie</span>
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground font-mono uppercase">Sortie</span>
                           </div>
-                          <p className="text-lg font-bold text-white">{selectedTrade.exit_time || "—"}</p>
+                          <p className="text-lg font-bold text-foreground">{selectedTrade.exit_time || "—"}</p>
                         </div>
-                        <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
+                        <div className="border border-border p-3 bg-card rounded-md">
                           <div className="flex items-center gap-2 mb-2">
-                            <Target className="w-4 h-4 text-neutral-500" />
-                            <span className="text-xs text-neutral-600 font-mono uppercase">Durée</span>
+                            <Target className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground font-mono uppercase">Durée</span>
                           </div>
-                          <p className="text-lg font-bold text-white">{selectedTrade.trade_duration || "—"}</p>
+                          <p className="text-lg font-bold text-foreground">{selectedTrade.trade_duration || "—"}</p>
                         </div>
-                        <div className="border border-neutral-800 p-3 bg-neutral-950 rounded-md">
+                        <div className="border border-border p-3 bg-card rounded-md">
                           <div className="flex items-center gap-2 mb-2">
-                            <Calendar className="w-4 h-4 text-neutral-500" />
-                            <span className="text-xs text-neutral-600 font-mono uppercase">News</span>
+                            <Calendar className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground font-mono uppercase">News</span>
                           </div>
-                          <p className="text-lg font-bold text-white">
+                          <p className="text-lg font-bold text-foreground">
                             {selectedTrade.news_day ? (selectedTrade.news_label || "Oui") : "Non"}
                           </p>
                         </div>
@@ -408,9 +408,9 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                       {/* RR charts - improved with bar chart and isolated cumul */}
                       <div className="grid grid-cols-2 gap-4">
                         {/* Bar chart - individual RR per trade */}
-                        <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+                        <div className="border border-border p-4 bg-card rounded-md">
                           <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-sm font-mono uppercase tracking-wider text-neutral-500">
+                            <h4 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
                               RR par Trade (10 derniers)
                             </h4>
                           </div>
@@ -419,22 +419,24 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                               <BarChart data={context.chartData}>
                                 <XAxis 
                                   dataKey="trade" 
-                                  tick={{ fill: "#525252", fontSize: 10 }}
-                                  axisLine={{ stroke: "#262626" }}
+                                  tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
+                                  axisLine={{ stroke: "var(--chart-axis-line)" }}
                                   tickLine={false}
                                 />
                                 <YAxis 
-                                  tick={{ fill: "#525252", fontSize: 10 }}
-                                  axisLine={{ stroke: "#262626" }}
+                                  tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
+                                  axisLine={{ stroke: "var(--chart-axis-line)" }}
                                   tickLine={false}
                                 />
                                 <Tooltip
                                   contentStyle={{
-                                    backgroundColor: "#171717",
-                                    border: "1px solid #262626",
+                                    backgroundColor: "var(--chart-tooltip-bg)",
+                                    border: "1px solid var(--chart-tooltip-border)",
                                     borderRadius: 4,
+                                    color: "var(--chart-tooltip-text)",
                                   }}
-                                  labelStyle={{ color: "#a3a3a3" }}
+                                  itemStyle={{ color: "var(--chart-tooltip-text)" }}
+                                  labelStyle={{ color: "var(--chart-tooltip-text)" }}
                                   formatter={(value: number, name: string, props: any) => [
                                     `${value.toFixed(2)} RR`,
                                     `Trade #${props.payload.tradeNum}`
@@ -447,7 +449,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                                   {context.chartData.map((entry, index) => (
                                     <Cell 
                                       key={`cell-${index}`} 
-                                      fill={entry.current ? "#ffffff" : entry.individual >= 0 ? "#22c55e" : "#ef4444"} 
+                                      fill={entry.current ? "var(--chart-bar)" : entry.individual >= 0 ? "#22c55e" : "#ef4444"} 
                                     />
                                   ))}
                                 </Bar>
@@ -457,12 +459,12 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                         </div>
 
                         {/* Cumulative RR chart - ISOLATED */}
-                        <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
+                        <div className="border border-border p-4 bg-card rounded-md">
                           <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-sm font-mono uppercase tracking-wider text-neutral-500">
+                            <h4 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
                               Cumul Isolé (10 trades)
                             </h4>
-                            <span className="text-base font-bold text-emerald-400">
+                            <span className="text-base font-bold text-emerald-500">
                               +{context.isolatedTotal.toFixed(2)} RR
                             </span>
                           </div>
@@ -477,22 +479,24 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                                 </defs>
                                 <XAxis 
                                   dataKey="trade" 
-                                  tick={{ fill: "#525252", fontSize: 10 }}
-                                  axisLine={{ stroke: "#262626" }}
+                                  tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
+                                  axisLine={{ stroke: "var(--chart-axis-line)" }}
                                   tickLine={false}
                                 />
                                 <YAxis 
-                                  tick={{ fill: "#525252", fontSize: 10 }}
-                                  axisLine={{ stroke: "#262626" }}
+                                  tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
+                                  axisLine={{ stroke: "var(--chart-axis-line)" }}
                                   tickLine={false}
                                 />
                                 <Tooltip
                                   contentStyle={{
-                                    backgroundColor: "#171717",
-                                    border: "1px solid #262626",
+                                    backgroundColor: "var(--chart-tooltip-bg)",
+                                    border: "1px solid var(--chart-tooltip-border)",
                                     borderRadius: 4,
+                                    color: "var(--chart-tooltip-text)",
                                   }}
-                                  labelStyle={{ color: "#a3a3a3" }}
+                                  itemStyle={{ color: "var(--chart-tooltip-text)" }}
+                                  labelStyle={{ color: "var(--chart-tooltip-text)" }}
                                   formatter={(value: number) => [`${value.toFixed(2)} RR`, "Cumul"]}
                                 />
                                 <Area 
@@ -510,51 +514,51 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
 
                       {/* Trade details */}
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
-                          <h4 className="text-xs font-mono uppercase tracking-wider text-neutral-600 mb-3">
+                        <div className="border border-border p-4 bg-card rounded-md">
+                          <h4 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
                             Paramètres d'entrée
                           </h4>
                           <div className="space-y-2">
                             <div className="flex justify-between">
-                              <span className="text-sm text-neutral-500">Entry Timing</span>
-                              <span className="text-sm text-white">{selectedTrade.entry_timing || "—"}</span>
+                              <span className="text-sm text-muted-foreground">Entry Timing</span>
+                              <span className="text-sm text-foreground">{selectedTrade.entry_timing || "—"}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-sm text-neutral-500">Stop Loss</span>
-                              <span className="text-sm text-white">{selectedTrade.stop_loss_size || "—"}</span>
+                              <span className="text-sm text-muted-foreground">Stop Loss</span>
+                              <span className="text-sm text-foreground">{selectedTrade.stop_loss_size || "—"}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-sm text-neutral-500">Setup Type</span>
-                              <span className="text-sm text-white">{selectedTrade.setup_type || "—"}</span>
+                              <span className="text-sm text-muted-foreground">Setup Type</span>
+                              <span className="text-sm text-foreground">{selectedTrade.setup_type || "—"}</span>
                             </div>
                           </div>
                         </div>
-                        <div className="border border-neutral-800 p-4 bg-neutral-950 rounded-md">
-                          <h4 className="text-xs font-mono uppercase tracking-wider text-neutral-600 mb-3">
+                        <div className="border border-border p-4 bg-card rounded-md">
+                          <h4 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
                             Position dans la série
                           </h4>
                           <div className="space-y-2">
                             <div className="flex justify-between">
-                              <span className="text-sm text-neutral-500">Trade #</span>
-                              <span className="text-sm text-white">{context.tradeIndex + 1} / {trades.length}</span>
+                              <span className="text-sm text-muted-foreground">Trade #</span>
+                              <span className="text-sm text-foreground">{context.tradeIndex + 1} / {trades.length}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-sm text-neutral-500">RR avant ce trade</span>
-                              <span className="text-sm text-white">+{(context.cumulativeRR - (selectedTrade.rr || 0)).toFixed(2)}</span>
+                              <span className="text-sm text-muted-foreground">RR avant ce trade</span>
+                              <span className="text-sm text-foreground">+{(context.cumulativeRR - (selectedTrade.rr || 0)).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-sm text-neutral-500">RR après ce trade</span>
-                              <span className="text-sm text-emerald-400">+{context.cumulativeRR.toFixed(2)}</span>
+                              <span className="text-sm text-muted-foreground">RR après ce trade</span>
+                              <span className="text-sm text-emerald-500">+{context.cumulativeRR.toFixed(2)}</span>
                             </div>
                           </div>
                         </div>
                       </div>
 
                       {/* Screenshot placeholder */}
-                      <div className="border border-dashed border-neutral-700 p-8 bg-neutral-950 text-center rounded-md">
-                        <Image className="w-10 h-10 text-neutral-700 mx-auto mb-3" />
-                        <p className="text-sm text-neutral-600">Screenshot du trade</p>
-                        <p className="text-xs text-neutral-700 mt-1">À venir</p>
+                      <div className="border border-dashed border-border p-8 bg-muted/50 text-center rounded-md">
+                        <Image className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                        <p className="text-sm text-muted-foreground">Screenshot du trade</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">À venir</p>
                       </div>
                     </>
                   );
@@ -565,14 +569,14 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
             {/* Placeholder when no trade selected */}
             {!selectedTrade && (
               <div className="flex-1 flex items-center justify-center">
-                <p className="text-sm text-neutral-600 font-mono">
+                <p className="text-sm text-muted-foreground font-mono">
                   Cliquez sur un trade pour voir les détails
                 </p>
               </div>
             )}
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-neutral-600">
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <p className="text-sm font-mono">Sélectionnez un jour pour voir les détails</p>
           </div>
         )}
