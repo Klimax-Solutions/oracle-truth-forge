@@ -1,21 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { StatCard } from "@/components/StatCard";
 import { TradeCard } from "@/components/TradeCard";
-import { ProgressRing } from "@/components/ProgressRing";
 import { Button } from "@/components/ui/button";
-import {
-  ArrowLeft,
-  BarChart3,
-  Target,
-  TrendingUp,
-  Percent,
-  Clock,
-  Award,
-  LogOut,
-  User,
-} from "lucide-react";
+import { ArrowLeft, LogOut } from "lucide-react";
 
 // Mock trades data - will be replaced with real data from Notion/Drive
 const mockTrades = [
@@ -67,107 +55,88 @@ const SetupDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-6 h-6 border border-white border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-screen bg-black relative overflow-hidden">
       {/* Grid pattern overlay */}
-      <div className="absolute inset-0 trading-grid opacity-20" />
-
-      {/* Glow effects */}
-      <div className="absolute top-0 left-1/4 w-[600px] h-[400px] bg-primary/5 rounded-full blur-[120px]" />
+      <div className="absolute inset-0 grid-pattern" />
 
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
-        <header className="border-b border-border/30 bg-background/50 backdrop-blur-xl">
+        <header className="border-b border-neutral-800">
           <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Retour
-              </Button>
-              <div className="h-6 w-px bg-border" />
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gold-gradient flex items-center justify-center shadow-lg">
-                  <span className="text-xl font-black text-primary-foreground">O</span>
-                </div>
-                <span className="text-lg font-bold">Oracle</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/50 text-sm">
-                <User className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">{user?.email}</span>
-              </div>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate("/dashboard")}
+              className="text-neutral-500 hover:text-white hover:bg-transparent -ml-2"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              <span className="text-xs font-mono uppercase tracking-wider">Retour</span>
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleLogout}
+              className="text-neutral-500 hover:text-white hover:bg-transparent"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
           </div>
         </header>
 
         {/* Main content */}
-        <main className="flex-1 container mx-auto px-6 py-12">
+        <main className="flex-1 container mx-auto px-6 py-16">
           {/* Title section */}
-          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-8 mb-12">
-            <div>
-              <p className="text-sm font-mono uppercase tracking-[0.3em] text-muted-foreground mb-2">
-                Setup #01
-              </p>
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
-                Oracle
-              </h1>
-              <p className="text-muted-foreground max-w-lg">
-                Base de données complète avec 300 trades analysés. 
-                Chaque trade inclut l'heure, la direction, le RR et le screenshot.
-              </p>
-            </div>
+          <div className="text-center mb-16">
+            <p className="text-xs font-mono uppercase tracking-[0.4em] text-neutral-500 mb-6">
+              Setup #01
+            </p>
+            <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white mb-6">
+              Oracle
+            </h1>
+            <p className="text-neutral-500 max-w-lg mx-auto">
+              Base de données complète avec 300 trades analysés.
+            </p>
+          </div>
 
-            {/* Progress ring */}
-            <div className="glass-card rounded-2xl p-6">
-              <ProgressRing
-                progress={42}
-                label="Complété"
-                sublabel="126/300 trades"
-              />
+          {/* Stats row */}
+          <div className="flex items-center justify-center gap-12 mb-16">
+            <div className="text-center">
+              <p className="text-3xl font-black text-white">300</p>
+              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">Trades</p>
+            </div>
+            <div className="w-px h-10 bg-neutral-800" />
+            <div className="text-center">
+              <p className="text-3xl font-black text-white">+2,300</p>
+              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">RR Total</p>
+            </div>
+            <div className="w-px h-10 bg-neutral-800" />
+            <div className="text-center">
+              <p className="text-3xl font-black text-white">67%</p>
+              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">Win Rate</p>
             </div>
           </div>
 
-          {/* Stats grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-12">
-            <StatCard label="Trades Total" value={300} icon={BarChart3} />
-            <StatCard label="Win Rate" value="67" suffix="%" icon={Percent} trend="up" />
-            <StatCard label="RR Total" value="2,300" icon={TrendingUp} trend="up" />
-            <StatCard label="Sharpe Ratio" value="2.4" icon={Award} trend="up" />
-            <StatCard label="Durée Moy." value="4.2h" icon={Clock} />
-            <StatCard label="Best Trade" value="+12.5R" icon={Target} trend="up" />
-          </div>
+          {/* Divider */}
+          <div className="w-full h-px bg-neutral-800 mb-16" />
 
-          {/* Trades section */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Tous les trades</h2>
-              <p className="text-sm text-muted-foreground font-mono">
-                Affichage: {mockTrades.length} trades
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockTrades.map((trade) => (
-                <TradeCard key={trade.id} {...trade} />
-              ))}
-            </div>
+          {/* Trades grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {mockTrades.map((trade) => (
+              <TradeCard key={trade.id} {...trade} />
+            ))}
           </div>
         </main>
 
         {/* Footer */}
-        <footer className="border-t border-border/30 py-6">
-          <p className="text-center text-xs text-muted-foreground font-mono uppercase tracking-widest">
+        <footer className="border-t border-neutral-800 py-8">
+          <p className="text-center text-xs text-neutral-600 font-mono uppercase tracking-[0.3em]">
             Oracle © 2026 — Accès confidentiel
           </p>
         </footer>

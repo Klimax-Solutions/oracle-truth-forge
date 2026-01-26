@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SetupCard } from "@/components/SetupCard";
 import { Button } from "@/components/ui/button";
-import { LogOut, User } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 const setups = [
   {
@@ -36,7 +36,6 @@ const Dashboard = () => {
       }
     );
 
-    // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
@@ -56,59 +55,49 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-6 h-6 border border-white border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-screen bg-black relative overflow-hidden">
       {/* Grid pattern overlay */}
-      <div className="absolute inset-0 trading-grid opacity-20" />
-
-      {/* Glow effects */}
-      <div className="absolute top-0 left-1/4 w-[600px] h-[400px] bg-primary/5 rounded-full blur-[120px]" />
-      <div className="absolute bottom-0 right-1/4 w-[400px] h-[300px] bg-primary/3 rounded-full blur-[100px]" />
+      <div className="absolute inset-0 grid-pattern" />
 
       <div className="relative z-10 min-h-screen flex flex-col">
-        {/* Header */}
-        <header className="border-b border-border/30 bg-background/50 backdrop-blur-xl">
+        {/* Minimal header */}
+        <header className="border-b border-neutral-800">
           <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gold-gradient flex items-center justify-center shadow-lg">
-                <span className="text-xl font-black text-primary-foreground">O</span>
-              </div>
-              <span className="text-lg font-bold">Oracle</span>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/50 text-sm">
-                <User className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">{user?.email}</span>
-              </div>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline ml-2">Déconnexion</span>
-              </Button>
-            </div>
+            <span className="text-xs font-mono uppercase tracking-widest text-neutral-500">
+              {user?.email}
+            </span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleLogout}
+              className="text-neutral-500 hover:text-white hover:bg-transparent"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
           </div>
         </header>
 
         {/* Main content */}
-        <main className="flex-1 container mx-auto px-6 py-16">
+        <main className="flex-1 container mx-auto px-6 py-24">
           {/* Title section */}
           <div className="text-center mb-16">
-            <p className="text-sm font-mono uppercase tracking-[0.3em] text-muted-foreground mb-4">
+            <p className="text-xs font-mono uppercase tracking-[0.4em] text-neutral-500 mb-6">
               Database
             </p>
-            <h1 className="text-5xl md:text-7xl font-black tracking-tight">
+            <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white">
               Hub central
             </h1>
           </div>
 
           {/* Divider */}
-          <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent mb-16" />
+          <div className="w-full h-px bg-neutral-800 mb-16" />
 
           {/* Cards Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -116,26 +105,26 @@ const Dashboard = () => {
               <SetupCard key={setup.number} {...setup} />
             ))}
 
-            {/* Placeholder for future setups */}
-            <div className="glass-card rounded-2xl p-6 border-dashed border-2 border-border/30 flex flex-col items-center justify-center min-h-[200px] opacity-50">
-              <span className="text-5xl font-black text-muted/20 mb-4">02</span>
-              <p className="text-sm text-muted-foreground text-center">
-                Prochain setup à venir
+            {/* Placeholder cards */}
+            <div className="border border-neutral-800 border-dashed p-8 flex flex-col items-center justify-center min-h-[220px]">
+              <span className="text-5xl font-black text-neutral-800 mb-4">02</span>
+              <p className="text-xs text-neutral-600 text-center font-mono uppercase tracking-wider">
+                À venir
               </p>
             </div>
 
-            <div className="glass-card rounded-2xl p-6 border-dashed border-2 border-border/30 flex flex-col items-center justify-center min-h-[200px] opacity-50">
-              <span className="text-5xl font-black text-muted/20 mb-4">03</span>
-              <p className="text-sm text-muted-foreground text-center">
-                Prochain setup à venir
+            <div className="border border-neutral-800 border-dashed p-8 flex flex-col items-center justify-center min-h-[220px]">
+              <span className="text-5xl font-black text-neutral-800 mb-4">03</span>
+              <p className="text-xs text-neutral-600 text-center font-mono uppercase tracking-wider">
+                À venir
               </p>
             </div>
           </div>
         </main>
 
         {/* Footer */}
-        <footer className="border-t border-border/30 py-6">
-          <p className="text-center text-xs text-muted-foreground font-mono uppercase tracking-widest">
+        <footer className="border-t border-neutral-800 py-8">
+          <p className="text-center text-xs text-neutral-600 font-mono uppercase tracking-[0.3em]">
             Oracle © 2026 — Accès confidentiel
           </p>
         </footer>
