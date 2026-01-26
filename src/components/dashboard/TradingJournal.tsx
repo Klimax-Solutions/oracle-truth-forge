@@ -194,7 +194,9 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                   key={idx}
                   onClick={() => {
                     setSelectedDate(date);
-                    setSelectedTrade(null);
+                    // Auto-select first trade of the day
+                    const dayTrades = tradesByDate.get(formatDateKey(date)) || [];
+                    setSelectedTrade(dayTrades.length > 0 ? dayTrades[0] : null);
                   }}
                   className={cn(
                     "aspect-square border transition-all",

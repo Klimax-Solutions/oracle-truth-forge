@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Database, Calendar, Target, BarChart3, Clock, ChevronRight } from "lucide-react";
+import { Database, Calendar, BarChart3, Clock, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 interface DashboardSidebarProps {
@@ -10,7 +10,6 @@ interface DashboardSidebarProps {
 const tabs = [
   { id: "oracle", label: "Database Oracle01", icon: Database },
   { id: "journal", label: "Journal de Trading", icon: Calendar },
-  { id: "winrate", label: "Win Rate Analysis", icon: Target },
   { id: "distribution", label: "Distribution RR", icon: BarChart3 },
   { id: "timing", label: "Timing Analysis", icon: Clock },
 ];
