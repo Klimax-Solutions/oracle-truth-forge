@@ -11,6 +11,7 @@ import { RRDistributionChart } from "@/components/dashboard/RRDistributionChart"
 import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
+import { ScreenshotUploader } from "@/components/dashboard/ScreenshotUploader";
 
 interface Trade {
   id: string;
@@ -32,6 +33,8 @@ interface Trade {
   target_hl_valid: boolean;
   news_day: boolean;
   news_label: string;
+  screenshot_m15_m5: string | null;
+  screenshot_m1: string | null;
 }
 
 interface TimingFilters {
@@ -75,21 +78,21 @@ const Dashboard = () => {
   }, [navigate]);
 
   useEffect(() => {
-    const fetchTrades = async () => {
-      const { data, error } = await supabase
-        .from("trades")
-        .select("*")
-        .order("trade_number", { ascending: true });
-
-      if (data) {
-        setTrades(data as Trade[]);
-      }
-    };
-
-    if (user) {
-      fetchTrades();
-    }
+    fetchTrades();
   }, [user]);
+
+  const fetchTrades = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from("trades")
+      .select("*")
+      .order("trade_number", { ascending: true });
+
+    if (data) {
+      setTrades(data as Trade[]);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -138,6 +141,8 @@ const Dashboard = () => {
         return <TimingAnalysis trades={trades} onNavigateToDatabase={handleNavigateToDatabase} />;
       case "videos":
         return <VideoSetup />;
+      case "screenshots":
+        return <ScreenshotUploader trades={trades} onUpdate={fetchTrades} />;
       default:
         return <OracleExecution trades={trades} />;
     }
