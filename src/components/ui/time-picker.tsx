@@ -7,7 +7,6 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Clock } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface TimePickerProps {
   value: string;
@@ -56,11 +55,11 @@ export function TimePicker({
         
         if (hourRef.current && hourIndex >= 0) {
           const itemHeight = 40;
-          hourRef.current.scrollTop = hourIndex * itemHeight - 60;
+          hourRef.current.scrollTop = Math.max(0, hourIndex * itemHeight - 60);
         }
         if (minuteRef.current && minuteIndex >= 0) {
           const itemHeight = 40;
-          minuteRef.current.scrollTop = minuteIndex * itemHeight - 60;
+          minuteRef.current.scrollTop = Math.max(0, minuteIndex * itemHeight - 60);
         }
       }, 50);
     }
@@ -104,77 +103,83 @@ export function TimePicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[200px] p-0 bg-popover border border-border shadow-xl" 
+        className="w-[220px] p-0 bg-popover border border-border shadow-xl" 
         align="start"
         sideOffset={4}
       >
-        <div className="flex h-[200px]">
+        <div className="flex h-[240px]">
           {/* Hours column */}
-          <div className="flex-1 border-r border-border">
-            <div className="px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border bg-muted/30">
+          <div className="flex-1 border-r border-border flex flex-col">
+            <div className="px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border bg-muted/30 shrink-0">
               Heure
             </div>
-            <ScrollArea className="h-[160px]">
-              <div ref={hourRef} className="py-1">
-                {HOURS.map((hour) => {
-                  const isDisabled = minTime && `${hour}:59` < minTime;
-                  const isMaxDisabled = maxTime && `${hour}:00` > maxTime;
-                  
-                  return (
-                    <button
-                      key={hour}
-                      onClick={() => !isDisabled && !isMaxDisabled && handleHourSelect(hour)}
-                      disabled={isDisabled || isMaxDisabled}
-                      className={cn(
-                        "w-full h-10 flex items-center justify-center text-sm font-mono transition-all",
-                        "hover:bg-accent/80 focus:outline-none focus:bg-accent",
-                        selectedHour === hour && "bg-primary text-primary-foreground hover:bg-primary/90",
-                        (isDisabled || isMaxDisabled) && "opacity-30 cursor-not-allowed hover:bg-transparent"
-                      )}
-                    >
-                      {hour}
-                    </button>
-                  );
-                })}
-              </div>
-            </ScrollArea>
+            <div 
+              ref={hourRef}
+              className="flex-1 overflow-y-auto py-1"
+              style={{ scrollbarWidth: 'thin' }}
+            >
+              {HOURS.map((hour) => {
+                const isDisabled = minTime && `${hour}:59` < minTime;
+                const isMaxDisabled = maxTime && `${hour}:00` > maxTime;
+                
+                return (
+                  <button
+                    key={hour}
+                    type="button"
+                    onClick={() => !isDisabled && !isMaxDisabled && handleHourSelect(hour)}
+                    disabled={!!isDisabled || !!isMaxDisabled}
+                    className={cn(
+                      "w-full h-10 flex items-center justify-center text-sm font-mono transition-all",
+                      "hover:bg-accent/80 focus:outline-none focus:bg-accent",
+                      selectedHour === hour && "bg-primary text-primary-foreground hover:bg-primary/90",
+                      (isDisabled || isMaxDisabled) && "opacity-30 cursor-not-allowed hover:bg-transparent"
+                    )}
+                  >
+                    {hour}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           
           {/* Minutes column */}
-          <div className="flex-1">
-            <div className="px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border bg-muted/30">
+          <div className="flex-1 flex flex-col">
+            <div className="px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border bg-muted/30 shrink-0">
               Min
             </div>
-            <ScrollArea className="h-[160px]">
-              <div ref={minuteRef} className="py-1">
-                {MINUTES.map((minute) => {
-                  const fullTime = `${selectedHour}:${minute}`;
-                  const isDisabled = isTimeDisabled(selectedHour, minute);
-                  
-                  return (
-                    <button
-                      key={minute}
-                      onClick={() => !isDisabled && handleMinuteSelect(minute)}
-                      disabled={isDisabled}
-                      className={cn(
-                        "w-full h-10 flex items-center justify-center text-sm font-mono transition-all",
-                        "hover:bg-accent/80 focus:outline-none focus:bg-accent",
-                        selectedMinute === minute && "bg-primary text-primary-foreground hover:bg-primary/90",
-                        isDisabled && "opacity-30 cursor-not-allowed hover:bg-transparent"
-                      )}
-                    >
-                      {minute}
-                    </button>
-                  );
-                })}
-              </div>
-            </ScrollArea>
+            <div 
+              ref={minuteRef}
+              className="flex-1 overflow-y-auto py-1"
+              style={{ scrollbarWidth: 'thin' }}
+            >
+              {MINUTES.map((minute) => {
+                const isDisabled = isTimeDisabled(selectedHour, minute);
+                
+                return (
+                  <button
+                    key={minute}
+                    type="button"
+                    onClick={() => !isDisabled && handleMinuteSelect(minute)}
+                    disabled={isDisabled}
+                    className={cn(
+                      "w-full h-10 flex items-center justify-center text-sm font-mono transition-all",
+                      "hover:bg-accent/80 focus:outline-none focus:bg-accent",
+                      selectedMinute === minute && "bg-primary text-primary-foreground hover:bg-primary/90",
+                      isDisabled && "opacity-30 cursor-not-allowed hover:bg-transparent"
+                    )}
+                  >
+                    {minute}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
         
         {/* Quick actions */}
         <div className="border-t border-border p-2 flex gap-1">
           <Button
+            type="button"
             variant="ghost"
             size="sm"
             className="flex-1 h-8 text-xs"
@@ -186,6 +191,7 @@ export function TimePicker({
             Effacer
           </Button>
           <Button
+            type="button"
             variant="default"
             size="sm"
             className="flex-1 h-8 text-xs"
