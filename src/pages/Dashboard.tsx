@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 import { OracleDatabase } from "@/components/dashboard/OracleDatabase";
 import { TradingJournal } from "@/components/dashboard/TradingJournal";
@@ -120,8 +121,8 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-6 h-6 border border-white border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-6 h-6 border border-foreground border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -146,31 +147,34 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black flex">
+    <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
       <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Header */}
-        <header className="border-b border-neutral-800 bg-neutral-950">
+        <header className="border-b border-border bg-card">
           <div className="px-6 py-4 flex items-center justify-between">
-            <span className="text-xs font-mono uppercase tracking-widest text-neutral-500">
+            <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
               {user?.email}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="text-neutral-500 hover:text-white hover:bg-transparent"
-            >
-              <LogOut className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="text-muted-foreground hover:text-foreground hover:bg-transparent"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </header>
 
         {/* Content area */}
-        <main className="flex-1 overflow-hidden bg-black">
+        <main className="flex-1 overflow-hidden bg-background">
           <div className="h-full">
             {renderContent()}
           </div>
