@@ -99,12 +99,12 @@
 }
 
 @layer components {
-  /* Brutalist grid pattern - subtle white lines */
+  /* Brutalist grid pattern - visible white lines */
   .grid-pattern {
     background-image: 
-      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-    background-size: 60px 60px;
+      linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 40px 40px;
   }
 
   .trading-grid {
