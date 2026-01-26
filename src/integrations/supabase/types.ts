@@ -40,6 +40,7 @@ export type Database = {
           trade_date: string
           trade_duration: string | null
           trade_number: number
+          user_id: string
         }
         Insert: {
           comment?: string | null
@@ -66,6 +67,7 @@ export type Database = {
           trade_date: string
           trade_duration?: string | null
           trade_number: number
+          user_id: string
         }
         Update: {
           comment?: string | null
@@ -92,6 +94,7 @@ export type Database = {
           trade_date?: string
           trade_duration?: string | null
           trade_number?: number
+          user_id?: string
         }
         Relationships: []
       }
