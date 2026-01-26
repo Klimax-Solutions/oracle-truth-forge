@@ -65,7 +65,7 @@ const Auth = () => {
             Authentification
           </p>
           <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white">
-            Oracle
+            Oracle<sup className="text-lg md:text-xl font-normal align-super ml-1">™</sup>
           </h1>
         </div>
 

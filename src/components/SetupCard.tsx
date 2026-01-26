@@ -44,7 +44,7 @@ export const SetupCard = ({
       <div className="relative z-10 space-y-4">
         <div className="flex items-start justify-between">
           <h3 className="text-2xl font-bold text-white group-hover:text-white transition-all duration-300">
-            {title}
+            {title}{title === "Oracle" && <sup className="text-xs font-normal align-super ml-0.5">™</sup>}
           </h3>
           <div className="w-8 h-8 border border-neutral-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
             <ArrowUpRight className="w-4 h-4 text-white" />

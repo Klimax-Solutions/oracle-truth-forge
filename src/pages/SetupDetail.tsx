@@ -98,7 +98,7 @@ const SetupDetail = () => {
               Setup #01
             </p>
             <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white mb-6">
-              Oracle
+              Oracle<sup className="text-lg md:text-xl font-normal align-super ml-1">™</sup>
             </h1>
             <p className="text-neutral-500 max-w-lg mx-auto">
               Base de données complète avec 300 trades analysés.
