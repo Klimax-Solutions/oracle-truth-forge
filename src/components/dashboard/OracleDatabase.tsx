@@ -44,26 +44,26 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
   return (
     <div className="h-full flex flex-col">
       {/* Header with stats */}
-      <div className="p-6 border-b border-neutral-800">
+      <div className="p-6 border-b border-neutral-800 bg-emerald-500/10">
         <div className="flex items-center justify-center gap-8 md:gap-12">
           <div className="text-center">
             <p className="text-2xl md:text-3xl font-bold text-white">{totalTrades}</p>
-            <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">Trades</p>
+            <p className="text-xs text-neutral-500 font-mono uppercase tracking-wider">Trades</p>
           </div>
-          <div className="w-px h-8 bg-neutral-800" />
+          <div className="w-px h-8 bg-neutral-700" />
           <div className="text-center">
-            <p className="text-2xl md:text-3xl font-bold text-white">+{totalRR.toFixed(0)}</p>
-            <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">RR Total</p>
+            <p className="text-2xl md:text-3xl font-bold text-emerald-400">+{totalRR.toFixed(0)}</p>
+            <p className="text-xs text-neutral-500 font-mono uppercase tracking-wider">RR Total</p>
           </div>
-          <div className="w-px h-8 bg-neutral-800" />
+          <div className="w-px h-8 bg-neutral-700" />
           <div className="text-center flex items-center gap-4">
             <div>
-              <p className="text-2xl md:text-3xl font-bold text-white">{longTrades}</p>
-              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">Long</p>
+              <p className="text-2xl md:text-3xl font-bold text-emerald-400">{longTrades}</p>
+              <p className="text-xs text-neutral-500 font-mono uppercase tracking-wider">Long</p>
             </div>
             <div>
-              <p className="text-2xl md:text-3xl font-bold text-white">{shortTrades}</p>
-              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">Short</p>
+              <p className="text-2xl md:text-3xl font-bold text-red-400">{shortTrades}</p>
+              <p className="text-xs text-neutral-500 font-mono uppercase tracking-wider">Short</p>
             </div>
           </div>
         </div>
@@ -99,7 +99,7 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                     <div
                       className={cn(
                         "flex items-center gap-2 w-20",
-                        trade.direction === "Long" ? "text-green-500" : "text-red-500"
+                        trade.direction === "Long" ? "text-emerald-400" : "text-red-400"
                       )}
                     >
                       {trade.direction === "Long" ? (
@@ -121,7 +121,7 @@ export const OracleDatabase = ({ trades }: OracleDatabaseProps) => {
                   </div>
 
                   <div className="text-right">
-                    <p className="text-xl font-bold text-white">+{trade.rr?.toFixed(2) || "0"}</p>
+                    <p className="text-xl font-bold text-emerald-400">+{trade.rr?.toFixed(2) || "0"}</p>
                     <p className="text-xs text-neutral-600 font-mono uppercase">RR</p>
                   </div>
                 </div>

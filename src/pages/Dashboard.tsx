@@ -4,10 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { OracleLanding } from "@/components/dashboard/OracleLanding";
 import { OracleDatabase } from "@/components/dashboard/OracleDatabase";
 import { TradingJournal } from "@/components/dashboard/TradingJournal";
 import { WinRateChart } from "@/components/dashboard/WinRateChart";
-import { StreaksChart } from "@/components/dashboard/StreaksChart";
 import { RRDistributionChart } from "@/components/dashboard/RRDistributionChart";
 import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
 
@@ -38,6 +38,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [activeTab, setActiveTab] = useState("oracle");
+  const [showOracleData, setShowOracleData] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -86,6 +87,13 @@ const Dashboard = () => {
     navigate("/auth");
   };
 
+  // Reset showOracleData when switching away from oracle tab
+  useEffect(() => {
+    if (activeTab !== "oracle") {
+      setShowOracleData(false);
+    }
+  }, [activeTab]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -94,22 +102,34 @@ const Dashboard = () => {
     );
   }
 
+  const totalRR = trades.reduce((sum, t) => sum + (t.rr || 0), 0);
+
   const renderContent = () => {
     switch (activeTab) {
       case "oracle":
-        return <OracleDatabase trades={trades} />;
+        return showOracleData ? (
+          <OracleDatabase trades={trades} />
+        ) : (
+          <OracleLanding 
+            onEnterDatabase={() => setShowOracleData(true)}
+            totalTrades={trades.length}
+            totalRR={totalRR}
+          />
+        );
       case "journal":
         return <TradingJournal trades={trades} />;
       case "winrate":
         return <WinRateChart trades={trades} />;
-      case "streaks":
-        return <StreaksChart trades={trades} />;
       case "distribution":
         return <RRDistributionChart trades={trades} />;
       case "timing":
         return <TimingAnalysis trades={trades} />;
       default:
-        return <OracleDatabase trades={trades} />;
+        return <OracleLanding 
+          onEnterDatabase={() => setShowOracleData(true)}
+          totalTrades={trades.length}
+          totalRR={totalRR}
+        />;
     }
   };
 
