@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, SkipForward, Clock, Target, Calendar, TrendingUp, TrendingDown, Image } from "lucide-react";
+import { ChevronLeft, ChevronRight, SkipBack, SkipForward, Clock, Target, Calendar, TrendingUp, TrendingDown, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie } from "recharts";
@@ -29,6 +29,13 @@ interface TradingJournalProps {
 const DAYS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
 export const TradingJournal = ({ trades }: TradingJournalProps) => {
+  const firstTrade = useMemo(() => {
+    if (trades.length === 0) return null;
+    return trades.reduce((earliest, t) => 
+      new Date(t.trade_date) < new Date(earliest.trade_date) ? t : earliest
+    , trades[0]);
+  }, [trades]);
+
   const lastTrade = useMemo(() => {
     if (trades.length === 0) return null;
     return trades.reduce((latest, t) => 
@@ -79,6 +86,14 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
 
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+
+  const goToFirstTrade = () => {
+    if (firstTrade) {
+      const firstTradeDate = new Date(firstTrade.trade_date);
+      setCurrentDate(firstTradeDate);
+      setSelectedDate(firstTradeDate);
+    }
+  };
 
   const goToLastTrade = () => {
     if (lastTrade) {
@@ -137,15 +152,26 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
           <span className="text-base font-mono uppercase tracking-wider text-neutral-400">
             Journal de Trading
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={goToLastTrade}
-            className="text-xs text-neutral-500 hover:text-white hover:bg-neutral-800 gap-1"
-          >
-            <SkipForward className="w-3 h-3" />
-            Dernier trade
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goToFirstTrade}
+              className="text-xs text-neutral-500 hover:text-white hover:bg-neutral-800 gap-1"
+            >
+              <SkipBack className="w-3 h-3" />
+              Premier trade
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goToLastTrade}
+              className="text-xs text-neutral-500 hover:text-white hover:bg-neutral-800 gap-1"
+            >
+              <SkipForward className="w-3 h-3" />
+              Dernier trade
+            </Button>
+          </div>
         </div>
 
         {/* Month navigation */}
