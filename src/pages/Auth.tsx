@@ -64,8 +64,8 @@ const Auth = () => {
           <p className="text-xs font-mono uppercase tracking-[0.4em] text-neutral-500 mb-6">
             Authentification
           </p>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white">
-            Oracle<sup className="text-lg md:text-xl font-normal align-super ml-1">™</sup>
+          <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-white">
+            Oracle<sup className="text-2xl md:text-3xl font-normal align-super ml-1">™</sup>
           </h1>
         </div>
 
