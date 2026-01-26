@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Database, Calendar, BarChart3, Clock, ChevronRight, Crosshair, Video, ShieldCheck, PenLine } from "lucide-react";
+import { Database, Calendar, BarChart3, Clock, ChevronRight, Crosshair, Video, ShieldCheck } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -10,8 +10,7 @@ interface DashboardSidebarProps {
 
 const tabs = [
   { id: "execution", label: "Exécution d'Oracle", icon: Crosshair },
-  { id: "data-entry", label: "Saisie des Trades", icon: PenLine },
-  { id: "oracle", label: "Oracle Vérification", icon: Database },
+  { id: "oracle", label: "Oracle", icon: Database },
   { id: "journal", label: "Journal de Trading", icon: Calendar },
   { id: "distribution", label: "Distribution RR", icon: BarChart3 },
   { id: "timing", label: "Timing Analysis", icon: Clock },

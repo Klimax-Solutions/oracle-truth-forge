@@ -26,6 +26,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -40,6 +45,9 @@ import {
   TrendingUp,
   Target,
   Calendar,
+  AlertTriangle,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 
 interface UserExecution {
@@ -59,6 +67,28 @@ interface UserExecution {
   notes: string | null;
 }
 
+interface OracleTrade {
+  id: string;
+  trade_number: number;
+  trade_date: string;
+  entry_time: string;
+  direction: string;
+}
+
+interface TradeComparison {
+  userExecution: {
+    id: string;
+    trade_number: number;
+    trade_date: string;
+    direction: string;
+    entry_time: string | null;
+    rr: number | null;
+  };
+  oracleTrade: OracleTrade | null;
+  timeDifferenceHours: number | null;
+  status: 'match' | 'warning' | 'error' | 'no-match';
+}
+
 interface FormData {
   trade_number: string;
   trade_date: string;
@@ -73,6 +103,11 @@ interface FormData {
   result: "Win" | "Loss" | "BE" | "";
   setup_type: string;
   notes: string;
+}
+
+interface UserDataEntryProps {
+  tradeComparisons?: TradeComparison[];
+  oracleTrades?: OracleTrade[];
 }
 
 const initialFormData: FormData = {
@@ -91,7 +126,7 @@ const initialFormData: FormData = {
   notes: "",
 };
 
-export const UserDataEntry = () => {
+export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: UserDataEntryProps) => {
   const [executions, setExecutions] = useState<UserExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -623,79 +658,142 @@ export const UserDataEntry = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {executions.map((execution) => (
-                  <TableRow key={execution.id} className="hover:bg-muted/30">
-                    <TableCell className="font-mono font-medium">
-                      {execution.trade_number}
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {new Date(execution.trade_date).toLocaleDateString("fr-FR")}
-                    </TableCell>
-                    <TableCell>
-                      <span className={cn(
-                        "px-2 py-1 rounded text-xs font-medium",
-                        execution.direction === "Long"
-                          ? "bg-emerald-500/20 text-emerald-400"
-                          : "bg-red-500/20 text-red-400"
-                      )}>
-                        {execution.direction}
-                      </span>
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {execution.entry_time || "-"}
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {execution.exit_time || "-"}
-                    </TableCell>
-                    <TableCell className={cn(
-                      "font-mono font-medium",
-                      (execution.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400"
-                    )}>
-                      {execution.rr !== null ? (
-                        `${execution.rr >= 0 ? "+" : ""}${execution.rr.toFixed(1)}`
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {execution.result && (
+                {executions.map((execution) => {
+                  // Find comparison for this execution
+                  const comparison = tradeComparisons.find(
+                    c => c.userExecution.trade_number === execution.trade_number
+                  );
+                  
+                  const getRowStyle = () => {
+                    if (!comparison) return "";
+                    switch (comparison.status) {
+                      case 'warning': return "bg-orange-500/10 border-l-2 border-l-orange-500";
+                      case 'error': return "bg-red-500/10 border-l-2 border-l-red-500";
+                      case 'match': return "";
+                      default: return "";
+                    }
+                  };
+
+                  const getStatusIcon = () => {
+                    if (!comparison || comparison.status === 'no-match') return null;
+                    switch (comparison.status) {
+                      case 'match': 
+                        return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
+                      case 'warning': 
+                        return <AlertTriangle className="w-4 h-4 text-orange-500" />;
+                      case 'error': 
+                        return <AlertCircle className="w-4 h-4 text-red-500" />;
+                      default: 
+                        return null;
+                    }
+                  };
+
+                  const getStatusTooltip = () => {
+                    if (!comparison) return "";
+                    if (comparison.status === 'no-match') return "Pas de trade Oracle correspondant";
+                    if (comparison.timeDifferenceHours === null) return "";
+                    const hours = comparison.timeDifferenceHours;
+                    if (hours <= 5) return `✓ Écart: ${hours.toFixed(1)}h - Conforme`;
+                    if (hours <= 24) return `⚠ Écart: ${hours.toFixed(1)}h (>5h) - À vérifier`;
+                    return `✗ Écart: ${(hours / 24).toFixed(1)}j (>1 jour) - Problème`;
+                  };
+
+                  return (
+                    <TableRow 
+                      key={execution.id} 
+                      className={cn("hover:bg-muted/30", getRowStyle())}
+                    >
+                      <TableCell className="font-mono font-medium">
+                        <div className="flex items-center gap-2">
+                          {execution.trade_number}
+                          {getStatusIcon() && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help">
+                                  {getStatusIcon()}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">{getStatusTooltip()}</p>
+                                {comparison?.oracleTrade && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Oracle: {comparison.oracleTrade.trade_date} à {comparison.oracleTrade.entry_time || "N/A"}
+                                  </p>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {new Date(execution.trade_date).toLocaleDateString("fr-FR")}
+                      </TableCell>
+                      <TableCell>
                         <span className={cn(
                           "px-2 py-1 rounded text-xs font-medium",
-                          execution.result === "Win"
+                          execution.direction === "Long"
                             ? "bg-emerald-500/20 text-emerald-400"
-                            : execution.result === "Loss"
-                            ? "bg-red-500/20 text-red-400"
-                            : "bg-muted text-muted-foreground"
+                            : "bg-red-500/20 text-red-400"
                         )}>
-                          {execution.result}
+                          {execution.direction}
                         </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {execution.setup_type || "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleEdit(execution)}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-red-400 hover:text-red-300"
-                          onClick={() => handleDelete(execution.id, execution.trade_number)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {execution.entry_time || "-"}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {execution.exit_time || "-"}
+                      </TableCell>
+                      <TableCell className={cn(
+                        "font-mono font-medium",
+                        (execution.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400"
+                      )}>
+                        {execution.rr !== null ? (
+                          `${execution.rr >= 0 ? "+" : ""}${execution.rr.toFixed(1)}`
+                        ) : (
+                          "-"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {execution.result && (
+                          <span className={cn(
+                            "px-2 py-1 rounded text-xs font-medium",
+                            execution.result === "Win"
+                              ? "bg-emerald-500/20 text-emerald-400"
+                              : execution.result === "Loss"
+                              ? "bg-red-500/20 text-red-400"
+                              : "bg-muted text-muted-foreground"
+                          )}>
+                            {execution.result}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {execution.setup_type || "-"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleEdit(execution)}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-400 hover:text-red-300"
+                            onClick={() => handleDelete(execution.id, execution.trade_number)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
