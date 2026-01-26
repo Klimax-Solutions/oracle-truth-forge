@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      cycles: {
+        Row: {
+          created_at: string
+          cycle_number: number
+          description: string | null
+          id: string
+          name: string
+          phase: number
+          total_trades: number
+          trade_end: number
+          trade_start: number
+        }
+        Insert: {
+          created_at?: string
+          cycle_number: number
+          description?: string | null
+          id?: string
+          name: string
+          phase: number
+          total_trades: number
+          trade_end: number
+          trade_start: number
+        }
+        Update: {
+          created_at?: string
+          cycle_number?: number
+          description?: string | null
+          id?: string
+          name?: string
+          phase?: number
+          total_trades?: number
+          trade_end?: number
+          trade_start?: number
+        }
+        Relationships: []
+      }
       trades: {
         Row: {
           comment: string | null
@@ -98,15 +134,133 @@ export type Database = {
         }
         Relationships: []
       }
+      user_cycles: {
+        Row: {
+          admin_feedback: string | null
+          completed_at: string | null
+          completed_trades: number | null
+          created_at: string
+          cycle_id: string
+          id: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["cycle_status"] | null
+          total_rr: number | null
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          admin_feedback?: string | null
+          completed_at?: string | null
+          completed_trades?: number | null
+          created_at?: string
+          cycle_id: string
+          id?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["cycle_status"] | null
+          total_rr?: number | null
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          admin_feedback?: string | null
+          completed_at?: string | null
+          completed_trades?: number | null
+          created_at?: string
+          cycle_id?: string
+          id?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["cycle_status"] | null
+          total_rr?: number | null
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_cycles_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "cycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      verification_requests: {
+        Row: {
+          admin_comments: string | null
+          created_at: string
+          cycle_id: string
+          id: string
+          requested_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          user_cycle_id: string
+          user_id: string
+        }
+        Insert: {
+          admin_comments?: string | null
+          created_at?: string
+          cycle_id: string
+          id?: string
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          user_cycle_id: string
+          user_id: string
+        }
+        Update: {
+          admin_comments?: string | null
+          created_at?: string
+          cycle_id?: string
+          id?: string
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          user_cycle_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_requests_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_requests_user_cycle_id_fkey"
+            columns: ["user_cycle_id"]
+            isOneToOne: false
+            referencedRelation: "user_cycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      initialize_user_cycles: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      cycle_status:
+        | "locked"
+        | "in_progress"
+        | "pending_review"
+        | "validated"
+        | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -233,6 +387,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      cycle_status: [
+        "locked",
+        "in_progress",
+        "pending_review",
+        "validated",
+        "rejected",
+      ],
+    },
   },
 } as const
