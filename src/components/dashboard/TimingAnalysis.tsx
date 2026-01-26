@@ -517,12 +517,12 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                   key={day.fullDay} 
                   onClick={() => handleDayClick(day.fullDay)}
                   className={cn(
-                    "p-4 border rounded-md text-left transition-all group",
+                    "p-4 border rounded-md text-left transition-all group bg-transparent",
                     day.rr > 0 
-                      ? "bg-emerald-500/20 border-emerald-500/30 hover:border-emerald-400" 
+                      ? "border-emerald-500 hover:border-emerald-400" 
                       : day.rr < 0 
-                      ? "bg-red-500/20 border-red-500/30 hover:border-red-400"
-                      : "bg-muted border-border hover:border-muted-foreground/50"
+                      ? "border-red-500 hover:border-red-400"
+                      : "border-border hover:border-muted-foreground/50"
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -548,12 +548,12 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                   key={hour.hourKey}
                   onClick={() => handleHourClick(hour.hourKey)}
                   className={cn(
-                    "p-3 border rounded-md text-left transition-all group",
+                    "p-3 border rounded-md text-left transition-all group bg-transparent",
                     hour.rr > 0 
-                      ? "bg-emerald-500/20 border-emerald-500/30 hover:border-emerald-400" 
+                      ? "border-emerald-500 hover:border-emerald-400" 
                       : hour.rr < 0 
-                      ? "bg-red-500/20 border-red-500/30 hover:border-red-400"
-                      : "bg-muted border-border hover:border-muted-foreground/50"
+                      ? "border-red-500 hover:border-red-400"
+                      : "border-border hover:border-muted-foreground/50"
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -578,12 +578,12 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                   key={week.week}
                   onClick={() => handleWeekClick(week.week)}
                   className={cn(
-                    "p-3 border rounded-md text-left transition-all group",
+                    "p-3 border rounded-md text-left transition-all group bg-transparent",
                     week.rr > 0 
-                      ? "bg-emerald-500/20 border-emerald-500/30 hover:border-emerald-400" 
+                      ? "border-emerald-500 hover:border-emerald-400" 
                       : week.rr < 0 
-                      ? "bg-red-500/20 border-red-500/30 hover:border-red-400"
-                      : "bg-muted border-border hover:border-muted-foreground/50"
+                      ? "border-red-500 hover:border-red-400"
+                      : "border-border hover:border-muted-foreground/50"
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -608,12 +608,12 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                   key={quarter.quarter}
                   onClick={() => handleQuarterClick(quarter.label)}
                   className={cn(
-                    "p-3 border rounded-md text-left transition-all group",
+                    "p-3 border rounded-md text-left transition-all group bg-transparent",
                     quarter.rr > 0 
-                      ? "bg-emerald-500/20 border-emerald-500/30 hover:border-emerald-400" 
+                      ? "border-emerald-500 hover:border-emerald-400" 
                       : quarter.rr < 0 
-                      ? "bg-red-500/20 border-red-500/30 hover:border-red-400"
-                      : "bg-muted border-border hover:border-muted-foreground/50"
+                      ? "border-red-500 hover:border-red-400"
+                      : "border-border hover:border-muted-foreground/50"
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -639,12 +639,12 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                   key={year.year}
                   onClick={() => handleYearClick(year.year)}
                   className={cn(
-                    "p-4 border rounded-md text-left transition-all group",
+                    "p-4 border rounded-md text-left transition-all group bg-transparent",
                     year.rr > 0 
-                      ? "bg-emerald-500/20 border-emerald-500/30 hover:border-emerald-400" 
+                      ? "border-emerald-500 hover:border-emerald-400" 
                       : year.rr < 0 
-                      ? "bg-red-500/20 border-red-500/30 hover:border-red-400"
-                      : "bg-muted border-border hover:border-muted-foreground/50"
+                      ? "border-red-500 hover:border-red-400"
+                      : "border-border hover:border-muted-foreground/50"
                   )}
                 >
                   <div className="flex items-center justify-between">
