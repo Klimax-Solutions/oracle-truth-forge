@@ -449,7 +449,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                                   {context.chartData.map((entry, index) => (
                                     <Cell 
                                       key={`cell-${index}`} 
-                                      fill={entry.current ? "var(--chart-bar)" : entry.individual >= 0 ? "#22c55e" : "#ef4444"} 
+                                      fill={entry.current ? "var(--chart-bar)" : entry.individual >= 0 ? "rgba(34, 197, 94, 0.6)" : "rgba(239, 68, 68, 0.6)"} 
                                     />
                                   ))}
                                 </Bar>
