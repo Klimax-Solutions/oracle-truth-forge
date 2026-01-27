@@ -496,6 +496,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_variable_types: {
+        Row: {
+          created_at: string
+          id: string
+          type_key: string
+          type_label: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          type_key: string
+          type_label: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          type_key?: string
+          type_label?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       verification_requests: {
         Row: {
           admin_comments: string | null
