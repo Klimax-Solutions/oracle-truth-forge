@@ -76,13 +76,14 @@ export const SetupPage = ({ trades, initialFilters }: SetupPageProps) => {
             variant="ghost" 
             size="sm" 
             onClick={() => setActiveView("overview")}
-            className="gap-2"
+            className="gap-2 text-sm"
           >
             ← Retour
           </Button>
+          <div className="h-4 w-px bg-border" />
           <div className="flex items-center gap-2">
             <Database className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold">Oracle</span>
+            <span className="text-sm font-medium">Oracle</span>
           </div>
         </div>
         <div className="flex-1 overflow-hidden">
@@ -101,13 +102,14 @@ export const SetupPage = ({ trades, initialFilters }: SetupPageProps) => {
             variant="ghost" 
             size="sm" 
             onClick={() => setActiveView("overview")}
-            className="gap-2"
+            className="gap-2 text-sm"
           >
             ← Retour
           </Button>
+          <div className="h-4 w-px bg-border" />
           <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold">Setup Perso</span>
+            <User className="w-4 h-4 text-emerald-500" />
+            <span className="text-sm font-medium">Setup Perso</span>
           </div>
         </div>
         <div className="flex-1 overflow-hidden">

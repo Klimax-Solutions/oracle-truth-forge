@@ -176,6 +176,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_custom_variables: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+          variable_type: string
+          variable_value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+          variable_type: string
+          variable_value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+          variable_type?: string
+          variable_value?: string
+        }
+        Relationships: []
+      }
       user_cycles: {
         Row: {
           admin_feedback: string | null
