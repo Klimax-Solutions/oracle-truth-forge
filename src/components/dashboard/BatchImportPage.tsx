@@ -61,7 +61,7 @@ export const BatchImportPage = () => {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [screenshotFiles, setScreenshotFiles] = useState<File[]>([]);
   const [parsedTrades, setParsedTrades] = useState<TradeData[]>([]);
-  const [importType, setImportType] = useState<"oracle" | "journal">("oracle");
+  const [importType, setImportType] = useState<"oracle" | "screenshots">("oracle");
   const [progress, setProgress] = useState<UploadProgress>({
     current: 0,
     total: 0,
@@ -70,9 +70,11 @@ export const BatchImportPage = () => {
     errors: [],
     successes: 0,
   });
+  const [matchedScreenshots, setMatchedScreenshots] = useState<{tradeNumber: number; m15?: File; m5?: File}[]>([]);
 
   const csvInputRef = useRef<HTMLInputElement>(null);
   const screenshotInputRef = useRef<HTMLInputElement>(null);
+  const screenshotOnlyInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   // Calculate total file size
@@ -417,11 +419,160 @@ export const BatchImportPage = () => {
     });
   };
 
+  // Handle screenshots only selection
+  const handleScreenshotsOnlySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles: File[] = [];
+    let totalSize = 0;
+
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue;
+
+      totalSize += file.size;
+      if (totalSize > MAX_FILE_SIZE) {
+        toast({
+          title: "Limite de taille atteinte",
+          description: `La taille totale ne peut pas dépasser 20 MB.`,
+          variant: "destructive",
+        });
+        break;
+      }
+
+      validFiles.push(file);
+    }
+
+    setScreenshotFiles(validFiles);
+    
+    // Parse and match screenshots to trade numbers
+    const matched: {tradeNumber: number; m15?: File; m5?: File}[] = [];
+    const tradeMap = new Map<number, {m15?: File; m5?: File}>();
+
+    for (const file of validFiles) {
+      const name = file.name.toLowerCase();
+      // Extract trade number from filename
+      const m15Match = name.match(/trade[_]?(\d+)[_]?m15/i);
+      const m5Match = name.match(/trade[_]?(\d+)[_]?m5/i);
+      
+      if (m15Match) {
+        const num = parseInt(m15Match[1]);
+        if (!tradeMap.has(num)) tradeMap.set(num, {});
+        tradeMap.get(num)!.m15 = file;
+      } else if (m5Match) {
+        const num = parseInt(m5Match[1]);
+        if (!tradeMap.has(num)) tradeMap.set(num, {});
+        tradeMap.get(num)!.m5 = file;
+      }
+    }
+
+    tradeMap.forEach((files, tradeNumber) => {
+      matched.push({ tradeNumber, ...files });
+    });
+
+    matched.sort((a, b) => a.tradeNumber - b.tradeNumber);
+    setMatchedScreenshots(matched);
+
+    if (matched.length > 0) {
+      toast({
+        title: "Screenshots détectés",
+        description: `${matched.length} trade(s) avec screenshots prêts à être uploadés.`,
+      });
+    }
+  };
+
+  // Upload screenshots only (without CSV)
+  const handleScreenshotsOnlyUpload = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Non connecté",
+        description: "Vous devez être connecté.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (matchedScreenshots.length === 0) {
+      toast({
+        title: "Aucun screenshot",
+        description: "Aucun screenshot détecté avec le format trade_[N]_m15.png ou trade_[N]_m5.png",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setProgress({
+      current: 0,
+      total: matchedScreenshots.length,
+      percent: 0,
+      status: "uploading",
+      errors: [],
+      successes: 0,
+    });
+
+    const errors: string[] = [];
+    let successCount = 0;
+
+    for (const match of matchedScreenshots) {
+      setProgress((p) => ({
+        ...p,
+        currentItem: `Trade #${match.tradeNumber}`,
+      }));
+
+      try {
+        let screenshotM15Url: string | null = null;
+        let screenshotM5Url: string | null = null;
+
+        if (match.m15) {
+          screenshotM15Url = await uploadScreenshot(match.tradeNumber, match.m15, "m15");
+        }
+
+        if (match.m5) {
+          screenshotM5Url = await uploadScreenshot(match.tradeNumber, match.m5, "m5");
+        }
+
+        // Update existing trade with screenshot URLs
+        const updateData: Record<string, string | null> = {};
+        if (screenshotM15Url) updateData.screenshot_m15_m5 = screenshotM15Url;
+        if (screenshotM5Url) updateData.screenshot_m1 = screenshotM5Url;
+
+        const { error } = await supabase
+          .from("trades")
+          .update(updateData)
+          .eq("trade_number", match.tradeNumber);
+
+        if (error) {
+          errors.push(`Trade #${match.tradeNumber}: ${error.message}`);
+        } else {
+          successCount++;
+        }
+      } catch (e: any) {
+        errors.push(`Trade #${match.tradeNumber}: ${e.message}`);
+      }
+
+      setProgress((p) => ({
+        ...p,
+        current: p.current + 1,
+        percent: Math.round(((p.current + 1) / matchedScreenshots.length) * 100),
+        errors,
+        successes: successCount,
+      }));
+    }
+
+    setProgress((p) => ({ ...p, status: "complete" }));
+
+    toast({
+      title: "Upload terminé",
+      description: `${successCount} trades mis à jour. ${errors.length} erreur(s).`,
+      variant: errors.length > 0 ? "destructive" : "default",
+    });
+  };
+
   // Reset
   const handleReset = () => {
     setCsvFile(null);
     setScreenshotFiles([]);
     setParsedTrades([]);
+    setMatchedScreenshots([]);
     setProgress({
       current: 0,
       total: 0,
@@ -432,6 +583,7 @@ export const BatchImportPage = () => {
     });
     if (csvInputRef.current) csvInputRef.current.value = "";
     if (screenshotInputRef.current) screenshotInputRef.current.value = "";
+    if (screenshotOnlyInputRef.current) screenshotOnlyInputRef.current.value = "";
   };
 
   // Download CSV template for Oracle
@@ -513,15 +665,15 @@ export const BatchImportPage = () => {
       <ScrollArea className="flex-1 p-6">
         <div className="max-w-3xl mx-auto space-y-6">
           {/* Tabs for import type */}
-          <Tabs value={importType} onValueChange={(v) => setImportType(v as "oracle" | "journal")}>
+          <Tabs value={importType} onValueChange={(v) => setImportType(v as "oracle" | "screenshots")}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="oracle" className="gap-2">
                 <Database className="w-4 h-4" />
-                Oracle Database
+                CSV + Screenshots
               </TabsTrigger>
-              <TabsTrigger value="journal" className="gap-2" disabled>
-                <Calendar className="w-4 h-4" />
-                Journal (bientôt)
+              <TabsTrigger value="screenshots" className="gap-2">
+                <ImageIcon className="w-4 h-4" />
+                Screenshots uniquement
               </TabsTrigger>
             </TabsList>
 
@@ -775,12 +927,170 @@ export const BatchImportPage = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="journal">
+            {/* Screenshots Only Tab */}
+            <TabsContent value="screenshots" className="mt-6 space-y-6">
               <Card>
-                <CardContent className="pt-6 text-center text-muted-foreground">
-                  Import vers le Journal de Trading - Bientôt disponible
+                <CardHeader>
+                  <CardTitle className="text-sm">Upload Screenshots pour trades existants</CardTitle>
+                  <CardDescription>
+                    Uploadez des screenshots pour des trades déjà dans la base de données Oracle.
+                    Nommez vos fichiers: trade_[N]_m15.png et trade_[N]_m5.png
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div
+                    onClick={() => screenshotOnlyInputRef.current?.click()}
+                    className={cn(
+                      "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
+                      screenshotFiles.length > 0
+                        ? "border-primary/50 bg-primary/5"
+                        : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50"
+                    )}
+                  >
+                    <input
+                      ref={screenshotOnlyInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleScreenshotsOnlySelect}
+                      className="hidden"
+                      disabled={isUploading}
+                    />
+                    <FolderOpen className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      Cliquez pour sélectionner des images PNG
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Max 20 MB au total
+                    </p>
+                  </div>
+
+                  {/* Matched screenshots preview */}
+                  {matchedScreenshots.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-foreground">
+                        {matchedScreenshots.length} trade(s) détecté(s):
+                      </p>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {matchedScreenshots.map((match, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between px-3 py-2 bg-muted/50 rounded-md text-sm"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono font-bold text-foreground">
+                                #{match.tradeNumber}
+                              </span>
+                              <div className="flex gap-2">
+                                {match.m15 && (
+                                  <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
+                                    M15
+                                  </span>
+                                )}
+                                {match.m5 && (
+                                  <span className="text-xs bg-emerald-500/20 text-emerald-600 px-2 py-0.5 rounded">
+                                    M5
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {match.m15 && <span>{match.m15.name}</span>}
+                              {match.m15 && match.m5 && <span> + </span>}
+                              {match.m5 && <span>{match.m5.name}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
+
+              {/* Upload progress */}
+              {(isUploading || isComplete) && (
+                <Card>
+                  <CardContent className="pt-6 space-y-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2">
+                        {isUploading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            {progress.currentItem}
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            Upload terminé
+                          </>
+                        )}
+                      </span>
+                      <span className="font-mono text-xs">
+                        {progress.current}/{progress.total}
+                      </span>
+                    </div>
+                    <Progress value={progress.percent} className="h-2" />
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="text-emerald-500">
+                        {progress.successes} mis à jour
+                      </span>
+                      {progress.errors.length > 0 && (
+                        <span className="text-destructive">
+                          {progress.errors.length} erreurs
+                        </span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Errors */}
+              {progress.errors.length > 0 && progress.status === "complete" && (
+                <Card className="border-destructive/50 bg-destructive/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2 text-destructive">
+                      <AlertCircle className="w-4 h-4" />
+                      {progress.errors.length} erreur(s)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="text-xs text-destructive/80 space-y-1">
+                      {progress.errors.map((err, i) => (
+                        <li key={i}>• {err}</li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-4">
+                <Button variant="outline" onClick={handleReset} disabled={isUploading}>
+                  Réinitialiser
+                </Button>
+                <Button
+                  onClick={handleScreenshotsOnlyUpload}
+                  disabled={matchedScreenshots.length === 0 || isUploading || isComplete}
+                  className="gap-2"
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Upload en cours...
+                    </>
+                  ) : isComplete ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      Terminé
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4" />
+                      Stocker {matchedScreenshots.length} screenshot(s)
+                    </>
+                  )}
+                </Button>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
