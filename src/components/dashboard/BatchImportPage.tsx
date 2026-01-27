@@ -494,6 +494,38 @@ export const BatchImportPage = () => {
     return matched;
   };
 
+  // Check for existing screenshots in storage to detect duplicates
+  const checkExistingScreenshots = async (tradeNumbers: number[]): Promise<Set<string>> => {
+    const existingFiles = new Set<string>();
+    
+    try {
+      // List all files in the oracle folder
+      const { data: files, error } = await supabase.storage
+        .from("trade-screenshots")
+        .list("oracle", { limit: 1000 });
+      
+      if (error) {
+        console.error("Error listing storage files:", error);
+        return existingFiles;
+      }
+      
+      if (files) {
+        for (const file of files) {
+          // Extract trade number and type from filename (e.g., trade_151_m15.png)
+          const match = file.name.match(/trade_(\d+)_(m15|m5)/i);
+          if (match) {
+            const key = `${match[1]}_${match[2].toLowerCase()}`;
+            existingFiles.add(key);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error checking existing screenshots:", e);
+    }
+    
+    return existingFiles;
+  };
+
   // Auto-upload screenshots when selected
   const handleScreenshotsOnlySelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -522,8 +554,7 @@ export const BatchImportPage = () => {
     
     // Parse and match screenshots
     const matched = parseAndMatchScreenshots(validFiles);
-    setMatchedScreenshots(matched);
-
+    
     if (matched.length === 0) {
       toast({
         title: "Aucun trade détecté",
@@ -533,13 +564,67 @@ export const BatchImportPage = () => {
       return;
     }
 
-    // Auto-upload immediately
+    // Check for duplicates in storage
+    const tradeNumbers = matched.map(m => m.tradeNumber);
+    const existingFiles = await checkExistingScreenshots(tradeNumbers);
+    
+    // Filter out duplicates
+    const filteredMatches: {tradeNumber: number; m15?: File; m5?: File}[] = [];
+    let duplicateCount = 0;
+    
+    for (const match of matched) {
+      const m15Key = `${match.tradeNumber}_m15`;
+      const m5Key = `${match.tradeNumber}_m5`;
+      
+      const hasM15Duplicate = match.m15 && existingFiles.has(m15Key);
+      const hasM5Duplicate = match.m5 && existingFiles.has(m5Key);
+      
+      // Create a new match without duplicates
+      const newMatch: {tradeNumber: number; m15?: File; m5?: File} = { tradeNumber: match.tradeNumber };
+      
+      if (match.m15 && !hasM15Duplicate) {
+        newMatch.m15 = match.m15;
+      } else if (hasM15Duplicate) {
+        duplicateCount++;
+      }
+      
+      if (match.m5 && !hasM5Duplicate) {
+        newMatch.m5 = match.m5;
+      } else if (hasM5Duplicate) {
+        duplicateCount++;
+      }
+      
+      // Only add if there's at least one file to upload
+      if (newMatch.m15 || newMatch.m5) {
+        filteredMatches.push(newMatch);
+      }
+    }
+    
+    setMatchedScreenshots(filteredMatches);
+    
+    if (duplicateCount > 0) {
+      toast({
+        title: `${duplicateCount} doublon(s) ignoré(s)`,
+        description: `Ces screenshots existent déjà dans le stockage.`,
+        variant: "default",
+      });
+    }
+    
+    if (filteredMatches.length === 0) {
+      toast({
+        title: "Tous les fichiers sont des doublons",
+        description: "Ces screenshots existent déjà dans Oracle.",
+      });
+      return;
+    }
+
+    // Auto-upload immediately (only non-duplicates)
     toast({
       title: "Upload automatique",
-      description: `${matched.length} trade(s) détecté(s). Upload en cours...`,
+      description: `${filteredMatches.length} trade(s) à uploader. ${duplicateCount > 0 ? `${duplicateCount} doublon(s) ignoré(s).` : ''}`,
     });
 
-    await autoUploadScreenshots(matched);
+    await autoUploadScreenshots(filteredMatches);
   };
 
   // Automatic upload function
