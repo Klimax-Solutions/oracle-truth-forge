@@ -1,9 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileSpreadsheet, Trash2, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { 
+  Upload, 
+  FileSpreadsheet, 
+  Trash2, 
+  Loader2, 
+  AlertCircle, 
+  CheckCircle2,
+  Plus,
+  Download,
+  Target
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -24,6 +34,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { PersonalTradeDialog } from "./PersonalTradeDialog";
 
 interface PersonalTrade {
   id: string;
@@ -52,11 +63,15 @@ const DAYS_MAP: Record<number, string> = {
   6: "Samedi",
 };
 
+const TARGET_TRADES = 300;
+
 export const SetupPerso = () => {
   const [trades, setTrades] = useState<PersonalTrade[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; errors: number } | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingTrade, setEditingTrade] = useState<PersonalTrade | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -79,6 +94,12 @@ export const SetupPerso = () => {
       setTrades(data as PersonalTrade[]);
     }
     setLoading(false);
+  };
+
+  // Get next trade number
+  const getNextTradeNumber = () => {
+    if (trades.length === 0) return 1;
+    return Math.max(...trades.map(t => t.trade_number)) + 1;
   };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -273,8 +294,58 @@ export const SetupPerso = () => {
     }
   };
 
+  const handleExportCSV = () => {
+    if (trades.length === 0) return;
+
+    const headers = ['trade_number', 'trade_date', 'day_of_week', 'direction', 'direction_structure', 'entry_time', 'exit_time', 'setup_type', 'entry_model', 'rr'];
+    const csvContent = [
+      headers.join(','),
+      ...trades.map(t => [
+        t.trade_number,
+        t.trade_date,
+        t.day_of_week,
+        t.direction,
+        t.direction_structure || '',
+        t.entry_time || '',
+        t.exit_time || '',
+        t.setup_type || '',
+        t.entry_model || '',
+        t.rr ?? ''
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `setup_perso_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleNewTrade = () => {
+    setEditingTrade(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleEditTrade = (trade: PersonalTrade) => {
+    setEditingTrade(trade);
+    setIsDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+    setEditingTrade(null);
+  };
+
+  const handleTradeSaved = () => {
+    fetchTrades();
+    handleDialogClose();
+  };
+
   const totalRR = trades.reduce((sum, t) => sum + (t.rr || 0), 0);
   const avgRR = trades.length > 0 ? totalRR / trades.length : 0;
+  const progressPercent = Math.min((trades.length / TARGET_TRADES) * 100, 100);
 
   if (loading) {
     return (
@@ -288,14 +359,21 @@ export const SetupPerso = () => {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-border">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-semibold text-foreground mb-1">Setup Perso</h2>
             <p className="text-sm text-muted-foreground font-mono">
-              Importez et gérez vos trades personnels
+              Gérez vos trades personnels
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {/* New Trade Button */}
+            <Button onClick={handleNewTrade} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Nouveau Trade
+            </Button>
+            
+            {/* CSV Import/Export - positioned like in Saisie des trades */}
             <input
               ref={fileInputRef}
               type="file"
@@ -304,6 +382,8 @@ export const SetupPerso = () => {
               className="hidden"
             />
             <Button
+              variant="outline"
+              size="sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={importing}
               className="gap-2"
@@ -315,6 +395,19 @@ export const SetupPerso = () => {
               )}
               Importer CSV
             </Button>
+            
+            {trades.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCSV}
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Exporter CSV
+              </Button>
+            )}
+            
             {trades.length > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -340,6 +433,26 @@ export const SetupPerso = () => {
               </AlertDialog>
             )}
           </div>
+        </div>
+
+        {/* Progress Bar 0/300 */}
+        <div className="bg-card border border-border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">Objectif: {TARGET_TRADES} trades</span>
+            </div>
+            <span className="text-sm font-mono text-muted-foreground">
+              {trades.length}/{TARGET_TRADES}
+            </span>
+          </div>
+          <Progress value={progressPercent} className="h-2" />
+          <p className="text-xs text-muted-foreground mt-2">
+            {trades.length >= TARGET_TRADES 
+              ? "🎉 Objectif atteint ! Vous avez assez de données pour une analyse significative."
+              : `${TARGET_TRADES - trades.length} trades restants pour obtenir un feedback statistiquement pertinent.`
+            }
+          </p>
         </div>
       </div>
 
@@ -400,14 +513,20 @@ export const SetupPerso = () => {
             <FileSpreadsheet className="w-16 h-16 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">Aucun trade personnel</h3>
             <p className="text-sm text-muted-foreground mb-6 max-w-md">
-              Importez vos trades via un fichier CSV. Le fichier doit contenir au minimum les colonnes: trade_number, trade_date, direction.
+              Ajoutez vos trades manuellement ou importez-les via un fichier CSV.
             </p>
-            <Button onClick={() => fileInputRef.current?.click()} className="gap-2">
-              <Upload className="w-4 h-4" />
-              Importer un fichier CSV
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button onClick={handleNewTrade} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Ajouter un trade
+              </Button>
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2">
+                <Upload className="w-4 h-4" />
+                Importer un fichier CSV
+              </Button>
+            </div>
             <div className="mt-8 text-left text-xs text-muted-foreground/60 bg-muted/30 p-4 rounded-md max-w-lg">
-              <p className="font-medium mb-2">Colonnes supportées:</p>
+              <p className="font-medium mb-2">Colonnes CSV supportées:</p>
               <ul className="space-y-1 list-disc list-inside">
                 <li><code>trade_number</code> (requis) - Numéro du trade</li>
                 <li><code>trade_date</code> (requis) - Date (YYYY-MM-DD)</li>
@@ -434,7 +553,11 @@ export const SetupPerso = () => {
             </TableHeader>
             <TableBody>
               {trades.map((trade) => (
-                <TableRow key={trade.id}>
+                <TableRow 
+                  key={trade.id} 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleEditTrade(trade)}
+                >
                   <TableCell className="font-mono text-muted-foreground">
                     {trade.trade_number}
                   </TableCell>
@@ -466,7 +589,7 @@ export const SetupPerso = () => {
                       "font-mono font-bold",
                       (trade.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400"
                     )}>
-                      {trade.rr !== null ? `+${trade.rr.toFixed(2)}` : "—"}
+                      {trade.rr !== null ? `${trade.rr >= 0 ? '+' : ''}${trade.rr.toFixed(2)}` : "—"}
                     </span>
                   </TableCell>
                 </TableRow>
@@ -475,6 +598,15 @@ export const SetupPerso = () => {
           </Table>
         )}
       </div>
+
+      {/* Trade Dialog */}
+      <PersonalTradeDialog
+        isOpen={isDialogOpen}
+        onClose={handleDialogClose}
+        onSaved={handleTradeSaved}
+        editingTrade={editingTrade}
+        nextTradeNumber={getNextTradeNumber()}
+      />
     </div>
   );
 };
