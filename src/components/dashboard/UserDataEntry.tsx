@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TimePicker } from "@/components/ui/time-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
   SelectContent,
@@ -575,21 +576,17 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="trade_date">Date Entrée</Label>
-                  <Input
-                    id="trade_date"
-                    type="date"
+                  <Label>Date Entrée</Label>
+                  <DatePicker
                     value={formData.trade_date}
-                    onChange={(e) => setFormData({ ...formData, trade_date: e.target.value })}
+                    onChange={(value) => setFormData({ ...formData, trade_date: value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="exit_date">Date Sortie</Label>
-                  <Input
-                    id="exit_date"
-                    type="date"
+                  <Label>Date Sortie</Label>
+                  <DatePicker
                     value={formData.exit_date}
-                    onChange={(e) => setFormData({ ...formData, exit_date: e.target.value })}
+                    onChange={(value) => setFormData({ ...formData, exit_date: value })}
                   />
                   {!isSameDay && formData.exit_date && (
                     <p className="text-xs text-orange-400">Sortie J+{Math.ceil((new Date(formData.exit_date).getTime() - new Date(formData.trade_date).getTime()) / (1000 * 60 * 60 * 24))}</p>
