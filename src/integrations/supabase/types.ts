@@ -352,6 +352,87 @@ export type Database = {
         }
         Relationships: []
       }
+      user_personal_trades: {
+        Row: {
+          comment: string | null
+          created_at: string
+          day_of_week: string
+          direction: string
+          direction_structure: string | null
+          entry_model: string | null
+          entry_time: string | null
+          entry_timing: string | null
+          exit_time: string | null
+          id: string
+          news_day: boolean | null
+          news_label: string | null
+          rr: number | null
+          screenshot_url: string | null
+          setup_type: string | null
+          speculation_hl_valid: boolean | null
+          stop_loss_size: string | null
+          target_hl_valid: boolean | null
+          target_timing: string | null
+          trade_date: string
+          trade_duration: string | null
+          trade_number: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          day_of_week: string
+          direction: string
+          direction_structure?: string | null
+          entry_model?: string | null
+          entry_time?: string | null
+          entry_timing?: string | null
+          exit_time?: string | null
+          id?: string
+          news_day?: boolean | null
+          news_label?: string | null
+          rr?: number | null
+          screenshot_url?: string | null
+          setup_type?: string | null
+          speculation_hl_valid?: boolean | null
+          stop_loss_size?: string | null
+          target_hl_valid?: boolean | null
+          target_timing?: string | null
+          trade_date: string
+          trade_duration?: string | null
+          trade_number: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          day_of_week?: string
+          direction?: string
+          direction_structure?: string | null
+          entry_model?: string | null
+          entry_time?: string | null
+          entry_timing?: string | null
+          exit_time?: string | null
+          id?: string
+          news_day?: boolean | null
+          news_label?: string | null
+          rr?: number | null
+          screenshot_url?: string | null
+          setup_type?: string | null
+          speculation_hl_valid?: boolean | null
+          stop_loss_size?: string | null
+          target_hl_valid?: boolean | null
+          target_timing?: string | null
+          trade_date?: string
+          trade_duration?: string | null
+          trade_number?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           assigned_by: string | null

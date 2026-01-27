@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { DataSourceSelector, DataSource } from "@/components/dashboard/DataSourceSelector";
+import { usePersonalTrades } from "@/hooks/usePersonalTrades";
 
-import { OraclePage } from "@/components/dashboard/OraclePage";
+import { SetupPage } from "@/components/dashboard/SetupPage";
 import { TradingJournal } from "@/components/dashboard/TradingJournal";
 import { RRDistributionChart } from "@/components/dashboard/RRDistributionChart";
 import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
@@ -53,6 +55,8 @@ const Dashboard = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [activeTab, setActiveTab] = useState("execution");
   const [databaseFilters, setDatabaseFilters] = useState<any>(null);
+  const [dataSource, setDataSource] = useState<DataSource>("all");
+  const { trades: personalTrades } = usePersonalTrades();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -129,18 +133,57 @@ const Dashboard = () => {
     );
   }
 
+  // Combine trades based on data source
+  const getDisplayTrades = () => {
+    // Convert personal trades to match Trade interface
+    const personalTradesFormatted = personalTrades.map(pt => ({
+      id: pt.id,
+      trade_number: pt.trade_number + 1000, // Offset to avoid conflicts with Oracle trades
+      trade_date: pt.trade_date,
+      day_of_week: pt.day_of_week,
+      direction: pt.direction,
+      direction_structure: pt.direction_structure || "",
+      entry_time: pt.entry_time || "",
+      exit_time: pt.exit_time || "",
+      trade_duration: pt.trade_duration || "",
+      rr: pt.rr || 0,
+      stop_loss_size: pt.stop_loss_size || "",
+      setup_type: pt.setup_type || "",
+      entry_timing: pt.entry_timing || "",
+      entry_model: pt.entry_model || "",
+      target_timing: "",
+      speculation_hl_valid: false,
+      target_hl_valid: false,
+      news_day: false,
+      news_label: "",
+      screenshot_m15_m5: null,
+      screenshot_m1: null,
+    }));
+
+    if (dataSource === "perso") {
+      return personalTradesFormatted;
+    }
+    // "all" - combine both
+    return [...trades, ...personalTradesFormatted];
+  };
+
+  const displayTrades = getDisplayTrades();
+
+  // Check if data source selector should be shown
+  const showDataSourceSelector = ["journal", "distribution", "timing"].includes(activeTab);
+
   const renderContent = () => {
     switch (activeTab) {
       case "execution":
         return <OracleExecution trades={trades} />;
-      case "oracle":
-        return <OraclePage trades={trades} initialFilters={databaseFilters} />;
+      case "setup":
+        return <SetupPage trades={trades} initialFilters={databaseFilters} />;
       case "journal":
-        return <TradingJournal trades={trades} />;
+        return <TradingJournal trades={displayTrades} />;
       case "distribution":
-        return <RRDistributionChart trades={trades} />;
+        return <RRDistributionChart trades={displayTrades} />;
       case "timing":
-        return <TimingAnalysis trades={trades} onNavigateToDatabase={handleNavigateToDatabase} />;
+        return <TimingAnalysis trades={displayTrades} onNavigateToDatabase={handleNavigateToDatabase} />;
       case "videos":
         return <VideoSetup />;
       case "admin":
@@ -165,7 +208,10 @@ const Dashboard = () => {
             <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
               {user?.email}
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {showDataSourceSelector && (
+                <DataSourceSelector value={dataSource} onChange={setDataSource} />
+              )}
               <ThemeToggle />
               <Button
                 variant="ghost"
