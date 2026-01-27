@@ -26,7 +26,6 @@ export function TimePicker({
   onChange,
   minTime,
   maxTime,
-  label,
   error,
   className,
 }: TimePickerProps) {
@@ -49,7 +48,7 @@ export function TimePicker({
   // Scroll to selected values when popover opens
   React.useEffect(() => {
     if (open) {
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         const hourIndex = HOURS.indexOf(selectedHour);
         const minuteIndex = MINUTES.indexOf(selectedMinute);
         
@@ -61,7 +60,7 @@ export function TimePicker({
           const itemHeight = 40;
           minuteRef.current.scrollTop = Math.max(0, minuteIndex * itemHeight - 60);
         }
-      }, 50);
+      });
     }
   }, [open, selectedHour, selectedMinute]);
 
@@ -84,11 +83,23 @@ export function TimePicker({
 
   const displayValue = value || "--:--";
 
+  // Handle wheel scroll on columns
+  const handleWheel = (
+    e: React.WheelEvent<HTMLDivElement>,
+    ref: React.RefObject<HTMLDivElement>
+  ) => {
+    if (ref.current) {
+      e.stopPropagation();
+      ref.current.scrollTop += e.deltaY;
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          type="button"
           className={cn(
             "w-full justify-between font-normal",
             "bg-background border-input hover:bg-accent/50",
@@ -103,9 +114,10 @@ export function TimePicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[220px] p-0 bg-popover border border-border shadow-xl" 
+        className="w-[220px] p-0 bg-popover border border-border shadow-xl pointer-events-auto" 
         align="start"
         sideOffset={4}
+        onWheel={(e) => e.stopPropagation()}
       >
         <div className="flex h-[240px]">
           {/* Hours column */}
@@ -115,7 +127,13 @@ export function TimePicker({
             </div>
             <div 
               ref={hourRef}
-              className="flex-1 overflow-y-auto py-1 scrollbar-hide"
+              className="flex-1 overflow-y-scroll overscroll-contain py-1"
+              onWheel={(e) => handleWheel(e, hourRef)}
+              style={{ 
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+                WebkitOverflowScrolling: 'touch'
+              }}
             >
               {HOURS.map((hour) => {
                 const isDisabled = minTime && `${hour}:59` < minTime;
@@ -148,7 +166,13 @@ export function TimePicker({
             </div>
             <div 
               ref={minuteRef}
-              className="flex-1 overflow-y-auto py-1 scrollbar-hide"
+              className="flex-1 overflow-y-scroll overscroll-contain py-1"
+              onWheel={(e) => handleWheel(e, minuteRef)}
+              style={{ 
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+                WebkitOverflowScrolling: 'touch'
+              }}
             >
               {MINUTES.map((minute) => {
                 const isDisabled = isTimeDisabled(selectedHour, minute);
