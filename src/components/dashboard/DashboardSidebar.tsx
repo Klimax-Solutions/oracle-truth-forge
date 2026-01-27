@@ -10,7 +10,7 @@ interface DashboardSidebarProps {
 
 const tabs = [
   { id: "execution", label: "Exécution d'Oracle", icon: Crosshair },
-  { id: "oracle", label: "Oracle", icon: Database },
+  { id: "setup", label: "Setup", icon: Database },
   { id: "journal", label: "Journal de Trading", icon: Calendar },
   { id: "distribution", label: "Distribution RR", icon: BarChart3 },
   { id: "timing", label: "Timing Analysis", icon: Clock },
