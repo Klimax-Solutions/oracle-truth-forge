@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import {
@@ -19,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, Trash2 } from "lucide-react";
+import { Loader2, Save, Trash2, Upload, X, Image as ImageIcon } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
 interface PersonalTrade {
   id: string;
@@ -47,6 +49,13 @@ interface PersonalTrade {
   setup_type: string | null;
   entry_timing: string | null;
   entry_model: string | null;
+  screenshot_url?: string | null;
+  comment?: string | null;
+  entry_price?: number | null;
+  exit_price?: number | null;
+  stop_loss?: number | null;
+  take_profit?: number | null;
+  result?: string | null;
 }
 
 interface PersonalTradeDialogProps {
@@ -67,11 +76,6 @@ const DAYS_MAP: Record<number, string> = {
   6: "Samedi",
 };
 
-const SETUP_TYPES = ["A", "B", "C"];
-const ENTRY_MODELS = ["BOS", "MSS", "OB", "FVG", "EQH/L", "Liquidity Sweep", "Breaker", "Mitigation"];
-const DIRECTION_STRUCTURES = ["Continuation", "Retracement"];
-const ENTRY_TIMINGS = ["Open US 15:30", "London Close 16:00", "New York Close 20:00"];
-
 interface FormData {
   trade_number: string;
   trade_date: string;
@@ -83,6 +87,13 @@ interface FormData {
   entry_model: string;
   entry_timing: string;
   rr: string;
+  // New fields
+  entry_price: string;
+  exit_price: string;
+  stop_loss: string;
+  take_profit: string;
+  result: "Win" | "Loss" | "BE" | "";
+  notes: string;
 }
 
 const initialFormData: FormData = {
@@ -96,6 +107,12 @@ const initialFormData: FormData = {
   entry_model: "",
   entry_timing: "",
   rr: "",
+  entry_price: "",
+  exit_price: "",
+  stop_loss: "",
+  take_profit: "",
+  result: "",
+  notes: "",
 };
 
 export const PersonalTradeDialog = ({
@@ -107,6 +124,11 @@ export const PersonalTradeDialog = ({
 }: PersonalTradeDialogProps) => {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [existingScreenshot, setExistingScreenshot] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   // Reset form when dialog opens
@@ -124,15 +146,88 @@ export const PersonalTradeDialog = ({
           entry_model: editingTrade.entry_model || "",
           entry_timing: editingTrade.entry_timing || "",
           rr: editingTrade.rr?.toString() || "",
+          entry_price: editingTrade.entry_price?.toString() || "",
+          exit_price: editingTrade.exit_price?.toString() || "",
+          stop_loss: editingTrade.stop_loss?.toString() || "",
+          take_profit: editingTrade.take_profit?.toString() || "",
+          result: (editingTrade.result as "Win" | "Loss" | "BE") || "",
+          notes: editingTrade.comment || "",
         });
+        setExistingScreenshot(editingTrade.screenshot_url || null);
       } else {
         setFormData({
           ...initialFormData,
           trade_number: nextTradeNumber.toString(),
         });
+        setExistingScreenshot(null);
       }
+      setScreenshotFile(null);
+      setScreenshotPreview(null);
     }
   }, [isOpen, editingTrade, nextTradeNumber]);
+
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Fichier trop volumineux",
+          description: "La taille maximale est de 5 MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setScreenshotFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setScreenshotPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Upload screenshot
+  const uploadScreenshot = async (userId: string, tradeNumber: number): Promise<string | null> => {
+    if (!screenshotFile) return existingScreenshot;
+
+    setUploading(true);
+    const fileExt = screenshotFile.name.split('.').pop();
+    const fileName = `${userId}/perso_${tradeNumber}_${Date.now()}.${fileExt}`;
+
+    const { data, error } = await supabase.storage
+      .from('trade-screenshots')
+      .upload(fileName, screenshotFile, { upsert: true });
+
+    setUploading(false);
+
+    if (error) {
+      console.error("Error uploading screenshot:", error);
+      toast({
+        title: "Erreur d'upload",
+        description: "Impossible d'envoyer le screenshot.",
+        variant: "destructive",
+      });
+      return existingScreenshot;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('trade-screenshots')
+      .getPublicUrl(data.path);
+
+    return publicUrl;
+  };
+
+  // Clear screenshot
+  const clearScreenshot = () => {
+    setScreenshotFile(null);
+    setScreenshotPreview(null);
+    setExistingScreenshot(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleSave = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -148,6 +243,9 @@ export const PersonalTradeDialog = ({
     }
 
     setSaving(true);
+
+    // Upload screenshot if present
+    const screenshotUrl = await uploadScreenshot(user.id, parseInt(formData.trade_number));
 
     const date = new Date(formData.trade_date);
     const dayOfWeek = DAYS_MAP[date.getDay()] || "Inconnu";
@@ -165,6 +263,13 @@ export const PersonalTradeDialog = ({
       entry_model: formData.entry_model || null,
       entry_timing: formData.entry_timing || null,
       rr: formData.rr ? parseFloat(formData.rr) : null,
+      entry_price: formData.entry_price ? parseFloat(formData.entry_price) : null,
+      exit_price: formData.exit_price ? parseFloat(formData.exit_price) : null,
+      stop_loss: formData.stop_loss ? parseFloat(formData.stop_loss) : null,
+      take_profit: formData.take_profit ? parseFloat(formData.take_profit) : null,
+      result: formData.result || null,
+      comment: formData.notes || null,
+      screenshot_url: screenshotUrl,
     };
 
     try {
@@ -240,9 +345,11 @@ export const PersonalTradeDialog = ({
     }
   };
 
+  const currentScreenshot = screenshotPreview || existingScreenshot;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editingTrade ? `Modifier Trade #${editingTrade.trade_number}` : "Nouveau Trade"}
@@ -271,7 +378,7 @@ export const PersonalTradeDialog = ({
             </div>
           </div>
 
-          {/* Row 2: Direction & Structure */}
+          {/* Row 2: Direction & Result */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Direction *</Label>
@@ -289,24 +396,24 @@ export const PersonalTradeDialog = ({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Structure</Label>
+              <Label>Résultat</Label>
               <Select
-                value={formData.direction_structure}
-                onValueChange={(value) => setFormData({ ...formData, direction_structure: value })}
+                value={formData.result}
+                onValueChange={(value: "Win" | "Loss" | "BE" | "") => setFormData({ ...formData, result: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner" />
                 </SelectTrigger>
                 <SelectContent>
-                  {DIRECTION_STRUCTURES.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
+                  <SelectItem value="Win">Win</SelectItem>
+                  <SelectItem value="Loss">Loss</SelectItem>
+                  <SelectItem value="BE">BE (Break Even)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {/* Row 3: Entry & Exit Time */}
+          {/* Row 3: Entry & Exit Time - NO RESTRICTIONS */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Heure d'entrée</Label>
@@ -324,60 +431,100 @@ export const PersonalTradeDialog = ({
             </div>
           </div>
 
-          {/* Row 4: Setup & Model */}
+          {/* Row 4: Custom Variables - Text inputs for flexibility */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Setup Type</Label>
-              <Select
-                value={formData.setup_type}
-                onValueChange={(value) => setFormData({ ...formData, setup_type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SETUP_TYPES.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Structure (personnalisable)</Label>
+              <Input
+                value={formData.direction_structure}
+                onChange={(e) => setFormData({ ...formData, direction_structure: e.target.value })}
+                placeholder="Ex: Continuation, Retracement, Reversal..."
+              />
             </div>
             <div className="space-y-2">
-              <Label>Entry Model</Label>
-              <Select
-                value={formData.entry_model}
-                onValueChange={(value) => setFormData({ ...formData, entry_model: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ENTRY_MODELS.map((m) => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Type de Setup (personnalisable)</Label>
+              <Input
+                value={formData.setup_type}
+                onChange={(e) => setFormData({ ...formData, setup_type: e.target.value })}
+                placeholder="Ex: A, B, C, Custom Setup..."
+              />
             </div>
           </div>
 
-          {/* Row 5: Timing & RR */}
+          {/* Row 5: More Custom Variables */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Entry Timing</Label>
-              <Select
-                value={formData.entry_timing}
-                onValueChange={(value) => setFormData({ ...formData, entry_timing: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ENTRY_TIMINGS.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Entry Model (personnalisable)</Label>
+              <Input
+                value={formData.entry_model}
+                onChange={(e) => setFormData({ ...formData, entry_model: e.target.value })}
+                placeholder="Ex: BOS, MSS, OB, FVG..."
+              />
             </div>
+            <div className="space-y-2">
+              <Label>Entry Timing (personnalisable)</Label>
+              <Input
+                value={formData.entry_timing}
+                onChange={(e) => setFormData({ ...formData, entry_timing: e.target.value })}
+                placeholder="Ex: Open US, London Close..."
+              />
+            </div>
+          </div>
+
+          {/* Separator */}
+          <div className="border-t border-border my-2" />
+          <p className="text-xs text-muted-foreground font-mono uppercase">Données Financières</p>
+
+          {/* Row 6: Prices */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Prix d'entrée</Label>
+              <Input
+                type="number"
+                step="0.00001"
+                value={formData.entry_price}
+                onChange={(e) => setFormData({ ...formData, entry_price: e.target.value })}
+                placeholder="Ex: 1.08550"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Prix de sortie</Label>
+              <Input
+                type="number"
+                step="0.00001"
+                value={formData.exit_price}
+                onChange={(e) => setFormData({ ...formData, exit_price: e.target.value })}
+                placeholder="Ex: 1.08750"
+              />
+            </div>
+          </div>
+
+          {/* Row 7: SL & TP */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Stop Loss</Label>
+              <Input
+                type="number"
+                step="0.00001"
+                value={formData.stop_loss}
+                onChange={(e) => setFormData({ ...formData, stop_loss: e.target.value })}
+                placeholder="Ex: 1.08450"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Take Profit</Label>
+              <Input
+                type="number"
+                step="0.00001"
+                value={formData.take_profit}
+                onChange={(e) => setFormData({ ...formData, take_profit: e.target.value })}
+                placeholder="Ex: 1.08850"
+              />
+            </div>
+          </div>
+
+          {/* Row 8: RR */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>RR (Risk/Reward)</Label>
               <Input
@@ -385,9 +532,66 @@ export const PersonalTradeDialog = ({
                 step="0.01"
                 value={formData.rr}
                 onChange={(e) => setFormData({ ...formData, rr: e.target.value })}
-                placeholder="Ex: 2.5"
+                placeholder="Ex: 2.5 ou -1"
               />
             </div>
+          </div>
+
+          {/* Screenshot Upload */}
+          <div className="space-y-2">
+            <Label>Screenshot</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            
+            {currentScreenshot ? (
+              <div className="relative border border-border rounded-md p-2">
+                <img 
+                  src={currentScreenshot} 
+                  alt="Screenshot" 
+                  className="max-h-40 object-contain mx-auto rounded"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2 h-6 w-6"
+                  onClick={clearScreenshot}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full h-20 border-dashed gap-2"
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ImageIcon className="w-4 h-4" />
+                )}
+                Ajouter un screenshot
+              </Button>
+            )}
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label>Notes</Label>
+            <Textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Notes, observations, analyse post-trade..."
+              rows={3}
+            />
           </div>
         </div>
 
@@ -424,7 +628,7 @@ export const PersonalTradeDialog = ({
             <Button variant="outline" onClick={onClose}>
               Annuler
             </Button>
-            <Button onClick={handleSave} disabled={saving} className="gap-2">
+            <Button onClick={handleSave} disabled={saving || uploading} className="gap-2">
               {saving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
