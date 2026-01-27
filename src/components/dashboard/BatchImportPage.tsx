@@ -449,18 +449,73 @@ export const BatchImportPage = () => {
 
     for (const file of validFiles) {
       const name = file.name.toLowerCase();
-      // Extract trade number from filename
-      const m15Match = name.match(/trade[_]?(\d+)[_]?m15/i);
-      const m5Match = name.match(/trade[_]?(\d+)[_]?m5/i);
       
-      if (m15Match) {
-        const num = parseInt(m15Match[1]);
-        if (!tradeMap.has(num)) tradeMap.set(num, {});
-        tradeMap.get(num)!.m15 = file;
-      } else if (m5Match) {
-        const num = parseInt(m5Match[1]);
-        if (!tradeMap.has(num)) tradeMap.set(num, {});
-        tradeMap.get(num)!.m5 = file;
+      // Enhanced regex patterns to match various filename formats:
+      // trade_151_m15.png, trade151_m15.png, Trade 151 M15.png, Trade 151 M5 Contexte.png, etc.
+      // Also matches: h1, m1, m5, m15, contexte, entrée patterns
+      
+      // Check for M15/H1/Contexte patterns (treated as M15)
+      const m15Patterns = [
+        /trade[_\s]?(\d+)[_\s]?m15/i,
+        /trade[_\s]?(\d+)[_\s]?h1/i,
+        /trade[_\s]?(\d+)[_\s]+.*contexte/i,
+        /(\d+)[_\s]?m15/i,
+        /(\d+)[_\s]?h1/i,
+      ];
+      
+      // Check for M5/M1/Entrée patterns (treated as M5)
+      const m5Patterns = [
+        /trade[_\s]?(\d+)[_\s]?m5/i,
+        /trade[_\s]?(\d+)[_\s]?m1[^5]/i,
+        /trade[_\s]?(\d+)[_\s]?m1$/i,
+        /trade[_\s]?(\d+)[_\s]+.*entr[ée]e?/i,
+        /(\d+)[_\s]?m5/i,
+        /(\d+)[_\s]?m1[^5]/i,
+      ];
+      
+      let isM15 = false;
+      let isM5 = false;
+      let tradeNum: number | null = null;
+      
+      // Try M15 patterns first
+      for (const pattern of m15Patterns) {
+        const match = name.match(pattern);
+        if (match) {
+          tradeNum = parseInt(match[1]);
+          isM15 = true;
+          break;
+        }
+      }
+      
+      // If not M15, try M5 patterns
+      if (!isM15) {
+        for (const pattern of m5Patterns) {
+          const match = name.match(pattern);
+          if (match) {
+            tradeNum = parseInt(match[1]);
+            isM5 = true;
+            break;
+          }
+        }
+      }
+      
+      // Fallback: try to extract any trade number if file contains "trade"
+      if (!tradeNum && name.includes('trade')) {
+        const genericMatch = name.match(/trade[_\s]?(\d+)/i);
+        if (genericMatch) {
+          tradeNum = parseInt(genericMatch[1]);
+          // Default to M15 if no specific timeframe detected
+          isM15 = true;
+        }
+      }
+      
+      if (tradeNum && !isNaN(tradeNum)) {
+        if (!tradeMap.has(tradeNum)) tradeMap.set(tradeNum, {});
+        if (isM15) {
+          tradeMap.get(tradeNum)!.m15 = file;
+        } else if (isM5) {
+          tradeMap.get(tradeNum)!.m5 = file;
+        }
       }
     }
 
