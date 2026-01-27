@@ -52,23 +52,41 @@ export type Database = {
       }
       profiles: {
         Row: {
+          banned_at: string | null
+          banned_by: string | null
           created_at: string
           display_name: string | null
+          frozen_at: string | null
+          frozen_by: string | null
           id: string
+          status: Database["public"]["Enums"]["user_status"]
+          status_reason: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          banned_at?: string | null
+          banned_by?: string | null
           created_at?: string
           display_name?: string | null
+          frozen_at?: string | null
+          frozen_by?: string | null
           id?: string
+          status?: Database["public"]["Enums"]["user_status"]
+          status_reason?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          banned_at?: string | null
+          banned_by?: string | null
           created_at?: string
           display_name?: string | null
+          frozen_at?: string | null
+          frozen_by?: string | null
           id?: string
+          status?: Database["public"]["Enums"]["user_status"]
+          status_reason?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -417,6 +435,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_user_access: { Args: never; Returns: boolean }
+      get_user_status: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["user_status"]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -447,6 +470,7 @@ export type Database = {
         | "pending_review"
         | "validated"
         | "rejected"
+      user_status: "active" | "frozen" | "banned"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -582,6 +606,7 @@ export const Constants = {
         "validated",
         "rejected",
       ],
+      user_status: ["active", "frozen", "banned"],
     },
   },
 } as const

@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Table, 
   TableBody, 
@@ -28,14 +28,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Shield, ShieldCheck, User, UserPlus, Trash2, Crown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { 
+  Shield, 
+  ShieldCheck, 
+  User, 
+  UserPlus, 
+  Trash2, 
+  Crown, 
+  MoreHorizontal,
+  Snowflake,
+  Ban,
+  UserX,
+  CheckCircle,
+  AlertTriangle
+} from "lucide-react";
 import { toast } from "sonner";
+
+type UserStatus = "active" | "frozen" | "banned";
 
 interface UserWithRole {
   user_id: string;
   email: string;
   display_name: string | null;
   roles: string[];
+  status: UserStatus;
+  status_reason: string | null;
 }
 
 export const RoleManagement = () => {
@@ -43,8 +67,12 @@ export const RoleManagement = () => {
   const [loading, setLoading] = useState(true);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+  const [actionType, setActionType] = useState<"freeze" | "ban" | "remove" | "unfreeze" | "unban" | null>(null);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<string>("admin");
+  const [actionReason, setActionReason] = useState("");
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     checkSuperAdmin();
@@ -61,10 +89,10 @@ export const RoleManagement = () => {
   const fetchUsersWithRoles = async () => {
     setLoading(true);
     
-    // Fetch all profiles
+    // Fetch all profiles with status
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("user_id, display_name");
+      .select("user_id, display_name, status, status_reason");
 
     if (profilesError) {
       console.error("Error fetching profiles:", profilesError);
@@ -83,7 +111,6 @@ export const RoleManagement = () => {
       return;
     }
 
-    // Get user emails from auth (we'll use profile display_name as fallback)
     const usersMap = new Map<string, UserWithRole>();
 
     profiles?.forEach((profile) => {
@@ -92,6 +119,8 @@ export const RoleManagement = () => {
         email: profile.display_name || "Unknown",
         display_name: profile.display_name,
         roles: [],
+        status: (profile.status as UserStatus) || "active",
+        status_reason: profile.status_reason,
       });
     });
 
@@ -157,6 +186,109 @@ export const RoleManagement = () => {
     fetchUsersWithRoles();
   };
 
+  const openActionDialog = (userId: string, action: "freeze" | "ban" | "remove" | "unfreeze" | "unban") => {
+    setSelectedUser(userId);
+    setActionType(action);
+    setActionReason("");
+    setActionDialogOpen(true);
+  };
+
+  const executeAction = async () => {
+    if (!selectedUser || !actionType) return;
+    
+    setProcessing(true);
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+    try {
+      if (actionType === "freeze") {
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            status: "frozen" as any,
+            frozen_at: new Date().toISOString(),
+            frozen_by: currentUser?.id,
+            status_reason: actionReason || null,
+          })
+          .eq("user_id", selectedUser);
+
+        if (error) throw error;
+        toast.success("Utilisateur gelé avec succès");
+      } 
+      else if (actionType === "ban") {
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            status: "banned" as any,
+            banned_at: new Date().toISOString(),
+            banned_by: currentUser?.id,
+            status_reason: actionReason || null,
+          })
+          .eq("user_id", selectedUser);
+
+        if (error) throw error;
+        toast.success("Utilisateur banni avec succès");
+      }
+      else if (actionType === "unfreeze" || actionType === "unban") {
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            status: "active" as any,
+            frozen_at: null,
+            banned_at: null,
+            frozen_by: null,
+            banned_by: null,
+            status_reason: null,
+          })
+          .eq("user_id", selectedUser);
+
+        if (error) throw error;
+        toast.success("Utilisateur réactivé avec succès");
+      }
+      else if (actionType === "remove") {
+        // Delete all user roles
+        await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", selectedUser);
+
+        // Delete user cycles
+        await supabase
+          .from("user_cycles")
+          .delete()
+          .eq("user_id", selectedUser);
+
+        // Delete user executions
+        await supabase
+          .from("user_executions")
+          .delete()
+          .eq("user_id", selectedUser);
+
+        // Delete user followups
+        await supabase
+          .from("user_followups")
+          .delete()
+          .eq("user_id", selectedUser);
+
+        // Delete profile
+        const { error } = await supabase
+          .from("profiles")
+          .delete()
+          .eq("user_id", selectedUser);
+
+        if (error) throw error;
+        toast.success("Utilisateur supprimé avec succès");
+      }
+
+      setActionDialogOpen(false);
+      fetchUsersWithRoles();
+    } catch (error) {
+      console.error("Error executing action:", error);
+      toast.error("Erreur lors de l'exécution de l'action");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'super_admin':
@@ -190,6 +322,75 @@ export const RoleManagement = () => {
     }
   };
 
+  const getStatusBadge = (status: UserStatus) => {
+    switch (status) {
+      case 'frozen':
+        return (
+          <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/30">
+            <Snowflake className="w-3 h-3 mr-1" />
+            Gelé
+          </Badge>
+        );
+      case 'banned':
+        return (
+          <Badge variant="destructive">
+            <Ban className="w-3 h-3 mr-1" />
+            Banni
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Actif
+          </Badge>
+        );
+    }
+  };
+
+  const getActionDialogContent = () => {
+    const user = users.find(u => u.user_id === selectedUser);
+    const userName = user?.display_name || "cet utilisateur";
+
+    switch (actionType) {
+      case 'freeze':
+        return {
+          title: "Geler l'utilisateur",
+          description: `Êtes-vous sûr de vouloir geler ${userName} ? Il ne pourra plus accéder à l'application.`,
+          icon: <Snowflake className="w-6 h-6 text-blue-500" />,
+          buttonText: "Geler",
+          buttonVariant: "default" as const,
+        };
+      case 'ban':
+        return {
+          title: "Bannir l'utilisateur",
+          description: `Êtes-vous sûr de vouloir bannir ${userName} ? Cette action est plus sévère qu'un gel.`,
+          icon: <Ban className="w-6 h-6 text-destructive" />,
+          buttonText: "Bannir",
+          buttonVariant: "destructive" as const,
+        };
+      case 'remove':
+        return {
+          title: "Supprimer l'utilisateur",
+          description: `Êtes-vous sûr de vouloir supprimer définitivement ${userName} ? Toutes ses données seront perdues.`,
+          icon: <UserX className="w-6 h-6 text-destructive" />,
+          buttonText: "Supprimer",
+          buttonVariant: "destructive" as const,
+        };
+      case 'unfreeze':
+      case 'unban':
+        return {
+          title: "Réactiver l'utilisateur",
+          description: `Êtes-vous sûr de vouloir réactiver ${userName} ?`,
+          icon: <CheckCircle className="w-6 h-6 text-green-500" />,
+          buttonText: "Réactiver",
+          buttonVariant: "default" as const,
+        };
+      default:
+        return null;
+    }
+  };
+
   if (!isSuperAdmin) {
     return (
       <div className="p-6 text-center">
@@ -202,13 +403,15 @@ export const RoleManagement = () => {
     );
   }
 
+  const dialogContent = getActionDialogContent();
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Gestion des Rôles</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Gestion des Membres</h2>
           <p className="text-muted-foreground">
-            Attribuez des rôles admin aux utilisateurs
+            Gérez les rôles et le statut des utilisateurs
           </p>
         </div>
         
@@ -272,7 +475,7 @@ export const RoleManagement = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="p-4 rounded-lg border bg-card">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
             <Crown className="w-4 h-4" />
@@ -294,10 +497,28 @@ export const RoleManagement = () => {
         <div className="p-4 rounded-lg border bg-card">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
             <User className="w-4 h-4" />
-            <span className="text-sm">Membres</span>
+            <span className="text-sm">Membres actifs</span>
           </div>
           <p className="text-2xl font-bold">
-            {users.filter(u => u.roles.includes('member') && !u.roles.includes('admin') && !u.roles.includes('super_admin')).length}
+            {users.filter(u => u.status === 'active').length}
+          </p>
+        </div>
+        <div className="p-4 rounded-lg border bg-card">
+          <div className="flex items-center gap-2 text-blue-500 mb-1">
+            <Snowflake className="w-4 h-4" />
+            <span className="text-sm">Gelés</span>
+          </div>
+          <p className="text-2xl font-bold text-blue-500">
+            {users.filter(u => u.status === 'frozen').length}
+          </p>
+        </div>
+        <div className="p-4 rounded-lg border bg-card">
+          <div className="flex items-center gap-2 text-destructive mb-1">
+            <Ban className="w-4 h-4" />
+            <span className="text-sm">Bannis</span>
+          </div>
+          <p className="text-2xl font-bold text-destructive">
+            {users.filter(u => u.status === 'banned').length}
           </p>
         </div>
       </div>
@@ -308,6 +529,7 @@ export const RoleManagement = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Utilisateur</TableHead>
+              <TableHead>Statut</TableHead>
               <TableHead>Rôles</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -315,22 +537,31 @@ export const RoleManagement = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={3} className="text-center py-8">
+                <TableCell colSpan={4} className="text-center py-8">
                   <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
                 </TableCell>
               </TableRow>
             ) : users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                   Aucun utilisateur trouvé
                 </TableCell>
               </TableRow>
             ) : (
               users.map((user) => (
-                <TableRow key={user.user_id}>
+                <TableRow key={user.user_id} className={user.status !== 'active' ? 'opacity-60' : ''}>
                   <TableCell>
                     <div className="font-medium">{user.display_name || "Sans nom"}</div>
                     <div className="text-sm text-muted-foreground">{user.user_id.slice(0, 8)}...</div>
+                    {user.status_reason && (
+                      <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        {user.status_reason}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {getStatusBadge(user.status)}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2 flex-wrap">
@@ -347,16 +578,68 @@ export const RoleManagement = () => {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    {user.roles.includes('admin') && !user.roles.includes('super_admin') && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeRole(user.user_id, 'admin')}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
+                    <div className="flex items-center justify-end gap-2">
+                      {user.roles.includes('admin') && !user.roles.includes('super_admin') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeRole(user.user_id, 'admin')}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                      
+                      {!user.roles.includes('super_admin') && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {user.status === 'active' && (
+                              <>
+                                <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'freeze')}>
+                                  <Snowflake className="w-4 h-4 mr-2 text-blue-500" />
+                                  Geler
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'ban')}>
+                                  <Ban className="w-4 h-4 mr-2 text-destructive" />
+                                  Bannir
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {user.status === 'frozen' && (
+                              <>
+                                <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'unfreeze')}>
+                                  <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                                  Dégeler
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'ban')}>
+                                  <Ban className="w-4 h-4 mr-2 text-destructive" />
+                                  Bannir
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {user.status === 'banned' && (
+                              <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'unban')}>
+                                <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                                Débannir
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => openActionDialog(user.user_id, 'remove')}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <UserX className="w-4 h-4 mr-2" />
+                              Supprimer
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -364,6 +647,54 @@ export const RoleManagement = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Action Confirmation Dialog */}
+      <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
+        <DialogContent>
+          {dialogContent && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-3">
+                  {dialogContent.icon}
+                  <DialogTitle>{dialogContent.title}</DialogTitle>
+                </div>
+                <DialogDescription>
+                  {dialogContent.description}
+                </DialogDescription>
+              </DialogHeader>
+              
+              {(actionType === 'freeze' || actionType === 'ban') && (
+                <div className="space-y-2 py-4">
+                  <Label>Raison (optionnel)</Label>
+                  <Textarea
+                    placeholder="Expliquez la raison de cette action..."
+                    value={actionReason}
+                    onChange={(e) => setActionReason(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              )}
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setActionDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button 
+                  variant={dialogContent.buttonVariant}
+                  onClick={executeAction}
+                  disabled={processing}
+                >
+                  {processing ? (
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    dialogContent.buttonText
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
