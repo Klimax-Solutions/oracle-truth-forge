@@ -296,7 +296,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
   const getCycleStyles = (status: string | undefined) => {
     switch (status) {
       case 'locked': 
-        return "bg-card border-border/40 opacity-60";
+        return "bg-card border-border opacity-60";
       case 'in_progress': 
         return "bg-blue-500/10 border-blue-500/40";
       case 'pending_review': 
@@ -306,7 +306,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
       case 'rejected': 
         return "bg-red-500/10 border-red-500/40";
       default: 
-        return "bg-card border-border/40";
+        return "bg-card border-border";
     }
   };
 
@@ -331,7 +331,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
       <div className="flex-1 p-6 overflow-auto space-y-8">
         {/* Overview stats */}
         <div className="grid grid-cols-4 gap-4">
-          <div className="border border-emerald-500/40 p-5 bg-transparent rounded-md">
+          <div className="border border-emerald-500/30 p-5 bg-transparent rounded-md">
             <div className="flex items-center gap-2 mb-3">
               <Target className="w-4 h-4 text-emerald-500" />
               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
@@ -348,7 +348,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
             </div>
           </div>
 
-          <div className="border border-border/40 p-5 bg-transparent rounded-md">
+          <div className="border border-border p-5 bg-transparent rounded-md">
             <div className="flex items-center gap-2 mb-3">
               <CheckCircle className="w-4 h-4 text-muted-foreground" />
               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
@@ -359,7 +359,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
             <p className="text-sm text-muted-foreground">/ 8 cycles</p>
           </div>
 
-          <div className="border border-border/40 p-5 bg-transparent rounded-md">
+          <div className="border border-border p-5 bg-transparent rounded-md">
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="w-4 h-4 text-muted-foreground" />
               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
@@ -377,7 +377,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
             </p>
           </div>
 
-          <div className="border border-border/40 p-5 bg-transparent rounded-md">
+          <div className="border border-border p-5 bg-transparent rounded-md">
             <div className="flex items-center gap-2 mb-3">
               <Circle className="w-4 h-4 text-muted-foreground" />
               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
@@ -600,7 +600,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
                         ? (userExec.rr || 0) >= 0 
                           ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
                           : "bg-red-500/10 border-red-500/30 text-red-400"
-                        : "bg-muted/30 border-border/40 text-muted-foreground"
+                        : "bg-muted/30 border-border text-muted-foreground"
                     )}
                   >
                     <div className="font-bold">#{tradeNumber}</div>
@@ -617,7 +617,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
         )}
 
         {/* Summary Table */}
-        <div className="border border-border/40 p-6 bg-transparent rounded-md">
+        <div className="border border-border p-6 bg-transparent rounded-md">
           <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
             Récapitulatif des Cycles
           </h3>
@@ -625,7 +625,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
             {cyclesWithProgress.map((cycle) => (
               <div 
                 key={cycle.id}
-                className="flex items-center gap-4 py-2 border-b border-border/40 last:border-0"
+                className="flex items-center gap-4 py-2 border-b border-border last:border-0"
               >
                 <div className={cn(
                   "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
@@ -711,7 +711,7 @@ const CycleCard = ({
       className={cn(
         "p-4 border rounded-md transition-all",
         getCycleStyles(cycle.userCycle?.status),
-        !isLocked && "cursor-pointer hover:border-foreground/30"
+        !isLocked && "cursor-pointer hover:border-muted-foreground/30"
       )}
       onClick={() => !isLocked && onToggle()}
     >
