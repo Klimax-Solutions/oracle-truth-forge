@@ -86,8 +86,8 @@ const OracleM = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-6 h-6 border border-white border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-6 h-6 border border-foreground border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -99,19 +99,19 @@ const OracleM = () => {
   const shortTrades = trades.filter(t => t.direction === 'Short').length;
 
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden">
+    <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Grid pattern overlay */}
       <div className="absolute inset-0 grid-pattern" />
 
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
-        <header className="border-b border-neutral-800">
+        <header className="border-b border-border">
           <div className="container mx-auto px-6 py-4 flex items-center justify-between">
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={() => navigate("/dashboard")}
-              className="text-neutral-500 hover:text-white hover:bg-transparent -ml-2"
+              className="text-muted-foreground hover:text-foreground hover:bg-transparent -ml-2"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               <span className="text-xs font-mono uppercase tracking-wider">Retour</span>
@@ -120,7 +120,7 @@ const OracleM = () => {
               variant="ghost" 
               size="sm" 
               onClick={handleLogout}
-              className="text-neutral-500 hover:text-white hover:bg-transparent"
+              className="text-muted-foreground hover:text-foreground hover:bg-transparent"
             >
               <LogOut className="w-4 h-4" />
             </Button>
@@ -131,46 +131,46 @@ const OracleM = () => {
         <main className="flex-1 container mx-auto px-6 py-12">
           {/* Title section */}
           <div className="text-center mb-12">
-            <p className="text-xs font-mono uppercase tracking-[0.4em] text-neutral-500 mb-4">
+            <p className="text-xs font-mono uppercase tracking-[0.4em] text-muted-foreground mb-4">
               Database
             </p>
-            <h1 className="text-4xl md:text-6xl font-semibold tracking-tight text-white">
+            <h1 className="text-4xl md:text-6xl font-semibold tracking-tight text-foreground">
               Oracle<sup className="text-xl md:text-2xl font-normal align-super ml-1">™</sup>
-              <span className="text-neutral-500 ml-2">M</span>
+              <span className="text-muted-foreground ml-2">M</span>
             </h1>
           </div>
 
           {/* Stats row */}
           <div className="flex items-center justify-center gap-8 md:gap-12 mb-12">
             <div className="text-center">
-              <p className="text-2xl md:text-3xl font-bold text-white">{totalTrades}</p>
-              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">Trades</p>
+              <p className="text-2xl md:text-3xl font-bold text-foreground">{totalTrades}</p>
+              <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">Trades</p>
             </div>
-            <div className="w-px h-8 bg-neutral-800" />
+            <div className="w-px h-8 bg-border" />
             <div className="text-center">
-              <p className="text-2xl md:text-3xl font-bold text-white">+{totalRR.toFixed(0)}</p>
-              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">RR Total</p>
+              <p className="text-2xl md:text-3xl font-bold text-foreground">+{totalRR.toFixed(0)}</p>
+              <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">RR Total</p>
             </div>
-            <div className="w-px h-8 bg-neutral-800" />
+            <div className="w-px h-8 bg-border" />
             <div className="text-center flex items-center gap-4">
               <div>
-                <p className="text-2xl md:text-3xl font-bold text-white">{longTrades}</p>
-                <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">Long</p>
+                <p className="text-2xl md:text-3xl font-bold text-foreground">{longTrades}</p>
+                <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">Long</p>
               </div>
               <div>
-                <p className="text-2xl md:text-3xl font-bold text-white">{shortTrades}</p>
-                <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">Short</p>
+                <p className="text-2xl md:text-3xl font-bold text-foreground">{shortTrades}</p>
+                <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">Short</p>
               </div>
             </div>
           </div>
 
           {/* Divider */}
-          <div className="w-full h-px bg-neutral-800 mb-8" />
+          <div className="w-full h-px bg-border mb-8" />
 
           {trades.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-neutral-500 text-lg mb-4">Aucun trade dans la base de données</p>
-              <p className="text-neutral-600 text-sm">Les données seront importées prochainement.</p>
+              <p className="text-muted-foreground text-lg mb-4">Aucun trade dans la base de données</p>
+              <p className="text-muted-foreground/60 text-sm">Les données seront importées prochainement.</p>
             </div>
           ) : (
             /* Trades list */
@@ -181,15 +181,15 @@ const OracleM = () => {
                   onClick={() => setSelectedTrade(selectedTrade?.id === trade.id ? null : trade)}
                   className={`border transition-all cursor-pointer ${
                     selectedTrade?.id === trade.id 
-                      ? 'border-white bg-neutral-900' 
-                      : 'border-neutral-800 hover:border-neutral-700 bg-neutral-950'
+                      ? 'border-foreground bg-secondary' 
+                      : 'border-border hover:border-muted-foreground/30 bg-card'
                   }`}
                 >
                   {/* Main row */}
                   <div className="px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-6">
                       {/* Trade number */}
-                      <span className="text-2xl font-bold text-neutral-700 w-12">
+                      <span className="text-2xl font-bold text-muted-foreground/50 w-12">
                         {String(trade.trade_number).padStart(3, '0')}
                       </span>
                       
@@ -207,57 +207,57 @@ const OracleM = () => {
 
                       {/* Date */}
                       <div className="hidden md:block">
-                        <p className="text-sm text-white">{formatDate(trade.trade_date)}</p>
-                        <p className="text-xs text-neutral-600">{trade.day_of_week}</p>
+                        <p className="text-sm text-foreground">{formatDate(trade.trade_date)}</p>
+                        <p className="text-xs text-muted-foreground">{trade.day_of_week}</p>
                       </div>
 
                       {/* Setup type */}
                       <div className="hidden lg:block">
-                        <p className="text-xs text-neutral-500 font-mono">{trade.setup_type || '—'}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{trade.setup_type || '—'}</p>
                       </div>
                     </div>
 
                     {/* RR */}
                     <div className="text-right">
-                      <p className="text-xl font-bold text-white">+{trade.rr?.toFixed(2) || '0'}</p>
-                      <p className="text-xs text-neutral-600 font-mono uppercase">RR</p>
+                      <p className="text-xl font-bold text-foreground">+{trade.rr?.toFixed(2) || '0'}</p>
+                      <p className="text-xs text-muted-foreground font-mono uppercase">RR</p>
                     </div>
                   </div>
 
                   {/* Expanded details */}
                   {selectedTrade?.id === trade.id && (
-                    <div className="px-6 py-4 border-t border-neutral-800 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="px-6 py-4 border-t border-border grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
-                        <p className="text-xs text-neutral-600 font-mono uppercase mb-1">Entrée</p>
-                        <p className="text-sm text-white">{trade.entry_time || '—'}</p>
+                        <p className="text-xs text-muted-foreground font-mono uppercase mb-1">Entrée</p>
+                        <p className="text-sm text-foreground">{trade.entry_time || '—'}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-neutral-600 font-mono uppercase mb-1">Sortie</p>
-                        <p className="text-sm text-white">{trade.exit_time || '—'}</p>
+                        <p className="text-xs text-muted-foreground font-mono uppercase mb-1">Sortie</p>
+                        <p className="text-sm text-foreground">{trade.exit_time || '—'}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-neutral-600 font-mono uppercase mb-1">Durée</p>
-                        <p className="text-sm text-white">{trade.trade_duration || '—'}</p>
+                        <p className="text-xs text-muted-foreground font-mono uppercase mb-1">Durée</p>
+                        <p className="text-sm text-foreground">{trade.trade_duration || '—'}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-neutral-600 font-mono uppercase mb-1">Stop Loss</p>
-                        <p className="text-sm text-white">{trade.stop_loss_size || '—'}</p>
+                        <p className="text-xs text-muted-foreground font-mono uppercase mb-1">Stop Loss</p>
+                        <p className="text-sm text-foreground">{trade.stop_loss_size || '—'}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-neutral-600 font-mono uppercase mb-1">Structure</p>
-                        <p className="text-sm text-white">{trade.direction_structure || '—'}</p>
+                        <p className="text-xs text-muted-foreground font-mono uppercase mb-1">Structure</p>
+                        <p className="text-sm text-foreground">{trade.direction_structure || '—'}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-neutral-600 font-mono uppercase mb-1">Entry Timing</p>
-                        <p className="text-sm text-white">{trade.entry_timing || '—'}</p>
+                        <p className="text-xs text-muted-foreground font-mono uppercase mb-1">Entry Timing</p>
+                        <p className="text-sm text-foreground">{trade.entry_timing || '—'}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-neutral-600 font-mono uppercase mb-1">Modèle</p>
-                        <p className="text-sm text-white">{trade.entry_model || '—'}</p>
+                        <p className="text-xs text-muted-foreground font-mono uppercase mb-1">Modèle</p>
+                        <p className="text-sm text-foreground">{trade.entry_model || '—'}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-neutral-600 font-mono uppercase mb-1">News</p>
-                        <p className="text-sm text-white">{trade.news_day ? trade.news_label || 'Oui' : 'Non'}</p>
+                        <p className="text-xs text-muted-foreground font-mono uppercase mb-1">News</p>
+                        <p className="text-sm text-foreground">{trade.news_day ? trade.news_label || 'Oui' : 'Non'}</p>
                       </div>
                     </div>
                   )}
@@ -268,8 +268,8 @@ const OracleM = () => {
         </main>
 
         {/* Footer */}
-        <footer className="border-t border-neutral-800 py-8">
-          <p className="text-center text-xs text-neutral-600 font-mono uppercase tracking-[0.3em]">
+        <footer className="border-t border-border py-8">
+          <p className="text-center text-xs text-muted-foreground font-mono uppercase tracking-[0.3em]">
             Oracle™ © 2026 — Accès confidentiel
           </p>
         </footer>

@@ -27,13 +27,13 @@ export const TradeCard = ({
 
   return (
     <div className={cn(
-      "group border border-neutral-800 bg-neutral-950 overflow-hidden cursor-pointer",
-      "hover:border-neutral-600 transition-all duration-300",
-      "hover:bg-neutral-900",
+      "group border border-border bg-card overflow-hidden cursor-pointer",
+      "hover:border-muted-foreground/30 transition-all duration-300",
+      "hover:bg-secondary",
       className
     )}>
       {/* Image placeholder */}
-      <div className="aspect-video bg-neutral-900 relative overflow-hidden">
+      <div className="aspect-video bg-secondary relative overflow-hidden">
         {imageUrl ? (
           <img src={imageUrl} alt={`Trade ${id}`} className="w-full h-full object-cover" />
         ) : (
@@ -42,7 +42,7 @@ export const TradeCard = ({
         
         {/* Trade number */}
         <div className="absolute top-3 right-3">
-          <span className="text-xs font-mono text-neutral-500">
+          <span className="text-xs font-mono text-muted-foreground">
             #{id.toString().padStart(3, '0')}
           </span>
         </div>
@@ -63,7 +63,7 @@ export const TradeCard = ({
       {/* Content */}
       <div className="p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="font-bold text-white">{pair}</span>
+          <span className="font-bold text-foreground">{pair}</span>
           <div className={cn(
             "flex items-center gap-1.5 text-sm font-mono",
             isWin ? "text-emerald-500" : "text-red-500"
@@ -73,7 +73,7 @@ export const TradeCard = ({
           </div>
         </div>
 
-        <div className="text-xs text-neutral-500 font-mono">
+        <div className="text-xs text-muted-foreground font-mono">
           {entryTime}
         </div>
       </div>

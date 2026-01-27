@@ -55,26 +55,26 @@ const SetupDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-6 h-6 border border-white border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-6 h-6 border border-foreground border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden">
+    <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Grid pattern overlay */}
       <div className="absolute inset-0 grid-pattern" />
 
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
-        <header className="border-b border-neutral-800">
+        <header className="border-b border-border">
           <div className="container mx-auto px-6 py-4 flex items-center justify-between">
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={() => navigate("/dashboard")}
-              className="text-neutral-500 hover:text-white hover:bg-transparent -ml-2"
+              className="text-muted-foreground hover:text-foreground hover:bg-transparent -ml-2"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               <span className="text-xs font-mono uppercase tracking-wider">Retour</span>
@@ -83,7 +83,7 @@ const SetupDetail = () => {
               variant="ghost" 
               size="sm" 
               onClick={handleLogout}
-              className="text-neutral-500 hover:text-white hover:bg-transparent"
+              className="text-muted-foreground hover:text-foreground hover:bg-transparent"
             >
               <LogOut className="w-4 h-4" />
             </Button>
@@ -94,13 +94,13 @@ const SetupDetail = () => {
         <main className="flex-1 container mx-auto px-6 py-16">
           {/* Title section */}
           <div className="text-center mb-16">
-            <p className="text-xs font-mono uppercase tracking-[0.4em] text-neutral-500 mb-6">
+            <p className="text-xs font-mono uppercase tracking-[0.4em] text-muted-foreground mb-6">
               Setup #01
             </p>
-            <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-white mb-6">
+            <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-foreground mb-6">
               Oracle<sup className="text-xl md:text-2xl font-normal align-super ml-1">™</sup>
             </h1>
-            <p className="text-neutral-500 max-w-lg mx-auto">
+            <p className="text-muted-foreground max-w-lg mx-auto">
               Base de données complète avec 300 trades analysés.
             </p>
           </div>
@@ -108,23 +108,23 @@ const SetupDetail = () => {
           {/* Stats row */}
           <div className="flex items-center justify-center gap-12 mb-16">
             <div className="text-center">
-              <p className="text-3xl font-black text-white">300</p>
-              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">Trades</p>
+              <p className="text-3xl font-black text-foreground">300</p>
+              <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">Trades</p>
             </div>
-            <div className="w-px h-10 bg-neutral-800" />
+            <div className="w-px h-10 bg-border" />
             <div className="text-center">
-              <p className="text-3xl font-black text-white">+2,300</p>
-              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">RR Total</p>
+              <p className="text-3xl font-black text-foreground">+2,300</p>
+              <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">RR Total</p>
             </div>
-            <div className="w-px h-10 bg-neutral-800" />
+            <div className="w-px h-10 bg-border" />
             <div className="text-center">
-              <p className="text-3xl font-black text-white">67%</p>
-              <p className="text-xs text-neutral-600 font-mono uppercase tracking-wider">Win Rate</p>
+              <p className="text-3xl font-black text-foreground">67%</p>
+              <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">Win Rate</p>
             </div>
           </div>
 
           {/* Divider */}
-          <div className="w-full h-px bg-neutral-800 mb-16" />
+          <div className="w-full h-px bg-border mb-16" />
 
           {/* Trades grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -135,8 +135,8 @@ const SetupDetail = () => {
         </main>
 
         {/* Footer */}
-        <footer className="border-t border-neutral-800 py-8">
-          <p className="text-center text-xs text-neutral-600 font-mono uppercase tracking-[0.3em]">
+        <footer className="border-t border-border py-8">
+          <p className="text-center text-xs text-muted-foreground font-mono uppercase tracking-[0.3em]">
             Oracle © 2026 — Accès confidentiel
           </p>
         </footer>
