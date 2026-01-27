@@ -130,6 +130,43 @@ const ENTRY_TIMINGS = [
 const MIN_ENTRY_TIME = "15:20";
 const MAX_TIME = "22:00";
 
+// Cycle thresholds - comparison status only revealed after completing each cycle
+const CYCLE_THRESHOLDS = [
+  { max: 15, name: "Ébauche" },      // Trades 1-15
+  { max: 40, name: "Cycle 1" },      // Trades 16-40 (25 trades)
+  { max: 65, name: "Cycle 2" },      // Trades 41-65 (25 trades)
+  { max: 90, name: "Cycle 3" },      // Trades 66-90 (25 trades)
+  { max: 115, name: "Cycle 4" },     // Trades 91-115 (25 trades)
+  { max: 165, name: "Cycle 5" },     // Trades 116-165 (50 trades)
+  { max: 229, name: "Cycle 6" },     // Trades 166-229 (64 trades)
+  { max: 293, name: "Cycle 7" },     // Trades 230-293 (64 trades)
+  { max: 357, name: "Cycle 8" },     // Trades 294-357 (64 trades)
+];
+
+// Get the current cycle threshold based on total trades
+const getCurrentCycleThreshold = (totalTrades: number): number => {
+  for (const cycle of CYCLE_THRESHOLDS) {
+    if (totalTrades < cycle.max) {
+      return cycle.max;
+    }
+  }
+  return CYCLE_THRESHOLDS[CYCLE_THRESHOLDS.length - 1].max;
+};
+
+// Check if a trade should show comparison status (only after cycle completion)
+const shouldShowComparisonStatus = (tradeNumber: number, totalTrades: number): boolean => {
+  // Find which cycle this trade belongs to
+  let cycleEnd = 0;
+  for (const cycle of CYCLE_THRESHOLDS) {
+    if (tradeNumber <= cycle.max) {
+      cycleEnd = cycle.max;
+      break;
+    }
+  }
+  // Only show status if user has completed the cycle this trade belongs to
+  return totalTrades >= cycleEnd;
+};
+
 interface UserDataEntryProps {
   tradeComparisons?: TradeComparison[];
   oracleTrades?: OracleTrade[];
@@ -964,8 +1001,11 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     c => c.userExecution.trade_number === execution.trade_number
                   );
                   
+                  // Only show comparison indicators after cycle completion
+                  const showStatus = shouldShowComparisonStatus(execution.trade_number, executions.length);
+                  
                   const getRowStyle = () => {
-                    if (!comparison) return "";
+                    if (!showStatus || !comparison) return "";
                     switch (comparison.status) {
                       case 'warning': return "bg-orange-500/10 border-l-2 border-l-orange-500";
                       case 'error': return "bg-red-500/10 border-l-2 border-l-red-500";
@@ -975,6 +1015,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   };
 
                   const getStatusIcon = () => {
+                    if (!showStatus) return null;
                     if (!comparison || comparison.status === 'no-match') return null;
                     switch (comparison.status) {
                       case 'match': 
@@ -989,6 +1030,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   };
 
                   const getStatusTooltip = () => {
+                    if (!showStatus) return "";
                     if (!comparison) return "";
                     if (comparison.status === 'no-match') return "Pas de trade Oracle correspondant";
                     if (comparison.timeDifferenceHours === null) return "";
