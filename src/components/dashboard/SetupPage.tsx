@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OraclePage } from "./OraclePage";
 import { SetupPerso } from "./SetupPerso";
-import { Database, User } from "lucide-react";
+import { Database, User, ChevronDown, ChevronUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface Trade {
   id: string;
@@ -34,34 +35,76 @@ interface SetupPageProps {
 }
 
 export const SetupPage = ({ trades, initialFilters }: SetupPageProps) => {
-  const [activeSubTab, setActiveSubTab] = useState("oracle");
+  const [oracleCollapsed, setOracleCollapsed] = useState(false);
+  const [persoCollapsed, setPersoCollapsed] = useState(false);
 
   return (
-    <div className="h-full flex flex-col">
-      <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="flex-1 flex flex-col">
-        {/* Sub-tabs header */}
-        <div className="border-b border-border bg-card px-6 py-3">
-          <TabsList className="bg-muted/50">
-            <TabsTrigger value="oracle" className="gap-2 data-[state=active]:bg-background">
-              <Database className="w-4 h-4" />
-              Oracle
-            </TabsTrigger>
-            <TabsTrigger value="perso" className="gap-2 data-[state=active]:bg-background">
-              <User className="w-4 h-4" />
-              Setup Perso
-            </TabsTrigger>
-          </TabsList>
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Oracle Section */}
+      <div className={cn(
+        "flex flex-col border-b border-border transition-all duration-300",
+        oracleCollapsed ? "flex-shrink-0" : "flex-1 min-h-0"
+      )}>
+        {/* Oracle Header */}
+        <div className="flex items-center justify-between px-6 py-3 bg-card border-b border-border">
+          <div className="flex items-center gap-2">
+            <Database className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">Oracle</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setOracleCollapsed(!oracleCollapsed)}
+            className="h-7 w-7 p-0"
+          >
+            {oracleCollapsed ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronUp className="w-4 h-4" />
+            )}
+          </Button>
         </div>
+        
+        {/* Oracle Content */}
+        {!oracleCollapsed && (
+          <div className="flex-1 overflow-hidden">
+            <OraclePage trades={trades} initialFilters={initialFilters} />
+          </div>
+        )}
+      </div>
 
-        {/* Content */}
-        <TabsContent value="oracle" className="flex-1 m-0 data-[state=inactive]:hidden">
-          <OraclePage trades={trades} initialFilters={initialFilters} />
-        </TabsContent>
-
-        <TabsContent value="perso" className="flex-1 m-0 data-[state=inactive]:hidden">
-          <SetupPerso />
-        </TabsContent>
-      </Tabs>
+      {/* Setup Perso Section */}
+      <div className={cn(
+        "flex flex-col transition-all duration-300",
+        persoCollapsed ? "flex-shrink-0" : "flex-1 min-h-0"
+      )}>
+        {/* Perso Header */}
+        <div className="flex items-center justify-between px-6 py-3 bg-card border-b border-border">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">Setup Perso</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setPersoCollapsed(!persoCollapsed)}
+            className="h-7 w-7 p-0"
+          >
+            {persoCollapsed ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronUp className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+        
+        {/* Perso Content */}
+        {!persoCollapsed && (
+          <div className="flex-1 overflow-hidden">
+            <SetupPerso />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

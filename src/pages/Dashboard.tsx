@@ -163,6 +163,9 @@ const Dashboard = () => {
     if (dataSource === "perso") {
       return personalTradesFormatted;
     }
+    if (dataSource === "oracle") {
+      return trades;
+    }
     // "all" - combine both
     return [...trades, ...personalTradesFormatted];
   };
