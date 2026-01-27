@@ -59,6 +59,7 @@ interface FollowupUser {
   todayCheckpoint: UserFollowup | null;
   tomorrowCheckpoint: UserFollowup | null;
   dayAfterCheckpoint: UserFollowup | null;
+  needsVerification: boolean;
 }
 
 export const UserFollowupTab = () => {
@@ -90,6 +91,14 @@ export const UserFollowupTab = () => {
       .from("user_followups")
       .select("*")
       .order("day_number", { ascending: true });
+
+    // Fetch pending verification requests
+    const { data: pendingVerifications } = await supabase
+      .from("user_cycles")
+      .select("user_id")
+      .eq("status", "pending_review");
+
+    const usersWithPendingVerification = new Set(pendingVerifications?.map(v => v.user_id) || []);
 
     if (error) {
       console.error("Error fetching followups:", error);
@@ -127,6 +136,7 @@ export const UserFollowupTab = () => {
         todayCheckpoint,
         tomorrowCheckpoint,
         dayAfterCheckpoint,
+        needsVerification: usersWithPendingVerification.has(userId),
       };
     });
 
@@ -322,6 +332,11 @@ export const UserFollowupTab = () => {
                           {needsContactToday && (
                             <span className="px-2 py-0.5 bg-orange-500 text-white text-[9px] font-bold rounded uppercase">
                               À contacter
+                            </span>
+                          )}
+                          {user.needsVerification && (
+                            <span className="px-2 py-0.5 bg-amber-500 text-white text-[9px] font-bold rounded uppercase">
+                              Vérification
                             </span>
                           )}
                           {!needsContactToday && needsContactTomorrow && (
