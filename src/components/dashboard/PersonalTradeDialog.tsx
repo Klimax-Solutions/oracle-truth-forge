@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, Trash2, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Loader2, Save, Trash2, X, Image as ImageIcon } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +33,77 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { useCustomVariables } from "@/hooks/useCustomVariables";
+
+// Custom combo component for variable selection with free input
+interface VariableComboProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder?: string;
+}
+
+const VariableCombo = ({ value, onChange, options, placeholder }: VariableComboProps) => {
+  const [isCustom, setIsCustom] = useState(false);
+
+  // If value is set but not in options, it's a custom value
+  useEffect(() => {
+    if (value && !options.includes(value)) {
+      setIsCustom(true);
+    }
+  }, [value, options]);
+
+  if (isCustom || options.length === 0) {
+    return (
+      <div className="flex gap-2">
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="flex-1"
+        />
+        {options.length > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setIsCustom(false);
+              onChange("");
+            }}
+            className="px-2"
+          >
+            Liste
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-2">
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="flex-1">
+          <SelectValue placeholder={placeholder || "Sélectionner..."} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((opt) => (
+            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setIsCustom(true)}
+        className="px-2"
+      >
+        +
+      </Button>
+    </div>
+  );
+};
 
 interface PersonalTrade {
   id: string;
@@ -130,6 +201,7 @@ export const PersonalTradeDialog = ({
   const [existingScreenshot, setExistingScreenshot] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { variables } = useCustomVariables();
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -431,22 +503,24 @@ export const PersonalTradeDialog = ({
             </div>
           </div>
 
-          {/* Row 4: Custom Variables - Text inputs for flexibility */}
+          {/* Row 4: Custom Variables with saved options */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Structure (personnalisable)</Label>
-              <Input
+              <Label>Structure</Label>
+              <VariableCombo
                 value={formData.direction_structure}
-                onChange={(e) => setFormData({ ...formData, direction_structure: e.target.value })}
-                placeholder="Ex: Continuation, Retracement, Reversal..."
+                onChange={(value) => setFormData({ ...formData, direction_structure: value })}
+                options={variables.direction_structure}
+                placeholder="Sélectionner ou saisir..."
               />
             </div>
             <div className="space-y-2">
-              <Label>Type de Setup (personnalisable)</Label>
-              <Input
+              <Label>Type de Setup</Label>
+              <VariableCombo
                 value={formData.setup_type}
-                onChange={(e) => setFormData({ ...formData, setup_type: e.target.value })}
-                placeholder="Ex: A, B, C, Custom Setup..."
+                onChange={(value) => setFormData({ ...formData, setup_type: value })}
+                options={variables.setup_type}
+                placeholder="Sélectionner ou saisir..."
               />
             </div>
           </div>
@@ -454,19 +528,21 @@ export const PersonalTradeDialog = ({
           {/* Row 5: More Custom Variables */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Entry Model (personnalisable)</Label>
-              <Input
+              <Label>Entry Model</Label>
+              <VariableCombo
                 value={formData.entry_model}
-                onChange={(e) => setFormData({ ...formData, entry_model: e.target.value })}
-                placeholder="Ex: BOS, MSS, OB, FVG..."
+                onChange={(value) => setFormData({ ...formData, entry_model: value })}
+                options={variables.entry_model}
+                placeholder="Sélectionner ou saisir..."
               />
             </div>
             <div className="space-y-2">
-              <Label>Entry Timing (personnalisable)</Label>
-              <Input
+              <Label>Entry Timing</Label>
+              <VariableCombo
                 value={formData.entry_timing}
-                onChange={(e) => setFormData({ ...formData, entry_timing: e.target.value })}
-                placeholder="Ex: Open US, London Close..."
+                onChange={(value) => setFormData({ ...formData, entry_timing: value })}
+                options={variables.entry_timing}
+                placeholder="Sélectionner ou saisir..."
               />
             </div>
           </div>

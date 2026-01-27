@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   Plus,
   Download,
-  Target
+  Target,
+  Settings2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -35,6 +36,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { PersonalTradeDialog } from "./PersonalTradeDialog";
+import { CustomVariablesDialog } from "./CustomVariablesDialog";
 
 interface PersonalTrade {
   id: string;
@@ -71,6 +73,7 @@ export const SetupPerso = () => {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; errors: number } | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isVariablesDialogOpen, setIsVariablesDialogOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<PersonalTrade | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -366,9 +369,20 @@ export const SetupPerso = () => {
               Gérez vos trades personnels
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Variables Button - Left side */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setIsVariablesDialogOpen(true)}
+              className="gap-2"
+            >
+              <Settings2 className="w-4 h-4" />
+              Variables
+            </Button>
+            
             {/* New Trade Button */}
-            <Button onClick={handleNewTrade} className="gap-2">
+            <Button size="sm" onClick={handleNewTrade} className="gap-2">
               <Plus className="w-4 h-4" />
               Nouveau Trade
             </Button>
@@ -606,6 +620,12 @@ export const SetupPerso = () => {
         onSaved={handleTradeSaved}
         editingTrade={editingTrade}
         nextTradeNumber={getNextTradeNumber()}
+      />
+
+      {/* Custom Variables Dialog */}
+      <CustomVariablesDialog
+        isOpen={isVariablesDialogOpen}
+        onClose={() => setIsVariablesDialogOpen(false)}
       />
     </div>
   );
