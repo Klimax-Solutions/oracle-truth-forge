@@ -10,10 +10,10 @@ import {
   AlertTriangle,
   CheckCircle2,
   Phone,
-  Plus,
   Calendar,
+  Clock,
+  Users,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -56,14 +56,26 @@ interface FollowupUser {
   completedCheckpoints: number;
   nextCheckpoint: UserFollowup | null;
   startDate: string;
+  todayCheckpoint: UserFollowup | null;
+  tomorrowCheckpoint: UserFollowup | null;
+  dayAfterCheckpoint: UserFollowup | null;
 }
 
 export const UserFollowupTab = () => {
   const [users, setUsers] = useState<FollowupUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
-  const [updating, setUpdating] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const getDateString = (daysFromNow: number = 0) => {
+    const date = new Date();
+    date.setDate(date.getDate() + daysFromNow);
+    return date.toISOString().split('T')[0];
+  };
+
+  const today = getDateString(0);
+  const tomorrow = getDateString(1);
+  const dayAfter = getDateString(2);
 
   const fetchFollowups = async () => {
     setLoading(true);
@@ -96,10 +108,13 @@ export const UserFollowupTab = () => {
         f.message_sent || f.call_done
       ).length;
 
-      const today = new Date().toISOString().split('T')[0];
       const nextCheckpoint = userFollowups.find(f => 
         f.contact_date >= today && !f.message_sent && !f.call_done
       ) || null;
+
+      const todayCheckpoint = userFollowups.find(f => f.contact_date === today) || null;
+      const tomorrowCheckpoint = userFollowups.find(f => f.contact_date === tomorrow) || null;
+      const dayAfterCheckpoint = userFollowups.find(f => f.contact_date === dayAfter) || null;
 
       return {
         id: userId,
@@ -109,6 +124,9 @@ export const UserFollowupTab = () => {
         completedCheckpoints,
         nextCheckpoint,
         startDate: userFollowups[0]?.contact_date || today,
+        todayCheckpoint,
+        tomorrowCheckpoint,
+        dayAfterCheckpoint,
       };
     });
 
@@ -119,31 +137,6 @@ export const UserFollowupTab = () => {
   useEffect(() => {
     fetchFollowups();
   }, []);
-
-  const initializeFollowup = async (userId: string) => {
-    setUpdating(userId);
-    
-    const { error } = await supabase.rpc("initialize_user_followups", {
-      p_user_id: userId,
-    });
-
-    if (error) {
-      console.error("Error initializing followup:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'initialiser le suivi.",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Suivi initialisé",
-        description: "Les checkpoints ont été créés pour cet utilisateur.",
-      });
-      fetchFollowups();
-    }
-    
-    setUpdating(null);
-  };
 
   const updateFollowup = async (
     followupId: string, 
@@ -186,6 +179,20 @@ export const UserFollowupTab = () => {
     return "bg-muted";
   };
 
+  // Calculate stats
+  const usersToContactToday = users.filter(u => 
+    u.todayCheckpoint && !u.todayCheckpoint.message_sent && !u.todayCheckpoint.call_done
+  );
+  const usersToContactTomorrow = users.filter(u => 
+    u.tomorrowCheckpoint && !u.tomorrowCheckpoint.message_sent && !u.tomorrowCheckpoint.call_done
+  );
+  const usersToContactDayAfter = users.filter(u => 
+    u.dayAfterCheckpoint && !u.dayAfterCheckpoint.message_sent && !u.dayAfterCheckpoint.call_done
+  );
+  const blockedSituations = users.reduce((sum, u) => 
+    sum + u.followups.filter(f => f.is_blocked).length, 0
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -196,37 +203,56 @@ export const UserFollowupTab = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header Stats */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      {/* Header Stats - 3-day cycle overview */}
+      <div className="grid grid-cols-5 gap-3 mb-6">
         <div className="p-4 bg-card border border-border rounded-md">
           <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
             Utilisateurs suivis
           </p>
-          <p className="text-2xl font-bold text-foreground">{users.length}</p>
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-muted-foreground" />
+            <p className="text-2xl font-bold text-foreground">{users.length}</p>
+          </div>
         </div>
-        <div className="p-4 bg-card border border-border rounded-md">
-          <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
-            Checkpoints aujourd'hui
+        
+        <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-md">
+          <p className="text-[10px] text-orange-400 font-mono uppercase mb-1">
+            À contacter aujourd'hui
           </p>
-          <p className="text-2xl font-bold text-orange-400">
-            {users.filter(u => u.nextCheckpoint?.contact_date === new Date().toISOString().split('T')[0]).length}
-          </p>
+          <div className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-orange-400" />
+            <p className="text-2xl font-bold text-orange-400">{usersToContactToday.length}</p>
+          </div>
         </div>
-        <div className="p-4 bg-card border border-border rounded-md">
-          <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
-            Calls cette semaine
+        
+        <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-md">
+          <p className="text-[10px] text-blue-400 font-mono uppercase mb-1">
+            À contacter demain
           </p>
-          <p className="text-2xl font-bold text-blue-400">
-            {users.reduce((sum, u) => sum + u.followups.filter(f => f.call_done).length, 0)}
-          </p>
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-blue-400" />
+            <p className="text-2xl font-bold text-blue-400">{usersToContactTomorrow.length}</p>
+          </div>
         </div>
-        <div className="p-4 bg-card border border-border rounded-md">
-          <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
+        
+        <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-md">
+          <p className="text-[10px] text-purple-400 font-mono uppercase mb-1">
+            À contacter J+2
+          </p>
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-purple-400" />
+            <p className="text-2xl font-bold text-purple-400">{usersToContactDayAfter.length}</p>
+          </div>
+        </div>
+        
+        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-md">
+          <p className="text-[10px] text-red-400 font-mono uppercase mb-1">
             Situations bloquantes
           </p>
-          <p className="text-2xl font-bold text-red-400">
-            {users.reduce((sum, u) => sum + u.followups.filter(f => f.is_blocked).length, 0)}
-          </p>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+            <p className="text-2xl font-bold text-red-400">{blockedSituations}</p>
+          </div>
         </div>
       </div>
 
@@ -242,32 +268,70 @@ export const UserFollowupTab = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {users.map((user) => {
+          {/* Sort users: today's contacts first, then tomorrow, then others */}
+          {[...users].sort((a, b) => {
+            const aToday = a.todayCheckpoint && !a.todayCheckpoint.message_sent && !a.todayCheckpoint.call_done;
+            const bToday = b.todayCheckpoint && !b.todayCheckpoint.message_sent && !b.todayCheckpoint.call_done;
+            if (aToday && !bToday) return -1;
+            if (!aToday && bToday) return 1;
+            return 0;
+          }).map((user) => {
             const isExpanded = expandedUser === user.id;
             const progress = (user.completedCheckpoints / user.totalCheckpoints) * 100;
-            const today = new Date().toISOString().split('T')[0];
+            const needsContactToday = user.todayCheckpoint && !user.todayCheckpoint.message_sent && !user.todayCheckpoint.call_done;
+            const needsContactTomorrow = user.tomorrowCheckpoint && !user.tomorrowCheckpoint.message_sent && !user.tomorrowCheckpoint.call_done;
 
             return (
               <div
                 key={user.id}
-                className="border border-border bg-card rounded-md overflow-hidden"
+                className={cn(
+                  "border rounded-md overflow-hidden transition-all",
+                  needsContactToday 
+                    ? "border-orange-500/50 bg-orange-500/5" 
+                    : "border-border bg-card"
+                )}
               >
                 {/* User Header */}
                 <div 
-                  className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                  className={cn(
+                    "p-4 cursor-pointer transition-colors",
+                    needsContactToday 
+                      ? "hover:bg-orange-500/10" 
+                      : "hover:bg-accent/50"
+                  )}
                   onClick={() => setExpandedUser(isExpanded ? null : user.id)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-primary" />
+                      <div className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center",
+                        needsContactToday 
+                          ? "bg-orange-500/20" 
+                          : "bg-primary/20"
+                      )}>
+                        <User className={cn(
+                          "w-5 h-5",
+                          needsContactToday ? "text-orange-400" : "text-primary"
+                        )} />
                       </div>
                       <div>
-                        <h4 className="font-semibold text-foreground text-sm">
-                          {user.displayName}
-                        </h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-foreground text-sm">
+                            {user.displayName}
+                          </h4>
+                          {needsContactToday && (
+                            <span className="px-2 py-0.5 bg-orange-500 text-white text-[9px] font-bold rounded uppercase">
+                              À contacter
+                            </span>
+                          )}
+                          {!needsContactToday && needsContactTomorrow && (
+                            <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-bold rounded uppercase">
+                              Demain
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground font-mono">
-                          Jour {user.nextCheckpoint?.day_number || "—"} • Prochain contact: {
+                          Jour {user.nextCheckpoint?.day_number || "—"} • Prochain: {
                             user.nextCheckpoint 
                               ? new Date(user.nextCheckpoint.contact_date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
                               : "Terminé"
@@ -277,6 +341,68 @@ export const UserFollowupTab = () => {
                     </div>
 
                     <div className="flex items-center gap-6">
+                      {/* Quick actions for today's checkpoint */}
+                      {user.todayCheckpoint && (
+                        <div className="flex items-center gap-2 border-r border-border pr-4" onClick={(e) => e.stopPropagation()}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div>
+                                <Checkbox
+                                  checked={user.todayCheckpoint.message_sent}
+                                  onCheckedChange={(checked) => 
+                                    updateFollowup(user.todayCheckpoint!.id, 'message_sent', checked as boolean)
+                                  }
+                                  className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>Message envoyé</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div>
+                                <Checkbox
+                                  checked={user.todayCheckpoint.is_blocked}
+                                  onCheckedChange={(checked) => 
+                                    updateFollowup(user.todayCheckpoint!.id, 'is_blocked', checked as boolean)
+                                  }
+                                  className="data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>Situation bloquante</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div>
+                                <Checkbox
+                                  checked={user.todayCheckpoint.correct_actions}
+                                  onCheckedChange={(checked) => 
+                                    updateFollowup(user.todayCheckpoint!.id, 'correct_actions', checked as boolean)
+                                  }
+                                  className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>Bonnes actions</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div>
+                                <Checkbox
+                                  checked={user.todayCheckpoint.call_done}
+                                  onCheckedChange={(checked) => 
+                                    updateFollowup(user.todayCheckpoint!.id, 'call_done', checked as boolean)
+                                  }
+                                  className="data-[state=checked]:bg-purple-500 data-[state=checked]:border-purple-500"
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>Call effectué</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      )}
+
                       {/* Progress */}
                       <div className="text-right">
                         <p className="text-sm font-bold text-foreground">
@@ -353,6 +479,8 @@ export const UserFollowupTab = () => {
                         <TableBody>
                           {user.followups.map((followup) => {
                             const isToday = followup.contact_date === today;
+                            const isTomorrow = followup.contact_date === tomorrow;
+                            const isDayAfter = followup.contact_date === dayAfter;
                             const isPast = followup.contact_date < today;
                             const isMissed = isPast && !followup.message_sent && !followup.call_done;
 
@@ -361,7 +489,9 @@ export const UserFollowupTab = () => {
                                 key={followup.id} 
                                 className={cn(
                                   "hover:bg-muted/30",
-                                  isToday && "bg-primary/10",
+                                  isToday && "bg-orange-500/20",
+                                  isTomorrow && "bg-blue-500/10",
+                                  isDayAfter && "bg-purple-500/10",
                                   isMissed && "bg-red-500/10"
                                 )}
                               >
@@ -375,8 +505,18 @@ export const UserFollowupTab = () => {
                                     year: "numeric"
                                   })}
                                   {isToday && (
-                                    <span className="ml-2 px-1.5 py-0.5 bg-primary text-primary-foreground text-[9px] rounded">
+                                    <span className="ml-2 px-1.5 py-0.5 bg-orange-500 text-white text-[9px] rounded font-bold">
                                       AUJOURD'HUI
+                                    </span>
+                                  )}
+                                  {isTomorrow && (
+                                    <span className="ml-2 px-1.5 py-0.5 bg-blue-500/30 text-blue-400 text-[9px] rounded font-bold">
+                                      DEMAIN
+                                    </span>
+                                  )}
+                                  {isDayAfter && (
+                                    <span className="ml-2 px-1.5 py-0.5 bg-purple-500/30 text-purple-400 text-[9px] rounded font-bold">
+                                      J+2
                                     </span>
                                   )}
                                 </TableCell>
