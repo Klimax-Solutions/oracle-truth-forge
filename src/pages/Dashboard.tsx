@@ -86,6 +86,18 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchTrades();
+    
+    // Subscribe to trades changes for real-time updates (e.g., after screenshot uploads)
+    const channel = supabase
+      .channel('trades_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'trades' }, () => {
+        fetchTrades();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const fetchTrades = async () => {
