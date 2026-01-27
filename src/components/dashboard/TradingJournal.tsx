@@ -237,12 +237,12 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                     "aspect-square border transition-all rounded-md",
                     "flex flex-col items-center justify-center",
                     isSelected
-                      ? "border-foreground bg-muted"
+                      ? "border-foreground/30 bg-accent/60"
                       : hasProfit
-                      ? "border-transparent bg-emerald-500/20"
+                      ? "border-transparent bg-emerald-500/15"
                       : hasLoss
-                      ? "border-transparent bg-red-500/20"
-                      : "border-border hover:border-muted-foreground/50"
+                      ? "border-transparent bg-red-500/15"
+                      : "border-border hover:bg-accent/30"
                   )}
                 >
                   <span className={cn(
@@ -283,7 +283,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
         {selectedDayData && selectedDayData.trades.length > 0 ? (
           <>
             {/* Day header */}
-            <div className="p-5 border-b border-border/34 bg-emerald-500/10">
+            <div className="p-5 border-b border-border">
               <div className="flex items-center justify-between">
                 <span className="text-base font-mono uppercase tracking-wider text-muted-foreground">
                   {selectedDate?.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
@@ -311,8 +311,8 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                   className={cn(
                     "w-full flex items-center justify-between py-3 px-4 border transition-all text-left rounded-md",
                     selectedTrade?.id === trade.id
-                      ? "border-foreground bg-muted"
-                      : "border-border bg-card hover:border-muted-foreground/50"
+                      ? "border-foreground/20 bg-accent/50"
+                      : "border-border bg-transparent hover:bg-accent/30"
                   )}
                 >
                   <div className="flex items-center gap-4">
@@ -345,7 +345,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                   return (
                     <>
                       {/* Trade header */}
-                      <div className="flex items-center gap-4 p-4 border border-border bg-card rounded-md">
+                      <div className="flex items-center gap-4 p-4 border border-border bg-transparent rounded-md">
                         <div className={cn(
                           "w-12 h-12 flex items-center justify-center border rounded-md",
                           selectedTrade.direction === "Long" 
@@ -373,28 +373,28 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
 
                       {/* Stats row */}
                       <div className="grid grid-cols-4 gap-3">
-                        <div className="border border-border p-3 bg-card rounded-md">
+                        <div className="border border-border p-3 bg-transparent rounded-md">
                           <div className="flex items-center gap-2 mb-2">
                             <Clock className="w-4 h-4 text-muted-foreground" />
                             <span className="text-xs text-muted-foreground font-mono uppercase">Entrée</span>
                           </div>
                           <p className="text-lg font-bold text-foreground">{selectedTrade.entry_time || "—"}</p>
                         </div>
-                        <div className="border border-border p-3 bg-card rounded-md">
+                        <div className="border border-border p-3 bg-transparent rounded-md">
                           <div className="flex items-center gap-2 mb-2">
                             <Clock className="w-4 h-4 text-muted-foreground" />
                             <span className="text-xs text-muted-foreground font-mono uppercase">Sortie</span>
                           </div>
                           <p className="text-lg font-bold text-foreground">{selectedTrade.exit_time || "—"}</p>
                         </div>
-                        <div className="border border-border p-3 bg-card rounded-md">
+                        <div className="border border-border p-3 bg-transparent rounded-md">
                           <div className="flex items-center gap-2 mb-2">
                             <Target className="w-4 h-4 text-muted-foreground" />
                             <span className="text-xs text-muted-foreground font-mono uppercase">Durée</span>
                           </div>
                           <p className="text-lg font-bold text-foreground">{selectedTrade.trade_duration || "—"}</p>
                         </div>
-                        <div className="border border-border p-3 bg-card rounded-md">
+                        <div className="border border-border p-3 bg-transparent rounded-md">
                           <div className="flex items-center gap-2 mb-2">
                             <Calendar className="w-4 h-4 text-muted-foreground" />
                             <span className="text-xs text-muted-foreground font-mono uppercase">News</span>
@@ -408,7 +408,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                       {/* RR charts - improved with bar chart and isolated cumul */}
                       <div className="grid grid-cols-2 gap-4">
                         {/* Bar chart - individual RR per trade */}
-                        <div className="border border-border p-4 bg-card rounded-md">
+                        <div className="border border-border p-4 bg-transparent rounded-md">
                           <div className="flex items-center justify-between mb-4">
                             <h4 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
                               RR par Trade (10 derniers)
@@ -459,7 +459,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                         </div>
 
                         {/* Cumulative RR chart - ISOLATED */}
-                        <div className="border border-border p-4 bg-card rounded-md">
+                        <div className="border border-border p-4 bg-transparent rounded-md">
                           <div className="flex items-center justify-between mb-4">
                             <h4 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
                               Cumul Isolé (10 trades)
@@ -514,7 +514,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
 
                       {/* Trade details */}
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="border border-border p-4 bg-card rounded-md">
+                        <div className="border border-border p-4 bg-transparent rounded-md">
                           <h4 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
                             Paramètres d'entrée
                           </h4>
@@ -533,7 +533,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                             </div>
                           </div>
                         </div>
-                        <div className="border border-border p-4 bg-card rounded-md">
+                        <div className="border border-border p-4 bg-transparent rounded-md">
                           <h4 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
                             Position dans la série
                           </h4>
@@ -555,7 +555,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                       </div>
 
                       {/* Screenshot placeholder */}
-                      <div className="border border-dashed border-border p-8 bg-muted/50 text-center rounded-md">
+                      <div className="border border-dashed border-border p-8 bg-accent/20 text-center rounded-md">
                         <Image className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
                         <p className="text-sm text-muted-foreground">Screenshot du trade</p>
                         <p className="text-xs text-muted-foreground/70 mt-1">À venir</p>
