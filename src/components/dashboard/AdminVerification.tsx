@@ -15,12 +15,30 @@ import {
   Lock,
   Play,
   AlertTriangle,
-  Award
+  Award,
+  Calendar,
+  ArrowUpRight,
+  ArrowDownRight,
+  ExternalLink,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface VerificationRequest {
   id: string;
@@ -63,6 +81,23 @@ interface Trade {
   user_id: string;
 }
 
+interface UserExecution {
+  id: string;
+  trade_number: number;
+  trade_date: string;
+  direction: string;
+  entry_time: string | null;
+  exit_time: string | null;
+  rr: number | null;
+  result: string | null;
+  setup_type: string | null;
+  entry_model: string | null;
+  direction_structure: string | null;
+  entry_timing: string | null;
+  screenshot_url: string | null;
+  user_id: string;
+}
+
 interface Profile {
   id: string;
   user_id: string;
@@ -72,7 +107,7 @@ interface Profile {
 interface PendingRequest extends VerificationRequest {
   cycle: Cycle | null;
   userCycle: UserCycle | null;
-  trades: Trade[];
+  executions: UserExecution[];
   userName: string;
 }
 
@@ -85,6 +120,7 @@ interface PlatformUser {
   totalTrades: number;
   totalRR: number;
   status: "active" | "pending" | "completed";
+  executions: UserExecution[];
 }
 
 export const AdminVerification = () => {
@@ -155,10 +191,10 @@ export const AdminVerification = () => {
       .select("*")
       .in("id", userCycleIds);
 
-    // Fetch all trades for the users
+    // Fetch all user_executions for the users (trades saisis par les utilisateurs)
     const userIds = [...new Set(requestsData.map(r => r.user_id))];
-    const { data: tradesData } = await supabase
-      .from("trades")
+    const { data: executionsData } = await supabase
+      .from("user_executions")
       .select("*")
       .in("user_id", userIds)
       .order("trade_number", { ascending: true });
@@ -169,18 +205,19 @@ export const AdminVerification = () => {
       const cycle = cyclesData?.find(c => c.id === request.cycle_id) || null;
       const profile = profilesData?.find(p => p.user_id === request.user_id);
       
-      const trades = tradesData?.filter(t => 
-        t.user_id === request.user_id && 
+      // Filter executions for this user within the cycle's trade range
+      const executions = (executionsData?.filter(e => 
+        e.user_id === request.user_id && 
         cycle && 
-        t.trade_number >= cycle.trade_start && 
-        t.trade_number <= cycle.trade_end
-      ) || [];
+        e.trade_number >= cycle.trade_start && 
+        e.trade_number <= cycle.trade_end
+      ) || []) as UserExecution[];
 
       return {
         ...request,
         cycle: cycle as Cycle | null,
         userCycle: userCycle as UserCycle | null,
-        trades: trades as Trade[],
+        executions,
         userName: profile?.display_name || `Utilisateur ${request.user_id.slice(0, 8)}`,
       };
     });
@@ -212,16 +249,16 @@ export const AdminVerification = () => {
     // Get unique user IDs
     const uniqueUserIds = [...new Set(allUserCycles?.map(uc => uc.user_id) || [])];
 
-    // Fetch trades for all users
-    const { data: allTrades } = await supabase
-      .from("trades")
+    // Fetch user_executions for all users (les trades saisis par les utilisateurs)
+    const { data: allExecutions } = await supabase
+      .from("user_executions")
       .select("*")
       .order("trade_number", { ascending: true });
 
     // Create user objects
     const platformUsers: PlatformUser[] = uniqueUserIds.map(userId => {
       const userCycles = allUserCycles?.filter(uc => uc.user_id === userId) || [];
-      const userTrades = allTrades?.filter(t => t.user_id === userId) || [];
+      const userExecutions = (allExecutions?.filter(e => e.user_id === userId) || []) as UserExecution[];
       const profile = profilesData?.find(p => p.user_id === userId);
       
       // Find current active cycle (in_progress or pending_review)
@@ -233,8 +270,8 @@ export const AdminVerification = () => {
         ? cycles.find(c => c.id === activeCycle.cycle_id) 
         : null;
       
-      // Calculate total RR
-      const totalRR = userTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
+      // Calculate total RR from user executions
+      const totalRR = userExecutions.reduce((sum, e) => sum + (e.rr || 0), 0);
       
       // Determine status
       const hasPending = userCycles.some(uc => uc.status === "pending_review");
@@ -250,9 +287,10 @@ export const AdminVerification = () => {
         created_at: userCycles[0]?.created_at || new Date().toISOString(),
         currentCycle: currentCycleData || null,
         userCycles: userCycles as UserCycle[],
-        totalTrades: userTrades.length,
+        totalTrades: userExecutions.length,
         totalRR,
         status,
+        executions: userExecutions,
       };
     });
 
@@ -385,13 +423,13 @@ export const AdminVerification = () => {
     }
   };
 
-  const calculateStats = (trades: Trade[]) => {
-    const totalRR = trades.reduce((sum, t) => sum + (t.rr || 0), 0);
-    const wins = trades.filter(t => t.rr > 0).length;
-    const winRate = trades.length > 0 ? (wins / trades.length) * 100 : 0;
-    const avgRR = trades.length > 0 ? totalRR / trades.length : 0;
+  const calculateStats = (executions: UserExecution[]) => {
+    const totalRR = executions.reduce((sum, e) => sum + (e.rr || 0), 0);
+    const wins = executions.filter(e => (e.rr || 0) > 0).length;
+    const winRate = executions.length > 0 ? (wins / executions.length) * 100 : 0;
+    const avgRR = executions.length > 0 ? totalRR / executions.length : 0;
     
-    return { totalRR, winRate, avgRR, wins, losses: trades.length - wins };
+    return { totalRR, winRate, avgRR, wins, losses: executions.length - wins };
   };
 
   const getStatusIcon = (status: string) => {
@@ -611,53 +649,159 @@ export const AdminVerification = () => {
                         </div>
                       </div>
 
-                      {/* Expanded Content - Cycle Grid */}
+                      {/* Expanded Content - Cycle Grid + Trades Detail */}
                       {isExpanded && (
-                        <div className="border-t border-border/50 p-4">
-                          <p className="text-xs font-mono uppercase text-muted-foreground mb-3">
-                            Détail des cycles
-                          </p>
-                          <div className="grid grid-cols-9 gap-2">
-                            {cycles.map((cycle) => {
-                              const userCycle = user.userCycles.find(uc => uc.cycle_id === cycle.id);
-                              const status = userCycle?.status || "locked";
+                        <div className="border-t border-border/50 p-4 space-y-6">
+                          {/* Cycle Grid */}
+                          <div>
+                            <p className="text-xs font-mono uppercase text-muted-foreground mb-3">
+                              Détail des cycles
+                            </p>
+                            <div className="grid grid-cols-9 gap-2">
+                              {cycles.map((cycle) => {
+                                const userCycle = user.userCycles.find(uc => uc.cycle_id === cycle.id);
+                                const status = userCycle?.status || "locked";
 
-                              return (
-                                <div
-                                  key={cycle.id}
-                                  className={cn(
-                                    "p-3 border rounded-md text-center",
-                                    status === "locked" && "bg-muted/30 border-border/50 opacity-50",
-                                    status === "in_progress" && "bg-blue-500/10 border-blue-500/40",
-                                    status === "pending_review" && "bg-orange-500/10 border-orange-500/40",
-                                    status === "validated" && "bg-emerald-500/10 border-emerald-500/40",
-                                    status === "rejected" && "bg-red-500/10 border-red-500/40"
-                                  )}
-                                >
-                                  <div className="flex items-center justify-center mb-1">
-                                    {getStatusIcon(status)}
-                                  </div>
-                                  <p className="text-[10px] font-mono font-bold text-foreground">
-                                    {cycle.cycle_number === 0 ? "Éb." : `C${cycle.cycle_number}`}
-                                  </p>
-                                  <p className="text-[9px] text-muted-foreground">
-                                    {getStatusLabel(status)}
-                                  </p>
-                                  {userCycle && userCycle.total_rr !== null && (
-                                    <p className={cn(
-                                      "text-[10px] font-mono mt-1",
-                                      (userCycle.total_rr || 0) >= 0 ? "text-emerald-400" : "text-red-400"
-                                    )}>
-                                      {(userCycle.total_rr || 0) >= 0 ? "+" : ""}{(userCycle.total_rr || 0).toFixed(0)}
+                                return (
+                                  <div
+                                    key={cycle.id}
+                                    className={cn(
+                                      "p-3 border rounded-md text-center",
+                                      status === "locked" && "bg-muted/30 border-border/50 opacity-50",
+                                      status === "in_progress" && "bg-blue-500/10 border-blue-500/40",
+                                      status === "pending_review" && "bg-orange-500/10 border-orange-500/40",
+                                      status === "validated" && "bg-emerald-500/10 border-emerald-500/40",
+                                      status === "rejected" && "bg-red-500/10 border-red-500/40"
+                                    )}
+                                  >
+                                    <div className="flex items-center justify-center mb-1">
+                                      {getStatusIcon(status)}
+                                    </div>
+                                    <p className="text-[10px] font-mono font-bold text-foreground">
+                                      {cycle.cycle_number === 0 ? "Éb." : `C${cycle.cycle_number}`}
                                     </p>
-                                  )}
-                                </div>
-                              );
-                            })}
+                                    <p className="text-[9px] text-muted-foreground">
+                                      {getStatusLabel(status)}
+                                    </p>
+                                    {userCycle && userCycle.total_rr !== null && (
+                                      <p className={cn(
+                                        "text-[10px] font-mono mt-1",
+                                        (userCycle.total_rr || 0) >= 0 ? "text-emerald-400" : "text-red-400"
+                                      )}>
+                                        {(userCycle.total_rr || 0) >= 0 ? "+" : ""}{(userCycle.total_rr || 0).toFixed(0)}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
 
+                          {/* Trades Detail Table */}
+                          {user.executions.length > 0 && (
+                            <div>
+                              <p className="text-xs font-mono uppercase text-muted-foreground mb-3">
+                                Trades saisis ({user.executions.length})
+                              </p>
+                              <div className="border border-border rounded-md overflow-hidden max-h-64 overflow-y-auto">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow className="bg-muted/50">
+                                      <TableHead className="h-8 text-[10px] font-mono">#</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">Date</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">Dir</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">Entrée</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">Sortie</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">Setup</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">Modèle</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono text-right">RR</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">Screenshot</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {user.executions.map((exec) => (
+                                      <TableRow key={exec.id} className="hover:bg-muted/30">
+                                        <TableCell className="py-1.5 text-xs font-mono font-bold">
+                                          {exec.trade_number}
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-xs font-mono text-muted-foreground">
+                                          {new Date(exec.trade_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          <div className={cn(
+                                            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono",
+                                            exec.direction === "Long" 
+                                              ? "bg-emerald-500/20 text-emerald-400"
+                                              : "bg-red-500/20 text-red-400"
+                                          )}>
+                                            {exec.direction === "Long" ? (
+                                              <ArrowUpRight className="w-3 h-3" />
+                                            ) : (
+                                              <ArrowDownRight className="w-3 h-3" />
+                                            )}
+                                            {exec.direction}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-xs font-mono text-muted-foreground">
+                                          {exec.entry_time || "—"}
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-xs font-mono text-muted-foreground">
+                                          {exec.exit_time || "—"}
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          {exec.setup_type && (
+                                            <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[10px] font-mono rounded">
+                                              {exec.setup_type}
+                                            </span>
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-[10px] font-mono text-muted-foreground">
+                                          {exec.entry_model || "—"}
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-right">
+                                          <span className={cn(
+                                            "font-mono font-bold text-xs",
+                                            (exec.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400"
+                                          )}>
+                                            {(exec.rr || 0) >= 0 ? "+" : ""}{(exec.rr || 0).toFixed(1)}
+                                          </span>
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          {exec.screenshot_url ? (
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <a 
+                                                  href={exec.screenshot_url} 
+                                                  target="_blank" 
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
+                                                >
+                                                  <ImageIcon className="w-3.5 h-3.5" />
+                                                  <ExternalLink className="w-3 h-3" />
+                                                </a>
+                                              </TooltipTrigger>
+                                              <TooltipContent side="left" className="p-0 overflow-hidden">
+                                                <img 
+                                                  src={exec.screenshot_url} 
+                                                  alt={`Trade #${exec.trade_number}`}
+                                                  className="max-w-[300px] max-h-[200px] object-contain"
+                                                />
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          ) : (
+                                            <span className="text-muted-foreground text-xs">—</span>
+                                          )}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </div>
+                          )}
+
                           {/* User Info */}
-                          <div className="mt-4 pt-4 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="pt-4 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
                             <span className="font-mono">
                               Inscrit le {new Date(user.created_at).toLocaleDateString("fr-FR", {
                                 day: "numeric",
@@ -704,7 +848,7 @@ export const AdminVerification = () => {
                 </div>
 
                 {requests.map((request) => {
-                  const stats = calculateStats(request.trades);
+                  const stats = calculateStats(request.executions);
                   const isExpanded = expandedRequest === request.id;
                   const isProcessing = processing === request.id;
 
@@ -725,7 +869,7 @@ export const AdminVerification = () => {
                             </div>
                             <div>
                               <h4 className="font-semibold text-foreground">
-                                {request.cycle?.name || "Cycle inconnu"}
+                                {request.userName} — {request.cycle?.name || "Cycle inconnu"}
                               </h4>
                               <p className="text-xs text-muted-foreground font-mono">
                                 Demandé le {new Date(request.requested_at).toLocaleDateString("fr-FR", {
@@ -748,7 +892,7 @@ export const AdminVerification = () => {
                                 {stats.totalRR >= 0 ? "+" : ""}{stats.totalRR.toFixed(1)} RR
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {request.trades.length} trades
+                                {request.executions.length} trades saisis
                               </p>
                             </div>
                             {isExpanded ? (
@@ -802,26 +946,100 @@ export const AdminVerification = () => {
                             </div>
                           </div>
 
-                          {/* Trades Grid */}
+                          {/* Trades Detail Table */}
                           <div>
                             <p className="text-xs font-mono uppercase text-muted-foreground mb-2">
-                              Détail des trades ({request.cycle?.trade_start}-{request.cycle?.trade_end})
+                              Trades saisis ({request.cycle?.trade_start}-{request.cycle?.trade_end})
                             </p>
-                            <div className="grid grid-cols-10 gap-1 max-h-32 overflow-auto">
-                              {request.trades.map((trade) => (
-                                <div
-                                  key={trade.id}
-                                  className={cn(
-                                    "p-1.5 border rounded text-center text-[10px] font-mono",
-                                    trade.rr >= 0 
-                                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                                      : "bg-red-500/10 border-red-500/30 text-red-400"
-                                  )}
-                                >
-                                  <div className="font-bold">#{trade.trade_number}</div>
-                                  <div>{trade.rr >= 0 ? "+" : ""}{trade.rr?.toFixed(1)}</div>
-                                </div>
-                              ))}
+                            <div className="border border-border rounded-md overflow-hidden max-h-48 overflow-y-auto">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow className="bg-muted/50">
+                                    <TableHead className="h-8 text-[10px] font-mono">#</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Date</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Dir</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Entrée</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Setup</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Modèle</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono text-right">RR</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Screenshot</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {request.executions.map((exec) => (
+                                    <TableRow key={exec.id} className="hover:bg-muted/30">
+                                      <TableCell className="py-1.5 text-xs font-mono font-bold">
+                                        {exec.trade_number}
+                                      </TableCell>
+                                      <TableCell className="py-1.5 text-xs font-mono text-muted-foreground">
+                                        {new Date(exec.trade_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                                      </TableCell>
+                                      <TableCell className="py-1.5">
+                                        <div className={cn(
+                                          "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono",
+                                          exec.direction === "Long" 
+                                            ? "bg-emerald-500/20 text-emerald-400"
+                                            : "bg-red-500/20 text-red-400"
+                                        )}>
+                                          {exec.direction === "Long" ? (
+                                            <ArrowUpRight className="w-3 h-3" />
+                                          ) : (
+                                            <ArrowDownRight className="w-3 h-3" />
+                                          )}
+                                          {exec.direction}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="py-1.5 text-xs font-mono text-muted-foreground">
+                                        {exec.entry_time || "—"}
+                                      </TableCell>
+                                      <TableCell className="py-1.5">
+                                        {exec.setup_type && (
+                                          <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[10px] font-mono rounded">
+                                            {exec.setup_type}
+                                          </span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="py-1.5 text-[10px] font-mono text-muted-foreground">
+                                        {exec.entry_model || "—"}
+                                      </TableCell>
+                                      <TableCell className="py-1.5 text-right">
+                                        <span className={cn(
+                                          "font-mono font-bold text-xs",
+                                          (exec.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400"
+                                        )}>
+                                          {(exec.rr || 0) >= 0 ? "+" : ""}{(exec.rr || 0).toFixed(1)}
+                                        </span>
+                                      </TableCell>
+                                      <TableCell className="py-1.5">
+                                        {exec.screenshot_url ? (
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <a 
+                                                href={exec.screenshot_url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
+                                              >
+                                                <ImageIcon className="w-3.5 h-3.5" />
+                                                <ExternalLink className="w-3 h-3" />
+                                              </a>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="left" className="p-0 overflow-hidden">
+                                              <img 
+                                                src={exec.screenshot_url} 
+                                                alt={`Trade #${exec.trade_number}`}
+                                                className="max-w-[300px] max-h-[200px] object-contain"
+                                              />
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        ) : (
+                                          <span className="text-muted-foreground text-xs">—</span>
+                                        )}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
                             </div>
                           </div>
 
