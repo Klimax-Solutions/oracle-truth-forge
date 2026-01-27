@@ -187,6 +187,21 @@ export const SetupPage = ({ trades, initialFilters }: SetupPageProps) => {
                 <p className="text-xl font-bold text-foreground">{oracleStats.avgRR.toFixed(2)}</p>
               </div>
             </div>
+
+            {/* Progress bar for Oracle */}
+            <div className="mt-4">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary transition-all duration-500"
+                  style={{ width: `${Math.min((oracleStats.totalTrades / 300) * 100, 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                {oracleStats.totalTrades >= 300 
+                  ? "🎉 Base de données Oracle complète !"
+                  : `${oracleStats.totalTrades} trades référencés`}
+              </p>
+            </div>
           </div>
 
           {/* Setup Perso Card */}
