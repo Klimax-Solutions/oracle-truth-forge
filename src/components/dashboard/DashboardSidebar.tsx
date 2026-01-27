@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Database, Calendar, BarChart3, Clock, ChevronRight, Crosshair, Video, ShieldCheck, Crown } from "lucide-react";
+import { Database, Calendar, BarChart3, Clock, ChevronRight, Crosshair, Video, ShieldCheck, Crown, FileUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -17,7 +17,10 @@ const tabs = [
   { id: "videos", label: "Vidéo du Setup Oracle", icon: Video },
 ];
 
-const adminTab = { id: "admin", label: "Vérifications Admin", icon: ShieldCheck };
+const adminTabs = [
+  { id: "batch-import", label: "Import Batch", icon: FileUp },
+  { id: "admin", label: "Vérifications Admin", icon: ShieldCheck },
+];
 const superAdminTab = { id: "roles", label: "Gestion des Rôles", icon: Crown };
 
 export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarProps) => {
@@ -44,7 +47,7 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
 
   let allTabs = [...tabs];
   if (isAdmin) {
-    allTabs = [...allTabs, adminTab];
+    allTabs = [...allTabs, ...adminTabs];
   }
   if (isSuperAdmin) {
     allTabs = [...allTabs, superAdminTab];
@@ -86,7 +89,7 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
               activeTab === tab.id
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent",
-              tab.id === "admin" && "border-t border-border/40 mt-2 pt-4"
+              tab.id === "batch-import" && "border-t border-border/40 mt-2 pt-4"
             )}
           >
             <tab.icon className="w-4 h-4 flex-shrink-0" />
