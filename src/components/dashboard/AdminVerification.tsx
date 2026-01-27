@@ -21,6 +21,7 @@ import {
   ArrowDownRight,
   ExternalLink,
   Image as ImageIcon,
+  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,6 +40,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { UserFollowupTab } from "./admin/UserFollowupTab";
+
+// Oracle trade from the master database
+interface OracleTrade {
+  id: string;
+  trade_number: number;
+  trade_date: string;
+  entry_time: string | null;
+  direction: string;
+  rr: number | null;
+}
 
 interface VerificationRequest {
   id: string;
@@ -104,10 +116,18 @@ interface Profile {
   display_name: string | null;
 }
 
+interface ExecutionComparison {
+  execution: UserExecution;
+  oracleTrade: OracleTrade | null;
+  status: 'match' | 'warning' | 'error' | 'no-match';
+  timeDiffHours: number | null;
+}
+
 interface PendingRequest extends VerificationRequest {
   cycle: Cycle | null;
   userCycle: UserCycle | null;
   executions: UserExecution[];
+  comparisons: ExecutionComparison[];
   userName: string;
 }
 
@@ -128,6 +148,7 @@ export const AdminVerification = () => {
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [cycles, setCycles] = useState<Cycle[]>([]);
+  const [oracleTrades, setOracleTrades] = useState<OracleTrade[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
@@ -199,7 +220,44 @@ export const AdminVerification = () => {
       .in("user_id", userIds)
       .order("trade_number", { ascending: true });
 
-    // Combine data
+    // Fetch Oracle trades for comparison (the master reference)
+    const { data: oracleData } = await supabase
+      .from("trades")
+      .select("id, trade_number, trade_date, entry_time, direction, rr")
+      .order("trade_number", { ascending: true });
+    
+    const oracleTrades = (oracleData || []) as OracleTrade[];
+    setOracleTrades(oracleTrades);
+
+    // Helper function to compare execution with Oracle trade
+    const compareExecution = (exec: UserExecution): ExecutionComparison => {
+      const oracleTrade = oracleTrades.find(t => t.trade_number === exec.trade_number);
+      
+      if (!oracleTrade) {
+        return { execution: exec, oracleTrade: null, status: 'no-match', timeDiffHours: null };
+      }
+
+      // Compare date and time
+      const userDateTime = new Date(`${exec.trade_date}T${exec.entry_time || '00:00'}:00`);
+      const oracleDateTime = new Date(`${oracleTrade.trade_date}T${oracleTrade.entry_time || '00:00'}:00`);
+      
+      const timeDiffMs = Math.abs(userDateTime.getTime() - oracleDateTime.getTime());
+      const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
+
+      // Determine status based on time difference
+      let status: 'match' | 'warning' | 'error';
+      if (timeDiffHours <= 5) {
+        status = 'match';
+      } else if (timeDiffHours <= 24) {
+        status = 'warning';
+      } else {
+        status = 'error';
+      }
+
+      return { execution: exec, oracleTrade, status, timeDiffHours };
+    };
+
+    // Combine data with comparisons
     const enrichedRequests: PendingRequest[] = requestsData.map(request => {
       const userCycle = userCyclesData?.find(uc => uc.id === request.user_cycle_id) || null;
       const cycle = cyclesData?.find(c => c.id === request.cycle_id) || null;
@@ -213,11 +271,15 @@ export const AdminVerification = () => {
         e.trade_number <= cycle.trade_end
       ) || []) as UserExecution[];
 
+      // Create comparisons for each execution
+      const comparisons = executions.map(exec => compareExecution(exec));
+
       return {
         ...request,
         cycle: cycle as Cycle | null,
         userCycle: userCycle as UserCycle | null,
         executions,
+        comparisons,
         userName: profile?.display_name || `Utilisateur ${request.user_id.slice(0, 8)}`,
       };
     });
@@ -492,6 +554,10 @@ export const AdminVerification = () => {
             <TabsTrigger value="verifications" className="gap-2">
               <Clock className="w-4 h-4" />
               Vérifications ({requests.length})
+            </TabsTrigger>
+            <TabsTrigger value="followup" className="gap-2">
+              <ClipboardList className="w-4 h-4" />
+              Suivi
             </TabsTrigger>
           </TabsList>
 
@@ -946,98 +1012,157 @@ export const AdminVerification = () => {
                             </div>
                           </div>
 
-                          {/* Trades Detail Table */}
+                          {/* Comparison Summary */}
+                          <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-md">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                              <span className="text-xs font-mono">
+                                {request.comparisons.filter(c => c.status === 'match').length} OK
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-orange-500" />
+                              <span className="text-xs font-mono">
+                                {request.comparisons.filter(c => c.status === 'warning').length} &gt;5h
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-red-500" />
+                              <span className="text-xs font-mono">
+                                {request.comparisons.filter(c => c.status === 'error' || c.status === 'no-match').length} Erreurs
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Trades Detail Table with Oracle Comparison */}
                           <div>
                             <p className="text-xs font-mono uppercase text-muted-foreground mb-2">
-                              Trades saisis ({request.cycle?.trade_start}-{request.cycle?.trade_end})
+                              Comparaison Oracle ({request.cycle?.trade_start}-{request.cycle?.trade_end})
                             </p>
-                            <div className="border border-border rounded-md overflow-hidden max-h-48 overflow-y-auto">
+                            <div className="border border-border rounded-md overflow-hidden max-h-64 overflow-y-auto">
                               <Table>
                                 <TableHeader>
                                   <TableRow className="bg-muted/50">
+                                    <TableHead className="h-8 text-[10px] font-mono w-8">St</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono">#</TableHead>
-                                    <TableHead className="h-8 text-[10px] font-mono">Date</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Date User</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Date Oracle</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Heure User</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Heure Oracle</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono">Dir</TableHead>
-                                    <TableHead className="h-8 text-[10px] font-mono">Entrée</TableHead>
-                                    <TableHead className="h-8 text-[10px] font-mono">Setup</TableHead>
-                                    <TableHead className="h-8 text-[10px] font-mono">Modèle</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono text-right">RR</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono">Screenshot</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                  {request.executions.map((exec) => (
-                                    <TableRow key={exec.id} className="hover:bg-muted/30">
-                                      <TableCell className="py-1.5 text-xs font-mono font-bold">
-                                        {exec.trade_number}
-                                      </TableCell>
-                                      <TableCell className="py-1.5 text-xs font-mono text-muted-foreground">
-                                        {new Date(exec.trade_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
-                                      </TableCell>
-                                      <TableCell className="py-1.5">
-                                        <div className={cn(
-                                          "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono",
-                                          exec.direction === "Long" 
-                                            ? "bg-emerald-500/20 text-emerald-400"
-                                            : "bg-red-500/20 text-red-400"
-                                        )}>
-                                          {exec.direction === "Long" ? (
-                                            <ArrowUpRight className="w-3 h-3" />
-                                          ) : (
-                                            <ArrowDownRight className="w-3 h-3" />
-                                          )}
-                                          {exec.direction}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="py-1.5 text-xs font-mono text-muted-foreground">
-                                        {exec.entry_time || "—"}
-                                      </TableCell>
-                                      <TableCell className="py-1.5">
-                                        {exec.setup_type && (
-                                          <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[10px] font-mono rounded">
-                                            {exec.setup_type}
-                                          </span>
+                                  {request.comparisons.map((comp) => {
+                                    const exec = comp.execution;
+                                    const oracle = comp.oracleTrade;
+                                    
+                                    return (
+                                      <TableRow 
+                                        key={exec.id} 
+                                        className={cn(
+                                          "hover:bg-muted/30",
+                                          comp.status === 'match' && "bg-emerald-500/10 border-l-2 border-l-emerald-500",
+                                          comp.status === 'warning' && "bg-orange-500/10 border-l-2 border-l-orange-500",
+                                          comp.status === 'error' && "bg-red-500/10 border-l-2 border-l-red-500",
+                                          comp.status === 'no-match' && "bg-red-500/10 border-l-2 border-l-red-500"
                                         )}
-                                      </TableCell>
-                                      <TableCell className="py-1.5 text-[10px] font-mono text-muted-foreground">
-                                        {exec.entry_model || "—"}
-                                      </TableCell>
-                                      <TableCell className="py-1.5 text-right">
-                                        <span className={cn(
-                                          "font-mono font-bold text-xs",
-                                          (exec.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400"
-                                        )}>
-                                          {(exec.rr || 0) >= 0 ? "+" : ""}{(exec.rr || 0).toFixed(1)}
-                                        </span>
-                                      </TableCell>
-                                      <TableCell className="py-1.5">
-                                        {exec.screenshot_url ? (
+                                      >
+                                        <TableCell className="py-1.5">
                                           <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <a 
-                                                href={exec.screenshot_url} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
-                                              >
-                                                <ImageIcon className="w-3.5 h-3.5" />
-                                                <ExternalLink className="w-3 h-3" />
-                                              </a>
+                                            <TooltipTrigger>
+                                              <div className={cn(
+                                                "w-5 h-5 rounded-full flex items-center justify-center",
+                                                comp.status === 'match' && "bg-emerald-500",
+                                                comp.status === 'warning' && "bg-orange-500",
+                                                comp.status === 'error' && "bg-red-500",
+                                                comp.status === 'no-match' && "bg-red-500"
+                                              )}>
+                                                {comp.status === 'match' ? (
+                                                  <CheckCircle className="w-3 h-3 text-white" />
+                                                ) : comp.status === 'warning' ? (
+                                                  <AlertTriangle className="w-3 h-3 text-white" />
+                                                ) : (
+                                                  <XCircle className="w-3 h-3 text-white" />
+                                                )}
+                                              </div>
                                             </TooltipTrigger>
-                                            <TooltipContent side="left" className="p-0 overflow-hidden">
-                                              <img 
-                                                src={exec.screenshot_url} 
-                                                alt={`Trade #${exec.trade_number}`}
-                                                className="max-w-[300px] max-h-[200px] object-contain"
-                                              />
+                                            <TooltipContent>
+                                              {comp.status === 'match' && "Correspondance parfaite (≤5h)"}
+                                              {comp.status === 'warning' && `Décalage de ${comp.timeDiffHours?.toFixed(1)}h`}
+                                              {comp.status === 'error' && `Écart important: ${comp.timeDiffHours?.toFixed(0)}h`}
+                                              {comp.status === 'no-match' && "Trade Oracle non trouvé"}
                                             </TooltipContent>
                                           </Tooltip>
-                                        ) : (
-                                          <span className="text-muted-foreground text-xs">—</span>
-                                        )}
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-xs font-mono font-bold">
+                                          {exec.trade_number}
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-xs font-mono text-muted-foreground">
+                                          {new Date(exec.trade_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-xs font-mono text-muted-foreground">
+                                          {oracle ? new Date(oracle.trade_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) : "—"}
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-xs font-mono text-muted-foreground">
+                                          {exec.entry_time || "—"}
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-xs font-mono text-muted-foreground">
+                                          {oracle?.entry_time || "—"}
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          <div className={cn(
+                                            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono",
+                                            exec.direction === "Long" 
+                                              ? "bg-emerald-500/20 text-emerald-400"
+                                              : "bg-red-500/20 text-red-400"
+                                          )}>
+                                            {exec.direction === "Long" ? (
+                                              <ArrowUpRight className="w-3 h-3" />
+                                            ) : (
+                                              <ArrowDownRight className="w-3 h-3" />
+                                            )}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-right">
+                                          <span className={cn(
+                                            "font-mono font-bold text-xs",
+                                            (exec.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400"
+                                          )}>
+                                            {(exec.rr || 0) >= 0 ? "+" : ""}{(exec.rr || 0).toFixed(1)}
+                                          </span>
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          {exec.screenshot_url ? (
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <a 
+                                                  href={exec.screenshot_url} 
+                                                  target="_blank" 
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
+                                                >
+                                                  <ImageIcon className="w-3.5 h-3.5" />
+                                                  <ExternalLink className="w-3 h-3" />
+                                                </a>
+                                              </TooltipTrigger>
+                                              <TooltipContent side="left" className="p-0 overflow-hidden">
+                                                <img 
+                                                  src={exec.screenshot_url} 
+                                                  alt={`Trade #${exec.trade_number}`}
+                                                  className="max-w-[300px] max-h-[200px] object-contain"
+                                                />
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          ) : (
+                                            <span className="text-muted-foreground text-xs">—</span>
+                                          )}
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
                                 </TableBody>
                               </Table>
                             </div>
@@ -1095,6 +1220,11 @@ export const AdminVerification = () => {
                 })}
               </div>
             )}
+          </TabsContent>
+
+          {/* Followup Tab */}
+          <TabsContent value="followup" className="flex-1 overflow-auto mt-0">
+            <UserFollowupTab />
           </TabsContent>
         </Tabs>
       </div>

@@ -289,6 +289,51 @@ export type Database = {
         }
         Relationships: []
       }
+      user_followups: {
+        Row: {
+          call_done: boolean | null
+          contact_date: string
+          contacted_by: string | null
+          correct_actions: boolean | null
+          created_at: string
+          day_number: number
+          id: string
+          is_blocked: boolean | null
+          message_sent: boolean | null
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          call_done?: boolean | null
+          contact_date: string
+          contacted_by?: string | null
+          correct_actions?: boolean | null
+          created_at?: string
+          day_number: number
+          id?: string
+          is_blocked?: boolean | null
+          message_sent?: boolean | null
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          call_done?: boolean | null
+          contact_date?: string
+          contacted_by?: string | null
+          correct_actions?: boolean | null
+          created_at?: string
+          day_number?: number
+          id?: string
+          is_blocked?: boolean | null
+          message_sent?: boolean | null
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       verification_requests: {
         Row: {
           admin_comments: string | null
@@ -350,6 +395,10 @@ export type Database = {
     Functions: {
       initialize_user_cycles: {
         Args: { p_user_id: string }
+        Returns: undefined
+      }
+      initialize_user_followups: {
+        Args: { p_start_date?: string; p_user_id: string }
         Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
