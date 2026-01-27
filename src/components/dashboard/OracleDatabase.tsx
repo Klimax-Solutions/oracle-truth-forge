@@ -31,6 +31,8 @@ interface Trade {
   target_hl_valid: boolean;
   news_day: boolean;
   news_label: string;
+  screenshot_m1: string | null;
+  screenshot_m15_m5: string | null;
 }
 
 interface OracleDatabaseProps {
@@ -594,12 +596,45 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                             <span className="text-base font-bold text-emerald-500">+{context.cumulativeRR.toFixed(2)} RR</span>
                           </div>
 
-                          {/* Screenshot placeholder */}
-                          <div className="border border-dashed border-border p-6 bg-muted/50 rounded-md flex flex-col items-center justify-center">
-                            <Image className="w-8 h-8 text-muted-foreground mb-2" />
-                            <p className="text-sm text-muted-foreground">Screenshot à venir</p>
-                            <p className="text-[10px] text-muted-foreground/70 mt-1">Emplacement réservé pour les captures</p>
-                          </div>
+                          {/* Screenshots */}
+                          {(trade.screenshot_m1 || trade.screenshot_m15_m5) ? (
+                            <div className="grid grid-cols-2 gap-4">
+                              {trade.screenshot_m15_m5 && (
+                                <div className="border border-border rounded-md overflow-hidden">
+                                  <div className="p-2 bg-muted/30 border-b border-border">
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">M15 / Contexte</p>
+                                  </div>
+                                  <a href={trade.screenshot_m15_m5} target="_blank" rel="noopener noreferrer">
+                                    <img 
+                                      src={trade.screenshot_m15_m5} 
+                                      alt={`Trade ${trade.trade_number} M15`}
+                                      className="w-full h-48 object-cover hover:opacity-80 transition-opacity cursor-pointer"
+                                    />
+                                  </a>
+                                </div>
+                              )}
+                              {trade.screenshot_m1 && (
+                                <div className="border border-border rounded-md overflow-hidden">
+                                  <div className="p-2 bg-muted/30 border-b border-border">
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">M5 / Entrée</p>
+                                  </div>
+                                  <a href={trade.screenshot_m1} target="_blank" rel="noopener noreferrer">
+                                    <img 
+                                      src={trade.screenshot_m1} 
+                                      alt={`Trade ${trade.trade_number} M5`}
+                                      className="w-full h-48 object-cover hover:opacity-80 transition-opacity cursor-pointer"
+                                    />
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="border border-dashed border-border p-6 bg-muted/50 rounded-md flex flex-col items-center justify-center">
+                              <Image className="w-8 h-8 text-muted-foreground mb-2" />
+                              <p className="text-sm text-muted-foreground">Screenshot à venir</p>
+                              <p className="text-[10px] text-muted-foreground/70 mt-1">Emplacement réservé pour les captures</p>
+                            </div>
+                          )}
                         </>
                       );
                     })()}
