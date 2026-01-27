@@ -7,11 +7,24 @@ interface CustomVariable {
   variable_value: string;
 }
 
+interface CustomVariableType {
+  id: string;
+  type_key: string;
+  type_label: string;
+}
+
 export interface CustomVariables {
   direction_structure: string[];
   setup_type: string[];
   entry_model: string[];
   entry_timing: string[];
+  [key: string]: string[]; // Allow dynamic keys for custom types
+}
+
+export interface CustomVariableTypes {
+  key: string;
+  label: string;
+  isCustom: boolean;
 }
 
 export const useCustomVariables = () => {
@@ -21,6 +34,7 @@ export const useCustomVariables = () => {
     entry_model: [],
     entry_timing: [],
   });
+  const [customTypes, setCustomTypes] = useState<CustomVariableTypes[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchVariables = async () => {
@@ -30,6 +44,21 @@ export const useCustomVariables = () => {
       return;
     }
 
+    // Fetch custom types
+    const { data: typesData } = await supabase
+      .from("user_variable_types")
+      .select("*")
+      .eq("user_id", user.id);
+
+    const userCustomTypes = typesData?.map(t => ({
+      key: t.type_key,
+      label: t.type_label,
+      isCustom: true
+    })) || [];
+
+    setCustomTypes(userCustomTypes);
+
+    // Fetch variables
     const { data, error } = await supabase
       .from("user_custom_variables")
       .select("*")
@@ -43,9 +72,18 @@ export const useCustomVariables = () => {
         entry_timing: [],
       };
 
+      // Initialize custom types in grouped
+      userCustomTypes.forEach(t => {
+        grouped[t.key] = [];
+      });
+
       data.forEach((v: CustomVariable) => {
         if (v.variable_type in grouped) {
-          grouped[v.variable_type as keyof CustomVariables].push(v.variable_value);
+          grouped[v.variable_type].push(v.variable_value);
+        } else {
+          // Handle unknown types (create array if needed)
+          grouped[v.variable_type] = grouped[v.variable_type] || [];
+          grouped[v.variable_type].push(v.variable_value);
         }
       });
 
@@ -63,6 +101,9 @@ export const useCustomVariables = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_custom_variables' }, () => {
         fetchVariables();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_variable_types' }, () => {
+        fetchVariables();
+      })
       .subscribe();
 
     return () => {
@@ -70,5 +111,5 @@ export const useCustomVariables = () => {
     };
   }, []);
 
-  return { variables, loading, refetch: fetchVariables };
+  return { variables, customTypes, loading, refetch: fetchVariables };
 };

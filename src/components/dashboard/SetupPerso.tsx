@@ -75,6 +75,7 @@ export const SetupPerso = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isVariablesDialogOpen, setIsVariablesDialogOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<PersonalTrade | null>(null);
+  const [suggestedVariables, setSuggestedVariables] = useState<{ type: string; values: string[] }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -251,6 +252,39 @@ export const SetupPerso = () => {
         if (insertError) throw insertError;
       }
 
+      // Extract unique values for variable suggestions
+      const extractedVariables: { type: string; values: string[] }[] = [];
+      
+      const variableColumns = [
+        { key: 'direction_structure', type: 'direction_structure' },
+        { key: 'setup_type', type: 'setup_type' },
+        { key: 'entry_model', type: 'entry_model' },
+        { key: 'entry_timing', type: 'entry_timing' },
+      ];
+
+      variableColumns.forEach(({ key, type }) => {
+        const uniqueValues = [...new Set(
+          tradesToInsert
+            .map(t => t[key])
+            .filter((v): v is string => !!v && v.trim() !== '')
+        )];
+        
+        if (uniqueValues.length > 0) {
+          extractedVariables.push({ type, values: uniqueValues });
+        }
+      });
+
+      // If we found variables, store them and prompt user
+      if (extractedVariables.length > 0) {
+        setSuggestedVariables(extractedVariables);
+        // Auto-open variables dialog with suggestions
+        setIsVariablesDialogOpen(true);
+        toast({
+          title: "Variables détectées",
+          description: `${extractedVariables.reduce((sum, v) => sum + v.values.length, 0)} valeurs uniques détectées. Cliquez pour les ajouter à vos variables.`,
+        });
+      }
+
       setImportResult({ success: successCount, errors: errorCount });
       await fetchTrades();
 
@@ -271,6 +305,10 @@ export const SetupPerso = () => {
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  const handleVariablesSuggestionsProcessed = () => {
+    setSuggestedVariables([]);
   };
 
   const handleDeleteAll = async () => {
@@ -626,6 +664,8 @@ export const SetupPerso = () => {
       <CustomVariablesDialog
         isOpen={isVariablesDialogOpen}
         onClose={() => setIsVariablesDialogOpen(false)}
+        suggestedVariables={suggestedVariables}
+        onSuggestionsProcessed={handleVariablesSuggestionsProcessed}
       />
     </div>
   );
