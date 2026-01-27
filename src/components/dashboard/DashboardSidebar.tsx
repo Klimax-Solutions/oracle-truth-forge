@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Database, Calendar, BarChart3, Clock, ChevronRight, Crosshair, Video, ShieldCheck } from "lucide-react";
+import { Database, Calendar, BarChart3, Clock, ChevronRight, Crosshair, Video, ShieldCheck, Crown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -18,22 +18,37 @@ const tabs = [
 ];
 
 const adminTab = { id: "admin", label: "Vérifications Admin", icon: ShieldCheck };
+const superAdminTab = { id: "roles", label: "Gestion des Rôles", icon: Crown };
 
 export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
-    const checkAdmin = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email === "jules.philipon@gmail.com") {
+    const checkRoles = async () => {
+      // Check if user is admin
+      const { data: isAdminData } = await supabase.rpc('is_admin');
+      if (isAdminData) {
         setIsAdmin(true);
       }
+      
+      // Check if user is super_admin
+      const { data: isSuperAdminData } = await supabase.rpc('is_super_admin');
+      if (isSuperAdminData) {
+        setIsSuperAdmin(true);
+      }
     };
-    checkAdmin();
+    checkRoles();
   }, []);
 
-  const allTabs = isAdmin ? [...tabs, adminTab] : tabs;
+  let allTabs = [...tabs];
+  if (isAdmin) {
+    allTabs = [...allTabs, adminTab];
+  }
+  if (isSuperAdmin) {
+    allTabs = [...allTabs, superAdminTab];
+  }
 
   return (
     <aside 

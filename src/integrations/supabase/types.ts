@@ -334,6 +334,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       verification_requests: {
         Row: {
           admin_comments: string | null
@@ -393,6 +417,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       initialize_user_cycles: {
         Args: { p_user_id: string }
         Returns: undefined
@@ -402,12 +433,14 @@ export type Database = {
         Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
       unlock_next_cycle: {
         Args: { p_current_cycle_number: number; p_user_id: string }
         Returns: undefined
       }
     }
     Enums: {
+      app_role: "super_admin" | "admin" | "member"
       cycle_status:
         | "locked"
         | "in_progress"
@@ -541,6 +574,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["super_admin", "admin", "member"],
       cycle_status: [
         "locked",
         "in_progress",

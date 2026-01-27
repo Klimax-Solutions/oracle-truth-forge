@@ -13,6 +13,7 @@ import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
 import { AdminVerification } from "@/components/dashboard/AdminVerification";
+import { RoleManagement } from "@/components/dashboard/admin/RoleManagement";
 
 interface Trade {
   id: string;
@@ -144,6 +145,8 @@ const Dashboard = () => {
         return <VideoSetup />;
       case "admin":
         return <AdminVerification />;
+      case "roles":
+        return <RoleManagement />;
       default:
         return <OracleExecution trades={trades} />;
     }
