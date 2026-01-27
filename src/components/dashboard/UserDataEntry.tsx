@@ -57,10 +57,8 @@ import {
   RotateCcw,
   Timer,
   Trophy,
-  FileUp,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { BatchUploadDialog } from "./BatchUploadDialog";
 
 interface UserExecution {
   id: string;
@@ -206,7 +204,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
@@ -658,10 +655,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => setIsBatchDialogOpen(true)}>
-            <FileUp className="w-4 h-4 mr-2" />
-            Import Batch
-          </Button>
           <Button variant="outline" onClick={handleExportCSV}>
             <Download className="w-4 h-4 mr-2" />
             Export CSV
@@ -1313,16 +1306,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
           </div>
         )}
       </div>
-
-      {/* Batch Upload Dialog */}
-      <BatchUploadDialog
-        open={isBatchDialogOpen}
-        onOpenChange={setIsBatchDialogOpen}
-        onComplete={() => {
-          setIsBatchDialogOpen(false);
-          fetchExecutions();
-        }}
-      />
     </div>
   );
 };
