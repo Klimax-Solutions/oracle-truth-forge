@@ -419,8 +419,83 @@ export const BatchImportPage = () => {
     });
   };
 
-  // Handle screenshots only selection
-  const handleScreenshotsOnlySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Parse files and extract matched screenshots
+  const parseAndMatchScreenshots = (files: File[]): {tradeNumber: number; m15?: File; m5?: File}[] => {
+    const tradeMap = new Map<number, {m15?: File; m5?: File}>();
+
+    for (const file of files) {
+      const name = file.name.toLowerCase();
+      
+      // Enhanced regex patterns to match various filename formats
+      const m15Patterns = [
+        /trade[_\s]?(\d+)[_\s]?m15/i,
+        /trade[_\s]?(\d+)[_\s]?h1/i,
+        /trade[_\s]?(\d+)[_\s]+.*contexte/i,
+        /(\d+)[_\s]?m15/i,
+        /(\d+)[_\s]?h1/i,
+      ];
+      
+      const m5Patterns = [
+        /trade[_\s]?(\d+)[_\s]?m5/i,
+        /trade[_\s]?(\d+)[_\s]?m1[^5]/i,
+        /trade[_\s]?(\d+)[_\s]?m1$/i,
+        /trade[_\s]?(\d+)[_\s]+.*entr[ée]e?/i,
+        /(\d+)[_\s]?m5/i,
+        /(\d+)[_\s]?m1[^5]/i,
+      ];
+      
+      let isM15 = false;
+      let isM5 = false;
+      let tradeNum: number | null = null;
+      
+      for (const pattern of m15Patterns) {
+        const match = name.match(pattern);
+        if (match) {
+          tradeNum = parseInt(match[1]);
+          isM15 = true;
+          break;
+        }
+      }
+      
+      if (!isM15) {
+        for (const pattern of m5Patterns) {
+          const match = name.match(pattern);
+          if (match) {
+            tradeNum = parseInt(match[1]);
+            isM5 = true;
+            break;
+          }
+        }
+      }
+      
+      if (!tradeNum && name.includes('trade')) {
+        const genericMatch = name.match(/trade[_\s]?(\d+)/i);
+        if (genericMatch) {
+          tradeNum = parseInt(genericMatch[1]);
+          isM15 = true;
+        }
+      }
+      
+      if (tradeNum && !isNaN(tradeNum)) {
+        if (!tradeMap.has(tradeNum)) tradeMap.set(tradeNum, {});
+        if (isM15) {
+          tradeMap.get(tradeNum)!.m15 = file;
+        } else if (isM5) {
+          tradeMap.get(tradeNum)!.m5 = file;
+        }
+      }
+    }
+
+    const matched: {tradeNumber: number; m15?: File; m5?: File}[] = [];
+    tradeMap.forEach((files, tradeNumber) => {
+      matched.push({ tradeNumber, ...files });
+    });
+    matched.sort((a, b) => a.tradeNumber - b.tradeNumber);
+    return matched;
+  };
+
+  // Auto-upload screenshots when selected
+  const handleScreenshotsOnlySelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const validFiles: File[] = [];
     let totalSize = 0;
@@ -441,101 +516,34 @@ export const BatchImportPage = () => {
       validFiles.push(file);
     }
 
+    if (validFiles.length === 0) return;
+
     setScreenshotFiles(validFiles);
     
-    // Parse and match screenshots to trade numbers
-    const matched: {tradeNumber: number; m15?: File; m5?: File}[] = [];
-    const tradeMap = new Map<number, {m15?: File; m5?: File}>();
-
-    for (const file of validFiles) {
-      const name = file.name.toLowerCase();
-      
-      // Enhanced regex patterns to match various filename formats:
-      // trade_151_m15.png, trade151_m15.png, Trade 151 M15.png, Trade 151 M5 Contexte.png, etc.
-      // Also matches: h1, m1, m5, m15, contexte, entrée patterns
-      
-      // Check for M15/H1/Contexte patterns (treated as M15)
-      const m15Patterns = [
-        /trade[_\s]?(\d+)[_\s]?m15/i,
-        /trade[_\s]?(\d+)[_\s]?h1/i,
-        /trade[_\s]?(\d+)[_\s]+.*contexte/i,
-        /(\d+)[_\s]?m15/i,
-        /(\d+)[_\s]?h1/i,
-      ];
-      
-      // Check for M5/M1/Entrée patterns (treated as M5)
-      const m5Patterns = [
-        /trade[_\s]?(\d+)[_\s]?m5/i,
-        /trade[_\s]?(\d+)[_\s]?m1[^5]/i,
-        /trade[_\s]?(\d+)[_\s]?m1$/i,
-        /trade[_\s]?(\d+)[_\s]+.*entr[ée]e?/i,
-        /(\d+)[_\s]?m5/i,
-        /(\d+)[_\s]?m1[^5]/i,
-      ];
-      
-      let isM15 = false;
-      let isM5 = false;
-      let tradeNum: number | null = null;
-      
-      // Try M15 patterns first
-      for (const pattern of m15Patterns) {
-        const match = name.match(pattern);
-        if (match) {
-          tradeNum = parseInt(match[1]);
-          isM15 = true;
-          break;
-        }
-      }
-      
-      // If not M15, try M5 patterns
-      if (!isM15) {
-        for (const pattern of m5Patterns) {
-          const match = name.match(pattern);
-          if (match) {
-            tradeNum = parseInt(match[1]);
-            isM5 = true;
-            break;
-          }
-        }
-      }
-      
-      // Fallback: try to extract any trade number if file contains "trade"
-      if (!tradeNum && name.includes('trade')) {
-        const genericMatch = name.match(/trade[_\s]?(\d+)/i);
-        if (genericMatch) {
-          tradeNum = parseInt(genericMatch[1]);
-          // Default to M15 if no specific timeframe detected
-          isM15 = true;
-        }
-      }
-      
-      if (tradeNum && !isNaN(tradeNum)) {
-        if (!tradeMap.has(tradeNum)) tradeMap.set(tradeNum, {});
-        if (isM15) {
-          tradeMap.get(tradeNum)!.m15 = file;
-        } else if (isM5) {
-          tradeMap.get(tradeNum)!.m5 = file;
-        }
-      }
-    }
-
-    tradeMap.forEach((files, tradeNumber) => {
-      matched.push({ tradeNumber, ...files });
-    });
-
-    matched.sort((a, b) => a.tradeNumber - b.tradeNumber);
+    // Parse and match screenshots
+    const matched = parseAndMatchScreenshots(validFiles);
     setMatchedScreenshots(matched);
 
-    if (matched.length > 0) {
+    if (matched.length === 0) {
       toast({
-        title: "Screenshots détectés",
-        description: `${matched.length} trade(s) avec screenshots prêts à être uploadés.`,
+        title: "Aucun trade détecté",
+        description: "Nommez vos fichiers: trade_[N]_m15.png ou trade_[N]_m5.png",
+        variant: "destructive",
       });
+      return;
     }
+
+    // Auto-upload immediately
+    toast({
+      title: "Upload automatique",
+      description: `${matched.length} trade(s) détecté(s). Upload en cours...`,
+    });
+
+    await autoUploadScreenshots(matched);
   };
 
-  // Upload screenshots only (without CSV)
-  const handleScreenshotsOnlyUpload = async () => {
+  // Automatic upload function
+  const autoUploadScreenshots = async (matches: {tradeNumber: number; m15?: File; m5?: File}[]) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       toast({
@@ -546,18 +554,9 @@ export const BatchImportPage = () => {
       return;
     }
 
-    if (matchedScreenshots.length === 0) {
-      toast({
-        title: "Aucun screenshot",
-        description: "Aucun screenshot détecté avec le format trade_[N]_m15.png ou trade_[N]_m5.png",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setProgress({
       current: 0,
-      total: matchedScreenshots.length,
+      total: matches.length,
       percent: 0,
       status: "uploading",
       errors: [],
@@ -567,7 +566,7 @@ export const BatchImportPage = () => {
     const errors: string[] = [];
     let successCount = 0;
 
-    for (const match of matchedScreenshots) {
+    for (const match of matches) {
       setProgress((p) => ({
         ...p,
         currentItem: `Trade #${match.tradeNumber}`,
@@ -607,7 +606,7 @@ export const BatchImportPage = () => {
       setProgress((p) => ({
         ...p,
         current: p.current + 1,
-        percent: Math.round(((p.current + 1) / matchedScreenshots.length) * 100),
+        percent: Math.round(((p.current + 1) / matches.length) * 100),
         errors,
         successes: successCount,
       }));
@@ -616,11 +615,13 @@ export const BatchImportPage = () => {
     setProgress((p) => ({ ...p, status: "complete" }));
 
     toast({
-      title: "Upload terminé",
-      description: `${successCount} trades mis à jour. ${errors.length} erreur(s).`,
+      title: "Upload terminé ✓",
+      description: `${successCount} screenshot(s) stocké(s) dans Oracle. ${errors.length > 0 ? `${errors.length} erreur(s).` : ''}`,
       variant: errors.length > 0 ? "destructive" : "default",
     });
   };
+
+  // Legacy function kept for backwards compatibility - now handled by autoUploadScreenshots
 
   // Reset
   const handleReset = () => {
@@ -1118,33 +1119,17 @@ export const BatchImportPage = () => {
                 </Card>
               )}
 
-              {/* Actions */}
+              {/* Actions - only show reset since upload is automatic */}
               <div className="flex items-center justify-end gap-3 pt-4">
                 <Button variant="outline" onClick={handleReset} disabled={isUploading}>
                   Réinitialiser
                 </Button>
-                <Button
-                  onClick={handleScreenshotsOnlyUpload}
-                  disabled={matchedScreenshots.length === 0 || isUploading || isComplete}
-                  className="gap-2"
-                >
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Upload en cours...
-                    </>
-                  ) : isComplete ? (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" />
-                      Terminé
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4" />
-                      Stocker {matchedScreenshots.length} screenshot(s)
-                    </>
-                  )}
-                </Button>
+                {isComplete && (
+                  <div className="flex items-center gap-2 text-emerald-500">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="text-sm font-medium">Stocké avec succès</span>
+                  </div>
+                )}
               </div>
             </TabsContent>
           </Tabs>
