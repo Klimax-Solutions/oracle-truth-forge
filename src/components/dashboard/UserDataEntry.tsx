@@ -52,7 +52,13 @@ import {
   CheckCircle2,
   Upload,
   Image as ImageIcon,
+  Play,
+  Pause,
+  RotateCcw,
+  Timer,
+  Trophy,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 interface UserExecution {
   id: string;
@@ -205,6 +211,70 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
   const [existingScreenshot, setExistingScreenshot] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Timer state for gamification
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Timer effect
+  useEffect(() => {
+    if (timerRunning) {
+      timerRef.current = setInterval(() => {
+        setTimerSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [timerRunning]);
+
+  // Format timer display
+  const formatTimer = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Get current cycle info based on total trades
+  const getCurrentCycleInfo = (totalTrades: number) => {
+    for (let i = 0; i < CYCLE_THRESHOLDS.length; i++) {
+      const cycle = CYCLE_THRESHOLDS[i];
+      const prevMax = i === 0 ? 0 : CYCLE_THRESHOLDS[i - 1].max;
+      if (totalTrades < cycle.max) {
+        return {
+          name: cycle.name,
+          current: totalTrades - prevMax,
+          target: cycle.max - prevMax,
+          totalCurrent: totalTrades,
+          totalTarget: cycle.max,
+          progress: ((totalTrades - prevMax) / (cycle.max - prevMax)) * 100,
+          isComplete: false,
+        };
+      }
+    }
+    // All cycles complete
+    const lastCycle = CYCLE_THRESHOLDS[CYCLE_THRESHOLDS.length - 1];
+    return {
+      name: "Terminé",
+      current: lastCycle.max,
+      target: lastCycle.max,
+      totalCurrent: totalTrades,
+      totalTarget: lastCycle.max,
+      progress: 100,
+      isComplete: true,
+    };
+  };
 
   // Fetch user executions
   useEffect(() => {
@@ -557,6 +627,9 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     totalRR: executions.reduce((sum, e) => sum + (e.rr || 0), 0),
   };
   const winRate = stats.total > 0 ? (stats.wins / stats.total) * 100 : 0;
+  
+  // Get current cycle progress info
+  const cycleInfo = getCurrentCycleInfo(executions.length);
 
   // Check if exit is same day
   const isSameDay = formData.trade_date === formData.exit_date;
@@ -899,6 +972,68 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
               </div>
             </DialogContent>
           </Dialog>
+        </div>
+      </div>
+
+      {/* Cycle Progress & Timer */}
+      <div className="p-6 border-b border-border">
+        <div className="flex items-center gap-6 mb-4">
+          {/* Current Cycle Progress */}
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">
+                  {cycleInfo.name}
+                </span>
+                {cycleInfo.isComplete && (
+                  <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
+                    Complet
+                  </span>
+                )}
+              </div>
+              <span className="text-sm font-mono text-muted-foreground">
+                {cycleInfo.current} / {cycleInfo.target}
+                <span className="text-xs ml-2 text-muted-foreground/60">
+                  ({cycleInfo.totalCurrent} total)
+                </span>
+              </span>
+            </div>
+            <Progress value={cycleInfo.progress} className="h-2" />
+          </div>
+
+          {/* Session Timer */}
+          <div className="flex items-center gap-2 border border-border/40 rounded-md px-3 py-2">
+            <Timer className="w-4 h-4 text-muted-foreground" />
+            <span className="font-mono text-lg font-medium min-w-[70px] text-center">
+              {formatTimer(timerSeconds)}
+            </span>
+            <div className="flex items-center gap-1 ml-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setTimerRunning(!timerRunning)}
+              >
+                {timerRunning ? (
+                  <Pause className="w-3.5 h-3.5" />
+                ) : (
+                  <Play className="w-3.5 h-3.5" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => {
+                  setTimerRunning(false);
+                  setTimerSeconds(0);
+                }}
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
