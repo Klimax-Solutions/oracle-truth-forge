@@ -360,17 +360,22 @@ export type Database = {
           direction: string
           direction_structure: string | null
           entry_model: string | null
+          entry_price: number | null
           entry_time: string | null
           entry_timing: string | null
+          exit_price: number | null
           exit_time: string | null
           id: string
           news_day: boolean | null
           news_label: string | null
+          result: string | null
           rr: number | null
           screenshot_url: string | null
           setup_type: string | null
           speculation_hl_valid: boolean | null
+          stop_loss: number | null
           stop_loss_size: string | null
+          take_profit: number | null
           target_hl_valid: boolean | null
           target_timing: string | null
           trade_date: string
@@ -386,17 +391,22 @@ export type Database = {
           direction: string
           direction_structure?: string | null
           entry_model?: string | null
+          entry_price?: number | null
           entry_time?: string | null
           entry_timing?: string | null
+          exit_price?: number | null
           exit_time?: string | null
           id?: string
           news_day?: boolean | null
           news_label?: string | null
+          result?: string | null
           rr?: number | null
           screenshot_url?: string | null
           setup_type?: string | null
           speculation_hl_valid?: boolean | null
+          stop_loss?: number | null
           stop_loss_size?: string | null
+          take_profit?: number | null
           target_hl_valid?: boolean | null
           target_timing?: string | null
           trade_date: string
@@ -412,17 +422,22 @@ export type Database = {
           direction?: string
           direction_structure?: string | null
           entry_model?: string | null
+          entry_price?: number | null
           entry_time?: string | null
           entry_timing?: string | null
+          exit_price?: number | null
           exit_time?: string | null
           id?: string
           news_day?: boolean | null
           news_label?: string | null
+          result?: string | null
           rr?: number | null
           screenshot_url?: string | null
           setup_type?: string | null
           speculation_hl_valid?: boolean | null
+          stop_loss?: number | null
           stop_loss_size?: string | null
+          take_profit?: number | null
           target_hl_valid?: boolean | null
           target_timing?: string | null
           trade_date?: string

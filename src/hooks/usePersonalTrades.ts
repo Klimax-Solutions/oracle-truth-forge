@@ -16,6 +16,14 @@ export interface PersonalTrade {
   setup_type: string | null;
   entry_timing: string | null;
   entry_model: string | null;
+  // Extended fields
+  entry_price: number | null;
+  exit_price: number | null;
+  stop_loss: number | null;
+  take_profit: number | null;
+  result: string | null;
+  screenshot_url: string | null;
+  comment: string | null;
 }
 
 export const usePersonalTrades = () => {
