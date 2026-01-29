@@ -135,7 +135,7 @@ const Dashboard = () => {
     };
     
     setDatabaseFilters(newFilters);
-    setActiveTab("oracle");
+    setActiveTab("setup");
   };
 
   if (loading) {
