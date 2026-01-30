@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Database, User, ArrowRight, TrendingUp, BarChart3, Clock, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,8 +38,20 @@ interface SetupPageProps {
 type ActiveView = "overview" | "oracle" | "perso";
 
 export const SetupPage = ({ trades, initialFilters }: SetupPageProps) => {
-  const [activeView, setActiveView] = useState<ActiveView>("overview");
+  // If initialFilters are provided, go directly to Oracle view
+  const [activeView, setActiveView] = useState<ActiveView>(
+    initialFilters && Object.values(initialFilters).some((arr: any) => arr?.length > 0) 
+      ? "oracle" 
+      : "overview"
+  );
   const { trades: personalTrades } = usePersonalTrades();
+
+  // Update view when initialFilters change (e.g., from Timing Analysis navigation)
+  useEffect(() => {
+    if (initialFilters && Object.values(initialFilters).some((arr: any) => arr?.length > 0)) {
+      setActiveView("oracle");
+    }
+  }, [initialFilters]);
 
   // Calculate Oracle stats
   const oracleStats = {
