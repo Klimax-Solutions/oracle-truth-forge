@@ -59,6 +59,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { ScreenshotLink } from "./ScreenshotLink";
 
 interface UserExecution {
   id: string;
@@ -339,7 +340,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     }
   };
 
-  // Upload screenshot to storage
+  // Upload screenshot to storage - returns the storage path (not public URL)
   const uploadScreenshot = async (userId: string, tradeNumber: number): Promise<string | null> => {
     if (!screenshotFile) return existingScreenshot;
 
@@ -363,11 +364,9 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       return null;
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('trade-screenshots')
-      .getPublicUrl(data.path);
-
-    return publicUrl;
+    // Return the storage path, not a public URL
+    // Signed URLs will be generated on-demand when displaying
+    return data.path;
   };
 
   // Clear screenshot
@@ -1256,27 +1255,10 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         {execution.setup_type || "-"}
                       </TableCell>
                       <TableCell>
-                        {execution.screenshot_url && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <a 
-                                href={execution.screenshot_url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-muted-foreground hover:text-foreground"
-                              >
-                                <ImageIcon className="w-4 h-4" />
-                              </a>
-                            </TooltipTrigger>
-                            <TooltipContent side="left">
-                              <img 
-                                src={execution.screenshot_url} 
-                                alt="Screenshot" 
-                                className="max-w-xs max-h-48 rounded"
-                              />
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
+                        <ScreenshotLink
+                          storagePath={execution.screenshot_url}
+                          alt={`Trade #${execution.trade_number}`}
+                        />
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">

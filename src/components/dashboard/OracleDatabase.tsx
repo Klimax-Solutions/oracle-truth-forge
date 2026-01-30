@@ -1,4 +1,5 @@
 import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X } from "lucide-react";
+import { SignedImageCard } from "./SignedImageCard";
 import { cn } from "@/lib/utils";
 import { useState, useMemo, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
@@ -609,34 +610,16 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                           {/* Screenshots */}
                           {(trade.screenshot_m1 || trade.screenshot_m15_m5) ? (
                             <div className="grid grid-cols-2 gap-4">
-                              {trade.screenshot_m15_m5 && (
-                                <div className="border border-border rounded-md overflow-hidden">
-                                  <div className="p-2 bg-muted/30 border-b border-border">
-                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">M15 / Contexte</p>
-                                  </div>
-                                  <a href={trade.screenshot_m15_m5} target="_blank" rel="noopener noreferrer">
-                                    <img 
-                                      src={trade.screenshot_m15_m5} 
-                                      alt={`Trade ${trade.trade_number} M15`}
-                                      className="w-full h-48 object-cover hover:opacity-80 transition-opacity cursor-pointer"
-                                    />
-                                  </a>
-                                </div>
-                              )}
-                              {trade.screenshot_m1 && (
-                                <div className="border border-border rounded-md overflow-hidden">
-                                  <div className="p-2 bg-muted/30 border-b border-border">
-                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">M5 / Entrée</p>
-                                  </div>
-                                  <a href={trade.screenshot_m1} target="_blank" rel="noopener noreferrer">
-                                    <img 
-                                      src={trade.screenshot_m1} 
-                                      alt={`Trade ${trade.trade_number} M5`}
-                                      className="w-full h-48 object-cover hover:opacity-80 transition-opacity cursor-pointer"
-                                    />
-                                  </a>
-                                </div>
-                              )}
+                              <SignedImageCard
+                                storagePath={trade.screenshot_m15_m5}
+                                alt={`Trade ${trade.trade_number} M15`}
+                                label="M15 / Contexte"
+                              />
+                              <SignedImageCard
+                                storagePath={trade.screenshot_m1}
+                                alt={`Trade ${trade.trade_number} M5`}
+                                label="M5 / Entrée"
+                              />
                             </div>
                           ) : (
                             <div className="border border-dashed border-border p-6 bg-muted/50 rounded-md flex flex-col items-center justify-center">

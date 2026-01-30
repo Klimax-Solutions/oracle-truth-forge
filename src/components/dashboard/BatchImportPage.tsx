@@ -278,7 +278,7 @@ export const BatchImportPage = () => {
     });
   };
 
-  // Upload a screenshot
+  // Upload a screenshot - returns the storage path (not public URL)
   const uploadScreenshot = async (
     tradeNumber: number,
     file: File,
@@ -296,11 +296,9 @@ export const BatchImportPage = () => {
       return null;
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from("trade-screenshots")
-      .getPublicUrl(data.path);
-
-    return publicUrl;
+    // Return the storage path, not a public URL
+    // Signed URLs will be generated on-demand when displaying
+    return data.path;
   };
 
   // Process batch upload for Oracle trades

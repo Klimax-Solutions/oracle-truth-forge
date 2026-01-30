@@ -260,7 +260,7 @@ export const PersonalTradeDialog = ({
     }
   };
 
-  // Upload screenshot
+  // Upload screenshot - returns the storage path (not public URL)
   const uploadScreenshot = async (userId: string, tradeNumber: number): Promise<string | null> => {
     if (!screenshotFile) return existingScreenshot;
 
@@ -284,11 +284,9 @@ export const PersonalTradeDialog = ({
       return existingScreenshot;
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('trade-screenshots')
-      .getPublicUrl(data.path);
-
-    return publicUrl;
+    // Return the storage path, not a public URL
+    // Signed URLs will be generated on-demand when displaying
+    return data.path;
   };
 
   // Clear screenshot
