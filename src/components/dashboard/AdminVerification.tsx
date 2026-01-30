@@ -41,6 +41,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { UserFollowupTab } from "./admin/UserFollowupTab";
+import { ScreenshotLink } from "./ScreenshotLink";
 
 // Oracle trade from the master database
 interface OracleTrade {
@@ -833,30 +834,11 @@ export const AdminVerification = () => {
                                           </span>
                                         </TableCell>
                                         <TableCell className="py-1.5">
-                                          {exec.screenshot_url ? (
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <a 
-                                                  href={exec.screenshot_url} 
-                                                  target="_blank" 
-                                                  rel="noopener noreferrer"
-                                                  className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
-                                                >
-                                                  <ImageIcon className="w-3.5 h-3.5" />
-                                                  <ExternalLink className="w-3 h-3" />
-                                                </a>
-                                              </TooltipTrigger>
-                                              <TooltipContent side="left" className="p-0 overflow-hidden">
-                                                <img 
-                                                  src={exec.screenshot_url} 
-                                                  alt={`Trade #${exec.trade_number}`}
-                                                  className="max-w-[300px] max-h-[200px] object-contain"
-                                                />
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          ) : (
-                                            <span className="text-muted-foreground text-xs">—</span>
-                                          )}
+                                          <ScreenshotLink
+                                            storagePath={exec.screenshot_url}
+                                            alt={`Trade #${exec.trade_number}`}
+                                            showExternalIcon
+                                          />
                                         </TableCell>
                                       </TableRow>
                                     ))}
@@ -1135,30 +1117,11 @@ export const AdminVerification = () => {
                                           </span>
                                         </TableCell>
                                         <TableCell className="py-1.5">
-                                          {exec.screenshot_url ? (
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <a 
-                                                  href={exec.screenshot_url} 
-                                                  target="_blank" 
-                                                  rel="noopener noreferrer"
-                                                  className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
-                                                >
-                                                  <ImageIcon className="w-3.5 h-3.5" />
-                                                  <ExternalLink className="w-3 h-3" />
-                                                </a>
-                                              </TooltipTrigger>
-                                              <TooltipContent side="left" className="p-0 overflow-hidden">
-                                                <img 
-                                                  src={exec.screenshot_url} 
-                                                  alt={`Trade #${exec.trade_number}`}
-                                                  className="max-w-[300px] max-h-[200px] object-contain"
-                                                />
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          ) : (
-                                            <span className="text-muted-foreground text-xs">—</span>
-                                          )}
+                                          <ScreenshotLink
+                                            storagePath={exec.screenshot_url}
+                                            alt={`Trade #${exec.trade_number}`}
+                                            showExternalIcon
+                                          />
                                         </TableCell>
                                       </TableRow>
                                     );
