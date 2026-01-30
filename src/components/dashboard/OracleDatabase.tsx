@@ -1,6 +1,6 @@
 import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
 import { useChartColors } from "@/hooks/useChartColors";
@@ -70,6 +70,16 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
     quarter: [],
     year: [],
   });
+
+  // Sync filters when initialFilters change (e.g., from Timing Analysis navigation)
+  useEffect(() => {
+    if (initialFilters && Object.values(initialFilters).some((arr: any) => arr?.length > 0)) {
+      setFilters(prev => ({
+        ...prev,
+        ...initialFilters,
+      }));
+    }
+  }, [initialFilters]);
 
   // Extract unique values for filters
   const filterOptions = useMemo(() => ({
