@@ -245,21 +245,11 @@ export const RoleManagement = () => {
         toast.success("Utilisateur réactivé avec succès");
       }
       else if (actionType === "remove") {
-        // Delete all user roles
+        // Delete all user data in order (child tables first)
+        
+        // Delete verification requests
         await supabase
-          .from("user_roles")
-          .delete()
-          .eq("user_id", selectedUser);
-
-        // Delete user cycles
-        await supabase
-          .from("user_cycles")
-          .delete()
-          .eq("user_id", selectedUser);
-
-        // Delete user executions
-        await supabase
-          .from("user_executions")
+          .from("verification_requests")
           .delete()
           .eq("user_id", selectedUser);
 
@@ -269,7 +259,43 @@ export const RoleManagement = () => {
           .delete()
           .eq("user_id", selectedUser);
 
-        // Delete profile
+        // Delete user executions
+        await supabase
+          .from("user_executions")
+          .delete()
+          .eq("user_id", selectedUser);
+
+        // Delete user personal trades
+        await supabase
+          .from("user_personal_trades")
+          .delete()
+          .eq("user_id", selectedUser);
+
+        // Delete user custom variables
+        await supabase
+          .from("user_custom_variables")
+          .delete()
+          .eq("user_id", selectedUser);
+
+        // Delete user variable types
+        await supabase
+          .from("user_variable_types")
+          .delete()
+          .eq("user_id", selectedUser);
+
+        // Delete user cycles
+        await supabase
+          .from("user_cycles")
+          .delete()
+          .eq("user_id", selectedUser);
+
+        // Delete all user roles
+        await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", selectedUser);
+
+        // Finally delete profile
         const { error } = await supabase
           .from("profiles")
           .delete()
