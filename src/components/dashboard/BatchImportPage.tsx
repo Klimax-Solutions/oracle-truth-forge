@@ -983,9 +983,12 @@ export const BatchImportPage = () => {
     ? storedImages.filter(img => !img.isLinkedOracle)
     : storedImages;
 
-  // Select all visible images
+  // Get selectable images (exclude already linked to Oracle)
+  const selectableImages = filteredStoredImages.filter(img => !img.isLinkedOracle);
+
+  // Select all visible images that are NOT already linked
   const selectAllImages = () => {
-    const allIds = filteredStoredImages.map(img => img.id);
+    const allIds = selectableImages.map(img => img.id);
     setSelectedImages(new Set(allIds));
   };
 
@@ -994,9 +997,9 @@ export const BatchImportPage = () => {
     setSelectedImages(new Set());
   };
 
-  // Check if all visible images are selected
-  const allSelected = filteredStoredImages.length > 0 && 
-    filteredStoredImages.every(img => selectedImages.has(img.id));
+  // Check if all selectable images are selected
+  const allSelected = selectableImages.length > 0 && 
+    selectableImages.every(img => selectedImages.has(img.id));
 
   // Batch send selected images to database
   const batchSendToDatabase = async (destination: "oracle" | "perso") => {
@@ -1768,100 +1771,125 @@ export const BatchImportPage = () => {
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                      {filteredStoredImages.map((image) => (
-                        <div
-                          key={image.id}
-                          className={cn(
-                            "flex items-center justify-between px-4 py-3 rounded-lg transition-colors",
-                            selectedImages.has(image.id)
-                              ? "bg-primary/10 border border-primary/30"
-                              : "bg-muted/50 hover:bg-muted"
-                          )}
-                        >
-                          <div className="flex items-center gap-4">
-                            {/* Checkbox */}
-                            <Checkbox
-                              checked={selectedImages.has(image.id)}
-                              onCheckedChange={() => toggleImageSelection(image.id)}
-                            />
-                            
-                            {/* Thumbnail */}
-                            {image.signedUrl ? (
-                              <img
-                                src={image.signedUrl}
-                                alt={image.name}
-                                className="w-12 h-12 object-cover rounded border border-border"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 bg-muted rounded border border-border flex items-center justify-center">
-                                <ImageIcon className="w-5 h-5 text-muted-foreground" />
-                              </div>
+                      {filteredStoredImages.map((image) => {
+                        const isDuplicate = image.isLinkedOracle;
+                        return (
+                          <div
+                            key={image.id}
+                            className={cn(
+                              "flex items-center justify-between px-4 py-3 rounded-lg transition-colors",
+                              isDuplicate
+                                ? "bg-amber-500/10 border border-amber-500/30 opacity-70"
+                                : selectedImages.has(image.id)
+                                  ? "bg-primary/10 border border-primary/30"
+                                  : "bg-muted/50 hover:bg-muted"
                             )}
-                            
-                            {/* Trade info */}
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono font-bold text-foreground">
-                                  Trade #{image.tradeNumber}
-                                </span>
-                                <span
+                          >
+                            <div className="flex items-center gap-4">
+                              {/* Checkbox - disabled for duplicates */}
+                              <Checkbox
+                                checked={selectedImages.has(image.id)}
+                                onCheckedChange={() => !isDuplicate && toggleImageSelection(image.id)}
+                                disabled={isDuplicate}
+                                className={cn(isDuplicate && "opacity-50 cursor-not-allowed")}
+                              />
+                              
+                              {/* Thumbnail */}
+                              {image.signedUrl ? (
+                                <img
+                                  src={image.signedUrl}
+                                  alt={image.name}
                                   className={cn(
-                                    "text-xs px-2 py-0.5 rounded font-medium",
-                                    image.type === "m15"
-                                      ? "bg-primary/20 text-primary"
-                                      : "bg-emerald-500/20 text-emerald-600"
+                                    "w-12 h-12 object-cover rounded border border-border",
+                                    isDuplicate && "grayscale"
                                   )}
-                                >
-                                  {image.type.toUpperCase()}
-                                </span>
-                                {image.isLinkedOracle && (
-                                  <span className="text-xs px-2 py-0.5 rounded font-medium bg-emerald-500/20 text-emerald-600">
-                                    ✓ Oracle
+                                />
+                              ) : (
+                                <div className="w-12 h-12 bg-muted rounded border border-border flex items-center justify-center">
+                                  <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                              )}
+                              
+                              {/* Trade info */}
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className={cn(
+                                    "font-mono font-bold",
+                                    isDuplicate ? "text-muted-foreground" : "text-foreground"
+                                  )}>
+                                    Trade #{image.tradeNumber}
                                   </span>
-                                )}
+                                  <span
+                                    className={cn(
+                                      "text-xs px-2 py-0.5 rounded font-medium",
+                                      image.type === "m15"
+                                        ? "bg-primary/20 text-primary"
+                                        : "bg-emerald-500/20 text-emerald-600"
+                                    )}
+                                  >
+                                    {image.type.toUpperCase()}
+                                  </span>
+                                  {isDuplicate && (
+                                    <span className="text-xs px-2 py-0.5 rounded font-medium bg-amber-500/20 text-amber-600">
+                                      ⚠ Doublon Oracle
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate max-w-[250px]">
+                                  {image.name}
+                                </p>
                               </div>
-                              <p className="text-xs text-muted-foreground truncate max-w-[250px]">
-                                {image.name}
-                              </p>
                             </div>
-                          </div>
 
-                          {/* Send button */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                            {/* Send button - disabled for duplicates */}
+                            {isDuplicate ? (
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="gap-2"
-                                disabled={sendingImages.has(image.id)}
+                                className="gap-2 opacity-50 cursor-not-allowed"
+                                disabled
                               >
-                                {sendingImages.has(image.id) ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Send className="w-4 h-4" />
-                                )}
-                                Envoyer vers
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                Déjà lié
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => sendImageToDatabase(image, "oracle")}
-                                className="gap-2"
-                              >
-                                <Database className="w-4 h-4" />
-                                Base Oracle
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => sendImageToDatabase(image, "perso")}
-                                className="gap-2"
-                              >
-                                <FolderOpen className="w-4 h-4" />
-                                Setup Perso
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      ))}
+                            ) : (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2"
+                                    disabled={sendingImages.has(image.id)}
+                                  >
+                                    {sendingImages.has(image.id) ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <Send className="w-4 h-4" />
+                                    )}
+                                    Envoyer vers
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => sendImageToDatabase(image, "oracle")}
+                                    className="gap-2"
+                                  >
+                                    <Database className="w-4 h-4" />
+                                    Base Oracle
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => sendImageToDatabase(image, "perso")}
+                                    className="gap-2"
+                                  >
+                                    <FolderOpen className="w-4 h-4" />
+                                    Setup Perso
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
