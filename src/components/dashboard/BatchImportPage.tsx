@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -16,7 +16,15 @@ import {
   FolderOpen,
   Database,
   Calendar,
+  Send,
+  RefreshCw,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -54,6 +62,15 @@ interface UploadProgress {
   successes: number;
 }
 
+interface StoredImage {
+  id: string;
+  name: string;
+  path: string;
+  tradeNumber: number;
+  type: "m15" | "m5";
+  signedUrl?: string;
+}
+
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 const BATCH_SIZE = 10;
 
@@ -61,7 +78,10 @@ export const BatchImportPage = () => {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [screenshotFiles, setScreenshotFiles] = useState<File[]>([]);
   const [parsedTrades, setParsedTrades] = useState<TradeData[]>([]);
-  const [importType, setImportType] = useState<"oracle" | "screenshots">("oracle");
+  const [importType, setImportType] = useState<"oracle" | "screenshots" | "database">("oracle");
+  const [storedImages, setStoredImages] = useState<StoredImage[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
+  const [sendingImages, setSendingImages] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState<UploadProgress>({
     current: 0,
     total: 0,
@@ -704,7 +724,164 @@ export const BatchImportPage = () => {
     });
   };
 
-  // Legacy function kept for backwards compatibility - now handled by autoUploadScreenshots
+  // Load all stored images from supabase storage
+  const loadStoredImages = async () => {
+    setLoadingImages(true);
+    try {
+      const { data: files, error } = await supabase.storage
+        .from("trade-screenshots")
+        .list("oracle", { limit: 1000 });
+      
+      if (error) {
+        console.error("Error listing storage files:", error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les images",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (files && files.length > 0) {
+        const images: StoredImage[] = [];
+        
+        for (const file of files) {
+          // Extract trade number and type from filename (e.g., trade_151_m15.png)
+          const match = file.name.match(/trade_(\d+)_(m15|m5)/i);
+          if (match) {
+            const tradeNumber = parseInt(match[1]);
+            const type = match[2].toLowerCase() as "m15" | "m5";
+            
+            // Generate signed URL
+            const { data: signedData } = await supabase.storage
+              .from("trade-screenshots")
+              .createSignedUrl(`oracle/${file.name}`, 3600);
+            
+            images.push({
+              id: file.id || file.name,
+              name: file.name,
+              path: `oracle/${file.name}`,
+              tradeNumber,
+              type,
+              signedUrl: signedData?.signedUrl,
+            });
+          }
+        }
+        
+        // Sort by trade number
+        images.sort((a, b) => a.tradeNumber - b.tradeNumber);
+        setStoredImages(images);
+        
+        toast({
+          title: "Images chargées",
+          description: `${images.length} image(s) trouvée(s) dans le stockage`,
+        });
+      } else {
+        setStoredImages([]);
+        toast({
+          title: "Aucune image",
+          description: "Le stockage Oracle est vide",
+        });
+      }
+    } catch (e: any) {
+      console.error("Error loading images:", e);
+      toast({
+        title: "Erreur",
+        description: e.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingImages(false);
+    }
+  };
+
+  // Load images when switching to database tab
+  useEffect(() => {
+    if (importType === "database" && storedImages.length === 0) {
+      loadStoredImages();
+    }
+  }, [importType]);
+
+  // Send image to Oracle or Setup Perso
+  const sendImageToDatabase = async (image: StoredImage, destination: "oracle" | "perso") => {
+    setSendingImages(prev => new Set(prev).add(image.id));
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Non connecté",
+          description: "Vous devez être connecté",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const columnName = image.type === "m15" ? "screenshot_m15_m5" : "screenshot_m1";
+      const updateData: Record<string, string> = { [columnName]: image.path };
+
+      if (destination === "oracle") {
+        // Update trades table (Oracle)
+        const { error } = await supabase
+          .from("trades")
+          .update(updateData)
+          .eq("trade_number", image.tradeNumber);
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        toast({
+          title: "Image liée à Oracle",
+          description: `Trade #${image.tradeNumber} (${image.type.toUpperCase()}) mis à jour`,
+        });
+      } else {
+        // Update user_personal_trades table (Setup Perso)
+        // First check if trade exists for this user
+        const { data: existingTrade, error: checkError } = await supabase
+          .from("user_personal_trades")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("trade_number", image.tradeNumber)
+          .maybeSingle();
+
+        if (checkError) throw new Error(checkError.message);
+
+        if (existingTrade) {
+          // Update existing trade
+          const { error } = await supabase
+            .from("user_personal_trades")
+            .update({ screenshot_url: image.path })
+            .eq("id", existingTrade.id);
+
+          if (error) throw new Error(error.message);
+
+          toast({
+            title: "Image liée à Setup Perso",
+            description: `Trade #${image.tradeNumber} mis à jour`,
+          });
+        } else {
+          toast({
+            title: "Trade non trouvé",
+            description: `Aucun trade #${image.tradeNumber} dans votre Setup Perso`,
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (e: any) {
+      toast({
+        title: "Erreur",
+        description: e.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSendingImages(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(image.id);
+        return newSet;
+      });
+    }
+  };
 
   // Reset
   const handleReset = () => {
@@ -815,8 +992,8 @@ export const BatchImportPage = () => {
       <ScrollArea className="flex-1 p-6">
         <div className="max-w-3xl mx-auto space-y-6">
           {/* Tabs for import type */}
-          <Tabs value={importType} onValueChange={(v) => setImportType(v as "oracle" | "screenshots")}>
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs value={importType} onValueChange={(v) => setImportType(v as "oracle" | "screenshots" | "database")}>
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="oracle" className="gap-2">
                 <Database className="w-4 h-4" />
                 CSV + Screenshots
@@ -824,6 +1001,10 @@ export const BatchImportPage = () => {
               <TabsTrigger value="screenshots" className="gap-2">
                 <ImageIcon className="w-4 h-4" />
                 Screenshots uniquement
+              </TabsTrigger>
+              <TabsTrigger value="database" className="gap-2">
+                <FolderOpen className="w-4 h-4" />
+                Base de données image
               </TabsTrigger>
             </TabsList>
 
@@ -1225,6 +1406,144 @@ export const BatchImportPage = () => {
                   </div>
                 )}
               </div>
+            </TabsContent>
+
+            {/* Image Database Tab */}
+            <TabsContent value="database" className="mt-6 space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-sm">Base de données des images</CardTitle>
+                      <CardDescription>
+                        Toutes les images uploadées dans le stockage Oracle. Envoyez-les vers la base de votre choix.
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={loadStoredImages}
+                      disabled={loadingImages}
+                      className="gap-2"
+                    >
+                      {loadingImages ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                      Actualiser
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {loadingImages ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : storedImages.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p className="text-sm">Aucune image dans le stockage</p>
+                      <p className="text-xs mt-1">
+                        Uploadez des screenshots via les autres onglets
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {storedImages.map((image) => (
+                        <div
+                          key={image.id}
+                          className="flex items-center justify-between px-4 py-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                        >
+                          <div className="flex items-center gap-4">
+                            {/* Thumbnail */}
+                            {image.signedUrl ? (
+                              <img
+                                src={image.signedUrl}
+                                alt={image.name}
+                                className="w-12 h-12 object-cover rounded border border-border"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 bg-muted rounded border border-border flex items-center justify-center">
+                                <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
+                            
+                            {/* Trade info */}
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-foreground">
+                                  Trade #{image.tradeNumber}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "text-xs px-2 py-0.5 rounded font-medium",
+                                    image.type === "m15"
+                                      ? "bg-primary/20 text-primary"
+                                      : "bg-emerald-500/20 text-emerald-600"
+                                  )}
+                                >
+                                  {image.type.toUpperCase()}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate max-w-[250px]">
+                                {image.name}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Send button */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                                disabled={sendingImages.has(image.id)}
+                              >
+                                {sendingImages.has(image.id) ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Send className="w-4 h-4" />
+                                )}
+                                Envoyer vers
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => sendImageToDatabase(image, "oracle")}
+                                className="gap-2"
+                              >
+                                <Database className="w-4 h-4" />
+                                Base Oracle
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => sendImageToDatabase(image, "perso")}
+                                className="gap-2"
+                              >
+                                <FolderOpen className="w-4 h-4" />
+                                Setup Perso
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Stats */}
+              {storedImages.length > 0 && (
+                <div className="flex items-center justify-between text-sm text-muted-foreground px-1">
+                  <span>
+                    {storedImages.length} image(s) au total
+                  </span>
+                  <span>
+                    {storedImages.filter(i => i.type === "m15").length} M15 • {storedImages.filter(i => i.type === "m5").length} M5
+                  </span>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>
