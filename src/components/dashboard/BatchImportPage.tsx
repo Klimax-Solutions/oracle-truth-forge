@@ -881,20 +881,38 @@ export const BatchImportPage = () => {
       const updateData: Record<string, string> = { [columnName]: image.path };
 
       if (destination === "oracle") {
-        // Update trades table (Oracle)
-        const { error } = await supabase
+        // Update trades table (Oracle) - use select to verify update worked
+        console.log(`Sending image to Oracle: trade #${image.tradeNumber}, column: ${columnName}, path: ${image.path}`);
+        
+        const { data, error } = await supabase
           .from("trades")
           .update(updateData)
-          .eq("trade_number", image.tradeNumber);
+          .eq("trade_number", image.tradeNumber)
+          .select("id, trade_number");
 
         if (error) {
+          console.error("Oracle update error:", error);
           throw new Error(error.message);
         }
 
+        if (!data || data.length === 0) {
+          console.warn(`Trade #${image.tradeNumber} not found in Oracle`);
+          toast({
+            title: "Trade non trouvé",
+            description: `Aucun trade #${image.tradeNumber} dans la base Oracle`,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        console.log(`Successfully updated trade #${image.tradeNumber}`, data);
         toast({
           title: "Image liée à Oracle",
           description: `Trade #${image.tradeNumber} (${image.type.toUpperCase()}) mis à jour`,
         });
+        
+        // Refresh to update linked status
+        await loadStoredImages();
       } else {
         // Update user_personal_trades table (Setup Perso)
         // First check if trade exists for this user
@@ -920,6 +938,9 @@ export const BatchImportPage = () => {
             title: "Image liée à Setup Perso",
             description: `Trade #${image.tradeNumber} mis à jour`,
           });
+          
+          // Refresh to update linked status
+          await loadStoredImages();
         } else {
           toast({
             title: "Trade non trouvé",
@@ -929,6 +950,7 @@ export const BatchImportPage = () => {
         }
       }
     } catch (e: any) {
+      console.error("Error sending image:", e);
       toast({
         title: "Erreur",
         description: e.message,
@@ -1003,21 +1025,60 @@ export const BatchImportPage = () => {
 
     let successCount = 0;
     let errorCount = 0;
+    const errors: string[] = [];
 
+    // Group images by trade number to batch updates
+    const imagesByTrade = new Map<number, StoredImage[]>();
     for (const image of imagesToSend) {
-      try {
-        const columnName = image.type === "m15" ? "screenshot_m15_m5" : "screenshot_m1";
-        const updateData: Record<string, string> = { [columnName]: image.path };
+      const existing = imagesByTrade.get(image.tradeNumber) || [];
+      existing.push(image);
+      imagesByTrade.set(image.tradeNumber, existing);
+    }
 
-        if (destination === "oracle") {
-          const { error } = await supabase
+    console.log(`Batch sending ${imagesToSend.length} images for ${imagesByTrade.size} trades to ${destination}`);
+
+    if (destination === "oracle") {
+      // Process Oracle updates in batches
+      for (const [tradeNumber, images] of imagesByTrade) {
+        try {
+          // Build update object with all images for this trade
+          const updateData: Record<string, string> = {};
+          for (const image of images) {
+            const columnName = image.type === "m15" ? "screenshot_m15_m5" : "screenshot_m1";
+            updateData[columnName] = image.path;
+          }
+
+          console.log(`Updating trade #${tradeNumber} with:`, updateData);
+
+          // Use select to check if update was successful
+          const { data, error, count } = await supabase
             .from("trades")
             .update(updateData)
-            .eq("trade_number", image.tradeNumber);
+            .eq("trade_number", tradeNumber)
+            .select("id, trade_number");
 
-          if (error) throw error;
-          successCount++;
-        } else {
+          if (error) {
+            console.error(`Error updating trade #${tradeNumber}:`, error);
+            errors.push(`Trade #${tradeNumber}: ${error.message}`);
+            errorCount += images.length;
+          } else if (!data || data.length === 0) {
+            console.warn(`Trade #${tradeNumber} not found or not updated`);
+            errors.push(`Trade #${tradeNumber}: non trouvé dans Oracle`);
+            errorCount += images.length;
+          } else {
+            console.log(`Successfully updated trade #${tradeNumber}`, data);
+            successCount += images.length;
+          }
+        } catch (e: any) {
+          console.error(`Exception updating trade #${tradeNumber}:`, e);
+          errors.push(`Trade #${tradeNumber}: ${e.message}`);
+          errorCount += images.length;
+        }
+      }
+    } else {
+      // Process Setup Perso updates
+      for (const image of imagesToSend) {
+        try {
           const { data: existingTrade, error: checkError } = await supabase
             .from("user_personal_trades")
             .select("id")
@@ -1036,22 +1097,34 @@ export const BatchImportPage = () => {
             if (error) throw error;
             successCount++;
           } else {
+            errors.push(`Trade #${image.tradeNumber}: non trouvé dans Setup Perso`);
             errorCount++;
           }
+        } catch (e: any) {
+          errors.push(`Trade #${image.tradeNumber}: ${e.message}`);
+          errorCount++;
         }
-      } catch (e) {
-        errorCount++;
       }
     }
 
     setBatchSending(false);
     setSelectedImages(new Set());
     
+    // Show detailed toast
+    const description = successCount > 0 
+      ? `${successCount} image(s) liée(s) avec succès.${errorCount > 0 ? ` ${errorCount} erreur(s).` : ""}`
+      : `Aucune image liée. ${errors.slice(0, 3).join(", ")}${errors.length > 3 ? "..." : ""}`;
+
     toast({
-      title: "Envoi terminé",
-      description: `${successCount} image(s) liée(s). ${errorCount > 0 ? `${errorCount} erreur(s).` : ""}`,
-      variant: errorCount > 0 ? "destructive" : "default",
+      title: successCount > 0 ? "Envoi terminé" : "Échec de l'envoi",
+      description,
+      variant: errorCount > 0 && successCount === 0 ? "destructive" : "default",
     });
+
+    // Log errors for debugging
+    if (errors.length > 0) {
+      console.log("Batch send errors:", errors);
+    }
 
     // Reload to update linked status
     await loadStoredImages();
