@@ -53,6 +53,7 @@ interface Filters {
   day_of_week: string[];
   quarter: string[];
   year: string[];
+  hasScreenshots: boolean;
 }
 
 export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) => {
@@ -70,6 +71,7 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
     day_of_week: [],
     quarter: [],
     year: [],
+    hasScreenshots: false,
   });
 
   // Sync filters when initialFilters change (e.g., from Timing Analysis navigation)
@@ -112,6 +114,8 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
         const year = new Date(trade.trade_date).getFullYear().toString();
         if (!filters.year.includes(year)) return false;
       }
+      // Filter by screenshots
+      if (filters.hasScreenshots && !trade.screenshot_m15_m5 && !trade.screenshot_m1) return false;
       return true;
     });
   }, [trades, filters]);
@@ -121,14 +125,26 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
   const longTrades = filteredTrades.filter((t) => t.direction === "Long").length;
   const shortTrades = filteredTrades.filter((t) => t.direction === "Short").length;
 
-  const activeFiltersCount = Object.values(filters).flat().length;
+  // Count active filters (excluding boolean hasScreenshots from flat count)
+  const activeFiltersCount = Object.entries(filters)
+    .filter(([key]) => key !== 'hasScreenshots')
+    .flatMap(([, value]) => value as string[])
+    .length + (filters.hasScreenshots ? 1 : 0);
 
   const toggleFilter = (category: keyof Filters, value: string) => {
+    if (category === 'hasScreenshots') return; // Use dedicated toggle
     setFilters(prev => ({
       ...prev,
-      [category]: prev[category].includes(value)
-        ? prev[category].filter(v => v !== value)
-        : [...prev[category], value]
+      [category]: (prev[category] as string[]).includes(value)
+        ? (prev[category] as string[]).filter(v => v !== value)
+        : [...(prev[category] as string[]), value]
+    }));
+  };
+
+  const toggleScreenshotFilter = () => {
+    setFilters(prev => ({
+      ...prev,
+      hasScreenshots: !prev.hasScreenshots
     }));
   };
 
@@ -145,6 +161,7 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
       day_of_week: [],
       quarter: [],
       year: [],
+      hasScreenshots: false,
     });
   };
 
@@ -342,6 +359,20 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Screenshots filter toggle button */}
+            <button
+              onClick={toggleScreenshotFilter}
+              className={cn(
+                "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
+                filters.hasScreenshots
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
+            >
+              <Image className="w-3 h-3" />
+              Screenshots
+            </button>
           </div>
         </div>
       </div>
