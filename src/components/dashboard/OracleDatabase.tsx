@@ -53,7 +53,7 @@ interface Filters {
   day_of_week: string[];
   quarter: string[];
   year: string[];
-  hasScreenshots: boolean;
+  hasScreenshots?: boolean;
 }
 
 export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) => {
@@ -74,9 +74,9 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
     hasScreenshots: false,
   });
 
-  // Sync filters when initialFilters change (e.g., from Timing Analysis navigation)
+  // Sync filters when initialFilters change (e.g., from Timing Analysis navigation or screenshots filter)
   useEffect(() => {
-    if (initialFilters && Object.values(initialFilters).some((arr: any) => arr?.length > 0)) {
+    if (initialFilters && (Object.values(initialFilters).some((arr: any) => Array.isArray(arr) && arr.length > 0) || initialFilters.hasScreenshots)) {
       setFilters(prev => ({
         ...prev,
         ...initialFilters,
@@ -131,20 +131,12 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
     .flatMap(([, value]) => value as string[])
     .length + (filters.hasScreenshots ? 1 : 0);
 
-  const toggleFilter = (category: keyof Filters, value: string) => {
-    if (category === 'hasScreenshots') return; // Use dedicated toggle
+  const toggleFilter = (category: keyof Omit<Filters, 'hasScreenshots'>, value: string) => {
     setFilters(prev => ({
       ...prev,
-      [category]: (prev[category] as string[]).includes(value)
-        ? (prev[category] as string[]).filter(v => v !== value)
-        : [...(prev[category] as string[]), value]
-    }));
-  };
-
-  const toggleScreenshotFilter = () => {
-    setFilters(prev => ({
-      ...prev,
-      hasScreenshots: !prev.hasScreenshots
+      [category]: prev[category].includes(value)
+        ? prev[category].filter(v => v !== value)
+        : [...prev[category], value]
     }));
   };
 
@@ -360,19 +352,6 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Screenshots filter toggle button */}
-            <button
-              onClick={toggleScreenshotFilter}
-              className={cn(
-                "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
-                filters.hasScreenshots
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-            >
-              <Image className="w-3 h-3" />
-              Screenshots
-            </button>
           </div>
         </div>
       </div>

@@ -100,6 +100,33 @@ const Dashboard = () => {
     };
   }, [user]);
 
+  // Listen for navigation event from BatchImportPage
+  useEffect(() => {
+    const handleNavigateToOracleScreenshots = () => {
+      const screenshotFilters = {
+        direction: [],
+        direction_structure: [],
+        setup_type: [],
+        entry_model: [],
+        entry_timing: [],
+        trade_duration: [],
+        rr_range: [],
+        stop_loss_size: [],
+        day_of_week: [],
+        quarter: [],
+        year: [],
+        hasScreenshots: true,
+      };
+      setDatabaseFilters(screenshotFilters);
+      setActiveTab("setup");
+    };
+
+    window.addEventListener('navigate-oracle-screenshots', handleNavigateToOracleScreenshots);
+    return () => {
+      window.removeEventListener('navigate-oracle-screenshots', handleNavigateToOracleScreenshots);
+    };
+  }, []);
+
   const fetchTrades = async () => {
     if (!user) return;
     
