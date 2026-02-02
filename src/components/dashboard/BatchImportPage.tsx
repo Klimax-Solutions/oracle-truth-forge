@@ -18,6 +18,8 @@ import {
   Calendar,
   Send,
   RefreshCw,
+  EyeOff,
+  CheckSquare,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -25,6 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -69,6 +72,8 @@ interface StoredImage {
   tradeNumber: number;
   type: "m15" | "m5";
   signedUrl?: string;
+  isLinkedOracle?: boolean;
+  isLinkedPerso?: boolean;
 }
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
@@ -82,6 +87,9 @@ export const BatchImportPage = () => {
   const [storedImages, setStoredImages] = useState<StoredImage[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
   const [sendingImages, setSendingImages] = useState<Set<string>>(new Set());
+  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  const [hideLinkedImages, setHideLinkedImages] = useState(false);
+  const [batchSending, setBatchSending] = useState(false);
   const [progress, setProgress] = useState<UploadProgress>({
     current: 0,
     total: 0,
@@ -724,7 +732,7 @@ export const BatchImportPage = () => {
     });
   };
 
-  // Load all stored images from supabase storage
+  // Load all stored images from supabase storage with linked status
   const loadStoredImages = async () => {
     setLoadingImages(true);
     try {
@@ -744,6 +752,53 @@ export const BatchImportPage = () => {
       
       if (files && files.length > 0) {
         const images: StoredImage[] = [];
+        const tradeNumbers = new Set<number>();
+        
+        // First pass: extract all trade numbers
+        for (const file of files) {
+          const match = file.name.match(/trade_(\d+)_(m15|m5)/i);
+          if (match) {
+            tradeNumbers.add(parseInt(match[1]));
+          }
+        }
+        
+        // Fetch linked status from Oracle (trades table)
+        const { data: oracleTrades } = await supabase
+          .from("trades")
+          .select("trade_number, screenshot_m15_m5, screenshot_m1")
+          .in("trade_number", Array.from(tradeNumbers));
+        
+        // Fetch linked status from Setup Perso (user_personal_trades table)
+        const { data: { user } } = await supabase.auth.getUser();
+        let persoTrades: any[] = [];
+        if (user) {
+          const { data } = await supabase
+            .from("user_personal_trades")
+            .select("trade_number, screenshot_url")
+            .eq("user_id", user.id)
+            .in("trade_number", Array.from(tradeNumbers));
+          persoTrades = data || [];
+        }
+        
+        // Create lookup maps
+        const oracleLinked = new Map<string, boolean>();
+        if (oracleTrades) {
+          for (const trade of oracleTrades) {
+            if (trade.screenshot_m15_m5) {
+              oracleLinked.set(`${trade.trade_number}_m15`, true);
+            }
+            if (trade.screenshot_m1) {
+              oracleLinked.set(`${trade.trade_number}_m5`, true);
+            }
+          }
+        }
+        
+        const persoLinked = new Map<string, boolean>();
+        for (const trade of persoTrades) {
+          if (trade.screenshot_url) {
+            persoLinked.set(`${trade.trade_number}`, true);
+          }
+        }
         
         for (const file of files) {
           // Extract trade number and type from filename (e.g., trade_151_m15.png)
@@ -757,6 +812,8 @@ export const BatchImportPage = () => {
               .from("trade-screenshots")
               .createSignedUrl(`oracle/${file.name}`, 3600);
             
+            const key = `${tradeNumber}_${type}`;
+            
             images.push({
               id: file.id || file.name,
               name: file.name,
@@ -764,6 +821,8 @@ export const BatchImportPage = () => {
               tradeNumber,
               type,
               signedUrl: signedData?.signedUrl,
+              isLinkedOracle: oracleLinked.has(key),
+              isLinkedPerso: persoLinked.has(`${tradeNumber}`),
             });
           }
         }
@@ -771,6 +830,7 @@ export const BatchImportPage = () => {
         // Sort by trade number
         images.sort((a, b) => a.tradeNumber - b.tradeNumber);
         setStoredImages(images);
+        setSelectedImages(new Set()); // Reset selection
         
         toast({
           title: "Images chargées",
@@ -881,6 +941,120 @@ export const BatchImportPage = () => {
         return newSet;
       });
     }
+  };
+
+  // Toggle image selection
+  const toggleImageSelection = (imageId: string) => {
+    setSelectedImages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(imageId)) {
+        newSet.delete(imageId);
+      } else {
+        newSet.add(imageId);
+      }
+      return newSet;
+    });
+  };
+
+  // Get filtered images based on hideLinkedImages
+  const filteredStoredImages = hideLinkedImages
+    ? storedImages.filter(img => !img.isLinkedOracle)
+    : storedImages;
+
+  // Select all visible images
+  const selectAllImages = () => {
+    const allIds = filteredStoredImages.map(img => img.id);
+    setSelectedImages(new Set(allIds));
+  };
+
+  // Deselect all images
+  const deselectAllImages = () => {
+    setSelectedImages(new Set());
+  };
+
+  // Check if all visible images are selected
+  const allSelected = filteredStoredImages.length > 0 && 
+    filteredStoredImages.every(img => selectedImages.has(img.id));
+
+  // Batch send selected images to database
+  const batchSendToDatabase = async (destination: "oracle" | "perso") => {
+    if (selectedImages.size === 0) {
+      toast({
+        title: "Aucune image sélectionnée",
+        description: "Sélectionnez des images à envoyer",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setBatchSending(true);
+    const imagesToSend = storedImages.filter(img => selectedImages.has(img.id));
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Non connecté",
+        description: "Vous devez être connecté",
+        variant: "destructive",
+      });
+      setBatchSending(false);
+      return;
+    }
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const image of imagesToSend) {
+      try {
+        const columnName = image.type === "m15" ? "screenshot_m15_m5" : "screenshot_m1";
+        const updateData: Record<string, string> = { [columnName]: image.path };
+
+        if (destination === "oracle") {
+          const { error } = await supabase
+            .from("trades")
+            .update(updateData)
+            .eq("trade_number", image.tradeNumber);
+
+          if (error) throw error;
+          successCount++;
+        } else {
+          const { data: existingTrade, error: checkError } = await supabase
+            .from("user_personal_trades")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("trade_number", image.tradeNumber)
+            .maybeSingle();
+
+          if (checkError) throw checkError;
+
+          if (existingTrade) {
+            const { error } = await supabase
+              .from("user_personal_trades")
+              .update({ screenshot_url: image.path })
+              .eq("id", existingTrade.id);
+
+            if (error) throw error;
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        }
+      } catch (e) {
+        errorCount++;
+      }
+    }
+
+    setBatchSending(false);
+    setSelectedImages(new Set());
+    
+    toast({
+      title: "Envoi terminé",
+      description: `${successCount} image(s) liée(s). ${errorCount > 0 ? `${errorCount} erreur(s).` : ""}`,
+      variant: errorCount > 0 ? "destructive" : "default",
+    });
+
+    // Reload to update linked status
+    await loadStoredImages();
   };
 
   // Reset
@@ -1419,23 +1593,86 @@ export const BatchImportPage = () => {
                         Toutes les images uploadées dans le stockage Oracle. Envoyez-les vers la base de votre choix.
                       </CardDescription>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={loadStoredImages}
-                      disabled={loadingImages}
-                      className="gap-2"
-                    >
-                      {loadingImages ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-4 h-4" />
-                      )}
-                      Actualiser
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={hideLinkedImages ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setHideLinkedImages(!hideLinkedImages)}
+                        className="gap-2"
+                      >
+                        <EyeOff className="w-4 h-4" />
+                        Masquer liées
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={loadStoredImages}
+                        disabled={loadingImages}
+                        className="gap-2"
+                      >
+                        {loadingImages ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4" />
+                        )}
+                        Actualiser
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                  {/* Selection bar */}
+                  {filteredStoredImages.length > 0 && (
+                    <div className="flex items-center justify-between px-2 py-2 bg-muted/30 rounded-lg border border-border">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={allSelected}
+                          onCheckedChange={() => allSelected ? deselectAllImages() : selectAllImages()}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {selectedImages.size > 0
+                            ? `${selectedImages.size} sélectionnée(s)`
+                            : "Tout sélectionner"}
+                        </span>
+                      </div>
+                      {selectedImages.size > 0 && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="gap-2"
+                              disabled={batchSending}
+                            >
+                              {batchSending ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Send className="w-4 h-4" />
+                              )}
+                              Envoyer sélection vers
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => batchSendToDatabase("oracle")}
+                              className="gap-2"
+                            >
+                              <Database className="w-4 h-4" />
+                              Base Oracle
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => batchSendToDatabase("perso")}
+                              className="gap-2"
+                            >
+                              <FolderOpen className="w-4 h-4" />
+                              Setup Perso
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+                  )}
+
                   {loadingImages ? (
                     <div className="flex items-center justify-center py-12">
                       <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -1448,14 +1685,33 @@ export const BatchImportPage = () => {
                         Uploadez des screenshots via les autres onglets
                       </p>
                     </div>
+                  ) : filteredStoredImages.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <CheckSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p className="text-sm">Toutes les images sont déjà liées</p>
+                      <p className="text-xs mt-1">
+                        Désactivez le filtre pour les voir
+                      </p>
+                    </div>
                   ) : (
                     <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                      {storedImages.map((image) => (
+                      {filteredStoredImages.map((image) => (
                         <div
                           key={image.id}
-                          className="flex items-center justify-between px-4 py-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                          className={cn(
+                            "flex items-center justify-between px-4 py-3 rounded-lg transition-colors",
+                            selectedImages.has(image.id)
+                              ? "bg-primary/10 border border-primary/30"
+                              : "bg-muted/50 hover:bg-muted"
+                          )}
                         >
                           <div className="flex items-center gap-4">
+                            {/* Checkbox */}
+                            <Checkbox
+                              checked={selectedImages.has(image.id)}
+                              onCheckedChange={() => toggleImageSelection(image.id)}
+                            />
+                            
                             {/* Thumbnail */}
                             {image.signedUrl ? (
                               <img
@@ -1485,6 +1741,11 @@ export const BatchImportPage = () => {
                                 >
                                   {image.type.toUpperCase()}
                                 </span>
+                                {image.isLinkedOracle && (
+                                  <span className="text-xs px-2 py-0.5 rounded font-medium bg-emerald-500/20 text-emerald-600">
+                                    ✓ Oracle
+                                  </span>
+                                )}
                               </div>
                               <p className="text-xs text-muted-foreground truncate max-w-[250px]">
                                 {image.name}
@@ -1537,7 +1798,8 @@ export const BatchImportPage = () => {
               {storedImages.length > 0 && (
                 <div className="flex items-center justify-between text-sm text-muted-foreground px-1">
                   <span>
-                    {storedImages.length} image(s) au total
+                    {filteredStoredImages.length} affichée(s) sur {storedImages.length} au total
+                    {hideLinkedImages && ` (${storedImages.length - filteredStoredImages.length} masquée(s))`}
                   </span>
                   <span>
                     {storedImages.filter(i => i.type === "m15").length} M15 • {storedImages.filter(i => i.type === "m5").length} M5
