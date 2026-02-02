@@ -792,13 +792,24 @@ export const BatchImportPage = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-border">
-        <h2 className="text-xl font-semibold text-foreground mb-1">
-          Import Batch (Admin)
-        </h2>
-        <p className="text-sm text-muted-foreground font-mono">
-          Importer des trades Oracle avec leurs screenshots en masse
-        </p>
+      <div className="p-6 border-b border-border flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground mb-1">
+            Import Batch (Admin)
+          </h2>
+          <p className="text-sm text-muted-foreground font-mono">
+            Importer des trades Oracle avec leurs screenshots en masse
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-oracle-screenshots'))}
+        >
+          <ImageIcon className="w-4 h-4" />
+          Afficher Trades avec Screenshots
+        </Button>
       </div>
 
       <ScrollArea className="flex-1 p-6">
