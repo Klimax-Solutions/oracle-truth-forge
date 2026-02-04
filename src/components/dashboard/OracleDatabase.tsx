@@ -421,35 +421,42 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
 
                 {/* Expanded details - like TradingJournal with isolated charts */}
                 {selectedTrade?.id === trade.id && (
-                  <div className="border-t border-border p-4 space-y-4 bg-transparent">
+                  <div className="border-t border-border p-3 md:p-4 space-y-3 md:space-y-4 bg-transparent">
                     {(() => {
                       const context = getTradeContext(trade);
                       return (
                         <>
-                          {/* Trade header */}
-                          <div className="flex items-center gap-4 p-4 border border-border bg-transparent rounded-md">
+                          {/* Trade header - responsive like UserDataEntry */}
+                          <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 p-3 md:p-4 border border-border bg-transparent rounded-md">
                             <div className={cn(
-                              "w-12 h-12 flex items-center justify-center border rounded-md",
+                              "w-10 h-10 md:w-12 md:h-12 flex items-center justify-center border rounded-md flex-shrink-0",
                               trade.direction === "Long" 
                                 ? "border-emerald-500/50 bg-emerald-500/10" 
                                 : "border-red-500/50 bg-red-500/10"
                             )}>
                               {trade.direction === "Long" 
-                                ? <TrendingUp className="w-6 h-6 text-emerald-500" />
-                                : <TrendingDown className="w-6 h-6 text-red-500" />
+                                ? <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" />
+                                : <TrendingDown className="w-5 h-5 md:w-6 md:h-6 text-red-500" />
                               }
                             </div>
-                            <div className="flex-1">
-                              <p className="text-lg font-bold text-foreground">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-base md:text-lg font-bold text-foreground">
                                 Trade #{trade.trade_number}
                               </p>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-xs md:text-sm text-muted-foreground truncate">
                                 {trade.setup_type || "Setup standard"} • {trade.entry_model || "Model standard"}
                               </p>
                             </div>
-                            <div className="text-right">
-                              <p className="text-xl font-bold text-emerald-500">+{trade.rr?.toFixed(2)} RR</p>
-                              <p className="text-sm text-muted-foreground">≈ +{((trade.rr || 0) * 1000).toLocaleString("fr-FR")} €</p>
+                            <div className="text-left md:text-right">
+                              <p className={cn(
+                                "text-lg md:text-xl font-bold",
+                                (trade.rr || 0) >= 0 ? "text-emerald-500" : "text-red-500"
+                              )}>
+                                {(trade.rr || 0) >= 0 ? "+" : ""}{trade.rr?.toFixed(2)} RR
+                              </p>
+                              <p className="text-xs md:text-sm text-muted-foreground">
+                                ≈ {(trade.rr || 0) >= 0 ? "+" : ""}{((trade.rr || 0) * 1000).toLocaleString("fr-FR")} €
+                              </p>
                             </div>
                           </div>
 
