@@ -887,11 +887,11 @@ export const AdminVerification = () => {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-6">
-                  <AlertTriangle className="w-5 h-5 text-orange-400" />
-                  <span className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
-                    {requests.length} demande{requests.length > 1 ? "s" : ""} en attente de validation
+              <div className="space-y-3 md:space-y-4">
+                <div className="flex items-center gap-2 mb-4 md:mb-6">
+                  <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-orange-400" />
+                  <span className="text-xs md:text-sm font-mono uppercase tracking-wider text-muted-foreground">
+                    {requests.length} demande{requests.length > 1 ? "s" : ""} en attente
                   </span>
                 </div>
 
@@ -905,9 +905,57 @@ export const AdminVerification = () => {
                       key={request.id}
                       className="border border-orange-500/40 bg-orange-500/5 rounded-md overflow-hidden"
                     >
-                      {/* Request Header */}
+                      {/* Request Header - Mobile */}
                       <div 
-                        className="p-4 cursor-pointer hover:bg-orange-500/10 transition-colors"
+                        className="p-3 md:hidden cursor-pointer hover:bg-orange-500/10 transition-colors"
+                        onClick={() => setExpandedRequest(isExpanded ? null : request.id)}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-8 h-8 bg-orange-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                              <User className="w-4 h-4 text-orange-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-semibold text-foreground text-xs truncate">
+                                {request.userName}
+                              </h4>
+                              <p className="text-[10px] text-muted-foreground font-mono truncate">
+                                {request.cycle?.name || "Cycle inconnu"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="text-right">
+                              <p className={cn(
+                                "text-sm font-bold",
+                                stats.totalRR >= 0 ? "text-emerald-400" : "text-red-400"
+                              )}>
+                                {stats.totalRR >= 0 ? "+" : ""}{stats.totalRR.toFixed(1)}
+                              </p>
+                              <p className="text-[9px] text-muted-foreground">
+                                {request.executions.length}t
+                              </p>
+                            </div>
+                            {isExpanded ? (
+                              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-[9px] text-muted-foreground font-mono">
+                          {new Date(request.requested_at).toLocaleDateString("fr-FR", {
+                            day: "numeric",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+
+                      {/* Request Header - Desktop */}
+                      <div 
+                        className="hidden md:block p-4 cursor-pointer hover:bg-orange-500/10 transition-colors"
                         onClick={() => setExpandedRequest(isExpanded ? null : request.id)}
                       >
                         <div className="flex items-center justify-between">
@@ -954,70 +1002,152 @@ export const AdminVerification = () => {
 
                       {/* Expanded Content */}
                       {isExpanded && (
-                        <div className="border-t border-orange-500/20 p-4 space-y-4">
-                          {/* Stats Grid */}
-                          <div className="grid grid-cols-4 gap-3">
-                            <div className="p-3 bg-card border border-border/40 rounded-md">
-                              <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                        <div className="border-t border-orange-500/20 p-3 md:p-4 space-y-3 md:space-y-4">
+                          {/* Stats Grid - Mobile 2x2, Desktop 4 cols */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                            <div className="p-2.5 md:p-3 bg-card border border-border/40 rounded-md">
+                              <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase mb-1">
                                 Total RR
                               </p>
                               <p className={cn(
-                                "text-xl font-bold",
+                                "text-lg md:text-xl font-bold",
                                 stats.totalRR >= 0 ? "text-emerald-400" : "text-red-400"
                               )}>
                                 {stats.totalRR >= 0 ? "+" : ""}{stats.totalRR.toFixed(1)}
                               </p>
                             </div>
-                            <div className="p-3 bg-card border border-border/40 rounded-md">
-                              <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                            <div className="p-2.5 md:p-3 bg-card border border-border/40 rounded-md">
+                              <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase mb-1">
                                 Win Rate
                               </p>
-                              <p className="text-xl font-bold text-foreground">
+                              <p className="text-lg md:text-xl font-bold text-foreground">
                                 {stats.winRate.toFixed(0)}%
                               </p>
                             </div>
-                            <div className="p-3 bg-card border border-border/40 rounded-md">
-                              <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                            <div className="p-2.5 md:p-3 bg-card border border-border/40 rounded-md">
+                              <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase mb-1">
                                 RR Moyen
                               </p>
-                              <p className="text-xl font-bold text-foreground">
+                              <p className="text-lg md:text-xl font-bold text-foreground">
                                 {stats.avgRR.toFixed(2)}
                               </p>
                             </div>
-                            <div className="p-3 bg-card border border-border/40 rounded-md">
-                              <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
-                                Ratio W/L
+                            <div className="p-2.5 md:p-3 bg-card border border-border/40 rounded-md">
+                              <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                                W/L
                               </p>
-                              <p className="text-xl font-bold text-foreground">
+                              <p className="text-lg md:text-xl font-bold text-foreground">
                                 {stats.wins}/{stats.losses}
                               </p>
                             </div>
                           </div>
 
-                          {/* Comparison Summary */}
-                          <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-md">
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                              <span className="text-xs font-mono">
+                          {/* Comparison Summary - Compact on mobile */}
+                          <div className="flex flex-wrap items-center gap-2 md:gap-4 p-2.5 md:p-3 bg-muted/30 rounded-md">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-emerald-500" />
+                              <span className="text-[10px] md:text-xs font-mono">
                                 {request.comparisons.filter(c => c.status === 'match').length} OK
                               </span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full bg-orange-500" />
-                              <span className="text-xs font-mono">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-orange-500" />
+                              <span className="text-[10px] md:text-xs font-mono">
                                 {request.comparisons.filter(c => c.status === 'warning').length} &gt;5h
                               </span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full bg-red-500" />
-                              <span className="text-xs font-mono">
-                                {request.comparisons.filter(c => c.status === 'error' || c.status === 'no-match').length} Erreurs
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-red-500" />
+                              <span className="text-[10px] md:text-xs font-mono">
+                                {request.comparisons.filter(c => c.status === 'error' || c.status === 'no-match').length} Err
                               </span>
                             </div>
                           </div>
 
-                          {/* Trades Detail Table with Oracle Comparison */}
-                          <div>
+                          {/* Trades Detail - Mobile Card View */}
+                          <div className="md:hidden">
+                            <p className="text-[10px] font-mono uppercase text-muted-foreground mb-2">
+                              Comparaison ({request.cycle?.trade_start}-{request.cycle?.trade_end})
+                            </p>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {request.comparisons.map((comp) => {
+                                const exec = comp.execution;
+                                const oracle = comp.oracleTrade;
+                                
+                                return (
+                                  <div 
+                                    key={exec.id} 
+                                    className={cn(
+                                      "p-2.5 rounded-md border",
+                                      comp.status === 'match' && "bg-emerald-500/10 border-emerald-500/50",
+                                      comp.status === 'warning' && "bg-orange-500/10 border-orange-500/50",
+                                      comp.status === 'error' && "bg-red-500/10 border-red-500/50",
+                                      comp.status === 'no-match' && "bg-red-500/10 border-red-500/50"
+                                    )}
+                                  >
+                                    <div className="flex items-center justify-between mb-1.5">
+                                      <div className="flex items-center gap-2">
+                                        <div className={cn(
+                                          "w-4 h-4 rounded-full flex items-center justify-center",
+                                          comp.status === 'match' && "bg-emerald-500",
+                                          comp.status === 'warning' && "bg-orange-500",
+                                          comp.status === 'error' && "bg-red-500",
+                                          comp.status === 'no-match' && "bg-red-500"
+                                        )}>
+                                          {comp.status === 'match' ? (
+                                            <CheckCircle className="w-2.5 h-2.5 text-white" />
+                                          ) : comp.status === 'warning' ? (
+                                            <AlertTriangle className="w-2.5 h-2.5 text-white" />
+                                          ) : (
+                                            <XCircle className="w-2.5 h-2.5 text-white" />
+                                          )}
+                                        </div>
+                                        <span className="text-xs font-mono font-bold">#{exec.trade_number}</span>
+                                        <div className={cn(
+                                          "w-4 h-4 rounded flex items-center justify-center",
+                                          exec.direction === "Long" 
+                                            ? "bg-emerald-500/20"
+                                            : "bg-red-500/20"
+                                        )}>
+                                          {exec.direction === "Long" ? (
+                                            <ArrowUpRight className="w-3 h-3 text-emerald-400" />
+                                          ) : (
+                                            <ArrowDownRight className="w-3 h-3 text-red-400" />
+                                          )}
+                                        </div>
+                                      </div>
+                                      <span className={cn(
+                                        "font-mono font-bold text-xs",
+                                        (exec.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400"
+                                      )}>
+                                        {(exec.rr || 0) >= 0 ? "+" : ""}{(exec.rr || 0).toFixed(1)}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground">
+                                      <span>
+                                        User: {new Date(exec.trade_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })} {exec.entry_time || "—"}
+                                      </span>
+                                      <span>
+                                        Oracle: {oracle ? `${new Date(oracle.trade_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })} ${oracle.entry_time || "—"}` : "—"}
+                                      </span>
+                                    </div>
+                                    {exec.screenshot_url && (
+                                      <div className="mt-1.5">
+                                        <ScreenshotLink
+                                          storagePath={exec.screenshot_url}
+                                          alt={`Trade #${exec.trade_number}`}
+                                          showExternalIcon
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Trades Detail Table - Desktop */}
+                          <div className="hidden md:block">
                             <p className="text-xs font-mono uppercase text-muted-foreground mb-2">
                               Comparaison Oracle ({request.cycle?.trade_start}-{request.cycle?.trade_end})
                             </p>
@@ -1096,7 +1226,7 @@ export const AdminVerification = () => {
                                         </TableCell>
                                         <TableCell className="py-1.5">
                                           <div className={cn(
-                                            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono",
+                                            "inline-flex items-center justify-center w-5 h-5 rounded",
                                             exec.direction === "Long" 
                                               ? "bg-emerald-500/20 text-emerald-400"
                                               : "bg-red-500/20 text-red-400"
@@ -1133,7 +1263,7 @@ export const AdminVerification = () => {
 
                           {/* Feedback */}
                           <div>
-                            <label className="text-xs font-mono uppercase text-muted-foreground mb-2 block">
+                            <label className="text-[10px] md:text-xs font-mono uppercase text-muted-foreground mb-1.5 md:mb-2 block">
                               Feedback (optionnel pour validation, requis pour refus)
                             </label>
                             <Textarea
@@ -1142,38 +1272,38 @@ export const AdminVerification = () => {
                                 ...prev,
                                 [request.id]: e.target.value,
                               }))}
-                              placeholder="Laissez un commentaire pour l'utilisateur..."
-                              className="resize-none bg-card border-border/40"
-                              rows={3}
+                              placeholder="Laissez un commentaire..."
+                              className="resize-none bg-card border-border/40 text-sm"
+                              rows={2}
                             />
                           </div>
 
                           {/* Actions */}
-                          <div className="flex gap-3">
+                          <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
                             <Button
-                              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 h-9 md:h-10 text-xs md:text-sm"
                               onClick={() => handleApprove(request)}
                               disabled={isProcessing}
                             >
                               {isProcessing ? (
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2 animate-spin" />
                               ) : (
-                                <CheckCircle className="w-4 h-4 mr-2" />
+                                <CheckCircle className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2" />
                               )}
-                              Valider le Cycle
+                              Valider
                             </Button>
                             <Button
                               variant="destructive"
-                              className="flex-1"
+                              className="flex-1 h-9 md:h-10 text-xs md:text-sm"
                               onClick={() => handleReject(request)}
                               disabled={isProcessing}
                             >
                               {isProcessing ? (
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2 animate-spin" />
                               ) : (
-                                <XCircle className="w-4 h-4 mr-2" />
+                                <XCircle className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2" />
                               )}
-                              Refuser (Corrections)
+                              Refuser
                             </Button>
                           </div>
                         </div>
