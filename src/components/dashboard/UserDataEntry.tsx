@@ -976,121 +976,123 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
         </div>
       </div>
 
-      {/* Cycle Progress & Timer */}
-      <div className="p-6 border-b border-border">
-        <div className="flex items-center gap-6 mb-4">
+      {/* Cycle Progress & Timer - responsive */}
+      <div className="p-3 md:p-6 border-b border-border">
+        <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
           {/* Current Cycle Progress */}
           <div className="flex-1">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-foreground">
+            <div className="flex items-center justify-between mb-1.5 md:mb-2">
+              <div className="flex items-center gap-1.5 md:gap-2">
+                <Trophy className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
+                <span className="text-xs md:text-sm font-medium text-foreground">
                   {cycleInfo.name}
                 </span>
                 {cycleInfo.isComplete && (
-                  <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
-                    Complet
+                  <span className="text-[9px] md:text-xs bg-emerald-500/20 text-emerald-400 px-1.5 md:px-2 py-0.5 rounded-full">
+                    OK
                   </span>
                 )}
               </div>
-              <span className="text-sm font-mono text-muted-foreground">
-                {cycleInfo.current} / {cycleInfo.target}
-                <span className="text-xs ml-2 text-muted-foreground/60">
+              <div className="flex items-center gap-1.5 md:gap-2">
+                <span className="text-xs md:text-sm font-mono font-semibold text-foreground">
+                  {cycleInfo.current}/{cycleInfo.target}
+                </span>
+                <span className="text-[9px] md:text-xs text-muted-foreground hidden sm:inline">
                   ({cycleInfo.totalCurrent} total)
                 </span>
-              </span>
+              </div>
             </div>
-            <Progress value={cycleInfo.progress} className="h-2" />
+            <Progress value={cycleInfo.progress} className="h-1.5 md:h-2" />
           </div>
 
-          {/* Session Timer */}
-          <div className="flex items-center gap-2 border border-border/40 rounded-md px-3 py-2">
-            <Timer className="w-4 h-4 text-muted-foreground" />
-            <span className="font-mono text-lg font-medium min-w-[70px] text-center">
+          {/* Session Timer - compact on mobile */}
+          <div className="flex items-center gap-2 border border-border/40 rounded-md px-2 md:px-3 py-1.5 md:py-2 self-start md:self-auto">
+            <Timer className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground" />
+            <span className="font-mono text-sm md:text-lg font-medium min-w-[50px] md:min-w-[70px] text-center">
               {formatTimer(timerSeconds)}
             </span>
-            <div className="flex items-center gap-1 ml-2">
+            <div className="flex items-center gap-0.5 md:gap-1 ml-1 md:ml-2">
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7"
+                className="h-6 w-6 md:h-7 md:w-7"
                 onClick={() => setTimerRunning(!timerRunning)}
               >
                 {timerRunning ? (
-                  <Pause className="w-3.5 h-3.5" />
+                  <Pause className="w-3 h-3 md:w-3.5 md:h-3.5" />
                 ) : (
-                  <Play className="w-3.5 h-3.5" />
+                  <Play className="w-3 h-3 md:w-3.5 md:h-3.5" />
                 )}
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7"
+                className="h-6 w-6 md:h-7 md:w-7"
                 onClick={() => {
                   setTimerRunning(false);
                   setTimerSeconds(0);
                 }}
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-3 h-3 md:w-3.5 md:h-3.5" />
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="p-6 border-b border-border">
-        <div className="grid grid-cols-4 gap-4">
-          <div className="border border-border/40 p-4 bg-transparent rounded-md">
-            <div className="flex items-center gap-2 mb-2">
-              <FileSpreadsheet className="w-4 h-4 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
-                Trades Saisis
+      {/* Stats - responsive */}
+      <div className="p-3 md:p-6 border-b border-border">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+          <div className="border border-border/40 p-2.5 md:p-4 bg-transparent rounded-md">
+            <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
+              <FileSpreadsheet className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+                Trades
               </span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+            <p className="text-lg md:text-2xl font-bold text-foreground">{stats.total}</p>
           </div>
 
-          <div className="border border-border/40 p-4 bg-transparent rounded-md">
-            <div className="flex items-center gap-2 mb-2">
-              <Target className="w-4 h-4 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+          <div className="border border-border/40 p-2.5 md:p-4 bg-transparent rounded-md">
+            <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
+              <Target className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
                 Win Rate
               </span>
             </div>
             <p className={cn(
-              "text-2xl font-bold",
+              "text-lg md:text-2xl font-bold",
               winRate >= 50 ? "text-emerald-400" : "text-red-400"
             )}>
-              {winRate.toFixed(1)}%
+              {winRate.toFixed(0)}%
             </p>
           </div>
 
-          <div className="border border-border/40 p-4 bg-transparent rounded-md">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="w-4 h-4 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+          <div className="border border-border/40 p-2.5 md:p-4 bg-transparent rounded-md">
+            <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
+              <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
                 Total RR
               </span>
             </div>
             <p className={cn(
-              "text-2xl font-bold",
+              "text-lg md:text-2xl font-bold",
               stats.totalRR >= 0 ? "text-emerald-400" : "text-red-400"
             )}>
               {stats.totalRR >= 0 ? "+" : ""}{stats.totalRR.toFixed(1)}
             </p>
           </div>
 
-          <div className="border border-border/40 p-4 bg-transparent rounded-md">
-            <div className="flex items-center gap-2 mb-2">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+          <div className="border border-border/40 p-2.5 md:p-4 bg-transparent rounded-md">
+            <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
+              <Calendar className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
                 W / L
               </span>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-lg md:text-2xl font-bold text-foreground">
               <span className="text-emerald-400">{stats.wins}</span>
-              <span className="text-muted-foreground mx-1">/</span>
+              <span className="text-muted-foreground mx-0.5 md:mx-1">/</span>
               <span className="text-red-400">{stats.losses}</span>
             </p>
           </div>
