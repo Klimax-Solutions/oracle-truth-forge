@@ -141,37 +141,37 @@ export const OraclePage = ({ trades, initialFilters }: OraclePageProps) => {
   return (
     <div className="h-full flex flex-col">
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="flex-1 flex flex-col">
-        {/* Sub-tabs header */}
-        <div className="border-b border-border bg-card px-6 py-3">
-          <div className="flex items-center justify-between">
-            <TabsList className="bg-muted/50">
-              <TabsTrigger value="verification" className="gap-2 data-[state=active]:bg-background">
-                <Database className="w-4 h-4" />
-                Oracle Vérification
+        {/* Sub-tabs header - responsive */}
+        <div className="border-b border-border bg-card px-3 md:px-6 py-2 md:py-3">
+          <div className="flex items-center justify-between gap-2">
+            <TabsList className="bg-muted/50 h-auto p-0.5 md:p-1">
+              <TabsTrigger value="verification" className="gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs data-[state=active]:bg-background">
+                <Database className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Oracle</span> Vérif
               </TabsTrigger>
-              <TabsTrigger value="saisie" className="gap-2 data-[state=active]:bg-background">
-                <PenLine className="w-4 h-4" />
-                Saisie des Trades
+              <TabsTrigger value="saisie" className="gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs data-[state=active]:bg-background">
+                <PenLine className="w-3 h-3 md:w-4 md:h-4" />
+                Saisie
               </TabsTrigger>
             </TabsList>
 
-            {/* Comparison status badge */}
+            {/* Comparison status badge - compact on mobile */}
             {userExecutions.length > 0 && activeSubTab === "saisie" && (
-              <div className="flex items-center gap-4 text-xs font-mono">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                  <span className="text-muted-foreground">{comparisonStats.matches} OK</span>
+              <div className="flex items-center gap-2 md:gap-4 text-[10px] md:text-xs font-mono flex-shrink-0">
+                <div className="flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-500" />
+                  <span className="text-muted-foreground">{comparisonStats.matches}</span>
                 </div>
                 {comparisonStats.warnings > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
-                    <span className="text-orange-500">{comparisonStats.warnings} &gt;5h</span>
+                  <div className="flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 md:w-3.5 md:h-3.5 text-orange-500" />
+                    <span className="text-orange-500">{comparisonStats.warnings}</span>
                   </div>
                 )}
                 {comparisonStats.errors > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5 text-red-500" />
-                    <span className="text-red-500">{comparisonStats.errors} &gt;1j</span>
+                  <div className="flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 md:w-3.5 md:h-3.5 text-red-500" />
+                    <span className="text-red-500">{comparisonStats.errors}</span>
                   </div>
                 )}
               </div>

@@ -399,11 +399,11 @@ export const SetupPerso = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 md:p-6 border-b border-border">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
+      <div className="p-3 md:p-6 border-b border-border">
+        <div className="flex flex-col gap-3 md:gap-4 md:flex-row md:items-center md:justify-between mb-3 md:mb-4">
           <div>
-            <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">Setup Perso</h2>
-            <p className="text-xs md:text-sm text-muted-foreground font-mono">
+            <h2 className="text-base md:text-xl font-semibold text-foreground mb-0.5 md:mb-1">Setup Perso</h2>
+            <p className="text-[10px] md:text-sm text-muted-foreground font-mono">
               Gérez vos trades personnels
             </p>
           </div>

@@ -227,22 +227,22 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className={cn(
-                  "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
+                  "px-2 md:px-3 py-1 md:py-1.5 text-[9px] md:text-[10px] font-medium rounded-md transition-all flex items-center gap-1 flex-shrink-0",
                   filters.direction.length > 0
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}>
-                  Direction
-                  <ChevronDown className="w-3 h-3" />
+                  Dir
+                  <ChevronDown className="w-2.5 h-2.5 md:w-3 md:h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[140px] p-1">
+              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[120px] p-1">
                 {filterOptions.direction.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.direction.includes(option)}
                     onCheckedChange={() => toggleFilter("direction", option)}
-                    className="text-foreground text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
+                    className="text-foreground text-[10px] md:text-xs rounded-md px-2 md:px-3 py-1.5 md:py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -253,22 +253,22 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className={cn(
-                  "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
+                  "px-2 md:px-3 py-1 md:py-1.5 text-[9px] md:text-[10px] font-medium rounded-md transition-all flex items-center gap-1 flex-shrink-0",
                   filters.setup_type.length > 0
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}>
                   Setup
-                  <ChevronDown className="w-3 h-3" />
+                  <ChevronDown className="w-2.5 h-2.5 md:w-3 md:h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[140px] p-1">
+              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[120px] p-1">
                 {filterOptions.setup_type.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.setup_type.includes(option)}
                     onCheckedChange={() => toggleFilter("setup_type", option)}
-                    className="text-foreground text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
+                    className="text-foreground text-[10px] md:text-xs rounded-md px-2 md:px-3 py-1.5 md:py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -279,22 +279,22 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className={cn(
-                  "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
+                  "px-2 md:px-3 py-1 md:py-1.5 text-[9px] md:text-[10px] font-medium rounded-md transition-all flex items-center gap-1 flex-shrink-0",
                   filters.entry_model.length > 0
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}>
-                  Entry Model
-                  <ChevronDown className="w-3 h-3" />
+                  Entry
+                  <ChevronDown className="w-2.5 h-2.5 md:w-3 md:h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[160px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
+              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[120px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
                 {filterOptions.entry_model.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.entry_model.includes(option)}
                     onCheckedChange={() => toggleFilter("entry_model", option)}
-                    className="text-foreground text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
+                    className="text-foreground text-[10px] md:text-xs rounded-md px-2 md:px-3 py-1.5 md:py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -305,22 +305,22 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className={cn(
-                  "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
+                  "px-2 md:px-3 py-1 md:py-1.5 text-[9px] md:text-[10px] font-medium rounded-md transition-all flex items-center gap-1 flex-shrink-0",
                   filters.direction_structure.length > 0
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}>
-                  Structure
-                  <ChevronDown className="w-3 h-3" />
+                  Struct
+                  <ChevronDown className="w-2.5 h-2.5 md:w-3 md:h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[140px] p-1">
+              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[120px] p-1">
                 {filterOptions.direction_structure.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.direction_structure.includes(option)}
                     onCheckedChange={() => toggleFilter("direction_structure", option)}
-                    className="text-foreground text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
+                    className="text-foreground text-[10px] md:text-xs rounded-md px-2 md:px-3 py-1.5 md:py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
@@ -331,22 +331,22 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className={cn(
-                  "px-3 py-1.5 text-[10px] font-medium rounded-md transition-all flex items-center gap-1.5",
+                  "px-2 md:px-3 py-1 md:py-1.5 text-[9px] md:text-[10px] font-medium rounded-md transition-all flex items-center gap-1 flex-shrink-0",
                   filters.entry_timing.length > 0
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}>
-                  Timing
-                  <ChevronDown className="w-3 h-3" />
+                  Time
+                  <ChevronDown className="w-2.5 h-2.5 md:w-3 md:h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[140px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
+              <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[120px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
                 {filterOptions.entry_timing.map(option => (
                   <DropdownMenuCheckboxItem
                     key={option}
                     checked={filters.entry_timing.includes(option)}
                     onCheckedChange={() => toggleFilter("entry_timing", option)}
-                    className="text-foreground text-xs rounded-md px-3 py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
+                    className="text-foreground text-[10px] md:text-xs rounded-md px-2 md:px-3 py-1.5 md:py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
                   >
                     {option}
                   </DropdownMenuCheckboxItem>
