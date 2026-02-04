@@ -214,54 +214,54 @@ export const UserFollowupTab = () => {
   return (
     <div className="space-y-4">
       {/* Header Stats - 3-day cycle overview */}
-      <div className="grid grid-cols-5 gap-3 mb-6">
-        <div className="p-4 bg-card border border-border rounded-md">
-          <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
-            Utilisateurs suivis
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3 mb-4 md:mb-6">
+        <div className="p-3 md:p-4 bg-card border border-border rounded-md">
+          <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase mb-1">
+            Utilisateurs
           </p>
-          <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-muted-foreground" />
-            <p className="text-2xl font-bold text-foreground">{users.length}</p>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <Users className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+            <p className="text-xl md:text-2xl font-bold text-foreground">{users.length}</p>
           </div>
         </div>
         
-        <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-md">
-          <p className="text-[10px] text-orange-400 font-mono uppercase mb-1">
-            À contacter aujourd'hui
+        <div className="p-3 md:p-4 bg-orange-500/10 border border-orange-500/30 rounded-md">
+          <p className="text-[9px] md:text-[10px] text-orange-400 font-mono uppercase mb-1">
+            Aujourd'hui
           </p>
-          <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-orange-400" />
-            <p className="text-2xl font-bold text-orange-400">{usersToContactToday.length}</p>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <Clock className="w-4 h-4 md:w-5 md:h-5 text-orange-400" />
+            <p className="text-xl md:text-2xl font-bold text-orange-400">{usersToContactToday.length}</p>
           </div>
         </div>
         
-        <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-md">
-          <p className="text-[10px] text-blue-400 font-mono uppercase mb-1">
-            À contacter demain
+        <div className="p-3 md:p-4 bg-blue-500/10 border border-blue-500/30 rounded-md">
+          <p className="text-[9px] md:text-[10px] text-blue-400 font-mono uppercase mb-1">
+            Demain
           </p>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-400" />
-            <p className="text-2xl font-bold text-blue-400">{usersToContactTomorrow.length}</p>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <Calendar className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
+            <p className="text-xl md:text-2xl font-bold text-blue-400">{usersToContactTomorrow.length}</p>
           </div>
         </div>
         
-        <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-md">
-          <p className="text-[10px] text-purple-400 font-mono uppercase mb-1">
-            À contacter J+2
+        <div className="p-3 md:p-4 bg-purple-500/10 border border-purple-500/30 rounded-md">
+          <p className="text-[9px] md:text-[10px] text-purple-400 font-mono uppercase mb-1">
+            J+2
           </p>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-purple-400" />
-            <p className="text-2xl font-bold text-purple-400">{usersToContactDayAfter.length}</p>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <Calendar className="w-4 h-4 md:w-5 md:h-5 text-purple-400" />
+            <p className="text-xl md:text-2xl font-bold text-purple-400">{usersToContactDayAfter.length}</p>
           </div>
         </div>
         
-        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-md">
-          <p className="text-[10px] text-red-400 font-mono uppercase mb-1">
-            Situations bloquantes
+        <div className="p-3 md:p-4 bg-red-500/10 border border-red-500/30 rounded-md col-span-2 sm:col-span-1">
+          <p className="text-[9px] md:text-[10px] text-red-400 font-mono uppercase mb-1">
+            Bloquantes
           </p>
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-400" />
-            <p className="text-2xl font-bold text-red-400">{blockedSituations}</p>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-red-400" />
+            <p className="text-xl md:text-2xl font-bold text-red-400">{blockedSituations}</p>
           </div>
         </div>
       </div>
@@ -304,154 +304,369 @@ export const UserFollowupTab = () => {
                 {/* User Header */}
                 <div 
                   className={cn(
-                    "p-4 cursor-pointer transition-colors",
+                    "p-3 md:p-4 cursor-pointer transition-colors",
                     needsContactToday 
                       ? "hover:bg-orange-500/10" 
                       : "hover:bg-accent/50"
                   )}
                   onClick={() => setExpandedUser(isExpanded ? null : user.id)}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center",
-                        needsContactToday 
-                          ? "bg-orange-500/20" 
-                          : "bg-primary/20"
-                      )}>
-                        <User className={cn(
-                          "w-5 h-5",
-                          needsContactToday ? "text-orange-400" : "text-primary"
-                        )} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-foreground text-sm">
+                  {/* Mobile Layout */}
+                  <div className="flex flex-col gap-3 md:hidden">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
+                          needsContactToday 
+                            ? "bg-orange-500/20" 
+                            : "bg-primary/20"
+                        )}>
+                          <User className={cn(
+                            "w-4 h-4",
+                            needsContactToday ? "text-orange-400" : "text-primary"
+                          )} />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-semibold text-foreground text-xs truncate">
                             {user.displayName}
                           </h4>
-                          {needsContactToday && (
-                            <span className="px-2 py-0.5 bg-orange-500 text-white text-[9px] font-bold rounded uppercase">
-                              À contacter
-                            </span>
-                          )}
-                          {user.needsVerification && (
-                            <span className="px-2 py-0.5 bg-amber-500 text-white text-[9px] font-bold rounded uppercase">
-                              Vérification
-                            </span>
-                          )}
-                          {!needsContactToday && needsContactTomorrow && (
-                            <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-bold rounded uppercase">
-                              Demain
-                            </span>
-                          )}
+                          <p className="text-[10px] text-muted-foreground font-mono">
+                            J{user.nextCheckpoint?.day_number || "—"} • {
+                              user.nextCheckpoint 
+                                ? new Date(user.nextCheckpoint.contact_date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
+                                : "Fin"
+                            }
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground font-mono">
-                          Jour {user.nextCheckpoint?.day_number || "—"} • Prochain: {
-                            user.nextCheckpoint 
-                              ? new Date(user.nextCheckpoint.contact_date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
-                              : "Terminé"
-                          }
-                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="text-right">
+                          <p className="text-xs font-bold text-foreground">
+                            {user.completedCheckpoints}/{user.totalCheckpoints}
+                          </p>
+                        </div>
+                        {isExpanded ? (
+                          <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        )}
                       </div>
                     </div>
+                    
+                    {/* Badges */}
+                    <div className="flex flex-wrap gap-1">
+                      {needsContactToday && (
+                        <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[8px] font-bold rounded uppercase">
+                          À contacter
+                        </span>
+                      )}
+                      {user.needsVerification && (
+                        <span className="px-1.5 py-0.5 bg-amber-500 text-white text-[8px] font-bold rounded uppercase">
+                          Vérif
+                        </span>
+                      )}
+                      {!needsContactToday && needsContactTomorrow && (
+                        <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[8px] font-bold rounded uppercase">
+                          Demain
+                        </span>
+                      )}
+                    </div>
 
-                    <div className="flex items-center gap-6">
-                      {/* Quick actions for today's checkpoint */}
-                      {user.todayCheckpoint && (
-                        <div className="flex items-center gap-2 border-r border-border pr-4" onClick={(e) => e.stopPropagation()}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div>
-                                <Checkbox
-                                  checked={user.todayCheckpoint.message_sent}
-                                  onCheckedChange={(checked) => 
-                                    updateFollowup(user.todayCheckpoint!.id, 'message_sent', checked as boolean)
-                                  }
-                                  className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
-                                />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>Message envoyé</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div>
-                                <Checkbox
-                                  checked={user.todayCheckpoint.is_blocked}
-                                  onCheckedChange={(checked) => 
-                                    updateFollowup(user.todayCheckpoint!.id, 'is_blocked', checked as boolean)
-                                  }
-                                  className="data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
-                                />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>Situation bloquante</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div>
-                                <Checkbox
-                                  checked={user.todayCheckpoint.correct_actions}
-                                  onCheckedChange={(checked) => 
-                                    updateFollowup(user.todayCheckpoint!.id, 'correct_actions', checked as boolean)
-                                  }
-                                  className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
-                                />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>Bonnes actions</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div>
-                                <Checkbox
-                                  checked={user.todayCheckpoint.call_done}
-                                  onCheckedChange={(checked) => 
-                                    updateFollowup(user.todayCheckpoint!.id, 'call_done', checked as boolean)
-                                  }
-                                  className="data-[state=checked]:bg-purple-500 data-[state=checked]:border-purple-500"
-                                />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>Call effectué</TooltipContent>
-                          </Tooltip>
+                    {/* Quick actions for today's checkpoint - Mobile */}
+                    {user.todayCheckpoint && (
+                      <div className="flex items-center gap-3 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1.5">
+                          <Checkbox
+                            checked={user.todayCheckpoint.message_sent}
+                            onCheckedChange={(checked) => 
+                              updateFollowup(user.todayCheckpoint!.id, 'message_sent', checked as boolean)
+                            }
+                            className="w-4 h-4 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                          />
+                          <span className="text-[9px] text-muted-foreground">Msg</span>
                         </div>
-                      )}
-
-                      {/* Progress */}
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-foreground">
-                          {user.completedCheckpoints}/{user.totalCheckpoints}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground font-mono">
-                          checkpoints
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <Checkbox
+                            checked={user.todayCheckpoint.is_blocked}
+                            onCheckedChange={(checked) => 
+                              updateFollowup(user.todayCheckpoint!.id, 'is_blocked', checked as boolean)
+                            }
+                            className="w-4 h-4 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
+                          />
+                          <span className="text-[9px] text-muted-foreground">Bloq</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Checkbox
+                            checked={user.todayCheckpoint.correct_actions}
+                            onCheckedChange={(checked) => 
+                              updateFollowup(user.todayCheckpoint!.id, 'correct_actions', checked as boolean)
+                            }
+                            className="w-4 h-4 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                          />
+                          <span className="text-[9px] text-muted-foreground">OK</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Checkbox
+                            checked={user.todayCheckpoint.call_done}
+                            onCheckedChange={(checked) => 
+                              updateFollowup(user.todayCheckpoint!.id, 'call_done', checked as boolean)
+                            }
+                            className="w-4 h-4 data-[state=checked]:bg-purple-500 data-[state=checked]:border-purple-500"
+                          />
+                          <span className="text-[9px] text-muted-foreground">Call</span>
+                        </div>
                       </div>
+                    )}
 
-                      {isExpanded ? (
-                        <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                      )}
+                    {/* Progress Bar - Mobile */}
+                    <div className="h-1 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className={cn("h-full rounded-full transition-all", getProgressColor(user.completedCheckpoints, user.totalCheckpoints))}
+                        style={{ width: `${progress}%` }}
+                      />
                     </div>
                   </div>
 
-                  {/* Progress Bar */}
-                  <div className="mt-3 h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className={cn("h-full rounded-full transition-all", getProgressColor(user.completedCheckpoints, user.totalCheckpoints))}
-                      style={{ width: `${progress}%` }}
-                    />
+                  {/* Desktop Layout */}
+                  <div className="hidden md:block">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={cn(
+                          "w-10 h-10 rounded-full flex items-center justify-center",
+                          needsContactToday 
+                            ? "bg-orange-500/20" 
+                            : "bg-primary/20"
+                        )}>
+                          <User className={cn(
+                            "w-5 h-5",
+                            needsContactToday ? "text-orange-400" : "text-primary"
+                          )} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-foreground text-sm">
+                              {user.displayName}
+                            </h4>
+                            {needsContactToday && (
+                              <span className="px-2 py-0.5 bg-orange-500 text-white text-[9px] font-bold rounded uppercase">
+                                À contacter
+                              </span>
+                            )}
+                            {user.needsVerification && (
+                              <span className="px-2 py-0.5 bg-amber-500 text-white text-[9px] font-bold rounded uppercase">
+                                Vérification
+                              </span>
+                            )}
+                            {!needsContactToday && needsContactTomorrow && (
+                              <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-bold rounded uppercase">
+                                Demain
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            Jour {user.nextCheckpoint?.day_number || "—"} • Prochain: {
+                              user.nextCheckpoint 
+                                ? new Date(user.nextCheckpoint.contact_date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
+                                : "Terminé"
+                            }
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-6">
+                        {/* Quick actions for today's checkpoint */}
+                        {user.todayCheckpoint && (
+                          <div className="flex items-center gap-2 border-r border-border pr-4" onClick={(e) => e.stopPropagation()}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div>
+                                  <Checkbox
+                                    checked={user.todayCheckpoint.message_sent}
+                                    onCheckedChange={(checked) => 
+                                      updateFollowup(user.todayCheckpoint!.id, 'message_sent', checked as boolean)
+                                    }
+                                    className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                  />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>Message envoyé</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div>
+                                  <Checkbox
+                                    checked={user.todayCheckpoint.is_blocked}
+                                    onCheckedChange={(checked) => 
+                                      updateFollowup(user.todayCheckpoint!.id, 'is_blocked', checked as boolean)
+                                    }
+                                    className="data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
+                                  />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>Situation bloquante</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div>
+                                  <Checkbox
+                                    checked={user.todayCheckpoint.correct_actions}
+                                    onCheckedChange={(checked) => 
+                                      updateFollowup(user.todayCheckpoint!.id, 'correct_actions', checked as boolean)
+                                    }
+                                    className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                                  />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>Bonnes actions</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div>
+                                  <Checkbox
+                                    checked={user.todayCheckpoint.call_done}
+                                    onCheckedChange={(checked) => 
+                                      updateFollowup(user.todayCheckpoint!.id, 'call_done', checked as boolean)
+                                    }
+                                    className="data-[state=checked]:bg-purple-500 data-[state=checked]:border-purple-500"
+                                  />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>Call effectué</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        )}
+
+                        {/* Progress */}
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-foreground">
+                            {user.completedCheckpoints}/{user.totalCheckpoints}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground font-mono">
+                            checkpoints
+                          </p>
+                        </div>
+
+                        {isExpanded ? (
+                          <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Progress Bar - Desktop */}
+                    <div className="mt-3 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className={cn("h-full rounded-full transition-all", getProgressColor(user.completedCheckpoints, user.totalCheckpoints))}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Expanded Content */}
                 {isExpanded && (
-                  <div className="border-t border-border/50 p-4">
-                    <p className="text-xs font-mono uppercase text-muted-foreground mb-3">
+                  <div className="border-t border-border/50 p-3 md:p-4">
+                    <p className="text-[10px] md:text-xs font-mono uppercase text-muted-foreground mb-2 md:mb-3">
                       Historique des contacts (80 jours)
                     </p>
-                    <div className="border border-border rounded-md overflow-hidden max-h-80 overflow-y-auto">
+                    
+                    {/* Mobile Card View */}
+                    <div className="md:hidden space-y-2 max-h-64 overflow-y-auto">
+                      {user.followups.map((followup) => {
+                        const isToday = followup.contact_date === today;
+                        const isTomorrow = followup.contact_date === tomorrow;
+                        const isDayAfter = followup.contact_date === dayAfter;
+                        const isPast = followup.contact_date < today;
+                        const isMissed = isPast && !followup.message_sent && !followup.call_done;
+
+                        return (
+                          <div 
+                            key={followup.id} 
+                            className={cn(
+                              "p-2.5 rounded-md border",
+                              isToday && "bg-orange-500/20 border-orange-500/50",
+                              isTomorrow && "bg-blue-500/10 border-blue-500/30",
+                              isDayAfter && "bg-purple-500/10 border-purple-500/30",
+                              isMissed && "bg-red-500/10 border-red-500/30",
+                              !isToday && !isTomorrow && !isDayAfter && !isMissed && "border-border"
+                            )}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono font-bold">J{followup.day_number}</span>
+                                <span className="text-[10px] font-mono text-muted-foreground">
+                                  {new Date(followup.contact_date).toLocaleDateString("fr-FR", { 
+                                    day: "2-digit", 
+                                    month: "short"
+                                  })}
+                                </span>
+                              </div>
+                              {isToday && (
+                                <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[8px] rounded font-bold">
+                                  AUJ.
+                                </span>
+                              )}
+                              {isTomorrow && (
+                                <span className="px-1.5 py-0.5 bg-blue-500/30 text-blue-400 text-[8px] rounded font-bold">
+                                  DEM.
+                                </span>
+                              )}
+                              {isDayAfter && (
+                                <span className="px-1.5 py-0.5 bg-purple-500/30 text-purple-400 text-[8px] rounded font-bold">
+                                  J+2
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-1">
+                                <Checkbox
+                                  checked={followup.message_sent}
+                                  onCheckedChange={(checked) => 
+                                    updateFollowup(followup.id, 'message_sent', checked as boolean)
+                                  }
+                                  className="w-4 h-4 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                />
+                                <MessageSquare className="w-3 h-3 text-muted-foreground" />
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Checkbox
+                                  checked={followup.is_blocked}
+                                  onCheckedChange={(checked) => 
+                                    updateFollowup(followup.id, 'is_blocked', checked as boolean)
+                                  }
+                                  className="w-4 h-4 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
+                                />
+                                <AlertTriangle className="w-3 h-3 text-muted-foreground" />
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Checkbox
+                                  checked={followup.correct_actions}
+                                  onCheckedChange={(checked) => 
+                                    updateFollowup(followup.id, 'correct_actions', checked as boolean)
+                                  }
+                                  className="w-4 h-4 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                                />
+                                <CheckCircle2 className="w-3 h-3 text-muted-foreground" />
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Checkbox
+                                  checked={followup.call_done}
+                                  onCheckedChange={(checked) => 
+                                    updateFollowup(followup.id, 'call_done', checked as boolean)
+                                  }
+                                  className="w-4 h-4 data-[state=checked]:bg-purple-500 data-[state=checked]:border-purple-500"
+                                />
+                                <Phone className="w-3 h-3 text-muted-foreground" />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block border border-border rounded-md overflow-hidden max-h-80 overflow-y-auto">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-muted/50">
