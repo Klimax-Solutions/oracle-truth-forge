@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,25 +14,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -62,6 +49,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScreenshotLink } from "./ScreenshotLink";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 
 interface UserExecution {
   id: string;
@@ -279,6 +267,31 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       isComplete: true,
     };
   };
+
+  // Get trade context for charts - ISOLATED 10 last trades (like OracleDatabase)
+  const getTradeContext = useMemo(() => (execution: UserExecution) => {
+    const executionIndex = executions.findIndex(e => e.id === execution.id);
+    const tradesUpToNow = executions.slice(0, executionIndex + 1);
+    const cumulativeRR = tradesUpToNow.reduce((sum, e) => sum + (e.rr || 0), 0);
+    
+    // Get last 10 trades and show ISOLATED cumul (as if trades 1-10)
+    const recentTrades = executions.slice(Math.max(0, executionIndex - 9), executionIndex + 1);
+    let isolatedCumul = 0;
+    const chartData = recentTrades.map((e, idx) => {
+      isolatedCumul += e.rr || 0;
+      return {
+        trade: idx + 1, // Trades 1-10 isolated
+        tradeNum: e.trade_number,
+        rr: parseFloat(isolatedCumul.toFixed(2)),
+        individual: e.rr || 0,
+        current: e.id === execution.id
+      };
+    });
+    
+    const isolatedTotal = recentTrades.reduce((sum, e) => sum + (e.rr || 0), 0);
+
+    return { cumulativeRR, chartData, executionIndex, isolatedTotal };
+  }, [executions]);
 
   // Fetch user executions
   useEffect(() => {
@@ -1334,6 +1347,134 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                           <p className="text-xs md:text-sm font-medium text-foreground mt-0.5 md:mt-1">{execution.entry_model || "—"}</p>
                         </div>
                       </div>
+
+                      {/* RR charts - vertical stack on mobile (like OracleDatabase) */}
+                      {(() => {
+                        const context = getTradeContext(execution);
+                        return (
+                          <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                              {/* Bar chart - individual RR per trade */}
+                              <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
+                                <div className="flex items-center justify-between mb-3 md:mb-4">
+                                  <h4 className="text-[9px] md:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                                    RR par Trade
+                                  </h4>
+                                </div>
+                                <div className="h-28 md:h-36">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={context.chartData}>
+                                      <XAxis 
+                                        dataKey="trade" 
+                                        tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
+                                        axisLine={{ stroke: "var(--chart-axis-line)" }}
+                                        tickLine={false}
+                                      />
+                                      <YAxis 
+                                        tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
+                                        axisLine={{ stroke: "var(--chart-axis-line)" }}
+                                        tickLine={false}
+                                      />
+                                      <Tooltip
+                                        contentStyle={{
+                                          backgroundColor: "var(--chart-tooltip-bg)",
+                                          border: "1px solid var(--chart-tooltip-border)",
+                                          borderRadius: 4,
+                                          color: "var(--chart-tooltip-text)",
+                                        }}
+                                        itemStyle={{ color: "var(--chart-tooltip-text)" }}
+                                        labelStyle={{ color: "var(--chart-tooltip-text)" }}
+                                        formatter={(value: number, name: string, props: any) => [
+                                          `${value.toFixed(2)} RR`,
+                                          `Trade #${props.payload.tradeNum}`
+                                        ]}
+                                      />
+                                      <Bar 
+                                        dataKey="individual" 
+                                        radius={[3, 3, 0, 0]}
+                                      >
+                                        {context.chartData.map((entry, index) => (
+                                          <Cell 
+                                            key={`cell-${index}`} 
+                                            fill={entry.current ? "var(--chart-bar)" : "#22c55e"}
+                                          />
+                                        ))}
+                                      </Bar>
+                                    </BarChart>
+                                  </ResponsiveContainer>
+                                </div>
+                              </div>
+
+                              {/* Isolated cumulative RR chart */}
+                              <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
+                                <div className="flex items-center justify-between mb-3 md:mb-4">
+                                  <h4 className="text-[9px] md:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                                    Cumul Isolé
+                                  </h4>
+                                  <span className="text-sm md:text-base font-bold text-emerald-500">
+                                    +{context.isolatedTotal.toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="h-28 md:h-36">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={context.chartData}>
+                                      <defs>
+                                        <linearGradient id={`colorIsolatedRR-${execution.id}`} x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                                          <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                                        </linearGradient>
+                                      </defs>
+                                      <XAxis 
+                                        dataKey="trade" 
+                                        tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
+                                        axisLine={{ stroke: "var(--chart-axis-line)" }}
+                                        tickLine={false}
+                                      />
+                                      <YAxis 
+                                        tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
+                                        axisLine={{ stroke: "var(--chart-axis-line)" }}
+                                        tickLine={false}
+                                      />
+                                      <Tooltip
+                                        contentStyle={{
+                                          backgroundColor: "var(--chart-tooltip-bg)",
+                                          border: "1px solid var(--chart-tooltip-border)",
+                                          borderRadius: 4,
+                                          color: "var(--chart-tooltip-text)",
+                                        }}
+                                        itemStyle={{ color: "var(--chart-tooltip-text)" }}
+                                        labelStyle={{ color: "var(--chart-tooltip-text)" }}
+                                        formatter={(value: number, name: string, props: any) => [
+                                          `${value.toFixed(2)} RR`,
+                                          `Trade #${props.payload.tradeNum}`
+                                        ]}
+                                      />
+                                      <Area 
+                                        type="monotone" 
+                                        dataKey="rr" 
+                                        stroke="#22c55e" 
+                                        fillOpacity={1}
+                                        fill={`url(#colorIsolatedRR-${execution.id})`}
+                                      />
+                                    </AreaChart>
+                                  </ResponsiveContainer>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Total cumulative RR note */}
+                            <div className="flex items-center justify-between p-2 md:p-3 border border-border bg-card rounded-md">
+                              <span className="text-[9px] md:text-xs text-muted-foreground font-mono uppercase">Cumul Total</span>
+                              <span className={cn(
+                                "text-sm md:text-base font-bold",
+                                context.cumulativeRR >= 0 ? "text-emerald-500" : "text-red-500"
+                              )}>
+                                {context.cumulativeRR >= 0 ? "+" : ""}{context.cumulativeRR.toFixed(2)} RR
+                              </span>
+                            </div>
+                          </>
+                        );
+                      })()}
 
                       {/* Screenshot */}
                       {execution.screenshot_url && (
