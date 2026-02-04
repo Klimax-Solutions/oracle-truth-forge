@@ -643,97 +643,98 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-border flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-foreground mb-1">
-            Saisie des Exécutions
-          </h2>
-          <p className="text-sm text-muted-foreground font-mono">
-            Entrez vos trades pour validation et analyse
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={handleExportCSV}>
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleNewEntry}>
-                <Plus className="w-4 h-4 mr-2" />
-                Nouveau Trade
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingId ? `Modifier Trade #${formData.trade_number}` : "Nouveau Trade"}
-                </DialogTitle>
-              </DialogHeader>
-              
-              {/* Form Grid */}
-              <div className="grid grid-cols-4 gap-4 py-4">
-                {/* Basic Info */}
-                <div className="space-y-2">
-                  <Label htmlFor="trade_number">N° Trade</Label>
-                  <Input
-                    id="trade_number"
-                    type="number"
-                    value={formData.trade_number}
-                    onChange={(e) => setFormData({ ...formData, trade_number: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Date Entrée</Label>
-                  <DatePicker
-                    value={formData.trade_date}
-                    onChange={(value) => setFormData({ ...formData, trade_date: value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Date Sortie</Label>
-                  <DatePicker
-                    value={formData.exit_date}
-                    onChange={(value) => setFormData({ ...formData, exit_date: value })}
-                  />
-                  {!isSameDay && formData.exit_date && (
-                    <p className="text-xs text-orange-400">Sortie J+{Math.ceil((new Date(formData.exit_date).getTime() - new Date(formData.trade_date).getTime()) / (1000 * 60 * 60 * 24))}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="direction">Direction</Label>
-                  <Select
-                    value={formData.direction}
-                    onValueChange={(v) => setFormData({ ...formData, direction: v as "Long" | "Short" })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Long">Long</SelectItem>
-                      <SelectItem value="Short">Short</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+      {/* Header - responsive */}
+      <div className="p-4 md:p-6 border-b border-border">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">
+              Saisie des Exécutions
+            </h2>
+            <p className="text-xs md:text-sm text-muted-foreground font-mono">
+              Entrez vos trades pour validation et analyse
+            </p>
+          </div>
+          <div className="flex items-center gap-2 md:gap-3">
+            <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1.5 flex-1 md:flex-none">
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Export</span>
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={handleNewEntry} className="gap-1.5 flex-1 md:flex-none">
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Nouveau</span> Trade
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-[95vw] md:max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingId ? `Modifier Trade #${formData.trade_number}` : "Nouveau Trade"}
+                  </DialogTitle>
+                </DialogHeader>
+                
+                {/* Form Grid - responsive */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 py-4">
+                  {/* Basic Info */}
+                  <div className="space-y-2">
+                    <Label htmlFor="trade_number" className="text-xs md:text-sm">N° Trade</Label>
+                    <Input
+                      id="trade_number"
+                      type="number"
+                      value={formData.trade_number}
+                      onChange={(e) => setFormData({ ...formData, trade_number: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs md:text-sm">Date Entrée</Label>
+                    <DatePicker
+                      value={formData.trade_date}
+                      onChange={(value) => setFormData({ ...formData, trade_date: value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs md:text-sm">Date Sortie</Label>
+                    <DatePicker
+                      value={formData.exit_date}
+                      onChange={(value) => setFormData({ ...formData, exit_date: value })}
+                    />
+                    {!isSameDay && formData.exit_date && (
+                      <p className="text-xs text-orange-400">Sortie J+{Math.ceil((new Date(formData.exit_date).getTime() - new Date(formData.trade_date).getTime()) / (1000 * 60 * 60 * 24))}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="direction" className="text-xs md:text-sm">Direction</Label>
+                    <Select
+                      value={formData.direction}
+                      onValueChange={(v) => setFormData({ ...formData, direction: v as "Long" | "Short" })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Long">Long</SelectItem>
+                        <SelectItem value="Short">Short</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Oracle Filter Fields */}
-                <div className="space-y-2">
-                  <Label htmlFor="setup_type">Setup Type</Label>
-                  <Select
-                    value={formData.setup_type}
-                    onValueChange={(v) => setFormData({ ...formData, setup_type: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SETUP_TYPES.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  {/* Oracle Filter Fields */}
+                  <div className="space-y-2">
+                    <Label htmlFor="setup_type" className="text-xs md:text-sm">Setup Type</Label>
+                    <Select
+                      value={formData.setup_type}
+                      onValueChange={(v) => setFormData({ ...formData, setup_type: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SETUP_TYPES.map(type => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 <div className="space-y-2">
                   <Label htmlFor="direction_structure">Structure</Label>
                   <Select

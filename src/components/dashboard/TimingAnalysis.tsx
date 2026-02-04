@@ -511,13 +511,13 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
           {/* Day cards */}
           <div className="mb-6">
             <p className="text-xs text-muted-foreground font-mono uppercase mb-3">Par Jour</p>
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
               {stats.dayData.map((day) => (
                 <button 
                   key={day.fullDay} 
                   onClick={() => handleDayClick(day.fullDay)}
                   className={cn(
-                    "p-4 border rounded-md text-left transition-all group bg-transparent",
+                    "p-3 md:p-4 border rounded-md text-left transition-all group bg-transparent",
                     day.rr > 0 
                       ? "border-emerald-500/40 hover:border-emerald-400" 
                       : day.rr < 0 
@@ -526,14 +526,14 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                   )}
                 >
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-mono uppercase text-muted-foreground mb-2">{day.fullDay}</p>
-                    <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <p className="text-xs md:text-sm font-mono uppercase text-muted-foreground mb-1 md:mb-2">{day.day}</p>
+                    <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hidden md:block" />
                   </div>
-                  <p className="text-xl font-bold text-foreground">
-                    {day.rr > 0 ? "+" : ""}{day.rr.toFixed(2)} RR
+                  <p className="text-base md:text-xl font-bold text-foreground truncate">
+                    {day.rr > 0 ? "+" : ""}{day.rr.toFixed(1)} RR
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">{day.trades} trades</p>
-                  <p className="text-xs text-emerald-500/80">≈ {day.euros >= 0 ? "+" : ""}{day.euros.toLocaleString("fr-FR")} €</p>
+                  <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">{day.trades} trades</p>
+                  <p className="text-[10px] text-emerald-500/80 hidden sm:block">≈ {day.euros >= 0 ? "+" : ""}{day.euros.toLocaleString("fr-FR")} €</p>
                 </button>
               ))}
             </div>
@@ -542,13 +542,13 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
           {/* Hour cards - clickable */}
           <div className="mb-6">
             <p className="text-xs text-muted-foreground font-mono uppercase mb-3">Par Heure</p>
-            <div className="grid grid-cols-8 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
               {stats.hourData.map((hour) => (
                 <button 
                   key={hour.hourKey}
                   onClick={() => handleHourClick(hour.hourKey)}
                   className={cn(
-                    "p-3 border rounded-md text-left transition-all group bg-transparent",
+                    "p-2 md:p-3 border rounded-md text-left transition-all group bg-transparent",
                     hour.rr > 0 
                       ? "border-emerald-500/40 hover:border-emerald-400" 
                       : hour.rr < 0 
@@ -556,14 +556,11 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                       : "border-border/40 hover:border-muted-foreground/50"
                   )}
                 >
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-mono uppercase text-muted-foreground mb-1">{hour.hour}</p>
-                    <ExternalLink className="w-2 h-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                  <p className="text-base font-bold text-foreground">
-                    {hour.rr > 0 ? "+" : ""}{hour.rr.toFixed(1)} RR
+                  <p className="text-[10px] md:text-xs font-mono uppercase text-muted-foreground mb-0.5 md:mb-1">{hour.hour}</p>
+                  <p className="text-sm md:text-base font-bold text-foreground">
+                    {hour.rr > 0 ? "+" : ""}{hour.rr.toFixed(1)}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">{hour.trades} trades</p>
+                  <p className="text-[9px] md:text-[10px] text-muted-foreground">{hour.trades}t</p>
                 </button>
               ))}
             </div>
@@ -572,13 +569,13 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
           {/* Week cards - clickable */}
           <div className="mb-6">
             <p className="text-xs text-muted-foreground font-mono uppercase mb-3">Par Semaine (8 dernières)</p>
-            <div className="grid grid-cols-8 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
               {stats.weekData.slice(-8).map((week) => (
                 <button 
                   key={week.week}
                   onClick={() => handleWeekClick(week.week)}
                   className={cn(
-                    "p-3 border rounded-md text-left transition-all group bg-transparent",
+                    "p-2 md:p-3 border rounded-md text-left transition-all group bg-transparent",
                     week.rr > 0 
                       ? "border-emerald-500/40 hover:border-emerald-400" 
                       : week.rr < 0 
@@ -586,14 +583,11 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                       : "border-border/40 hover:border-muted-foreground/50"
                   )}
                 >
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-mono uppercase text-muted-foreground mb-1">{week.label}</p>
-                    <ExternalLink className="w-2 h-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                  <p className="text-sm font-bold text-foreground">
-                    {week.rr > 0 ? "+" : ""}{week.rr.toFixed(1)} RR
+                  <p className="text-[9px] md:text-[10px] font-mono uppercase text-muted-foreground mb-0.5 md:mb-1 truncate">{week.label}</p>
+                  <p className="text-xs md:text-sm font-bold text-foreground">
+                    {week.rr > 0 ? "+" : ""}{week.rr.toFixed(1)}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">{week.trades} trades</p>
+                  <p className="text-[9px] md:text-[10px] text-muted-foreground">{week.trades}t</p>
                 </button>
               ))}
             </div>
@@ -602,13 +596,13 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
           {/* Quarter cards - clickable */}
           <div className="mb-6">
             <p className="text-xs text-muted-foreground font-mono uppercase mb-3">Par Trimestre</p>
-            <div className="grid grid-cols-8 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
               {stats.quarterData.map((quarter) => (
                 <button 
                   key={quarter.quarter}
                   onClick={() => handleQuarterClick(quarter.label)}
                   className={cn(
-                    "p-3 border rounded-md text-left transition-all group bg-transparent",
+                    "p-2 md:p-3 border rounded-md text-left transition-all group bg-transparent",
                     quarter.rr > 0 
                       ? "border-emerald-500/40 hover:border-emerald-400" 
                       : quarter.rr < 0 
@@ -616,30 +610,26 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                       : "border-border/40 hover:border-muted-foreground/50"
                   )}
                 >
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-mono uppercase text-muted-foreground mb-1">{quarter.label}</p>
-                    <ExternalLink className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                  <p className="text-lg font-bold text-foreground">
-                    {quarter.rr > 0 ? "+" : ""}{quarter.rr.toFixed(1)} RR
+                  <p className="text-[10px] md:text-xs font-mono uppercase text-muted-foreground mb-0.5 md:mb-1">{quarter.label}</p>
+                  <p className="text-sm md:text-lg font-bold text-foreground">
+                    {quarter.rr > 0 ? "+" : ""}{quarter.rr.toFixed(1)}
                   </p>
-                  <p className="text-[10px] text-muted-foreground mt-1">{quarter.trades} trades</p>
-                  <p className="text-[10px] text-emerald-500/80">≈ {quarter.euros >= 0 ? "+" : ""}{quarter.euros.toLocaleString("fr-FR")} €</p>
+                  <p className="text-[9px] md:text-[10px] text-muted-foreground mt-0.5 md:mt-1">{quarter.trades}t</p>
                 </button>
               ))}
             </div>
           </div>
 
           {/* Year cards - clickable */}
-          <div>
+          <div className="mb-6">
             <p className="text-xs text-muted-foreground font-mono uppercase mb-3">Par Année</p>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
               {stats.yearData.map((year) => (
                 <button 
                   key={year.year}
                   onClick={() => handleYearClick(year.year)}
                   className={cn(
-                    "p-4 border rounded-md text-left transition-all group bg-transparent",
+                    "p-3 md:p-4 border rounded-md text-left transition-all group bg-transparent",
                     year.rr > 0 
                       ? "border-emerald-500/40 hover:border-emerald-400" 
                       : year.rr < 0 
@@ -647,15 +637,11 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
                       : "border-border/40 hover:border-muted-foreground/50"
                   )}
                 >
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-mono uppercase text-muted-foreground mb-2">{year.year}</p>
-                    <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                  <p className="text-xl font-bold text-foreground">
+                  <p className="text-xs md:text-sm font-mono uppercase text-muted-foreground mb-1 md:mb-2">{year.year}</p>
+                  <p className="text-lg md:text-xl font-bold text-foreground">
                     {year.rr > 0 ? "+" : ""}{year.rr.toFixed(1)} RR
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">{year.trades} trades</p>
-                  <p className="text-xs text-emerald-500/80">≈ {year.euros >= 0 ? "+" : ""}{year.euros.toLocaleString("fr-FR")} €</p>
+                  <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">{year.trades} trades</p>
                 </button>
               ))}
             </div>
@@ -663,34 +649,34 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
         </div>
 
         {/* Summary stats */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="border border-emerald-500/40 p-4 bg-transparent rounded-md">
-            <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider mb-1">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+          <div className="border border-emerald-500/40 p-3 md:p-4 bg-transparent rounded-md">
+            <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase tracking-wider mb-1">
               Total Cumulé
             </p>
-            <p className="text-xl font-bold text-emerald-500">+{totalRR.toFixed(1)} RR</p>
-            <p className="text-sm text-muted-foreground mt-1">≈ +{(totalRR * 1000).toLocaleString("fr-FR")} €</p>
+            <p className="text-lg md:text-xl font-bold text-emerald-500">+{totalRR.toFixed(1)} RR</p>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1 hidden sm:block">≈ +{(totalRR * 1000).toLocaleString("fr-FR")} €</p>
           </div>
-          <div className="border border-emerald-500/40 p-4 bg-transparent rounded-md">
-            <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider mb-1">
+          <div className="border border-emerald-500/40 p-3 md:p-4 bg-transparent rounded-md">
+            <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase tracking-wider mb-1">
               Meilleur Jour
             </p>
-            <p className="text-lg font-bold text-foreground">{stats.bestDay?.fullDay || "N/A"}</p>
-            <p className="text-sm text-emerald-500 font-mono">+{stats.bestDay?.rr || 0} RR</p>
+            <p className="text-sm md:text-lg font-bold text-foreground">{stats.bestDay?.day || "N/A"}</p>
+            <p className="text-xs md:text-sm text-emerald-500 font-mono">+{stats.bestDay?.rr || 0} RR</p>
           </div>
-          <div className="border border-red-500/40 p-4 bg-transparent rounded-md">
-            <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider mb-1">
+          <div className="border border-red-500/40 p-3 md:p-4 bg-transparent rounded-md">
+            <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase tracking-wider mb-1">
               Pire Jour
             </p>
-            <p className="text-lg font-bold text-foreground">{stats.worstDay?.fullDay || "N/A"}</p>
-            <p className="text-sm text-red-500 font-mono">{stats.worstDay?.rr || 0} RR</p>
+            <p className="text-sm md:text-lg font-bold text-foreground">{stats.worstDay?.day || "N/A"}</p>
+            <p className="text-xs md:text-sm text-red-500 font-mono">{stats.worstDay?.rr || 0} RR</p>
           </div>
-          <div className="border border-border/40 p-4 bg-transparent rounded-md">
-            <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider mb-1">
+          <div className="border border-border/40 p-3 md:p-4 bg-transparent rounded-md">
+            <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase tracking-wider mb-1">
               Meilleure Heure
             </p>
-            <p className="text-lg font-bold text-foreground">{stats.bestHour?.hour || "N/A"}</p>
-            <p className="text-sm text-muted-foreground font-mono">+{stats.bestHour?.rr || 0} RR</p>
+            <p className="text-sm md:text-lg font-bold text-foreground">{stats.bestHour?.hour || "N/A"}</p>
+            <p className="text-xs md:text-sm text-muted-foreground font-mono">+{stats.bestHour?.rr || 0} RR</p>
           </div>
         </div>
       </div>

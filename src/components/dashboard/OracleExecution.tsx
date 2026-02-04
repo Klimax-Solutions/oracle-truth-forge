@@ -410,46 +410,57 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
               )}
               onClick={() => setExpandedCycle(expandedCycle === 0 ? null : 0)}
             >
-              <div className="flex items-center justify-between mb-4">
+              {/* Mobile: stacked layout / Desktop: side by side */}
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
                   <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center",
+                    "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0",
                     ebauche.userCycle?.status === 'validated' 
                       ? "bg-emerald-500/20" 
                       : "bg-muted"
                   )}>
-                    <Play className="w-5 h-5 text-foreground" />
+                    <Play className="w-4 h-4 md:w-5 md:h-5 text-foreground" />
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-foreground">Ébauche</h4>
-                    <p className="text-xs text-muted-foreground">
+                  <div className="min-w-0">
+                    <h4 className="font-semibold text-foreground text-sm md:text-base">Ébauche</h4>
+                    <p className="text-[10px] md:text-xs text-muted-foreground truncate">
                       Première découverte du setup Oracle
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                <div className="text-right">
-                    <p className="text-sm font-mono text-foreground">
-                      {ebauche.userExecutions.length} / {ebauche.total_trades}
-                    </p>
-                    <p className={cn(
-                      "text-xs font-mono",
+                
+                {/* Stats row - responsive grid on mobile */}
+                <div className="flex flex-wrap items-center gap-2 md:gap-4">
+                  <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-md md:bg-transparent md:px-0 md:py-0">
+                    <span className="text-xs md:text-sm font-mono text-foreground">
+                      {ebauche.userExecutions.length}/{ebauche.total_trades}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground hidden md:inline">trades</span>
+                  </div>
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-2 py-1 rounded-md md:bg-transparent md:px-0 md:py-0",
+                    ebauche.userRR >= 0 ? "bg-emerald-500/10 md:bg-transparent" : "bg-red-500/10 md:bg-transparent"
+                  )}>
+                    <span className={cn(
+                      "text-xs md:text-sm font-mono",
                       ebauche.userRR >= 0 ? "text-emerald-400" : "text-red-400"
                     )}>
                       {ebauche.userRR >= 0 ? "+" : ""}{ebauche.userRR.toFixed(1)} RR
-                    </p>
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 md:bg-transparent md:px-0 md:py-0">
                     {getStatusIcon(ebauche.userCycle?.status)}
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-[10px] md:text-xs text-muted-foreground">
                       {getStatusLabel(ebauche.userCycle?.status)}
                     </span>
                   </div>
-                  {expandedCycle === 0 ? (
-                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                  )}
+                  <div className="hidden md:block">
+                    {expandedCycle === 0 ? (
+                      <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </div>
                 </div>
               </div>
               
@@ -524,7 +535,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
             </span>
           </div>
           
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {phase1Cycles.map((cycle) => (
               <CycleCard
                 key={cycle.id}
@@ -554,7 +565,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
             </span>
           </div>
           
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {phase2Cycles.map((cycle) => (
               <CycleCard
                 key={cycle.id}
@@ -585,7 +596,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
               </span>
             </div>
             
-            <div className="grid grid-cols-5 gap-2 max-h-64 overflow-auto">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-64 overflow-auto">
               {Array.from({ length: currentCycle.total_trades }, (_, i) => {
                 const tradeNumber = currentCycle.trade_start + i;
                 const userExec = currentCycle.userExecutions.find(e => e.trade_number === tradeNumber);

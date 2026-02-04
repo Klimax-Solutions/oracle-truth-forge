@@ -189,29 +189,31 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header with stats - redesigned */}
-      <div className="p-4 border-b border-border bg-card">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-              <span className="text-base font-bold text-foreground">{totalTrades}</span>
-              <span className="text-[10px] text-muted-foreground font-mono uppercase">trades</span>
+      {/* Header with stats - redesigned & responsive */}
+      <div className="p-3 md:p-4 border-b border-border bg-card">
+        {/* Mobile: Stack stats and filters */}
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          {/* Stats row - scrollable on mobile */}
+          <div className="flex items-center gap-3 md:gap-6 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+            <div className="flex items-center gap-1.5 md:gap-3 flex-shrink-0">
+              <span className="text-sm md:text-base font-bold text-foreground">{totalTrades}</span>
+              <span className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase">trades</span>
             </div>
-            <div className="w-px h-5 bg-border" />
-            <div className="flex items-center gap-3">
-              <span className="text-base font-bold text-emerald-400">+{totalRR.toFixed(1)}</span>
-              <span className="text-[10px] text-muted-foreground font-mono uppercase">RR</span>
+            <div className="w-px h-4 md:h-5 bg-border flex-shrink-0" />
+            <div className="flex items-center gap-1.5 md:gap-3 flex-shrink-0">
+              <span className="text-sm md:text-base font-bold text-emerald-400">+{totalRR.toFixed(1)}</span>
+              <span className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase">RR</span>
             </div>
-            <div className="w-px h-5 bg-border" />
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-emerald-400 font-mono">{longTrades} LONG</span>
+            <div className="w-px h-4 md:h-5 bg-border flex-shrink-0 hidden sm:block" />
+            <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+              <span className="text-xs text-emerald-400 font-mono">{longTrades} L</span>
               <span className="text-muted-foreground">•</span>
-              <span className="text-xs text-red-400 font-mono">{shortTrades} SHORT</span>
+              <span className="text-xs text-red-400 font-mono">{shortTrades} S</span>
             </div>
           </div>
 
-          {/* Filters - Modern design with rounded corners */}
-          <div className="flex items-center gap-1.5">
+          {/* Filters - horizontal scroll on mobile */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
             {activeFiltersCount > 0 && (
               <button
                 onClick={clearFilters}
