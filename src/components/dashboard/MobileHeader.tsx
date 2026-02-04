@@ -52,12 +52,12 @@ export const MobileHeader = ({
 
   return (
     <header className="md:hidden border-b border-border bg-card sticky top-0 z-50">
-      <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between px-3 py-2.5 gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0">
-                <Menu className="w-5 h-5" />
+              <Button variant="ghost" size="icon" className="shrink-0 w-8 h-8">
+                <Menu className="w-4 h-4" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-0">
@@ -100,14 +100,14 @@ export const MobileHeader = ({
               </div>
             </SheetContent>
           </Sheet>
-          <div className="flex items-center gap-2">
-            {currentTab && <currentTab.icon className="w-4 h-4 text-muted-foreground" />}
-            <span className="text-sm font-medium text-foreground truncate max-w-[150px]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {currentTab && <currentTab.icon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />}
+            <span className="text-xs font-medium text-foreground truncate">
               {currentTab?.label || "Oracle"}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {dataSourceSelector}
           <ThemeToggle />
         </div>

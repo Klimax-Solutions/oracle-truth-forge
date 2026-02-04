@@ -25,9 +25,9 @@ export const DataSourceSelector = ({ value, onChange }: DataSourceSelectorProps)
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2 h-9">
-          <Database className="w-4 h-4" />
-          <span className="text-xs">{LABELS[value]}</span>
+        <Button variant="outline" size="sm" className="gap-1.5 h-8 px-2 md:px-3">
+          <Database className="w-3.5 h-3.5" />
+          <span className="text-[10px] md:text-xs hidden xs:inline">{LABELS[value]}</span>
           <ChevronDown className="w-3 h-3 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
