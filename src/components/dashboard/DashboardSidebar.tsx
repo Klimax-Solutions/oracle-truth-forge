@@ -30,13 +30,11 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
 
   useEffect(() => {
     const checkRoles = async () => {
-      // Check if user is admin
       const { data: isAdminData } = await supabase.rpc('is_admin');
       if (isAdminData) {
         setIsAdmin(true);
       }
       
-      // Check if user is super_admin
       const { data: isSuperAdminData } = await supabase.rpc('is_super_admin');
       if (isSuperAdminData) {
         setIsSuperAdmin(true);
@@ -56,7 +54,7 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
   return (
     <aside 
       className={cn(
-        "border-r border-border bg-card flex flex-col transition-all duration-300 ease-out",
+        "hidden md:flex border-r border-border bg-card flex-col transition-all duration-300 ease-out",
         isExpanded ? "w-64" : "w-16"
       )}
       onMouseEnter={() => setIsExpanded(true)}
@@ -115,4 +113,27 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
       )}
     </aside>
   );
+};
+
+// Export admin/role state hook for use in Dashboard
+export const useSidebarRoles = () => {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkRoles = async () => {
+      const { data: isAdminData } = await supabase.rpc('is_admin');
+      if (isAdminData) {
+        setIsAdmin(true);
+      }
+      
+      const { data: isSuperAdminData } = await supabase.rpc('is_super_admin');
+      if (isSuperAdminData) {
+        setIsSuperAdmin(true);
+      }
+    };
+    checkRoles();
+  }, []);
+
+  return { isAdmin, isSuperAdmin };
 };

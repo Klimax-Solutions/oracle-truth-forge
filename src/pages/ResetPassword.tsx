@@ -107,34 +107,34 @@ const ResetPassword = () => {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
-      <div className="absolute top-4 right-4 z-20">
+      <div className="absolute top-3 right-3 md:top-4 md:right-4 z-20">
         <ThemeToggle />
       </div>
 
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6">
-        <div className="text-center mb-16">
-          <p className="text-xs font-mono uppercase tracking-[0.4em] text-muted-foreground mb-6">
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 md:px-6 py-8">
+        <div className="text-center mb-8 md:mb-16">
+          <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.3em] md:tracking-[0.4em] text-muted-foreground mb-4 md:mb-6">
             Réinitialisation
           </p>
-          <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-foreground">
-            Oracle<sup className="text-xl md:text-2xl font-normal align-super ml-1">™</sup>
+          <h1 className="text-4xl md:text-5xl lg:text-7xl font-semibold tracking-tight text-foreground">
+            Oracle<sup className="text-lg md:text-xl lg:text-2xl font-normal align-super ml-0.5 md:ml-1">™</sup>
           </h1>
         </div>
 
-        <div className="w-full max-w-md h-px bg-border mb-12" />
+        <div className="w-full max-w-md h-px bg-border mb-8 md:mb-12" />
 
         <div className="w-full max-w-md">
-          <div className="border border-border bg-card p-8 rounded-md">
-            <div className="mb-8">
-              <h2 className="text-lg font-bold text-foreground mb-1">
+          <div className="border border-border bg-card p-6 md:p-8 rounded-md">
+            <div className="mb-6 md:mb-8">
+              <h2 className="text-base md:text-lg font-bold text-foreground mb-1">
                 Nouveau mot de passe
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs md:text-sm text-muted-foreground">
                 Choisissez un nouveau mot de passe sécurisé
               </p>
             </div>
 
-            <form onSubmit={handleResetPassword} className="space-y-6">
+            <form onSubmit={handleResetPassword} className="space-y-4 md:space-y-6">
               <div className="space-y-2">
                 <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
                   Nouveau mot de passe
@@ -216,7 +216,7 @@ const ResetPassword = () => {
           </div>
         </div>
 
-        <p className="mt-16 text-xs text-muted-foreground font-mono uppercase tracking-[0.3em]">
+        <p className="mt-8 md:mt-16 text-[10px] md:text-xs text-muted-foreground font-mono uppercase tracking-[0.2em] md:tracking-[0.3em] text-center">
           Oracle © 2026 — Accès confidentiel
         </p>
       </div>

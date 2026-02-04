@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
-import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { DashboardSidebar, useSidebarRoles } from "@/components/dashboard/DashboardSidebar";
+import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DataSourceSelector, DataSource } from "@/components/dashboard/DataSourceSelector";
 import { usePersonalTrades } from "@/hooks/usePersonalTrades";
@@ -58,6 +59,7 @@ const Dashboard = () => {
   const [databaseFilters, setDatabaseFilters] = useState<any>(null);
   const [dataSource, setDataSource] = useState<DataSource>("all");
   const { trades: personalTrades } = usePersonalTrades();
+  const { isAdmin, isSuperAdmin } = useSidebarRoles();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -87,7 +89,6 @@ const Dashboard = () => {
   useEffect(() => {
     fetchTrades();
     
-    // Subscribe to trades changes for real-time updates (e.g., after screenshot uploads)
     const channel = supabase
       .channel('trades_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'trades' }, () => {
@@ -100,7 +101,6 @@ const Dashboard = () => {
     };
   }, [user]);
 
-  // Listen for navigation event from BatchImportPage
   useEffect(() => {
     const handleNavigateToOracleScreenshots = () => {
       const screenshotFilters = {
@@ -146,7 +146,6 @@ const Dashboard = () => {
   };
 
   const handleNavigateToDatabase = (filters: TimingFilters) => {
-    // Convert timing filters to database filters format
     const newFilters: any = {
       direction: [],
       direction_structure: [],
@@ -173,12 +172,10 @@ const Dashboard = () => {
     );
   }
 
-  // Combine trades based on data source
   const getDisplayTrades = () => {
-    // Convert personal trades to match Trade interface
     const personalTradesFormatted = personalTrades.map(pt => ({
       id: pt.id,
-      trade_number: pt.trade_number + 1000, // Offset to avoid conflicts with Oracle trades
+      trade_number: pt.trade_number + 1000,
       trade_date: pt.trade_date,
       day_of_week: pt.day_of_week,
       direction: pt.direction,
@@ -206,13 +203,10 @@ const Dashboard = () => {
     if (dataSource === "oracle") {
       return trades;
     }
-    // "all" - combine both
     return [...trades, ...personalTradesFormatted];
   };
 
   const displayTrades = getDisplayTrades();
-
-  // Check if data source selector should be shown
   const showDataSourceSelector = ["journal", "distribution", "timing"].includes(activeTab);
 
   const renderContent = () => {
@@ -241,14 +235,27 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
+    <div className="min-h-screen bg-background flex flex-col md:flex-row">
+      {/* Mobile Header */}
+      <MobileHeader
+        userEmail={user?.email || ""}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onLogout={handleLogout}
+        isAdmin={isAdmin}
+        isSuperAdmin={isSuperAdmin}
+        dataSourceSelector={showDataSourceSelector ? (
+          <DataSourceSelector value={dataSource} onChange={setDataSource} />
+        ) : undefined}
+      />
+
+      {/* Desktop Sidebar */}
       <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen">
-        {/* Header */}
-        <header className="border-b border-border bg-card">
+      <div className="flex-1 flex flex-col min-h-0 md:min-h-screen">
+        {/* Desktop Header - hidden on mobile */}
+        <header className="hidden md:block border-b border-border bg-card">
           <div className="px-6 py-4 flex items-center justify-between">
             <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
               {user?.email}
