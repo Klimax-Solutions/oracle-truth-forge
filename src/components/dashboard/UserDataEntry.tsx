@@ -973,6 +973,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
             </DialogContent>
           </Dialog>
         </div>
+        </div>
       </div>
 
       {/* Cycle Progress & Timer */}
