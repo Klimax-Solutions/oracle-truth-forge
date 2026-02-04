@@ -533,31 +533,31 @@ export const AdminVerification = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-border">
-        <div className="flex items-center gap-3 mb-1">
-          <Shield className="w-6 h-6 text-primary" />
-          <h2 className="text-xl font-semibold text-foreground">
+      <div className="p-4 md:p-6 border-b border-border">
+        <div className="flex items-center gap-2 md:gap-3 mb-1">
+          <Shield className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+          <h2 className="text-lg md:text-xl font-semibold text-foreground">
             Panel Administrateur
           </h2>
         </div>
-        <p className="text-sm text-muted-foreground font-mono">
+        <p className="text-xs md:text-sm text-muted-foreground font-mono">
           Gestion des utilisateurs et vérification des cycles Oracle
         </p>
       </div>
 
-      <div className="flex-1 p-6 overflow-hidden">
+      <div className="flex-1 p-4 md:p-6 overflow-hidden">
         <Tabs defaultValue="users" className="h-full flex flex-col">
-          <TabsList className="mb-4 self-start">
-            <TabsTrigger value="users" className="gap-2">
-              <Users className="w-4 h-4" />
-              Utilisateurs ({users.length})
+          <TabsList className="mb-4 self-start flex-wrap gap-1 h-auto">
+            <TabsTrigger value="users" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Utilisateurs</span> ({users.length})
             </TabsTrigger>
-            <TabsTrigger value="verifications" className="gap-2">
-              <Clock className="w-4 h-4" />
-              Vérifications ({requests.length})
+            <TabsTrigger value="verifications" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <Clock className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Vérifications</span> ({requests.length})
             </TabsTrigger>
-            <TabsTrigger value="followup" className="gap-2">
-              <ClipboardList className="w-4 h-4" />
+            <TabsTrigger value="followup" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <ClipboardList className="w-3.5 h-3.5 md:w-4 md:h-4" />
               Suivi
             </TabsTrigger>
           </TabsList>
@@ -580,35 +580,35 @@ export const AdminVerification = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {/* Stats Summary */}
-                <div className="grid grid-cols-4 gap-3 mb-6">
-                  <div className="p-4 bg-card border border-border rounded-md">
-                    <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
-                      Total Membres
+                {/* Stats Summary - responsive grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-4 md:mb-6">
+                  <div className="p-3 md:p-4 bg-card border border-border rounded-md">
+                    <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                      Total
                     </p>
-                    <p className="text-2xl font-bold text-foreground">{users.length}</p>
+                    <p className="text-xl md:text-2xl font-bold text-foreground">{users.length}</p>
                   </div>
-                  <div className="p-4 bg-card border border-border rounded-md">
-                    <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                  <div className="p-3 md:p-4 bg-card border border-border rounded-md">
+                    <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase mb-1">
                       En Attente
                     </p>
-                    <p className="text-2xl font-bold text-orange-400">
+                    <p className="text-xl md:text-2xl font-bold text-orange-400">
                       {users.filter(u => u.status === "pending").length}
                     </p>
                   </div>
-                  <div className="p-4 bg-card border border-border rounded-md">
-                    <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                  <div className="p-3 md:p-4 bg-card border border-border rounded-md">
+                    <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase mb-1">
                       Actifs
                     </p>
-                    <p className="text-2xl font-bold text-blue-400">
+                    <p className="text-xl md:text-2xl font-bold text-blue-400">
                       {users.filter(u => u.status === "active").length}
                     </p>
                   </div>
-                  <div className="p-4 bg-card border border-border rounded-md">
-                    <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">
-                      Diplômés Oracle
+                  <div className="p-3 md:p-4 bg-card border border-border rounded-md">
+                    <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase mb-1">
+                      Diplômés
                     </p>
-                    <p className="text-2xl font-bold text-emerald-400">
+                    <p className="text-xl md:text-2xl font-bold text-emerald-400">
                       {users.filter(u => u.status === "completed").length}
                     </p>
                   </div>
@@ -637,9 +637,9 @@ export const AdminVerification = () => {
                         onClick={() => setExpandedUser(isExpanded ? null : user.id)}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2 md:gap-4 min-w-0">
                             <div className={cn(
-                              "w-10 h-10 rounded-full flex items-center justify-center",
+                              "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0",
                               user.status === "pending" 
                                 ? "bg-orange-500/20" 
                                 : user.status === "completed"
@@ -647,59 +647,59 @@ export const AdminVerification = () => {
                                   : "bg-primary/20"
                             )}>
                               {user.status === "completed" ? (
-                                <Award className="w-5 h-5 text-emerald-400" />
+                                <Award className="w-4 h-4 md:w-5 md:h-5 text-emerald-400" />
                               ) : (
                                 <User className={cn(
-                                  "w-5 h-5",
+                                  "w-4 h-4 md:w-5 md:h-5",
                                   user.status === "pending" ? "text-orange-400" : "text-primary"
                                 )} />
                               )}
                             </div>
-                            <div>
-                              <h4 className="font-semibold text-foreground text-sm">
+                            <div className="min-w-0">
+                              <h4 className="font-semibold text-foreground text-xs md:text-sm truncate">
                                 {user.displayName}
                               </h4>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <p className="text-xs text-muted-foreground font-mono">
-                                  {user.currentCycle?.name || "Aucun cycle actif"}
+                              <div className="flex items-center gap-1 md:gap-2 mt-0.5">
+                                <p className="text-[10px] md:text-xs text-muted-foreground font-mono truncate">
+                                  {user.currentCycle?.name || "—"}
                                 </p>
                                 {user.status === "pending" && (
-                                  <span className="px-1.5 py-0.5 text-[10px] font-mono uppercase bg-orange-500/20 text-orange-400 rounded">
-                                    Vérification
+                                  <span className="px-1 py-0.5 text-[8px] md:text-[10px] font-mono uppercase bg-orange-500/20 text-orange-400 rounded flex-shrink-0">
+                                    Vérif
                                   </span>
                                 )}
                               </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-6">
-                            {/* Progress */}
-                            <div className="text-right">
-                              <p className="text-sm font-bold text-foreground">
+                          <div className="flex items-center gap-2 md:gap-6 flex-shrink-0">
+                            {/* Progress - hidden on mobile */}
+                            <div className="text-right hidden sm:block">
+                              <p className="text-xs md:text-sm font-bold text-foreground">
                                 {progress.toFixed(0)}%
                               </p>
-                              <p className="text-[10px] text-muted-foreground font-mono">
-                                Progression
+                              <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono">
+                                Prog.
                               </p>
                             </div>
 
                             {/* Total RR */}
-                            <div className="text-right min-w-[80px]">
+                            <div className="text-right min-w-[50px] md:min-w-[80px]">
                               <p className={cn(
-                                "text-sm font-bold",
+                                "text-xs md:text-sm font-bold",
                                 user.totalRR >= 0 ? "text-emerald-400" : "text-red-400"
                               )}>
-                                {user.totalRR >= 0 ? "+" : ""}{user.totalRR.toFixed(1)} RR
+                                {user.totalRR >= 0 ? "+" : ""}{user.totalRR.toFixed(1)}
                               </p>
-                              <p className="text-[10px] text-muted-foreground font-mono">
-                                {user.totalTrades} trades
+                              <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono">
+                                {user.totalTrades}t
                               </p>
                             </div>
 
                             {isExpanded ? (
-                              <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                              <ChevronUp className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
                             ) : (
-                              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                              <ChevronDown className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
                             )}
                           </div>
                         </div>
@@ -718,13 +718,13 @@ export const AdminVerification = () => {
 
                       {/* Expanded Content - Cycle Grid + Trades Detail */}
                       {isExpanded && (
-                        <div className="border-t border-border/50 p-4 space-y-6">
-                          {/* Cycle Grid */}
-                          <div>
-                            <p className="text-xs font-mono uppercase text-muted-foreground mb-3">
-                              Détail des cycles
-                            </p>
-                            <div className="grid grid-cols-9 gap-2">
+                          <div className="border-t border-border/50 p-3 md:p-4 space-y-4 md:space-y-6">
+                            {/* Cycle Grid - responsive */}
+                            <div>
+                              <p className="text-[10px] md:text-xs font-mono uppercase text-muted-foreground mb-2 md:mb-3">
+                                Détail des cycles
+                              </p>
+                              <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-1.5 md:gap-2">
                               {cycles.map((cycle) => {
                                 const userCycle = user.userCycles.find(uc => uc.cycle_id === cycle.id);
                                 const status = userCycle?.status || "locked";

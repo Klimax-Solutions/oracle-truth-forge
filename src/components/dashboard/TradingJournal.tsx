@@ -371,42 +371,42 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                         </div>
                       </div>
 
-                      {/* Stats row */}
-                      <div className="grid grid-cols-4 gap-3">
-                        <div className="border border-border p-3 bg-transparent rounded-md">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Clock className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground font-mono uppercase">Entrée</span>
+                      {/* Stats row - responsive grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                        <div className="border border-border p-2 md:p-3 bg-transparent rounded-md">
+                          <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
+                            <Clock className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+                            <span className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase">Entrée</span>
                           </div>
-                          <p className="text-lg font-bold text-foreground">{selectedTrade.entry_time || "—"}</p>
+                          <p className="text-sm md:text-lg font-bold text-foreground">{selectedTrade.entry_time || "—"}</p>
                         </div>
-                        <div className="border border-border p-3 bg-transparent rounded-md">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Clock className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground font-mono uppercase">Sortie</span>
+                        <div className="border border-border p-2 md:p-3 bg-transparent rounded-md">
+                          <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
+                            <Clock className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+                            <span className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase">Sortie</span>
                           </div>
-                          <p className="text-lg font-bold text-foreground">{selectedTrade.exit_time || "—"}</p>
+                          <p className="text-sm md:text-lg font-bold text-foreground">{selectedTrade.exit_time || "—"}</p>
                         </div>
-                        <div className="border border-border p-3 bg-transparent rounded-md">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Target className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground font-mono uppercase">Durée</span>
+                        <div className="border border-border p-2 md:p-3 bg-transparent rounded-md">
+                          <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
+                            <Target className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+                            <span className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase">Durée</span>
                           </div>
-                          <p className="text-lg font-bold text-foreground">{selectedTrade.trade_duration || "—"}</p>
+                          <p className="text-sm md:text-lg font-bold text-foreground">{selectedTrade.trade_duration || "—"}</p>
                         </div>
-                        <div className="border border-border p-3 bg-transparent rounded-md">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Calendar className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground font-mono uppercase">News</span>
+                        <div className="border border-border p-2 md:p-3 bg-transparent rounded-md">
+                          <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
+                            <Calendar className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+                            <span className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase">News</span>
                           </div>
-                          <p className="text-lg font-bold text-foreground">
+                          <p className="text-sm md:text-lg font-bold text-foreground">
                             {selectedTrade.news_day ? (selectedTrade.news_label || "Oui") : "Non"}
                           </p>
                         </div>
                       </div>
 
-                      {/* RR charts - improved with bar chart and isolated cumul */}
-                      <div className="grid grid-cols-2 gap-4">
+                      {/* RR charts - stacked on mobile */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                         {/* Bar chart - individual RR per trade */}
                         <div className="border border-border p-4 bg-transparent rounded-md">
                           <div className="flex items-center justify-between mb-4">

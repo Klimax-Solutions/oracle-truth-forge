@@ -399,33 +399,35 @@ export const SetupPerso = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-border">
-        <div className="flex items-center justify-between mb-4">
+      <div className="p-4 md:p-6 border-b border-border">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-foreground mb-1">Setup Perso</h2>
-            <p className="text-sm text-muted-foreground font-mono">
+            <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">Setup Perso</h2>
+            <p className="text-xs md:text-sm text-muted-foreground font-mono">
               Gérez vos trades personnels
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Variables Button - Left side */}
+          
+          {/* Actions - scrollable on mobile */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+            {/* Variables Button */}
             <Button 
               variant="outline" 
               size="sm" 
               onClick={() => setIsVariablesDialogOpen(true)}
-              className="gap-2"
+              className="gap-1.5 flex-shrink-0"
             >
               <Settings2 className="w-4 h-4" />
-              Variables
+              <span className="hidden sm:inline">Variables</span>
             </Button>
             
             {/* New Trade Button */}
-            <Button size="sm" onClick={handleNewTrade} className="gap-2">
+            <Button size="sm" onClick={handleNewTrade} className="gap-1.5 flex-shrink-0">
               <Plus className="w-4 h-4" />
-              Nouveau Trade
+              <span className="hidden sm:inline">Nouveau</span>
             </Button>
             
-            {/* CSV Import/Export - positioned like in Saisie des trades */}
+            {/* CSV Import/Export */}
             <input
               ref={fileInputRef}
               type="file"
@@ -438,14 +440,14 @@ export const SetupPerso = () => {
               size="sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={importing}
-              className="gap-2"
+              className="gap-1.5 flex-shrink-0"
             >
               {importing ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Upload className="w-4 h-4" />
               )}
-              Importer CSV
+              <span className="hidden sm:inline">Import</span>
             </Button>
             
             {trades.length > 0 && (
@@ -453,22 +455,22 @@ export const SetupPerso = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleExportCSV}
-                className="gap-2"
+                className="gap-1.5 flex-shrink-0"
               >
                 <Download className="w-4 h-4" />
-                Exporter CSV
+                <span className="hidden sm:inline">Export</span>
               </Button>
             )}
             
             {trades.length > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" className="gap-2">
+                  <Button variant="destructive" size="sm" className="gap-1.5 flex-shrink-0">
                     <Trash2 className="w-4 h-4" />
-                    Tout supprimer
+                    <span className="hidden sm:inline">Supprimer</span>
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className="max-w-[90vw] md:max-w-lg">
                   <AlertDialogHeader>
                     <AlertDialogTitle>Supprimer tous les trades ?</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -526,29 +528,29 @@ export const SetupPerso = () => {
 
       {/* Stats */}
       {trades.length > 0 && (
-        <div className="px-6 py-4 border-b border-border">
-          <div className="grid grid-cols-4 gap-4">
-            <div className="border border-emerald-500/30 p-4 bg-emerald-500/10 rounded-md">
-              <p className="text-xs text-muted-foreground font-mono uppercase mb-1">Total Trades</p>
-              <p className="text-2xl font-bold text-foreground">{trades.length}</p>
+        <div className="px-4 md:px-6 py-4 border-b border-border">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <div className="border border-emerald-500/30 p-3 md:p-4 bg-emerald-500/10 rounded-md">
+              <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-1">Total Trades</p>
+              <p className="text-xl md:text-2xl font-bold text-foreground">{trades.length}</p>
             </div>
-            <div className="border border-border p-4 rounded-md">
-              <p className="text-xs text-muted-foreground font-mono uppercase mb-1">RR Total</p>
+            <div className="border border-border p-3 md:p-4 rounded-md">
+              <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-1">RR Total</p>
               <p className={cn(
-                "text-2xl font-bold",
+                "text-xl md:text-2xl font-bold",
                 totalRR >= 0 ? "text-emerald-400" : "text-red-400"
               )}>
                 {totalRR >= 0 ? "+" : ""}{totalRR.toFixed(2)}
               </p>
             </div>
-            <div className="border border-border p-4 rounded-md">
-              <p className="text-xs text-muted-foreground font-mono uppercase mb-1">RR Moyen</p>
-              <p className="text-2xl font-bold text-foreground">{avgRR.toFixed(2)}</p>
+            <div className="border border-border p-3 md:p-4 rounded-md">
+              <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-1">RR Moyen</p>
+              <p className="text-xl md:text-2xl font-bold text-foreground">{avgRR.toFixed(2)}</p>
             </div>
-            <div className="border border-border p-4 rounded-md">
-              <p className="text-xs text-muted-foreground font-mono uppercase mb-1">Valeur (100K)</p>
+            <div className="border border-border p-3 md:p-4 rounded-md">
+              <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-1">Valeur (100K)</p>
               <p className={cn(
-                "text-2xl font-bold",
+                "text-xl md:text-2xl font-bold",
                 totalRR >= 0 ? "text-emerald-400" : "text-red-400"
               )}>
                 {totalRR >= 0 ? "+" : ""}{(totalRR * 1000).toLocaleString("fr-FR")} €
@@ -561,31 +563,29 @@ export const SetupPerso = () => {
       {/* Content */}
       <div className="flex-1 overflow-auto">
         {trades.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-8">
-            <FileSpreadsheet className="w-16 h-16 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">Aucun trade personnel</h3>
-            <p className="text-sm text-muted-foreground mb-6 max-w-md">
+          <div className="h-full flex flex-col items-center justify-center text-center p-4 md:p-8">
+            <FileSpreadsheet className="w-12 h-12 md:w-16 md:h-16 text-muted-foreground/50 mb-4" />
+            <h3 className="text-base md:text-lg font-semibold text-foreground mb-2">Aucun trade personnel</h3>
+            <p className="text-xs md:text-sm text-muted-foreground mb-6 max-w-md px-4">
               Ajoutez vos trades manuellement ou importez-les via un fichier CSV.
             </p>
-            <div className="flex items-center gap-3">
-              <Button onClick={handleNewTrade} className="gap-2">
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <Button onClick={handleNewTrade} className="gap-2 w-full sm:w-auto">
                 <Plus className="w-4 h-4" />
                 Ajouter un trade
               </Button>
-              <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2">
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2 w-full sm:w-auto">
                 <Upload className="w-4 h-4" />
-                Importer un fichier CSV
+                Importer CSV
               </Button>
             </div>
-            <div className="mt-8 text-left text-xs text-muted-foreground/60 bg-muted/30 p-4 rounded-md max-w-lg">
+            <div className="mt-6 md:mt-8 text-left text-[10px] md:text-xs text-muted-foreground/60 bg-muted/30 p-3 md:p-4 rounded-md max-w-lg mx-4">
               <p className="font-medium mb-2">Colonnes CSV supportées:</p>
               <ul className="space-y-1 list-disc list-inside">
-                <li><code>trade_number</code> (requis) - Numéro du trade</li>
-                <li><code>trade_date</code> (requis) - Date (YYYY-MM-DD)</li>
-                <li><code>direction</code> (requis) - Long ou Short</li>
-                <li><code>rr</code> - Risk/Reward</li>
-                <li><code>entry_time</code>, <code>exit_time</code> - Heures d'entrée/sortie</li>
-                <li><code>setup_type</code>, <code>entry_model</code>, <code>direction_structure</code></li>
+                <li><code>trade_number</code> (requis)</li>
+                <li><code>trade_date</code> (requis)</li>
+                <li><code>direction</code> (requis)</li>
+                <li><code>rr</code>, <code>entry_time</code>, <code>exit_time</code></li>
               </ul>
             </div>
           </div>

@@ -432,23 +432,23 @@ export const RoleManagement = () => {
   const dialogContent = getActionDialogContent();
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Gestion des Membres</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight">Gestion des Membres</h2>
+          <p className="text-xs md:text-sm text-muted-foreground">
             Gérez les rôles et le statut des utilisateurs
           </p>
         </div>
         
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button size="sm" className="w-full sm:w-auto">
               <UserPlus className="w-4 h-4 mr-2" />
-              Ajouter un Admin
+              Ajouter Admin
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-[90vw] md:max-w-md">
             <DialogHeader>
               <DialogTitle>Ajouter un rôle</DialogTitle>
               <DialogDescription>
@@ -488,11 +488,11 @@ export const RoleManagement = () => {
               </div>
             </div>
             
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => setDialogOpen(false)} className="w-full sm:w-auto">
                 Annuler
               </Button>
-              <Button onClick={addRole} disabled={!selectedUser}>
+              <Button onClick={addRole} disabled={!selectedUser} className="w-full sm:w-auto">
                 Ajouter
               </Button>
             </DialogFooter>
@@ -500,58 +500,141 @@ export const RoleManagement = () => {
         </Dialog>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="p-4 rounded-lg border bg-card">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <Crown className="w-4 h-4" />
-            <span className="text-sm">Super Admins</span>
+      {/* Stats - responsive grid */}
+      <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-4">
+        <div className="p-3 md:p-4 rounded-lg border bg-card">
+          <div className="flex items-center gap-1.5 md:gap-2 text-muted-foreground mb-1">
+            <Crown className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="text-[10px] md:text-sm">Super</span>
           </div>
-          <p className="text-2xl font-bold">
+          <p className="text-lg md:text-2xl font-bold">
             {users.filter(u => u.roles.includes('super_admin')).length}
           </p>
         </div>
-        <div className="p-4 rounded-lg border bg-card">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <ShieldCheck className="w-4 h-4" />
-            <span className="text-sm">Admins</span>
+        <div className="p-3 md:p-4 rounded-lg border bg-card">
+          <div className="flex items-center gap-1.5 md:gap-2 text-muted-foreground mb-1">
+            <ShieldCheck className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="text-[10px] md:text-sm">Admins</span>
           </div>
-          <p className="text-2xl font-bold">
+          <p className="text-lg md:text-2xl font-bold">
             {users.filter(u => u.roles.includes('admin')).length}
           </p>
         </div>
-        <div className="p-4 rounded-lg border bg-card">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <User className="w-4 h-4" />
-            <span className="text-sm">Membres actifs</span>
+        <div className="p-3 md:p-4 rounded-lg border bg-card">
+          <div className="flex items-center gap-1.5 md:gap-2 text-muted-foreground mb-1">
+            <User className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="text-[10px] md:text-sm">Actifs</span>
           </div>
-          <p className="text-2xl font-bold">
+          <p className="text-lg md:text-2xl font-bold">
             {users.filter(u => u.status === 'active').length}
           </p>
         </div>
-        <div className="p-4 rounded-lg border bg-card">
-          <div className="flex items-center gap-2 text-blue-500 mb-1">
-            <Snowflake className="w-4 h-4" />
-            <span className="text-sm">Gelés</span>
+        <div className="p-3 md:p-4 rounded-lg border bg-card hidden md:block">
+          <div className="flex items-center gap-1.5 md:gap-2 text-blue-500 mb-1">
+            <Snowflake className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="text-[10px] md:text-sm">Gelés</span>
           </div>
-          <p className="text-2xl font-bold text-blue-500">
+          <p className="text-lg md:text-2xl font-bold text-blue-500">
             {users.filter(u => u.status === 'frozen').length}
           </p>
         </div>
-        <div className="p-4 rounded-lg border bg-card">
-          <div className="flex items-center gap-2 text-destructive mb-1">
-            <Ban className="w-4 h-4" />
-            <span className="text-sm">Bannis</span>
+        <div className="p-3 md:p-4 rounded-lg border bg-card hidden md:block">
+          <div className="flex items-center gap-1.5 md:gap-2 text-destructive mb-1">
+            <Ban className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="text-[10px] md:text-sm">Bannis</span>
           </div>
-          <p className="text-2xl font-bold text-destructive">
+          <p className="text-lg md:text-2xl font-bold text-destructive">
             {users.filter(u => u.status === 'banned').length}
           </p>
         </div>
       </div>
 
-      {/* Users Table */}
-      <div className="rounded-lg border">
-        <Table>
+      {/* Users List - Card layout on mobile, table on desktop */}
+      <div className="rounded-lg border overflow-hidden">
+        {/* Mobile: Card view */}
+        <div className="block md:hidden divide-y divide-border">
+          {loading ? (
+            <div className="py-8 text-center">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+            </div>
+          ) : users.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground">
+              Aucun utilisateur
+            </div>
+          ) : (
+            users.map((user) => (
+              <div key={user.user_id} className={cn("p-3", user.status !== 'active' && 'opacity-60')}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm truncate">{user.display_name || "Sans nom"}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono">{user.user_id.slice(0, 12)}...</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {getStatusBadge(user.status)}
+                    {!user.roles.includes('super_admin') && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {user.status === 'active' && (
+                            <>
+                              <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'freeze')}>
+                                <Snowflake className="w-4 h-4 mr-2 text-blue-500" />
+                                Geler
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'ban')}>
+                                <Ban className="w-4 h-4 mr-2 text-destructive" />
+                                Bannir
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          {user.status === 'frozen' && (
+                            <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'unfreeze')}>
+                              <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                              Dégeler
+                            </DropdownMenuItem>
+                          )}
+                          {user.status === 'banned' && (
+                            <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'unban')}>
+                              <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                              Débannir
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => openActionDialog(user.user_id, 'remove')}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <UserX className="w-4 h-4 mr-2" />
+                            Supprimer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {user.roles.map((role) => (
+                    <Badge 
+                      key={role} 
+                      variant={getRoleBadgeVariant(role) as any}
+                      className="flex items-center gap-1 text-[10px]"
+                    >
+                      {getRoleIcon(role)}
+                      {getRoleLabel(role)}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop: Table view */}
+        <Table className="hidden md:table">
           <TableHeader>
             <TableRow>
               <TableHead>Utilisateur</TableHead>
