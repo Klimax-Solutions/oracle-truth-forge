@@ -321,26 +321,26 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-border">
-        <h2 className="text-xl font-semibold text-foreground mb-1">Exécution d'Oracle</h2>
-        <p className="text-sm text-muted-foreground font-mono">
+      <div className="p-4 md:p-6 border-b border-border">
+        <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">Exécution d'Oracle</h2>
+        <p className="text-xs md:text-sm text-muted-foreground font-mono">
           Progression des 8 cycles vers les 314 trades
         </p>
       </div>
 
-      <div className="flex-1 p-6 overflow-auto space-y-8">
+      <div className="flex-1 p-4 md:p-6 overflow-auto space-y-6 md:space-y-8">
         {/* Overview stats */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="border border-emerald-500/30 p-5 bg-transparent rounded-md">
-            <div className="flex items-center gap-2 mb-3">
-              <Target className="w-4 h-4 text-emerald-500" />
-              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
-                Progression Totale
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <div className="border border-emerald-500/30 p-3 md:p-5 bg-transparent rounded-md">
+            <div className="flex items-center gap-2 mb-2 md:mb-3">
+              <Target className="w-3 h-3 md:w-4 md:h-4 text-emerald-500" />
+              <span className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+                Progression
               </span>
             </div>
-            <p className="text-3xl font-bold text-foreground">{totalUserTrades}</p>
-            <p className="text-sm text-muted-foreground">/ 314 trades saisis</p>
-            <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
+            <p className="text-2xl md:text-3xl font-bold text-foreground">{totalUserTrades}</p>
+            <p className="text-xs md:text-sm text-muted-foreground">/ 314 trades</p>
+            <div className="mt-2 md:mt-3 h-1.5 md:h-2 bg-muted rounded-full overflow-hidden">
               <div 
                 className="h-full bg-emerald-500 rounded-full transition-all"
                 style={{ width: `${(totalUserTrades / 314) * 100}%` }}
@@ -348,46 +348,46 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
             </div>
           </div>
 
-          <div className="border border-border p-5 bg-transparent rounded-md">
-            <div className="flex items-center gap-2 mb-3">
-              <CheckCircle className="w-4 h-4 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
-                Cycles Validés
+          <div className="border border-border p-3 md:p-5 bg-transparent rounded-md">
+            <div className="flex items-center gap-2 mb-2 md:mb-3">
+              <CheckCircle className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+              <span className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+                Cycles
               </span>
             </div>
-            <p className="text-3xl font-bold text-foreground">{completedCycles}</p>
-            <p className="text-sm text-muted-foreground">/ 8 cycles</p>
+            <p className="text-2xl md:text-3xl font-bold text-foreground">{completedCycles}</p>
+            <p className="text-xs md:text-sm text-muted-foreground">/ 8 validés</p>
           </div>
 
-          <div className="border border-border p-5 bg-transparent rounded-md">
-            <div className="flex items-center gap-2 mb-3">
-              <TrendingUp className="w-4 h-4 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
-                Votre RR Cumulé
+          <div className="border border-border p-3 md:p-5 bg-transparent rounded-md">
+            <div className="flex items-center gap-2 mb-2 md:mb-3">
+              <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+              <span className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+                RR Cumulé
               </span>
             </div>
             <p className={cn(
-              "text-3xl font-bold",
+              "text-2xl md:text-3xl font-bold",
               totalUserRR >= 0 ? "text-emerald-400" : "text-red-400"
             )}>
               {totalUserRR >= 0 ? "+" : ""}{totalUserRR.toFixed(1)}
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs md:text-sm text-muted-foreground hidden md:block">
               ≈ {totalUserRR >= 0 ? "+" : ""}{(totalUserRR * 1000).toLocaleString("fr-FR")} €
             </p>
           </div>
 
-          <div className="border border-border p-5 bg-transparent rounded-md">
-            <div className="flex items-center gap-2 mb-3">
-              <Circle className="w-4 h-4 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+          <div className="border border-border p-3 md:p-5 bg-transparent rounded-md">
+            <div className="flex items-center gap-2 mb-2 md:mb-3">
+              <Circle className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+              <span className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
                 RR Moyen
               </span>
             </div>
-            <p className="text-3xl font-bold text-foreground">
+            <p className="text-2xl md:text-3xl font-bold text-foreground">
               {averageUserRR.toFixed(2)}
             </p>
-            <p className="text-sm text-muted-foreground">par trade</p>
+            <p className="text-xs md:text-sm text-muted-foreground">par trade</p>
           </div>
         </div>
 

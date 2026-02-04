@@ -212,23 +212,23 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-border">
-        <h2 className="text-xl font-semibold text-foreground mb-1">Timing Analysis</h2>
-        <p className="text-sm text-muted-foreground font-mono">Performance par période • Cliquez sur un élément pour voir les trades</p>
+      <div className="p-4 md:p-6 border-b border-border">
+        <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">Timing Analysis</h2>
+        <p className="text-xs md:text-sm text-muted-foreground font-mono">Performance par période • Cliquez sur un élément pour voir les trades</p>
       </div>
 
-      <div className="flex-1 p-6 overflow-auto scrollbar-hide space-y-8">
+      <div className="flex-1 p-4 md:p-6 overflow-auto scrollbar-hide space-y-6 md:space-y-8">
         
         {/* ===== SECTION 1: BAR CHARTS ===== */}
         <div>
-          <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-4 border-b border-border pb-2">
+          <h3 className="text-[10px] md:text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3 md:mb-4 border-b border-border pb-2">
             Graphiques en Barres
           </h3>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {/* Day bar chart */}
-            <div className="border border-border p-5 bg-card rounded-md">
-              <p className="text-xs text-muted-foreground font-mono uppercase mb-3">Performance par Jour</p>
-              <div className="h-44">
+            <div className="border border-border p-4 md:p-5 bg-card rounded-md">
+              <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-2 md:mb-3">Performance par Jour</p>
+              <div className="h-36 md:h-44">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stats.dayData} barSize={16}>
                     <XAxis 
@@ -267,9 +267,9 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
             </div>
 
             {/* Hour bar chart */}
-            <div className="border border-border p-5 bg-card rounded-md">
-              <p className="text-xs text-muted-foreground font-mono uppercase mb-3">Performance par Heure</p>
-              <div className="h-44">
+            <div className="border border-border p-4 md:p-5 bg-card rounded-md">
+              <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-2 md:mb-3">Performance par Heure</p>
+              <div className="h-36 md:h-44">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stats.hourData} barSize={12}>
                     <XAxis 
@@ -308,9 +308,9 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
             </div>
 
             {/* Year bar chart */}
-            <div className="border border-border p-5 bg-card rounded-md">
-              <p className="text-xs text-muted-foreground font-mono uppercase mb-3">Performance par Année</p>
-              <div className="h-44">
+            <div className="border border-border p-4 md:p-5 bg-card rounded-md">
+              <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-2 md:mb-3">Performance par Année</p>
+              <div className="h-36 md:h-44">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stats.yearData} barSize={20}>
                     <XAxis 
@@ -352,14 +352,14 @@ export const TimingAnalysis = ({ trades, onNavigateToDatabase }: TimingAnalysisP
 
         {/* ===== SECTION 2: LINE & AREA CHARTS ===== */}
         <div>
-          <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-4 border-b border-border pb-2">
+          <h3 className="text-[10px] md:text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3 md:mb-4 border-b border-border pb-2">
             Graphiques en Courbes
           </h3>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {/* Week area chart */}
-            <div className="border border-border p-5 bg-card rounded-md">
-              <p className="text-xs text-muted-foreground font-mono uppercase mb-3">Performance Hebdomadaire (12 dernières)</p>
-              <div className="h-44">
+            <div className="border border-border p-4 md:p-5 bg-card rounded-md">
+              <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-2 md:mb-3">Perf. Hebdomadaire</p>
+              <div className="h-36 md:h-44">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={stats.weekData}>
                     <defs>

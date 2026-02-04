@@ -133,70 +133,70 @@ export const SetupPage = ({ trades, initialFilters }: SetupPageProps) => {
 
   // Overview with clickable cards
   return (
-    <div className="h-full overflow-auto p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-foreground mb-2">Setup</h1>
-          <p className="text-muted-foreground">Gérez vos données Oracle et vos trades personnels</p>
+    <div className="h-full overflow-auto p-4 md:p-6">
+      <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
+        <div className="text-center mb-6 md:mb-8">
+          <h1 className="text-xl md:text-2xl font-bold text-foreground mb-2">Setup</h1>
+          <p className="text-sm text-muted-foreground">Gérez vos données Oracle et vos trades personnels</p>
         </div>
 
-        <div className="grid gap-6">
+        <div className="grid gap-4 md:gap-6">
           {/* Oracle Card */}
           <div 
             onClick={() => setActiveView("oracle")}
             className={cn(
               "group cursor-pointer",
-              "border border-border rounded-lg bg-card p-6",
+              "border border-border rounded-lg bg-card p-4 md:p-6",
               "hover:border-primary/50 hover:bg-card/80 transition-all duration-200"
             )}
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-primary/10">
-                  <Database className="w-6 h-6 text-primary" />
+            <div className="flex items-start justify-between mb-3 md:mb-4">
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="p-2 md:p-3 rounded-lg bg-primary/10">
+                  <Database className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">Oracle</h2>
-                  <p className="text-sm text-muted-foreground">Base de données de référence & Saisie des trades</p>
+                  <h2 className="text-base md:text-lg font-semibold text-foreground">Oracle</h2>
+                  <p className="text-xs md:text-sm text-muted-foreground">Base de données de référence</p>
                 </div>
               </div>
-              <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
             </div>
 
             {/* Oracle Stats */}
-            <div className="grid grid-cols-4 gap-4 mt-4">
-              <div className="text-center p-3 bg-muted/50 rounded-md">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mt-3 md:mt-4">
+              <div className="text-center p-2 md:p-3 bg-muted/50 rounded-md">
                 <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                  <BarChart3 className="w-3.5 h-3.5" />
-                  <span className="text-xs font-mono uppercase">Trades</span>
+                  <BarChart3 className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                  <span className="text-[10px] md:text-xs font-mono uppercase">Trades</span>
                 </div>
-                <p className="text-xl font-bold text-foreground">{oracleStats.totalTrades}</p>
+                <p className="text-lg md:text-xl font-bold text-foreground">{oracleStats.totalTrades}</p>
               </div>
-              <div className="text-center p-3 bg-muted/50 rounded-md">
+              <div className="text-center p-2 md:p-3 bg-muted/50 rounded-md">
                 <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  <span className="text-xs font-mono uppercase">RR Total</span>
+                  <TrendingUp className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                  <span className="text-[10px] md:text-xs font-mono uppercase">RR Total</span>
                 </div>
                 <p className={cn(
-                  "text-xl font-bold",
+                  "text-lg md:text-xl font-bold",
                   oracleStats.totalRR >= 0 ? "text-emerald-500" : "text-red-500"
                 )}>
                   {oracleStats.totalRR >= 0 ? "+" : ""}{oracleStats.totalRR.toFixed(1)}
                 </p>
               </div>
-              <div className="text-center p-3 bg-muted/50 rounded-md">
+              <div className="text-center p-2 md:p-3 bg-muted/50 rounded-md">
                 <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                  <Target className="w-3.5 h-3.5" />
-                  <span className="text-xs font-mono uppercase">Win Rate</span>
+                  <Target className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                  <span className="text-[10px] md:text-xs font-mono uppercase">Win Rate</span>
                 </div>
-                <p className="text-xl font-bold text-foreground">{oracleStats.winRate.toFixed(0)}%</p>
+                <p className="text-lg md:text-xl font-bold text-foreground">{oracleStats.winRate.toFixed(0)}%</p>
               </div>
-              <div className="text-center p-3 bg-muted/50 rounded-md">
+              <div className="text-center p-2 md:p-3 bg-muted/50 rounded-md">
                 <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span className="text-xs font-mono uppercase">RR Moyen</span>
+                  <Clock className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                  <span className="text-[10px] md:text-xs font-mono uppercase">RR Moyen</span>
                 </div>
-                <p className="text-xl font-bold text-foreground">{oracleStats.avgRR.toFixed(2)}</p>
+                <p className="text-lg md:text-xl font-bold text-foreground">{oracleStats.avgRR.toFixed(2)}</p>
               </div>
             </div>
 
@@ -221,71 +221,71 @@ export const SetupPage = ({ trades, initialFilters }: SetupPageProps) => {
             onClick={() => setActiveView("perso")}
             className={cn(
               "group cursor-pointer",
-              "border border-border rounded-lg bg-card p-6",
+              "border border-border rounded-lg bg-card p-4 md:p-6",
               "hover:border-primary/50 hover:bg-card/80 transition-all duration-200"
             )}
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-emerald-500/10">
-                  <User className="w-6 h-6 text-emerald-500" />
+            <div className="flex items-start justify-between mb-3 md:mb-4">
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="p-2 md:p-3 rounded-lg bg-emerald-500/10">
+                  <User className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">Setup Perso</h2>
-                  <p className="text-sm text-muted-foreground">Vos trades personnels avec variables personnalisées</p>
+                  <h2 className="text-base md:text-lg font-semibold text-foreground">Setup Perso</h2>
+                  <p className="text-xs md:text-sm text-muted-foreground">Vos trades personnels</p>
                 </div>
               </div>
-              <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-emerald-500 group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground group-hover:text-emerald-500 group-hover:translate-x-1 transition-all" />
             </div>
 
             {/* Perso Stats */}
-            <div className="grid grid-cols-4 gap-4 mt-4">
-              <div className="text-center p-3 bg-muted/50 rounded-md">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mt-3 md:mt-4">
+              <div className="text-center p-2 md:p-3 bg-muted/50 rounded-md">
                 <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                  <BarChart3 className="w-3.5 h-3.5" />
-                  <span className="text-xs font-mono uppercase">Trades</span>
+                  <BarChart3 className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                  <span className="text-[10px] md:text-xs font-mono uppercase">Trades</span>
                 </div>
-                <p className="text-xl font-bold text-foreground">{persoStats.totalTrades}</p>
+                <p className="text-lg md:text-xl font-bold text-foreground">{persoStats.totalTrades}</p>
               </div>
-              <div className="text-center p-3 bg-muted/50 rounded-md">
+              <div className="text-center p-2 md:p-3 bg-muted/50 rounded-md">
                 <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  <span className="text-xs font-mono uppercase">RR Total</span>
+                  <TrendingUp className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                  <span className="text-[10px] md:text-xs font-mono uppercase">RR Total</span>
                 </div>
                 <p className={cn(
-                  "text-xl font-bold",
+                  "text-lg md:text-xl font-bold",
                   persoStats.totalRR >= 0 ? "text-emerald-500" : "text-red-500"
                 )}>
                   {persoStats.totalRR >= 0 ? "+" : ""}{persoStats.totalRR.toFixed(1)}
                 </p>
               </div>
-              <div className="text-center p-3 bg-muted/50 rounded-md">
+              <div className="text-center p-2 md:p-3 bg-muted/50 rounded-md">
                 <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                  <Target className="w-3.5 h-3.5" />
-                  <span className="text-xs font-mono uppercase">Win Rate</span>
+                  <Target className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                  <span className="text-[10px] md:text-xs font-mono uppercase">Win Rate</span>
                 </div>
-                <p className="text-xl font-bold text-foreground">{persoStats.winRate.toFixed(0)}%</p>
+                <p className="text-lg md:text-xl font-bold text-foreground">{persoStats.winRate.toFixed(0)}%</p>
               </div>
-              <div className="text-center p-3 bg-muted/50 rounded-md">
+              <div className="text-center p-2 md:p-3 bg-muted/50 rounded-md">
                 <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span className="text-xs font-mono uppercase">Objectif</span>
+                  <Clock className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                  <span className="text-[10px] md:text-xs font-mono uppercase">Objectif</span>
                 </div>
-                <p className="text-xl font-bold text-foreground">{persoStats.totalTrades}/300</p>
+                <p className="text-lg md:text-xl font-bold text-foreground">{persoStats.totalTrades}/300</p>
               </div>
             </div>
 
             {/* Progress bar */}
-            <div className="mt-4">
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div className="mt-3 md:mt-4">
+              <div className="h-1.5 md:h-2 bg-muted rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-emerald-500 transition-all duration-500"
                   style={{ width: `${persoStats.progress}%` }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
+              <p className="text-[10px] md:text-xs text-muted-foreground mt-2 text-center">
                 {persoStats.progress < 100 
-                  ? `${300 - persoStats.totalTrades} trades restants pour un feedback significatif`
+                  ? `${300 - persoStats.totalTrades} trades restants`
                   : "🎉 Objectif atteint !"}
               </p>
             </div>

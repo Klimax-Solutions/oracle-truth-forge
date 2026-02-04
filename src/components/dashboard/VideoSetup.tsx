@@ -83,19 +83,19 @@ export const VideoSetup = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-border">
-        <div className="flex items-center justify-between">
+      <div className="p-4 md:p-6 border-b border-border">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold text-foreground mb-1">Vidéo du Setup Oracle</h2>
-            <p className="text-sm text-muted-foreground font-mono">
+            <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">Vidéo du Setup Oracle</h2>
+            <p className="text-xs md:text-sm text-muted-foreground font-mono">
               Bibliothèque de vidéos explicatives
-              {!isAdmin && <span className="ml-2 text-muted-foreground/60">(Mode lecture seule)</span>}
+              {!isAdmin && <span className="ml-2 text-muted-foreground/60">(Lecture seule)</span>}
             </p>
           </div>
           {isAdmin && (
             <Button
               onClick={() => setIsAddingVideo(true)}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md gap-2"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md gap-2 w-full sm:w-auto"
             >
               <Plus className="w-4 h-4" />
               Ajouter une vidéo
@@ -106,8 +106,8 @@ export const VideoSetup = () => {
 
       {/* Add video modal - Admin only */}
       {isAddingVideo && isAdmin && (
-        <div className="fixed inset-0 bg-background/80 z-50 flex items-center justify-center p-6">
-          <div className="bg-card border border-border rounded-lg w-full max-w-2xl p-6">
+        <div className="fixed inset-0 bg-background/80 z-50 flex items-center justify-center p-4 md:p-6">
+          <div className="bg-card border border-border rounded-lg w-full max-w-2xl p-4 md:p-6 max-h-[90vh] overflow-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-foreground">Ajouter une vidéo</h3>
               <button 
@@ -162,17 +162,17 @@ export const VideoSetup = () => {
       )}
 
       {/* Videos grid */}
-      <div className="flex-1 p-6 overflow-auto scrollbar-hide">
+      <div className="flex-1 p-4 md:p-6 overflow-auto scrollbar-hide">
         {videos.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center">
-            <div className="w-20 h-20 rounded-full bg-accent border border-border flex items-center justify-center mb-6">
-              <Video className="w-10 h-10 text-muted-foreground" />
+          <div className="h-full flex flex-col items-center justify-center text-center px-4">
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-accent border border-border flex items-center justify-center mb-4 md:mb-6">
+              <Video className="w-8 h-8 md:w-10 md:h-10 text-muted-foreground" />
             </div>
-            <h3 className="text-xl font-medium text-foreground mb-2">Aucune vidéo</h3>
-            <p className="text-muted-foreground max-w-md mb-6">
+            <h3 className="text-lg md:text-xl font-medium text-foreground mb-2">Aucune vidéo</h3>
+            <p className="text-sm text-muted-foreground max-w-md mb-4 md:mb-6">
               {isAdmin 
-                ? "Ajoutez des vidéos explicatives du Setup Oracle pour les consulter à tout moment."
-                : "Aucune vidéo n'a été ajoutée pour le moment. Revenez plus tard."}
+                ? "Ajoutez des vidéos explicatives du Setup Oracle."
+                : "Aucune vidéo n'a été ajoutée. Revenez plus tard."}
             </p>
             {isAdmin && (
               <Button
@@ -181,12 +181,12 @@ export const VideoSetup = () => {
                 className="border-border text-foreground hover:bg-accent rounded-md gap-2"
               >
                 <Plus className="w-4 h-4" />
-                Ajouter votre première vidéo
+                Ajouter une vidéo
               </Button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {videos.map((video) => (
               <div
                 key={video.id}

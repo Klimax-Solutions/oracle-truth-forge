@@ -150,56 +150,56 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-border">
-        <h2 className="text-xl font-semibold text-foreground mb-1">Distribution RR</h2>
-        <p className="text-sm text-muted-foreground font-mono">Analyse complète des Risk-Reward</p>
+      <div className="p-4 md:p-6 border-b border-border">
+        <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">Distribution RR</h2>
+        <p className="text-xs md:text-sm text-muted-foreground font-mono">Analyse complète des Risk-Reward</p>
       </div>
 
-      <div className="flex-1 p-6 overflow-auto space-y-6">
+      <div className="flex-1 p-4 md:p-6 overflow-auto space-y-4 md:space-y-6">
         {/* Stats cards */}
-        <div className="grid grid-cols-5 gap-3">
-          <div className="border border-emerald-500/30 p-4 bg-emerald-500/10 rounded-md">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="w-4 h-4 text-emerald-500" />
-              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">RR Total</span>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
+          <div className="border border-emerald-500/30 p-3 md:p-4 bg-emerald-500/10 rounded-md">
+            <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
+              <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-emerald-500" />
+              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">RR Total</span>
             </div>
-            <p className="text-2xl font-bold text-emerald-400">+{stats.totalRR.toFixed(0)}</p>
+            <p className="text-xl md:text-2xl font-bold text-emerald-400">+{stats.totalRR.toFixed(0)}</p>
           </div>
-          <div className="border border-border p-4 bg-card rounded-md">
-            <div className="flex items-center gap-2 mb-2">
-              <Target className="w-4 h-4 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">RR Moyen</span>
+          <div className="border border-border p-3 md:p-4 bg-card rounded-md">
+            <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
+              <Target className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">RR Moyen</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{stats.avgRR.toFixed(2)}</p>
+            <p className="text-xl md:text-2xl font-bold text-foreground">{stats.avgRR.toFixed(2)}</p>
           </div>
-          <div className="border border-border p-4 bg-card rounded-md">
-            <div className="flex items-center gap-2 mb-2">
-              <Zap className="w-4 h-4 text-emerald-500" />
-              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Meilleur</span>
+          <div className="border border-border p-3 md:p-4 bg-card rounded-md">
+            <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
+              <Zap className="w-3 h-3 md:w-4 md:h-4 text-emerald-500" />
+              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Meilleur</span>
             </div>
-            <p className="text-2xl font-bold text-emerald-400">+{stats.maxRR.toFixed(2)}</p>
+            <p className="text-xl md:text-2xl font-bold text-emerald-400">+{stats.maxRR.toFixed(2)}</p>
           </div>
-          <div className="border border-border p-4 bg-card rounded-md">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingDown className="w-4 h-4 text-red-500" />
-              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Pire</span>
+          <div className="border border-border p-3 md:p-4 bg-card rounded-md">
+            <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
+              <TrendingDown className="w-3 h-3 md:w-4 md:h-4 text-red-500" />
+              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Pire</span>
             </div>
-            <p className="text-2xl font-bold text-red-400">{stats.minRR.toFixed(2)}</p>
+            <p className="text-xl md:text-2xl font-bold text-red-400">{stats.minRR.toFixed(2)}</p>
           </div>
-          <div className="border border-border p-4 bg-card rounded-md">
-            <div className="flex items-center gap-2 mb-2">
-              <BarChart2 className="w-4 h-4 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Écart-type</span>
+          <div className="border border-border p-3 md:p-4 bg-card rounded-md col-span-2 sm:col-span-1">
+            <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
+              <BarChart2 className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Écart-type</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{stats.stdDev.toFixed(2)}</p>
+            <p className="text-xl md:text-2xl font-bold text-foreground">{stats.stdDev.toFixed(2)}</p>
           </div>
         </div>
 
         {/* Charts row 1 */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Distribution chart */}
-          <div className="border border-border p-5 bg-card rounded-md">
-            <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
+          <div className="border border-border p-4 md:p-5 bg-card rounded-md">
+            <h3 className="text-xs md:text-sm font-mono uppercase tracking-wider text-muted-foreground mb-3 md:mb-4">
               Distribution par RR
             </h3>
             <div className="h-44">
@@ -237,8 +237,8 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
           </div>
 
           {/* Direction pie chart */}
-          <div className="border border-border p-5 bg-card rounded-md">
-            <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
+          <div className="border border-border p-4 md:p-5 bg-card rounded-md">
+            <h3 className="text-xs md:text-sm font-mono uppercase tracking-wider text-muted-foreground mb-3 md:mb-4">
               RR par Direction
             </h3>
             <div className="h-44 flex items-center">
@@ -299,11 +299,11 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
         </div>
 
         {/* Cumulative RR chart */}
-        <div className="border border-border p-5 bg-card rounded-md">
-          <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
+        <div className="border border-border p-4 md:p-5 bg-card rounded-md">
+          <h3 className="text-xs md:text-sm font-mono uppercase tracking-wider text-muted-foreground mb-3 md:mb-4">
             Évolution Cumulative RR
           </h3>
-          <div className="h-48">
+          <div className="h-40 md:h-48">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={stats.cumulativeData}>
                 <defs>
@@ -345,13 +345,13 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
         </div>
 
         {/* Charts row 2 */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Rolling average */}
-          <div className="border border-border p-5 bg-card rounded-md">
-            <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
+          <div className="border border-border p-4 md:p-5 bg-card rounded-md">
+            <h3 className="text-xs md:text-sm font-mono uppercase tracking-wider text-muted-foreground mb-3 md:mb-4">
               Moyenne Mobile (20 trades)
             </h3>
-            <div className="h-40">
+            <div className="h-36 md:h-40">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={stats.rollingData}>
                   <XAxis 
@@ -389,13 +389,13 @@ export const RRDistributionChart = ({ trades }: RRDistributionChartProps) => {
           </div>
 
           {/* Setup performance */}
-          <div className="border border-border p-5 bg-card rounded-md">
-            <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
+          <div className="border border-border p-4 md:p-5 bg-card rounded-md">
+            <h3 className="text-xs md:text-sm font-mono uppercase tracking-wider text-muted-foreground mb-3 md:mb-4">
               Performance par Setup
             </h3>
-            <div className="space-y-2 max-h-40 overflow-auto scrollbar-hide">
+            <div className="space-y-2 max-h-36 md:max-h-40 overflow-auto scrollbar-hide">
               {stats.setupData.slice(0, 6).map((setup, idx) => (
-                <div 
+                <div
                   key={setup.setup}
                   className="flex items-center justify-between py-2 border-b border-border last:border-0"
                 >

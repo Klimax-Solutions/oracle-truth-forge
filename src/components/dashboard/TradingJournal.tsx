@@ -149,70 +149,70 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
   };
 
   return (
-    <div className="h-full flex">
-      {/* Calendar - Larger */}
-      <div className="w-[560px] border-r border-border/34 flex flex-col">
+    <div className="h-full flex flex-col md:flex-row">
+      {/* Calendar */}
+      <div className="w-full md:w-[560px] border-b md:border-b-0 md:border-r border-border/34 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border/34">
-          <span className="text-base font-mono uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 md:p-5 border-b border-border/34 gap-2">
+          <span className="text-sm md:text-base font-mono uppercase tracking-wider text-muted-foreground">
             Journal de Trading
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={goToFirstTrade}
-              className="text-xs text-muted-foreground hover:text-foreground hover:bg-accent gap-1"
+              className="text-[10px] md:text-xs text-muted-foreground hover:text-foreground hover:bg-accent gap-1 px-2 md:px-3"
             >
               <SkipBack className="w-3 h-3" />
-              Premier trade
+              <span className="hidden sm:inline">Premier</span>
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={goToLastTrade}
-              className="text-xs text-muted-foreground hover:text-foreground hover:bg-accent gap-1"
+              className="text-[10px] md:text-xs text-muted-foreground hover:text-foreground hover:bg-accent gap-1 px-2 md:px-3"
             >
               <SkipForward className="w-3 h-3" />
-              Dernier trade
+              <span className="hidden sm:inline">Dernier</span>
             </Button>
           </div>
         </div>
 
         {/* Month navigation */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border/34">
+        <div className="flex items-center justify-between px-4 md:px-5 py-3 md:py-4 border-b border-border/34">
           <Button
             variant="ghost"
             size="icon"
             onClick={prevMonth}
-            className="w-9 h-9 text-muted-foreground hover:text-foreground hover:bg-accent"
+            className="w-8 h-8 md:w-9 md:h-9 text-muted-foreground hover:text-foreground hover:bg-accent"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
           </Button>
-          <span className="text-base font-medium capitalize text-foreground">{formatMonthYear(currentDate)}</span>
+          <span className="text-sm md:text-base font-medium capitalize text-foreground">{formatMonthYear(currentDate)}</span>
           <Button
             variant="ghost"
             size="icon"
             onClick={nextMonth}
-            className="w-9 h-9 text-muted-foreground hover:text-foreground hover:bg-accent"
+            className="w-8 h-8 md:w-9 md:h-9 text-muted-foreground hover:text-foreground hover:bg-accent"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
           </Button>
         </div>
 
         {/* Calendar grid */}
-        <div className="flex-1 p-4 overflow-auto">
+        <div className="flex-1 p-3 md:p-4 overflow-auto">
           {/* Day headers */}
           <div className="grid grid-cols-7 mb-2">
             {DAYS.map((day) => (
-              <div key={day} className="py-2 text-center text-xs font-mono uppercase text-muted-foreground">
+              <div key={day} className="py-1 md:py-2 text-center text-[10px] md:text-xs font-mono uppercase text-muted-foreground">
                 {day}
               </div>
             ))}
           </div>
 
           {/* Calendar cells */}
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-0.5 md:gap-1">
             {calendarDays.map((date, idx) => {
               if (!date) {
                 return <div key={idx} className="aspect-square" />;
