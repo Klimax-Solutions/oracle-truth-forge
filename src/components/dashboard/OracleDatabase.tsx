@@ -453,76 +453,76 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                             </div>
                           </div>
 
-                          {/* Stats row */}
-                          <div className="grid grid-cols-4 gap-3">
-                            <div className="border border-border bg-transparent p-3 rounded-md">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Clock className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-[10px] text-muted-foreground font-mono uppercase">Entrée</span>
+                          {/* Stats row - responsive 2x2 on mobile */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                            <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
+                              <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
+                                <Clock className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+                                <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Entrée</span>
                               </div>
-                              <p className="text-base font-bold text-foreground">{trade.entry_time || "—"}</p>
+                              <p className="text-sm md:text-base font-bold text-foreground">{trade.entry_time || "—"}</p>
                             </div>
-                            <div className="border border-border bg-transparent p-3 rounded-md">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Clock className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-[10px] text-muted-foreground font-mono uppercase">Sortie</span>
+                            <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
+                              <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
+                                <Clock className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+                                <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Sortie</span>
                               </div>
-                              <p className="text-base font-bold text-foreground">{trade.exit_time || "—"}</p>
+                              <p className="text-sm md:text-base font-bold text-foreground">{trade.exit_time || "—"}</p>
                             </div>
-                            <div className="border border-border bg-transparent p-3 rounded-md">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Target className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-[10px] text-muted-foreground font-mono uppercase">Durée</span>
+                            <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
+                              <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
+                                <Target className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+                                <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Durée</span>
                               </div>
-                              <p className="text-base font-bold text-foreground">{trade.trade_duration || "—"}</p>
+                              <p className="text-sm md:text-base font-bold text-foreground">{trade.trade_duration || "—"}</p>
                             </div>
-                            <div className="border border-border bg-transparent p-3 rounded-md">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Calendar className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-[10px] text-muted-foreground font-mono uppercase">News</span>
+                            <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
+                              <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
+                                <Calendar className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+                                <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">News</span>
                               </div>
-                              <p className="text-base font-bold text-foreground">
+                              <p className="text-sm md:text-base font-bold text-foreground">
                                 {trade.news_day ? (trade.news_label || "Oui") : "Non"}
                               </p>
                             </div>
                           </div>
 
-                          {/* Additional info */}
-                          <div className="grid grid-cols-3 gap-3">
-                            <div className="border border-border bg-transparent p-3 rounded-md">
-                              <span className="text-[10px] text-muted-foreground font-mono uppercase">Structure</span>
-                              <p className="text-sm font-medium text-foreground mt-1">{trade.direction_structure || "—"}</p>
+                          {/* Additional info - responsive */}
+                          <div className="grid grid-cols-3 gap-2 md:gap-3">
+                            <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
+                              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Structure</span>
+                              <p className="text-xs md:text-sm font-medium text-foreground mt-0.5 md:mt-1">{trade.direction_structure || "—"}</p>
                             </div>
-                            <div className="border border-border bg-transparent p-3 rounded-md">
-                              <span className="text-[10px] text-muted-foreground font-mono uppercase">Entry Timing</span>
-                              <p className="text-sm font-medium text-foreground mt-1">{trade.entry_timing || "—"}</p>
+                            <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
+                              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Entry</span>
+                              <p className="text-xs md:text-sm font-medium text-foreground mt-0.5 md:mt-1">{trade.entry_timing || "—"}</p>
                             </div>
-                            <div className="border border-border bg-transparent p-3 rounded-md">
-                              <span className="text-[10px] text-muted-foreground font-mono uppercase">Stop Loss</span>
-                              <p className="text-sm font-medium text-foreground mt-1">{trade.stop_loss_size || "—"}</p>
+                            <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
+                              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">SL</span>
+                              <p className="text-xs md:text-sm font-medium text-foreground mt-0.5 md:mt-1">{trade.stop_loss_size || "—"}</p>
                             </div>
                           </div>
 
-                          {/* RR charts - BAR + ISOLATED CUMUL (like TradingJournal) */}
-                          <div className="grid grid-cols-2 gap-4">
+                          {/* RR charts - vertical stack on mobile */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                             {/* Bar chart - individual RR per trade */}
-                            <div className="border border-border p-4 bg-transparent rounded-md">
-                              <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-                                  RR par Trade (10 derniers)
+                            <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
+                              <div className="flex items-center justify-between mb-3 md:mb-4">
+                                <h4 className="text-[9px] md:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                                  RR par Trade
                                 </h4>
                               </div>
-                              <div className="h-36">
+                              <div className="h-28 md:h-36">
                                 <ResponsiveContainer width="100%" height="100%">
                                   <BarChart data={context.chartData}>
                                     <XAxis 
                                       dataKey="trade" 
-                                      tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
+                                      tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
                                       axisLine={{ stroke: "var(--chart-axis-line)" }}
                                       tickLine={false}
                                     />
                                     <YAxis 
-                                      tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
+                                      tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
                                       axisLine={{ stroke: "var(--chart-axis-line)" }}
                                       tickLine={false}
                                     />
@@ -557,16 +557,16 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                             </div>
 
                             {/* Isolated cumulative RR chart */}
-                            <div className="border border-border p-4 bg-transparent rounded-md">
-                              <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-                                  Cumul Isolé (10 derniers)
+                            <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
+                              <div className="flex items-center justify-between mb-3 md:mb-4">
+                                <h4 className="text-[9px] md:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                                  Cumul Isolé
                                 </h4>
-                                <span className="text-base font-bold text-emerald-500">
-                                  +{context.isolatedTotal.toFixed(2)} RR
+                                <span className="text-sm md:text-base font-bold text-emerald-500">
+                                  +{context.isolatedTotal.toFixed(2)}
                                 </span>
                               </div>
-                              <div className="h-36">
+                              <div className="h-28 md:h-36">
                                 <ResponsiveContainer width="100%" height="100%">
                                   <AreaChart data={context.chartData}>
                                     <defs>
@@ -577,12 +577,12 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                                     </defs>
                                     <XAxis 
                                       dataKey="trade" 
-                                      tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
+                                      tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
                                       axisLine={{ stroke: "var(--chart-axis-line)" }}
                                       tickLine={false}
                                     />
                                     <YAxis 
-                                      tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
+                                      tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
                                       axisLine={{ stroke: "var(--chart-axis-line)" }}
                                       tickLine={false}
                                     />
@@ -614,14 +614,14 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                           </div>
 
                           {/* Total cumulative RR note */}
-                          <div className="flex items-center justify-between p-3 border border-border bg-card rounded-md">
-                            <span className="text-xs text-muted-foreground font-mono uppercase">Cumul Total (depuis Trade #1)</span>
-                            <span className="text-base font-bold text-emerald-500">+{context.cumulativeRR.toFixed(2)} RR</span>
+                          <div className="flex items-center justify-between p-2 md:p-3 border border-border bg-card rounded-md">
+                            <span className="text-[9px] md:text-xs text-muted-foreground font-mono uppercase">Cumul Total</span>
+                            <span className="text-sm md:text-base font-bold text-emerald-500">+{context.cumulativeRR.toFixed(2)} RR</span>
                           </div>
 
-                          {/* Screenshots */}
+                          {/* Screenshots - vertical stack on mobile */}
                           {(trade.screenshot_m1 || trade.screenshot_m15_m5) ? (
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                               <SignedImageCard
                                 storagePath={trade.screenshot_m15_m5}
                                 alt={`Trade ${trade.trade_number} M15`}
@@ -634,10 +634,9 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                               />
                             </div>
                           ) : (
-                            <div className="border border-dashed border-border p-6 bg-muted/50 rounded-md flex flex-col items-center justify-center">
-                              <Image className="w-8 h-8 text-muted-foreground mb-2" />
-                              <p className="text-sm text-muted-foreground">Screenshot à venir</p>
-                              <p className="text-[10px] text-muted-foreground/70 mt-1">Emplacement réservé pour les captures</p>
+                            <div className="border border-dashed border-border p-4 md:p-6 bg-muted/50 rounded-md flex flex-col items-center justify-center">
+                              <Image className="w-6 h-6 md:w-8 md:h-8 text-muted-foreground mb-2" />
+                              <p className="text-xs md:text-sm text-muted-foreground">Screenshot à venir</p>
                             </div>
                           )}
                         </>
