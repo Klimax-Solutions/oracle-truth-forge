@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { useCustomVariables } from "@/hooks/useCustomVariables";
 import { CustomizableSelect } from "@/components/dashboard/CustomizableSelect";
 
-// ── Fixed options for Entry Model (non-deletable) ──
+// ── Fixed options (non-deletable) ──
 const ENTRY_MODEL_FIXED_OPTIONS = [
   "Englobante M1",
   "Englobante M3",
@@ -45,6 +45,10 @@ const ENTRY_MODEL_FIXED_OPTIONS = [
   "WICK",
   "Prise de liquidité",
 ];
+
+const SETUP_TYPE_FIXED_OPTIONS = ["A", "B", "C"];
+
+const TIMING_FIXED_OPTIONS = ["US Open 15:30", "London Close (16h)"];
 
 // (EntryModelCombo and VariableCombo removed — replaced by CustomizableSelect)
 
