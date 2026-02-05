@@ -208,6 +208,8 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  const { variables, refetch: refetchVariables } = useCustomVariables();
+
   // Timer state for gamification
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
