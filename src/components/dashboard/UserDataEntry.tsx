@@ -117,12 +117,14 @@ interface FormData {
   notes: string;
 }
 
-// Oracle filter options
-const SETUP_TYPES = ["A", "B", "C"];
-const ENTRY_MODELS = ["BOS", "MSS", "OB", "FVG", "EQH/L", "Liquidity Sweep", "Breaker", "Mitigation"];
-const DIRECTION_STRUCTURES = ["Continuation", "Retracement"];
-const ENTRY_TIMINGS = [
-  "Open US 15:30", "London Close 16:00", "New York Close 20:00"
+// Fixed options for Entry Model (non-deletable)
+const ENTRY_MODEL_FIXED_OPTIONS = [
+  "Englobante M1",
+  "Englobante M3",
+  "Englobante M5",
+  "High-Low 3 bougies",
+  "WICK",
+  "Prise de liquidité",
 ];
 
 // Time constraints
