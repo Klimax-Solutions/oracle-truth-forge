@@ -472,6 +472,7 @@ export const PersonalTradeDialog = ({
               <CustomizableSelect
                 value={formData.setup_type}
                 onChange={(value) => setFormData({ ...formData, setup_type: value })}
+                fixedOptions={SETUP_TYPE_FIXED_OPTIONS}
                 customOptions={variables.setup_type}
                 variableType="setup_type"
                 placeholder="Sélectionner..."
