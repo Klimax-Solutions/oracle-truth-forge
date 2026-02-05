@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, Trash2, X, Image as ImageIcon } from "lucide-react";
+import { Loader2, Save, Trash2, X, Image as ImageIcon, Clock } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +35,17 @@ import {
 import { cn } from "@/lib/utils";
 import { useCustomVariables } from "@/hooks/useCustomVariables";
 
-// Custom combo component for variable selection with free input
+// ── Fixed options for Entry Model ──
+const ENTRY_MODEL_OPTIONS = [
+  "Englobante M1",
+  "Englobante M3",
+  "Englobante M5",
+  "High-Low 3 bougies",
+  "WICK",
+  "Prise de liquidité",
+];
+
+// ── VariableCombo: select from options OR free text ──
 interface VariableComboProps {
   value: string;
   onChange: (value: string) => void;
@@ -46,7 +56,6 @@ interface VariableComboProps {
 const VariableCombo = ({ value, onChange, options, placeholder }: VariableComboProps) => {
   const [isCustom, setIsCustom] = useState(false);
 
-  // If value is set but not in options, it's a custom value
   useEffect(() => {
     if (value && !options.includes(value)) {
       setIsCustom(true);
@@ -67,10 +76,7 @@ const VariableCombo = ({ value, onChange, options, placeholder }: VariableComboP
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              setIsCustom(false);
-              onChange("");
-            }}
+            onClick={() => { setIsCustom(false); onChange(""); }}
             className="px-2"
           >
             Liste
@@ -105,6 +111,72 @@ const VariableCombo = ({ value, onChange, options, placeholder }: VariableComboP
   );
 };
 
+// ── EntryModelCombo: fixed options + user custom values ──
+interface EntryModelComboProps {
+  value: string;
+  onChange: (value: string) => void;
+  userOptions: string[];
+  placeholder?: string;
+}
+
+const EntryModelCombo = ({ value, onChange, userOptions, placeholder }: EntryModelComboProps) => {
+  const [isCustom, setIsCustom] = useState(false);
+  const allOptions = [...ENTRY_MODEL_OPTIONS, ...userOptions.filter(o => !ENTRY_MODEL_OPTIONS.includes(o))];
+
+  useEffect(() => {
+    if (value && !allOptions.includes(value)) {
+      setIsCustom(true);
+    }
+  }, [value, allOptions]);
+
+  if (isCustom) {
+    return (
+      <div className="flex gap-2">
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder || "Saisir un entry model..."}
+          className="flex-1"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => { setIsCustom(false); onChange(""); }}
+          className="px-2"
+        >
+          Liste
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-2">
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="flex-1">
+          <SelectValue placeholder={placeholder || "Sélectionner..."} />
+        </SelectTrigger>
+        <SelectContent>
+          {allOptions.map((opt) => (
+            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setIsCustom(true)}
+        className="px-2"
+      >
+        +
+      </Button>
+    </div>
+  );
+};
+
+// ── Types ──
 interface PersonalTrade {
   id: string;
   trade_number: number;
@@ -127,6 +199,7 @@ interface PersonalTrade {
   stop_loss?: number | null;
   take_profit?: number | null;
   result?: string | null;
+  exit_date?: string | null;
 }
 
 interface PersonalTradeDialogProps {
@@ -138,18 +211,14 @@ interface PersonalTradeDialogProps {
 }
 
 const DAYS_MAP: Record<number, string> = {
-  0: "Dimanche",
-  1: "Lundi",
-  2: "Mardi",
-  3: "Mercredi",
-  4: "Jeudi",
-  5: "Vendredi",
-  6: "Samedi",
+  0: "Dimanche", 1: "Lundi", 2: "Mardi", 3: "Mercredi",
+  4: "Jeudi", 5: "Vendredi", 6: "Samedi",
 };
 
 interface FormData {
   trade_number: string;
   trade_date: string;
+  exit_date: string;
   direction: "Long" | "Short";
   direction_structure: string;
   entry_time: string;
@@ -158,7 +227,6 @@ interface FormData {
   entry_model: string;
   entry_timing: string;
   rr: string;
-  // New fields
   entry_price: string;
   exit_price: string;
   stop_loss: string;
@@ -170,6 +238,7 @@ interface FormData {
 const initialFormData: FormData = {
   trade_number: "",
   trade_date: new Date().toISOString().split("T")[0],
+  exit_date: new Date().toISOString().split("T")[0],
   direction: "Long",
   direction_structure: "",
   entry_time: "",
@@ -186,6 +255,34 @@ const initialFormData: FormData = {
   notes: "",
 };
 
+// ── Duration calculator ──
+function calculateDuration(entryDate: string, entryTime: string, exitDate: string, exitTime: string): string {
+  if (!entryDate || !entryTime || !exitDate || !exitTime) return "";
+
+  try {
+    const entry = new Date(`${entryDate}T${entryTime}:00`);
+    const exit = new Date(`${exitDate}T${exitTime}:00`);
+    const diffMs = exit.getTime() - entry.getTime();
+
+    if (diffMs < 0) return "";
+
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    const minutes = totalMinutes % 60;
+
+    const parts: string[] = [];
+    if (days > 0) parts.push(`${days}j`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0 || parts.length === 0) parts.push(`${minutes}min`);
+
+    return parts.join(" ");
+  } catch {
+    return "";
+  }
+}
+
+// ── Main Component ──
 export const PersonalTradeDialog = ({
   isOpen,
   onClose,
@@ -203,6 +300,12 @@ export const PersonalTradeDialog = ({
   const { toast } = useToast();
   const { variables } = useCustomVariables();
 
+  // Auto-computed duration
+  const tradeDuration = calculateDuration(
+    formData.trade_date, formData.entry_time,
+    formData.exit_date, formData.exit_time
+  );
+
   // Reset form when dialog opens
   useEffect(() => {
     if (isOpen) {
@@ -210,6 +313,7 @@ export const PersonalTradeDialog = ({
         setFormData({
           trade_number: editingTrade.trade_number.toString(),
           trade_date: editingTrade.trade_date,
+          exit_date: editingTrade.exit_date || editingTrade.trade_date,
           direction: editingTrade.direction as "Long" | "Short",
           direction_structure: editingTrade.direction_structure || "",
           entry_time: editingTrade.entry_time || "",
@@ -227,9 +331,12 @@ export const PersonalTradeDialog = ({
         });
         setExistingScreenshot(editingTrade.screenshot_url || null);
       } else {
+        const today = new Date().toISOString().split("T")[0];
         setFormData({
           ...initialFormData,
           trade_number: nextTradeNumber.toString(),
+          trade_date: today,
+          exit_date: today,
         });
         setExistingScreenshot(null);
       }
@@ -238,65 +345,52 @@ export const PersonalTradeDialog = ({
     }
   }, [isOpen, editingTrade, nextTradeNumber]);
 
+  // Auto-sync exit_date when entry date changes (only if they were the same)
+  const handleEntryDateChange = (newDate: string) => {
+    setFormData(prev => ({
+      ...prev,
+      trade_date: newDate,
+      // Auto-set exit_date to match entry date if exit_date was same as old entry date or empty
+      exit_date: (!prev.exit_date || prev.exit_date === prev.trade_date) ? newDate : prev.exit_date,
+    }));
+  };
+
   // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "Fichier trop volumineux",
-          description: "La taille maximale est de 5 MB.",
-          variant: "destructive",
-        });
+        toast({ title: "Fichier trop volumineux", description: "La taille maximale est de 5 MB.", variant: "destructive" });
         return;
       }
-
       setScreenshotFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setScreenshotPreview(reader.result as string);
-      };
+      reader.onloadend = () => setScreenshotPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  // Upload screenshot - returns the storage path (not public URL)
+  // Upload screenshot
   const uploadScreenshot = async (userId: string, tradeNumber: number): Promise<string | null> => {
     if (!screenshotFile) return existingScreenshot;
-
     setUploading(true);
     const fileExt = screenshotFile.name.split('.').pop();
     const fileName = `${userId}/perso_${tradeNumber}_${Date.now()}.${fileExt}`;
-
-    const { data, error } = await supabase.storage
-      .from('trade-screenshots')
-      .upload(fileName, screenshotFile, { upsert: true });
-
+    const { data, error } = await supabase.storage.from('trade-screenshots').upload(fileName, screenshotFile, { upsert: true });
     setUploading(false);
-
     if (error) {
       console.error("Error uploading screenshot:", error);
-      toast({
-        title: "Erreur d'upload",
-        description: "Impossible d'envoyer le screenshot.",
-        variant: "destructive",
-      });
+      toast({ title: "Erreur d'upload", description: "Impossible d'envoyer le screenshot.", variant: "destructive" });
       return existingScreenshot;
     }
-
-    // Return the storage path, not a public URL
-    // Signed URLs will be generated on-demand when displaying
     return data.path;
   };
 
-  // Clear screenshot
   const clearScreenshot = () => {
     setScreenshotFile(null);
     setScreenshotPreview(null);
     setExistingScreenshot(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSave = async () => {
@@ -304,17 +398,11 @@ export const PersonalTradeDialog = ({
     if (!user) return;
 
     if (!formData.trade_number || !formData.trade_date || !formData.direction) {
-      toast({
-        title: "Champs requis manquants",
-        description: "Veuillez remplir les champs obligatoires.",
-        variant: "destructive",
-      });
+      toast({ title: "Champs requis manquants", description: "Veuillez remplir les champs obligatoires.", variant: "destructive" });
       return;
     }
 
     setSaving(true);
-
-    // Upload screenshot if present
     const screenshotUrl = await uploadScreenshot(user.id, parseInt(formData.trade_number));
 
     const date = new Date(formData.trade_date);
@@ -324,11 +412,13 @@ export const PersonalTradeDialog = ({
       user_id: user.id,
       trade_number: parseInt(formData.trade_number),
       trade_date: formData.trade_date,
+      exit_date: formData.exit_date || null,
       day_of_week: dayOfWeek,
       direction: formData.direction,
       direction_structure: formData.direction_structure || null,
       entry_time: formData.entry_time || null,
       exit_time: formData.exit_time || null,
+      trade_duration: tradeDuration || null,
       setup_type: formData.setup_type || null,
       entry_model: formData.entry_model || null,
       entry_timing: formData.entry_timing || null,
@@ -344,49 +434,25 @@ export const PersonalTradeDialog = ({
 
     try {
       if (editingTrade) {
-        const { error } = await supabase
-          .from("user_personal_trades")
-          .update(tradeData)
-          .eq("id", editingTrade.id);
-
+        const { error } = await supabase.from("user_personal_trades").update(tradeData).eq("id", editingTrade.id);
         if (error) throw error;
-
-        toast({
-          title: "Trade mis à jour",
-          description: `Trade #${formData.trade_number} modifié avec succès.`,
-        });
+        toast({ title: "Trade mis à jour", description: `Trade #${formData.trade_number} modifié avec succès.` });
       } else {
-        const { error } = await supabase
-          .from("user_personal_trades")
-          .insert(tradeData);
-
+        const { error } = await supabase.from("user_personal_trades").insert(tradeData);
         if (error) {
           if (error.code === "23505") {
-            toast({
-              title: "Erreur",
-              description: `Le trade #${formData.trade_number} existe déjà.`,
-              variant: "destructive",
-            });
+            toast({ title: "Erreur", description: `Le trade #${formData.trade_number} existe déjà.`, variant: "destructive" });
             setSaving(false);
             return;
           }
           throw error;
         }
-
-        toast({
-          title: "Trade ajouté",
-          description: `Trade #${formData.trade_number} créé avec succès.`,
-        });
+        toast({ title: "Trade ajouté", description: `Trade #${formData.trade_number} créé avec succès.` });
       }
-
       onSaved();
     } catch (error: any) {
       console.error("Error saving trade:", error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
-        variant: "destructive",
-      });
+      toast({ title: "Erreur", description: error.message || "Une erreur est survenue.", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -394,23 +460,11 @@ export const PersonalTradeDialog = ({
 
   const handleDelete = async () => {
     if (!editingTrade) return;
-
-    const { error } = await supabase
-      .from("user_personal_trades")
-      .delete()
-      .eq("id", editingTrade.id);
-
+    const { error } = await supabase.from("user_personal_trades").delete().eq("id", editingTrade.id);
     if (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le trade.",
-        variant: "destructive",
-      });
+      toast({ title: "Erreur", description: "Impossible de supprimer le trade.", variant: "destructive" });
     } else {
-      toast({
-        title: "Trade supprimé",
-        description: `Trade #${editingTrade.trade_number} supprimé.`,
-      });
+      toast({ title: "Trade supprimé", description: `Trade #${editingTrade.trade_number} supprimé.` });
       onSaved();
     }
   };
@@ -427,7 +481,7 @@ export const PersonalTradeDialog = ({
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          {/* Row 1: Trade Number & Date */}
+          {/* Row 1: Trade Number & Date d'entrée */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="trade_number">Numéro du Trade *</Label>
@@ -440,10 +494,10 @@ export const PersonalTradeDialog = ({
               />
             </div>
             <div className="space-y-2">
-              <Label>Date *</Label>
+              <Label>Date d'entrée *</Label>
               <DatePicker
                 value={formData.trade_date}
-                onChange={(value) => setFormData({ ...formData, trade_date: value })}
+                onChange={handleEntryDateChange}
               />
             </div>
           </div>
@@ -483,7 +537,7 @@ export const PersonalTradeDialog = ({
             </div>
           </div>
 
-          {/* Row 3: Entry & Exit Time - NO RESTRICTIONS */}
+          {/* Row 3: Entry & Exit Time */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Heure d'entrée</Label>
@@ -501,7 +555,30 @@ export const PersonalTradeDialog = ({
             </div>
           </div>
 
-          {/* Row 4: Custom Variables with saved options */}
+          {/* Row 3b: Exit Date & Duration */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Date de sortie</Label>
+              <DatePicker
+                value={formData.exit_date}
+                onChange={(value) => setFormData({ ...formData, exit_date: value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                Durée du trade
+              </Label>
+              <div className={cn(
+                "flex h-10 w-full items-center rounded-md border border-input bg-muted/30 px-3 text-sm font-mono",
+                !tradeDuration && "text-muted-foreground"
+              )}>
+                {tradeDuration || "—"}
+              </div>
+            </div>
+          </div>
+
+          {/* Row 4: Structure & Type de Setup */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Structure</Label>
@@ -523,19 +600,19 @@ export const PersonalTradeDialog = ({
             </div>
           </div>
 
-          {/* Row 5: More Custom Variables */}
+          {/* Row 5: Entry Model & Timing */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Entry Model</Label>
-              <VariableCombo
+              <EntryModelCombo
                 value={formData.entry_model}
                 onChange={(value) => setFormData({ ...formData, entry_model: value })}
-                options={variables.entry_model}
+                userOptions={variables.entry_model}
                 placeholder="Sélectionner ou saisir..."
               />
             </div>
             <div className="space-y-2">
-              <Label>Entry Timing</Label>
+              <Label>Timing</Label>
               <VariableCombo
                 value={formData.entry_timing}
                 onChange={(value) => setFormData({ ...formData, entry_timing: value })}
@@ -621,14 +698,9 @@ export const PersonalTradeDialog = ({
               onChange={handleFileSelect}
               className="hidden"
             />
-            
             {currentScreenshot ? (
               <div className="relative border border-border rounded-md p-2">
-                <img 
-                  src={currentScreenshot} 
-                  alt="Screenshot" 
-                  className="max-h-40 object-contain mx-auto rounded"
-                />
+                <img src={currentScreenshot} alt="Screenshot" className="max-h-40 object-contain mx-auto rounded" />
                 <Button
                   type="button"
                   variant="destructive"
@@ -647,11 +719,7 @@ export const PersonalTradeDialog = ({
                 className="w-full h-20 border-dashed gap-2"
                 disabled={uploading}
               >
-                {uploading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <ImageIcon className="w-4 h-4" />
-                )}
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
                 Ajouter un screenshot
               </Button>
             )}
@@ -682,32 +750,21 @@ export const PersonalTradeDialog = ({
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Supprimer ce trade ?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Cette action est irréversible.
-                  </AlertDialogDescription>
+                  <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Annuler</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete}>
-                    Supprimer
-                  </AlertDialogAction>
+                  <AlertDialogAction onClick={handleDelete}>Supprimer</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
           ) : (
             <div />
           )}
-          
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={onClose}>
-              Annuler
-            </Button>
+            <Button variant="outline" onClick={onClose}>Annuler</Button>
             <Button onClick={handleSave} disabled={saving || uploading} className="gap-2">
-              {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {editingTrade ? "Enregistrer" : "Créer"}
             </Button>
           </div>
