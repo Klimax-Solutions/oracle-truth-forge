@@ -454,20 +454,24 @@ export const PersonalTradeDialog = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Structure</Label>
-              <VariableCombo
+              <CustomizableSelect
                 value={formData.direction_structure}
                 onChange={(value) => setFormData({ ...formData, direction_structure: value })}
-                options={variables.direction_structure}
-                placeholder="Sélectionner ou saisir..."
+                customOptions={variables.direction_structure}
+                variableType="direction_structure"
+                placeholder="Sélectionner..."
+                onOptionsChanged={refetchVariables}
               />
             </div>
             <div className="space-y-2">
               <Label>Type de Setup</Label>
-              <VariableCombo
+              <CustomizableSelect
                 value={formData.setup_type}
                 onChange={(value) => setFormData({ ...formData, setup_type: value })}
-                options={variables.setup_type}
-                placeholder="Sélectionner ou saisir..."
+                customOptions={variables.setup_type}
+                variableType="setup_type"
+                placeholder="Sélectionner..."
+                onOptionsChanged={refetchVariables}
               />
             </div>
           </div>
@@ -476,20 +480,25 @@ export const PersonalTradeDialog = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Entry Model</Label>
-              <EntryModelCombo
+              <CustomizableSelect
                 value={formData.entry_model}
                 onChange={(value) => setFormData({ ...formData, entry_model: value })}
-                userOptions={variables.entry_model}
-                placeholder="Sélectionner ou saisir..."
+                fixedOptions={ENTRY_MODEL_FIXED_OPTIONS}
+                customOptions={variables.entry_model}
+                variableType="entry_model"
+                placeholder="Sélectionner..."
+                onOptionsChanged={refetchVariables}
               />
             </div>
             <div className="space-y-2">
               <Label>Timing</Label>
-              <VariableCombo
+              <CustomizableSelect
                 value={formData.entry_timing}
                 onChange={(value) => setFormData({ ...formData, entry_timing: value })}
-                options={variables.entry_timing}
-                placeholder="Sélectionner ou saisir..."
+                customOptions={variables.entry_timing}
+                variableType="entry_timing"
+                placeholder="Sélectionner..."
+                onOptionsChanged={refetchVariables}
               />
             </div>
           </div>
