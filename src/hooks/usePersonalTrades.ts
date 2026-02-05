@@ -24,6 +24,7 @@ export interface PersonalTrade {
   result: string | null;
   screenshot_url: string | null;
   comment: string | null;
+  exit_date: string | null;
 }
 
 export const usePersonalTrades = () => {

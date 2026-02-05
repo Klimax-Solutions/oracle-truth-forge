@@ -387,6 +387,7 @@ export type Database = {
           entry_price: number | null
           entry_time: string | null
           entry_timing: string | null
+          exit_date: string | null
           exit_price: number | null
           exit_time: string | null
           id: string
@@ -418,6 +419,7 @@ export type Database = {
           entry_price?: number | null
           entry_time?: string | null
           entry_timing?: string | null
+          exit_date?: string | null
           exit_price?: number | null
           exit_time?: string | null
           id?: string
@@ -449,6 +451,7 @@ export type Database = {
           entry_price?: number | null
           entry_time?: string | null
           entry_timing?: string | null
+          exit_date?: string | null
           exit_price?: number | null
           exit_time?: string | null
           id?: string
