@@ -750,6 +750,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     <CustomizableSelect
                       value={formData.setup_type}
                       onChange={(v) => setFormData({ ...formData, setup_type: v })}
+                      fixedOptions={SETUP_TYPE_FIXED_OPTIONS}
                       customOptions={variables.setup_type}
                       variableType="setup_type"
                       placeholder="Sélectionner..."
