@@ -46,70 +46,7 @@ const ENTRY_MODEL_FIXED_OPTIONS = [
   "Prise de liquidité",
 ];
 
-// ── EntryModelCombo: fixed options + user custom values ──
-interface EntryModelComboProps {
-  value: string;
-  onChange: (value: string) => void;
-  userOptions: string[];
-  placeholder?: string;
-}
-
-const EntryModelCombo = ({ value, onChange, userOptions, placeholder }: EntryModelComboProps) => {
-  const [isCustom, setIsCustom] = useState(false);
-  const allOptions = [...ENTRY_MODEL_OPTIONS, ...userOptions.filter(o => !ENTRY_MODEL_OPTIONS.includes(o))];
-
-  useEffect(() => {
-    if (value && !allOptions.includes(value)) {
-      setIsCustom(true);
-    }
-  }, [value, allOptions]);
-
-  if (isCustom) {
-    return (
-      <div className="flex gap-2">
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder || "Saisir un entry model..."}
-          className="flex-1"
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => { setIsCustom(false); onChange(""); }}
-          className="px-2"
-        >
-          Liste
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex gap-2">
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="flex-1">
-          <SelectValue placeholder={placeholder || "Sélectionner..."} />
-        </SelectTrigger>
-        <SelectContent>
-          {allOptions.map((opt) => (
-            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setIsCustom(true)}
-        className="px-2"
-      >
-        +
-      </Button>
-    </div>
-  );
-};
+// (EntryModelCombo and VariableCombo removed — replaced by CustomizableSelect)
 
 // ── Types ──
 interface PersonalTrade {
