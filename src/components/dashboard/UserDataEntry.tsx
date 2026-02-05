@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TimePicker } from "@/components/ui/time-picker";
 import { DatePicker } from "@/components/ui/date-picker";
+import { CustomizableSelect } from "@/components/dashboard/CustomizableSelect";
+import { useCustomVariables } from "@/hooks/useCustomVariables";
 import {
   Select,
   SelectContent,
