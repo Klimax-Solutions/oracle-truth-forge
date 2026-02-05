@@ -1,231 +1,84 @@
-import { useState, useEffect } from "react";
-import { Plus, Trash2, X, Video, Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { Search, ExternalLink } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
-interface VideoItem {
+interface VideoData {
   id: string;
   title: string;
-  embedCode: string;
-  createdAt: Date;
+  url: string;
+  openUrl: string;
 }
 
+const VIDEOS: VideoData[] = [
+  {
+    id: "1",
+    title: "Vidéo 1",
+    url: "https://drive.google.com/file/d/10arf22qRiQYTvyVJ4c1U_nmp1CHL-MAb/preview",
+    openUrl: "https://drive.google.com/file/d/10arf22qRiQYTvyVJ4c1U_nmp1CHL-MAb/view",
+  },
+  {
+    id: "2",
+    title: "Vidéo 2",
+    url: "https://drive.google.com/file/d/15xmlQWBHktdMBjp2OD_W9zWoTAiaNw0Y/preview",
+    openUrl: "https://drive.google.com/file/d/15xmlQWBHktdMBjp2OD_W9zWoTAiaNw0Y/view",
+  },
+  {
+    id: "3",
+    title: "Vidéo 3",
+    url: "https://drive.google.com/file/d/1unscbvtLd725xbkq0iOOjdBneER2e8F4/preview",
+    openUrl: "https://drive.google.com/file/d/1unscbvtLd725xbkq0iOOjdBneER2e8F4/view",
+  },
+  {
+    id: "4",
+    title: "Vidéo Finale",
+    url: "https://drive.google.com/file/d/1B0ILsD0tBgwrEjWIz4Xhdl4HN4KCsR32/preview",
+    openUrl: "https://drive.google.com/file/d/1B0ILsD0tBgwrEjWIz4Xhdl4HN4KCsR32/view",
+  },
+];
+
 export const VideoSetup = () => {
-  const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [isAddingVideo, setIsAddingVideo] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [newEmbedCode, setNewEmbedCode] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
-  // Check if current user is admin (for now, specific emails are admin)
-  useEffect(() => {
-    const checkAdmin = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email) {
-        setUserEmail(user.email);
-        // Admin check - you can customize this list
-        const adminEmails = ["jules.philipon@gmail.com"];
-        setIsAdmin(adminEmails.includes(user.email));
-      }
-    };
-    checkAdmin();
-  }, []);
-
-  const extractVideoUrl = (embedCode: string): string | null => {
-    // Try to extract src from iframe
-    const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
-    if (srcMatch) {
-      return srcMatch[1];
-    }
-    // If it's already a URL
-    if (embedCode.includes("youtube.com") || embedCode.includes("youtu.be") || embedCode.includes("vimeo.com")) {
-      // Convert YouTube watch URLs to embed format
-      if (embedCode.includes("youtube.com/watch")) {
-        const videoId = embedCode.match(/v=([^&]+)/)?.[1];
-        if (videoId) return `https://www.youtube.com/embed/${videoId}`;
-      }
-      if (embedCode.includes("youtu.be/")) {
-        const videoId = embedCode.split("youtu.be/")[1]?.split("?")[0];
-        if (videoId) return `https://www.youtube.com/embed/${videoId}`;
-      }
-      return embedCode;
-    }
-    return null;
-  };
-
-  const handleAddVideo = () => {
-    if (!newTitle.trim() || !newEmbedCode.trim()) return;
-    
-    const videoUrl = extractVideoUrl(newEmbedCode);
-    if (!videoUrl) {
-      alert("Code embed invalide. Veuillez utiliser un code iframe YouTube ou Vimeo.");
-      return;
-    }
-
-    const newVideo: VideoItem = {
-      id: Date.now().toString(),
-      title: newTitle.trim(),
-      embedCode: videoUrl,
-      createdAt: new Date(),
-    };
-
-    setVideos([newVideo, ...videos]);
-    setNewTitle("");
-    setNewEmbedCode("");
-    setIsAddingVideo(false);
-  };
-
-  const handleDeleteVideo = (id: string) => {
-    setVideos(videos.filter(v => v.id !== id));
-  };
+  const filtered = VIDEOS.filter((v) =>
+    v.title.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-4 md:p-6 border-b border-border">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">Vidéo du Setup Oracle</h2>
-            <p className="text-xs md:text-sm text-muted-foreground font-mono">
-              Bibliothèque de vidéos explicatives
-              {!isAdmin && <span className="ml-2 text-muted-foreground/60">(Lecture seule)</span>}
-            </p>
-          </div>
-          {isAdmin && (
-            <Button
-              onClick={() => setIsAddingVideo(true)}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md gap-2 w-full sm:w-auto"
-            >
-              <Plus className="w-4 h-4" />
-              Ajouter une vidéo
-            </Button>
-          )}
+        <div className="flex items-center gap-3 mb-4">
+          <h2 className="text-lg md:text-xl font-semibold text-foreground">
+            Vidéo du Setup Oracle
+          </h2>
+          <Badge variant="secondary" className="font-mono text-[10px] md:text-xs">
+            {VIDEOS.length} vidéos
+          </Badge>
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher une vidéo…"
+            className="w-full bg-background border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
+          />
         </div>
       </div>
 
-      {/* Add video modal - Admin only */}
-      {isAddingVideo && isAdmin && (
-        <div className="fixed inset-0 bg-background/80 z-50 flex items-center justify-center p-4 md:p-6">
-          <div className="bg-card border border-border rounded-lg w-full max-w-2xl p-4 md:p-6 max-h-[90vh] overflow-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-foreground">Ajouter une vidéo</h3>
-              <button 
-                onClick={() => setIsAddingVideo(false)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm text-muted-foreground block mb-2">Titre de la vidéo</label>
-                <input
-                  type="text"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Ex: Introduction au Setup Oracle"
-                  className="w-full bg-background border border-border rounded-md px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
-                />
-              </div>
-              
-              <div>
-                <label className="text-sm text-muted-foreground block mb-2">Code Embed (YouTube, Vimeo)</label>
-                <textarea
-                  value={newEmbedCode}
-                  onChange={(e) => setNewEmbedCode(e.target.value)}
-                  placeholder={'Collez le code embed iframe ici, ou une URL YouTube...\n\nExemple: <iframe src="https://www.youtube.com/embed/..."></iframe>'}
-                  rows={4}
-                  className="w-full bg-background border border-border rounded-md px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none resize-none font-mono text-sm"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button
-                  variant="ghost"
-                  onClick={() => setIsAddingVideo(false)}
-                  className="flex-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md"
-                >
-                  Annuler
-                </Button>
-                <Button
-                  onClick={handleAddVideo}
-                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md"
-                >
-                  Ajouter
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Videos grid */}
+      {/* Video list */}
       <div className="flex-1 p-4 md:p-6 overflow-auto scrollbar-hide">
-        {videos.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center px-4">
-            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-accent border border-border flex items-center justify-center mb-4 md:mb-6">
-              <Video className="w-8 h-8 md:w-10 md:h-10 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg md:text-xl font-medium text-foreground mb-2">Aucune vidéo</h3>
-            <p className="text-sm text-muted-foreground max-w-md mb-4 md:mb-6">
-              {isAdmin 
-                ? "Ajoutez des vidéos explicatives du Setup Oracle."
-                : "Aucune vidéo n'a été ajoutée. Revenez plus tard."}
-            </p>
-            {isAdmin && (
-              <Button
-                onClick={() => setIsAddingVideo(true)}
-                variant="outline"
-                className="border-border text-foreground hover:bg-accent rounded-md gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Ajouter une vidéo
-              </Button>
-            )}
+        {filtered.length === 0 ? (
+          <div className="h-40 flex items-center justify-center">
+            <p className="text-sm text-muted-foreground">Aucun résultat pour "{search}"</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {videos.map((video) => (
-              <div
-                key={video.id}
-                className="group border border-border bg-card rounded-lg overflow-hidden hover:border-ring transition-all"
-              >
-                {/* Video embed */}
-                <div className="relative aspect-video bg-background">
-                  <iframe
-                    src={video.embedCode}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
-
-                {/* Video info */}
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-base font-medium text-foreground truncate">{video.title}</h4>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Ajouté le {video.createdAt.toLocaleDateString("fr-FR")}
-                      </p>
-                    </div>
-                    {isAdmin ? (
-                      <button
-                        onClick={() => handleDeleteVideo(video.id)}
-                        className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    ) : (
-                      <div className="p-2 text-muted-foreground/50">
-                        <Lock className="w-4 h-4" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+          <div className="flex flex-col gap-4 md:gap-6 max-w-4xl mx-auto">
+            {filtered.map((video) => (
+              <VideoCard key={video.id} video={video} />
             ))}
           </div>
         )}
@@ -233,3 +86,38 @@ export const VideoSetup = () => {
     </div>
   );
 };
+
+const VideoCard = ({ video }: { video: VideoData }) => (
+  <div className="border border-border bg-card rounded-lg overflow-hidden">
+    {/* Title */}
+    <div className="px-4 pt-4 pb-2 md:px-5 md:pt-5">
+      <h3 className="text-sm md:text-base font-medium text-foreground">{video.title}</h3>
+    </div>
+
+    {/* 16:9 iframe */}
+    <div className="px-4 md:px-5">
+      <div className="relative w-full rounded-md overflow-hidden" style={{ paddingBottom: "56.25%" }}>
+        <iframe
+          src={video.url}
+          className="absolute inset-0 w-full h-full"
+          allow="autoplay; encrypted-media; picture-in-picture"
+          allowFullScreen
+          loading="lazy"
+        />
+      </div>
+    </div>
+
+    {/* Open in new tab */}
+    <div className="px-4 py-3 md:px-5 md:py-4">
+      <a
+        href={video.openUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ExternalLink className="w-3.5 h-3.5" />
+        Ouvrir dans un nouvel onglet
+      </a>
+    </div>
+  </div>
+);
