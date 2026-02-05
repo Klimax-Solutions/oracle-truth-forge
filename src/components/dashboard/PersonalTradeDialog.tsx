@@ -34,9 +34,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useCustomVariables } from "@/hooks/useCustomVariables";
+import { CustomizableSelect } from "@/components/dashboard/CustomizableSelect";
 
-// ── Fixed options for Entry Model ──
-const ENTRY_MODEL_OPTIONS = [
+// ── Fixed options for Entry Model (non-deletable) ──
+const ENTRY_MODEL_FIXED_OPTIONS = [
   "Englobante M1",
   "Englobante M3",
   "Englobante M5",
@@ -45,136 +46,7 @@ const ENTRY_MODEL_OPTIONS = [
   "Prise de liquidité",
 ];
 
-// ── VariableCombo: select from options OR free text ──
-interface VariableComboProps {
-  value: string;
-  onChange: (value: string) => void;
-  options: string[];
-  placeholder?: string;
-}
-
-const VariableCombo = ({ value, onChange, options, placeholder }: VariableComboProps) => {
-  const [isCustom, setIsCustom] = useState(false);
-
-  useEffect(() => {
-    if (value && !options.includes(value)) {
-      setIsCustom(true);
-    }
-  }, [value, options]);
-
-  if (isCustom || options.length === 0) {
-    return (
-      <div className="flex gap-2">
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="flex-1"
-        />
-        {options.length > 0 && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => { setIsCustom(false); onChange(""); }}
-            className="px-2"
-          >
-            Liste
-          </Button>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex gap-2">
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="flex-1">
-          <SelectValue placeholder={placeholder || "Sélectionner..."} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((opt) => (
-            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setIsCustom(true)}
-        className="px-2"
-      >
-        +
-      </Button>
-    </div>
-  );
-};
-
-// ── EntryModelCombo: fixed options + user custom values ──
-interface EntryModelComboProps {
-  value: string;
-  onChange: (value: string) => void;
-  userOptions: string[];
-  placeholder?: string;
-}
-
-const EntryModelCombo = ({ value, onChange, userOptions, placeholder }: EntryModelComboProps) => {
-  const [isCustom, setIsCustom] = useState(false);
-  const allOptions = [...ENTRY_MODEL_OPTIONS, ...userOptions.filter(o => !ENTRY_MODEL_OPTIONS.includes(o))];
-
-  useEffect(() => {
-    if (value && !allOptions.includes(value)) {
-      setIsCustom(true);
-    }
-  }, [value, allOptions]);
-
-  if (isCustom) {
-    return (
-      <div className="flex gap-2">
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder || "Saisir un entry model..."}
-          className="flex-1"
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => { setIsCustom(false); onChange(""); }}
-          className="px-2"
-        >
-          Liste
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex gap-2">
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="flex-1">
-          <SelectValue placeholder={placeholder || "Sélectionner..."} />
-        </SelectTrigger>
-        <SelectContent>
-          {allOptions.map((opt) => (
-            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setIsCustom(true)}
-        className="px-2"
-      >
-        +
-      </Button>
-    </div>
-  );
-};
+// (EntryModelCombo and VariableCombo removed — replaced by CustomizableSelect)
 
 // ── Types ──
 interface PersonalTrade {
@@ -298,7 +170,7 @@ export const PersonalTradeDialog = ({
   const [existingScreenshot, setExistingScreenshot] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { variables } = useCustomVariables();
+  const { variables, refetch: refetchVariables } = useCustomVariables();
 
   // Auto-computed duration
   const tradeDuration = calculateDuration(
@@ -582,20 +454,24 @@ export const PersonalTradeDialog = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Structure</Label>
-              <VariableCombo
+              <CustomizableSelect
                 value={formData.direction_structure}
                 onChange={(value) => setFormData({ ...formData, direction_structure: value })}
-                options={variables.direction_structure}
-                placeholder="Sélectionner ou saisir..."
+                customOptions={variables.direction_structure}
+                variableType="direction_structure"
+                placeholder="Sélectionner..."
+                onOptionsChanged={refetchVariables}
               />
             </div>
             <div className="space-y-2">
               <Label>Type de Setup</Label>
-              <VariableCombo
+              <CustomizableSelect
                 value={formData.setup_type}
                 onChange={(value) => setFormData({ ...formData, setup_type: value })}
-                options={variables.setup_type}
-                placeholder="Sélectionner ou saisir..."
+                customOptions={variables.setup_type}
+                variableType="setup_type"
+                placeholder="Sélectionner..."
+                onOptionsChanged={refetchVariables}
               />
             </div>
           </div>
@@ -604,20 +480,25 @@ export const PersonalTradeDialog = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Entry Model</Label>
-              <EntryModelCombo
+              <CustomizableSelect
                 value={formData.entry_model}
                 onChange={(value) => setFormData({ ...formData, entry_model: value })}
-                userOptions={variables.entry_model}
-                placeholder="Sélectionner ou saisir..."
+                fixedOptions={ENTRY_MODEL_FIXED_OPTIONS}
+                customOptions={variables.entry_model}
+                variableType="entry_model"
+                placeholder="Sélectionner..."
+                onOptionsChanged={refetchVariables}
               />
             </div>
             <div className="space-y-2">
               <Label>Timing</Label>
-              <VariableCombo
+              <CustomizableSelect
                 value={formData.entry_timing}
                 onChange={(value) => setFormData({ ...formData, entry_timing: value })}
-                options={variables.entry_timing}
-                placeholder="Sélectionner ou saisir..."
+                customOptions={variables.entry_timing}
+                variableType="entry_timing"
+                placeholder="Sélectionner..."
+                onOptionsChanged={refetchVariables}
               />
             </div>
           </div>
