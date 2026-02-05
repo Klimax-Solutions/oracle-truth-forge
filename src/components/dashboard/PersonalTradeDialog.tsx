@@ -170,7 +170,7 @@ export const PersonalTradeDialog = ({
   const [existingScreenshot, setExistingScreenshot] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { variables } = useCustomVariables();
+  const { variables, refetch: refetchVariables } = useCustomVariables();
 
   // Auto-computed duration
   const tradeDuration = calculateDuration(
