@@ -782,14 +782,15 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="entry_timing">Timing</Label>
-                  <CustomizableSelect
-                    value={formData.entry_timing}
-                    onChange={(v) => setFormData({ ...formData, entry_timing: v })}
-                    customOptions={variables.entry_timing}
-                    variableType="entry_timing"
-                    placeholder="Sélectionner..."
-                    onOptionsChanged={refetchVariables}
-                  />
+                    <CustomizableSelect
+                      value={formData.entry_timing}
+                      onChange={(v) => setFormData({ ...formData, entry_timing: v })}
+                      fixedOptions={TIMING_FIXED_OPTIONS}
+                      customOptions={variables.entry_timing}
+                      variableType="entry_timing"
+                      placeholder="Sélectionner..."
+                      onOptionsChanged={refetchVariables}
+                    />
                 </div>
 
                 {/* Time fields with validation hints */}

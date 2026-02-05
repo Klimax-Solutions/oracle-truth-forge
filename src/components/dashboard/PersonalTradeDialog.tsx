@@ -500,6 +500,7 @@ export const PersonalTradeDialog = ({
               <CustomizableSelect
                 value={formData.entry_timing}
                 onChange={(value) => setFormData({ ...formData, entry_timing: value })}
+                fixedOptions={TIMING_FIXED_OPTIONS}
                 customOptions={variables.entry_timing}
                 variableType="entry_timing"
                 placeholder="Sélectionner..."
