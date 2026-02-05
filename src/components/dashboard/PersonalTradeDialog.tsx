@@ -34,9 +34,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useCustomVariables } from "@/hooks/useCustomVariables";
+import { CustomizableSelect } from "@/components/dashboard/CustomizableSelect";
 
-// ── Fixed options for Entry Model ──
-const ENTRY_MODEL_OPTIONS = [
+// ── Fixed options for Entry Model (non-deletable) ──
+const ENTRY_MODEL_FIXED_OPTIONS = [
   "Englobante M1",
   "Englobante M3",
   "Englobante M5",
@@ -44,72 +45,6 @@ const ENTRY_MODEL_OPTIONS = [
   "WICK",
   "Prise de liquidité",
 ];
-
-// ── VariableCombo: select from options OR free text ──
-interface VariableComboProps {
-  value: string;
-  onChange: (value: string) => void;
-  options: string[];
-  placeholder?: string;
-}
-
-const VariableCombo = ({ value, onChange, options, placeholder }: VariableComboProps) => {
-  const [isCustom, setIsCustom] = useState(false);
-
-  useEffect(() => {
-    if (value && !options.includes(value)) {
-      setIsCustom(true);
-    }
-  }, [value, options]);
-
-  if (isCustom || options.length === 0) {
-    return (
-      <div className="flex gap-2">
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="flex-1"
-        />
-        {options.length > 0 && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => { setIsCustom(false); onChange(""); }}
-            className="px-2"
-          >
-            Liste
-          </Button>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex gap-2">
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="flex-1">
-          <SelectValue placeholder={placeholder || "Sélectionner..."} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((opt) => (
-            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setIsCustom(true)}
-        className="px-2"
-      >
-        +
-      </Button>
-    </div>
-  );
-};
 
 // ── EntryModelCombo: fixed options + user custom values ──
 interface EntryModelComboProps {
