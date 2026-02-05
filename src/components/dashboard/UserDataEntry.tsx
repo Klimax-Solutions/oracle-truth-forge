@@ -740,70 +740,51 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     </Select>
                   </div>
 
-                  {/* Oracle Filter Fields */}
+                  {/* Oracle Filter Fields - Customizable */}
                   <div className="space-y-2">
                     <Label htmlFor="setup_type" className="text-xs md:text-sm">Setup Type</Label>
-                    <Select
+                    <CustomizableSelect
                       value={formData.setup_type}
-                      onValueChange={(v) => setFormData({ ...formData, setup_type: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SETUP_TYPES.map(type => (
-                          <SelectItem key={type} value={type}>{type}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onChange={(v) => setFormData({ ...formData, setup_type: v })}
+                      customOptions={variables.setup_type}
+                      variableType="setup_type"
+                      placeholder="Sélectionner..."
+                      onOptionsChanged={refetchVariables}
+                    />
                   </div>
                 <div className="space-y-2">
                   <Label htmlFor="direction_structure">Structure</Label>
-                  <Select
+                  <CustomizableSelect
                     value={formData.direction_structure}
-                    onValueChange={(v) => setFormData({ ...formData, direction_structure: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DIRECTION_STRUCTURES.map(struct => (
-                        <SelectItem key={struct} value={struct}>{struct}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => setFormData({ ...formData, direction_structure: v })}
+                    customOptions={variables.direction_structure}
+                    variableType="direction_structure"
+                    placeholder="Sélectionner..."
+                    onOptionsChanged={refetchVariables}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="entry_model">Entry Model</Label>
-                  <Select
+                  <CustomizableSelect
                     value={formData.entry_model}
-                    onValueChange={(v) => setFormData({ ...formData, entry_model: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ENTRY_MODELS.map(model => (
-                        <SelectItem key={model} value={model}>{model}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => setFormData({ ...formData, entry_model: v })}
+                    fixedOptions={ENTRY_MODEL_FIXED_OPTIONS}
+                    customOptions={variables.entry_model}
+                    variableType="entry_model"
+                    placeholder="Sélectionner..."
+                    onOptionsChanged={refetchVariables}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="entry_timing">Timing</Label>
-                  <Select
+                  <CustomizableSelect
                     value={formData.entry_timing}
-                    onValueChange={(v) => setFormData({ ...formData, entry_timing: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ENTRY_TIMINGS.map(timing => (
-                        <SelectItem key={timing} value={timing}>{timing}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => setFormData({ ...formData, entry_timing: v })}
+                    customOptions={variables.entry_timing}
+                    variableType="entry_timing"
+                    placeholder="Sélectionner..."
+                    onOptionsChanged={refetchVariables}
+                  />
                 </div>
 
                 {/* Time fields with validation hints */}
