@@ -117,7 +117,7 @@ interface FormData {
   notes: string;
 }
 
-// Fixed options for Entry Model (non-deletable)
+// Fixed options (non-deletable)
 const ENTRY_MODEL_FIXED_OPTIONS = [
   "Englobante M1",
   "Englobante M3",
@@ -126,6 +126,10 @@ const ENTRY_MODEL_FIXED_OPTIONS = [
   "WICK",
   "Prise de liquidité",
 ];
+
+const SETUP_TYPE_FIXED_OPTIONS = ["A", "B", "C"];
+
+const TIMING_FIXED_OPTIONS = ["US Open 15:30", "London Close (16h)"];
 
 // Time constraints
 const MIN_ENTRY_TIME = "15:20";
@@ -746,6 +750,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     <CustomizableSelect
                       value={formData.setup_type}
                       onChange={(v) => setFormData({ ...formData, setup_type: v })}
+                      fixedOptions={SETUP_TYPE_FIXED_OPTIONS}
                       customOptions={variables.setup_type}
                       variableType="setup_type"
                       placeholder="Sélectionner..."
@@ -777,14 +782,15 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="entry_timing">Timing</Label>
-                  <CustomizableSelect
-                    value={formData.entry_timing}
-                    onChange={(v) => setFormData({ ...formData, entry_timing: v })}
-                    customOptions={variables.entry_timing}
-                    variableType="entry_timing"
-                    placeholder="Sélectionner..."
-                    onOptionsChanged={refetchVariables}
-                  />
+                    <CustomizableSelect
+                      value={formData.entry_timing}
+                      onChange={(v) => setFormData({ ...formData, entry_timing: v })}
+                      fixedOptions={TIMING_FIXED_OPTIONS}
+                      customOptions={variables.entry_timing}
+                      variableType="entry_timing"
+                      placeholder="Sélectionner..."
+                      onOptionsChanged={refetchVariables}
+                    />
                 </div>
 
                 {/* Time fields with validation hints */}
