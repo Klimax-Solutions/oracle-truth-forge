@@ -30,8 +30,6 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
-  const [hoveredZone, setHoveredZone] = useState(false);
-  const [showOverlay, setShowOverlay] = useState(false);
   const [zoomTransitioning, setZoomTransitioning] = useState(false);
 
   useEffect(() => {
