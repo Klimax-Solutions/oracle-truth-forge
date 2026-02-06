@@ -142,15 +142,15 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
             </div>
           </div>
 
-          {/* Row 2: Analog Clock */}
+          {/* Row 2: Analog Clock — prominent, no boxy container */}
           <div
             className={cn(
-              "border border-border p-4 md:p-6 bg-card rounded-md chart-glow-container",
+              "py-6 md:py-10",
               isEntering && "opacity-0"
             )}
             style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 160ms forwards" }}
           >
-            <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-4">
+            <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-6 text-center tracking-widest">
               Horloge des Timings
             </p>
             <AnalogClock trades={trades} onSelectTiming={handleTimingSelect} />
