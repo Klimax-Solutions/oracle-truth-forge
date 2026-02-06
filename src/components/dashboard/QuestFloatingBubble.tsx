@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { QuestData } from "@/hooks/useQuestData";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface QuestFloatingBubbleProps {
@@ -49,6 +48,7 @@ export const QuestFloatingBubble = ({
     todayWinningExecutions,
     dailyGoal,
     loading,
+    setFxReplayFlag,
   } = questData;
 
   if (loading) return null;
@@ -56,22 +56,13 @@ export const QuestFloatingBubble = ({
   const isFirstExecutionQuest = onboardingComplete && !fxReplayConnected;
   const showBadge = onboardingComplete ? !dailyGoalMet : true;
 
-  const handleFxReplayCheckbox = async (checked: boolean) => {
+  const handleFxReplayCheckbox = (checked: boolean) => {
     if (!checked) return;
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from("user_quest_flags").insert({
-        user_id: user.id,
-        flag_key: "fxreplay_connected",
-      });
-      toast({
-        title: "FX Replay connecté !",
-        description: "Vous pouvez maintenant récolter vos datas.",
-      });
-    } catch (error) {
-      console.error("Error saving FX Replay flag:", error);
-    }
+    setFxReplayFlag();
+    toast({
+      title: "FX Replay connecté !",
+      description: "Vous pouvez maintenant récolter vos datas.",
+    });
   };
 
   return (

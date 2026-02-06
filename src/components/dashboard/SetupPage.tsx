@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Database, User, ArrowRight, TrendingUp, BarChart3, Clock, Target } from "lucide-react";
+import { Database, User, ArrowRight, TrendingUp, BarChart3, Clock, Target, AlertTriangle, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { OraclePage } from "./OraclePage";
@@ -34,11 +34,13 @@ interface SetupPageProps {
   trades: Trade[];
   initialFilters?: any;
   analyzedTradeNumbers?: number[];
+  onAnalysisToggle?: (tradeNumber: number, checked: boolean) => void;
+  ebaucheComplete?: boolean;
 }
 
 type ActiveView = "overview" | "oracle" | "perso";
 
-export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers }: SetupPageProps) => {
+export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnalysisToggle, ebaucheComplete }: SetupPageProps) => {
   // If initialFilters are provided, go directly to Oracle view
   const [activeView, setActiveView] = useState<ActiveView>(
     initialFilters && Object.values(initialFilters).some((arr: any) => arr?.length > 0) 
@@ -99,8 +101,35 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers }: Setu
             <span className="text-sm font-medium">Oracle</span>
           </div>
         </div>
+
+        {/* Warning banner for first 15 trades */}
+        {!ebaucheComplete && (
+          <div className="mx-4 md:mx-6 mt-4 p-4 border border-amber-500/40 bg-amber-500/10 rounded-lg">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">⚠️ Analyse obligatoire des 15 premières datas</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Les 15 premières datas doivent être <strong className="text-foreground">analysées et comprises en autonomie</strong>. 
+                  Étudiez chaque trade en détail — ses paramètres, sa logique d'entrée et de sortie.
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Dès lors qu'un trade est analysé et maîtrisé, <strong className="text-foreground">cochez la case correspondante</strong> pour valider votre compréhension.
+                  Une fois les 15 trades cochés, vous pourrez passer à l'étape de vérification dans vos quêtes d'initiation.
+                </p>
+                <div className="flex items-center gap-2 pt-1">
+                  <CheckSquare className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="text-xs font-mono text-muted-foreground">
+                    {analyzedTradeNumbers?.filter(n => n >= 1 && n <= 15).length || 0}/15 datas analysées et comprises
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 overflow-hidden">
-          <OraclePage trades={trades} initialFilters={initialFilters} analyzedTradeNumbers={analyzedTradeNumbers} />
+          <OraclePage trades={trades} initialFilters={initialFilters} analyzedTradeNumbers={analyzedTradeNumbers} onAnalysisToggle={onAnalysisToggle} />
         </div>
       </div>
     );

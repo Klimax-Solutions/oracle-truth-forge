@@ -41,6 +41,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { UserFollowupTab } from "./admin/UserFollowupTab";
+import { UserHistoryTab } from "./admin/UserHistoryTab";
 import { ScreenshotLink } from "./ScreenshotLink";
 
 // Oracle trade from the master database
@@ -559,6 +560,10 @@ export const AdminVerification = () => {
             <TabsTrigger value="followup" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
               <ClipboardList className="w-3.5 h-3.5 md:w-4 md:h-4" />
               Suivi
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              Historique
             </TabsTrigger>
           </TabsList>
 
@@ -1318,6 +1323,11 @@ export const AdminVerification = () => {
           {/* Followup Tab */}
           <TabsContent value="followup" className="flex-1 overflow-auto mt-0">
             <UserFollowupTab />
+          </TabsContent>
+
+          {/* History Tab */}
+          <TabsContent value="history" className="flex-1 overflow-auto mt-0">
+            <UserHistoryTab />
           </TabsContent>
         </Tabs>
       </div>

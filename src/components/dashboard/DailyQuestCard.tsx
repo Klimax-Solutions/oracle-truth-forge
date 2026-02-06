@@ -12,13 +12,12 @@ import {
   Calendar as CalendarIcon,
   Trophy,
   LogIn,
-  CheckSquare,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { QuestData } from "@/hooks/useQuestData";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface DailyQuestCardProps {
@@ -38,6 +37,7 @@ export const DailyQuestCard = ({
   onRequestVerification,
 }: DailyQuestCardProps) => {
   const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const { toast } = useToast();
 
   const {
@@ -55,6 +55,7 @@ export const DailyQuestCard = ({
     dailyGoalMet,
     executionsByDate,
     onboardingComplete,
+    setFxReplayFlag,
   } = questData;
 
   // Determine which onboarding step is active
@@ -63,24 +64,13 @@ export const DailyQuestCard = ({
   // After onboarding, determine execution quest phase
   const isFirstExecutionQuest = onboardingComplete && !fxReplayConnected;
 
-  const handleFxReplayCheckbox = async (checked: boolean) => {
+  const handleFxReplayCheckbox = (checked: boolean) => {
     if (!checked) return;
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      await supabase.from("user_quest_flags").insert({
-        user_id: user.id,
-        flag_key: "fxreplay_connected",
-      });
-
-      toast({
-        title: "FX Replay connecté !",
-        description: "Vous pouvez maintenant récolter vos datas quotidiennes.",
-      });
-    } catch (error) {
-      console.error("Error saving FX Replay flag:", error);
-    }
+    setFxReplayFlag();
+    toast({
+      title: "FX Replay connecté !",
+      description: "Vous pouvez maintenant récolter vos datas quotidiennes.",
+    });
   };
 
   // Build calendar data (last 30 days)
@@ -96,6 +86,9 @@ export const DailyQuestCard = ({
       data: executionsByDate[key] || null,
     });
   }
+
+  // Selected day details
+  const selectedDayData = selectedDay ? executionsByDate[selectedDay] : null;
 
   return (
     <div className="border border-primary/30 bg-primary/5 rounded-lg p-4 md:p-5 space-y-4">
@@ -122,7 +115,7 @@ export const DailyQuestCard = ({
             variant="ghost"
             size="sm"
             className="text-xs gap-1.5"
-            onClick={() => setShowCalendar(!showCalendar)}
+            onClick={() => { setShowCalendar(!showCalendar); setSelectedDay(null); }}
           >
             <CalendarIcon className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Historique</span>
@@ -290,18 +283,22 @@ export const DailyQuestCard = ({
                   const hasData = day.data && day.data.count > 0;
                   const metGoal = day.data && day.data.wins >= dailyGoal;
                   const isToday = day.key === today.toISOString().split("T")[0];
+                  const isSelected = selectedDay === day.key;
 
                   return (
                     <div
                       key={day.key}
+                      onClick={() => hasData ? setSelectedDay(isSelected ? null : day.key) : null}
                       className={cn(
-                        "aspect-square rounded-sm flex items-center justify-center text-[8px] font-mono relative group cursor-default",
+                        "aspect-square rounded-sm flex items-center justify-center text-[8px] font-mono relative transition-all",
                         metGoal
                           ? "bg-emerald-500/30 text-emerald-400"
                           : hasData
                           ? "bg-primary/20 text-primary"
                           : "bg-muted/50 text-muted-foreground/50",
-                        isToday && "ring-1 ring-primary"
+                        isToday && "ring-1 ring-primary",
+                        hasData && "cursor-pointer hover:ring-1 hover:ring-foreground/30",
+                        isSelected && "ring-2 ring-foreground"
                       )}
                       title={`${day.date.toLocaleDateString("fr-FR")} — ${day.data?.count || 0} trades, ${day.data?.wins || 0} wins`}
                     >
@@ -310,6 +307,38 @@ export const DailyQuestCard = ({
                   );
                 })}
               </div>
+
+              {/* Selected day detail panel */}
+              {selectedDay && selectedDayData && (
+                <div className="mt-3 p-3 border border-border rounded-md bg-card">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Info className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-semibold text-foreground">
+                      {new Date(selectedDay).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="text-center p-2 bg-muted/50 rounded-md">
+                      <p className="text-lg font-bold text-foreground">{selectedDayData.count}</p>
+                      <p className="text-[9px] text-muted-foreground font-mono uppercase">Datas récoltées</p>
+                    </div>
+                    <div className="text-center p-2 bg-emerald-500/10 rounded-md">
+                      <p className="text-lg font-bold text-emerald-400">{selectedDayData.wins}</p>
+                      <p className="text-[9px] text-muted-foreground font-mono uppercase">Gagnantes</p>
+                    </div>
+                    <div className="text-center p-2 bg-muted/50 rounded-md">
+                      <p className={cn(
+                        "text-lg font-bold",
+                        selectedDayData.rr >= 0 ? "text-emerald-400" : "text-red-400"
+                      )}>
+                        {selectedDayData.rr >= 0 ? "+" : ""}{selectedDayData.rr.toFixed(1)}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground font-mono uppercase">RR Total</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center gap-3 mt-2 text-[9px] text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-sm bg-emerald-500/30" /> Objectif atteint

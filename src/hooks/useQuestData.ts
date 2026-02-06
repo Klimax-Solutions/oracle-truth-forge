@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface QuestData {
@@ -25,6 +25,10 @@ export interface QuestData {
   onboardingComplete: boolean;
   // Analyzed trade numbers (for checkbox state)
   analyzedTradeNumbers: number[];
+  // Optimistic toggle for trade analysis
+  toggleTradeAnalysis: (tradeNumber: number, checked: boolean) => void;
+  // Optimistic toggle for FX Replay flag
+  setFxReplayFlag: () => void;
 }
 
 export const useQuestData = () => {
@@ -41,6 +45,82 @@ export const useQuestData = () => {
 
   const dailyGoal = 5;
   const ebaucheTradesRequired = 15;
+
+  // Optimistic toggle for trade analysis checkbox
+  const toggleTradeAnalysis = useCallback(async (tradeNumber: number, checked: boolean) => {
+    // Optimistic update immediately
+    if (checked) {
+      setAnalyzedTradeNumbers(prev => {
+        if (prev.includes(tradeNumber)) return prev;
+        const next = [...prev, tradeNumber];
+        setEbaucheTradesAnalyzed(next.filter(n => n >= 1 && n <= 15).length);
+        return next;
+      });
+    } else {
+      setAnalyzedTradeNumbers(prev => {
+        const next = prev.filter(n => n !== tradeNumber);
+        setEbaucheTradesAnalyzed(next.filter(n => n >= 1 && n <= 15).length);
+        return next;
+      });
+    }
+
+    // Persist to database
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (checked) {
+        const { error } = await supabase.from("user_trade_analyses").insert({
+          user_id: user.id,
+          trade_number: tradeNumber,
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("user_trade_analyses")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("trade_number", tradeNumber);
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error("Error toggling analysis:", error);
+      // Revert on error
+      if (checked) {
+        setAnalyzedTradeNumbers(prev => {
+          const next = prev.filter(n => n !== tradeNumber);
+          setEbaucheTradesAnalyzed(next.filter(n => n >= 1 && n <= 15).length);
+          return next;
+        });
+      } else {
+        setAnalyzedTradeNumbers(prev => {
+          const next = [...prev, tradeNumber];
+          setEbaucheTradesAnalyzed(next.filter(n => n >= 1 && n <= 15).length);
+          return next;
+        });
+      }
+    }
+  }, []);
+
+  // Optimistic FX Replay flag
+  const setFxReplayFlag = useCallback(async () => {
+    // Optimistic update immediately
+    setFxReplayConnected(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase.from("user_quest_flags").insert({
+        user_id: user.id,
+        flag_key: "fxreplay_connected",
+      });
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error saving FX Replay flag:", error);
+      // Revert on error
+      setFxReplayConnected(false);
+    }
+  }, []);
 
   const fetchAll = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -144,5 +224,7 @@ export const useQuestData = () => {
     loading,
     onboardingComplete,
     analyzedTradeNumbers,
+    toggleTradeAnalysis,
+    setFxReplayFlag,
   };
 };

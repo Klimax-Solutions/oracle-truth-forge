@@ -6,8 +6,6 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useChartColors } from "@/hooks/useChartColors";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +41,7 @@ interface OracleDatabaseProps {
   trades: Trade[];
   initialFilters?: Filters;
   analyzedTradeNumbers?: number[];
+  onAnalysisToggle?: (tradeNumber: number, checked: boolean) => void;
 }
 
 interface Filters {
@@ -60,35 +59,8 @@ interface Filters {
   hasScreenshots?: boolean;
 }
 
-export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [] }: OracleDatabaseProps) => {
+export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [], onAnalysisToggle }: OracleDatabaseProps) => {
   const chartColors = useChartColors();
-  const { toast } = useToast();
-
-  const handleAnalysisToggle = async (tradeNumber: number, checked: boolean) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      if (checked) {
-        await supabase.from("user_trade_analyses").insert({
-          user_id: user.id,
-          trade_number: tradeNumber,
-        });
-      } else {
-        await supabase.from("user_trade_analyses")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("trade_number", tradeNumber);
-      }
-    } catch (error) {
-      console.error("Error toggling analysis:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour l'analyse.",
-        variant: "destructive",
-      });
-    }
-  };
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [filters, setFilters] = useState<Filters>(initialFilters || {
     direction: [],
@@ -425,7 +397,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                       >
                         <Checkbox
                           checked={analyzedTradeNumbers.includes(trade.trade_number)}
-                          onCheckedChange={(checked) => handleAnalysisToggle(trade.trade_number, !!checked)}
+                          onCheckedChange={(checked) => onAnalysisToggle?.(trade.trade_number, !!checked)}
                           className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                         />
                       </div>
