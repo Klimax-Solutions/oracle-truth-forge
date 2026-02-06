@@ -7,6 +7,8 @@ import { Upload, Trophy, Lock, Star, Loader2, Trash2, ImageIcon } from "lucide-r
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getSignedUrl } from "@/hooks/useSignedUrl";
+import { SuccessLeaderboard } from "./SuccessLeaderboard";
+import { useSuccessConfetti } from "./SuccessConfetti";
 
 interface SuccessEntry {
   id: string;
@@ -207,6 +209,15 @@ const FeedPanel = ({
     <div className="space-y-3">
       {successes.map((s) => (
         <div key={s.id} className="border border-border bg-card rounded-lg overflow-hidden">
+          {/* Success type banner */}
+          {s.success_type && (
+            <div className="px-4 py-2.5 bg-muted/50 border-b border-border">
+              <span className="text-sm font-bold text-foreground tracking-wide">
+                🏆 {getTypeLabel(s.success_type)}
+              </span>
+            </div>
+          )}
+
           {/* Image */}
           <div className="relative">
             {signedUrls[s.id] ? (
@@ -234,11 +245,6 @@ const FeedPanel = ({
               <span className="text-xs font-medium text-foreground truncate">
                 {s.display_name}
               </span>
-              {s.success_type && (
-                <Badge variant="secondary" className="text-[10px] flex-shrink-0">
-                  {getTypeLabel(s.success_type)}
-                </Badge>
-              )}
               <span className="text-[10px] text-muted-foreground flex-shrink-0">
                 {new Date(s.created_at).toLocaleDateString("fr-FR", {
                   day: "numeric",
@@ -275,6 +281,7 @@ const SuccessPage = () => {
   const [selectedType, setSelectedType] = useState("tp");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const { fireConfetti } = useSuccessConfetti();
 
   useEffect(() => {
     const init = async () => {
@@ -393,6 +400,7 @@ const SuccessPage = () => {
 
     if (uploadedCount > 0) {
       toast.success(`${uploadedCount} succès partagé${uploadedCount > 1 ? "s" : ""} !`);
+      fireConfetti();
       fetchSuccesses(userId);
     }
 
@@ -426,9 +434,12 @@ const SuccessPage = () => {
             <h1 className="text-2xl font-bold tracking-tight">Vos Succès</h1>
           </div>
           <Badge variant="secondary" className="text-xs font-mono">
-            {successes.length} succès partagé{successes.length !== 1 ? "s" : ""}
+            {successes.length} succès au total
           </Badge>
         </div>
+
+        {/* Leaderboard at top */}
+        <SuccessLeaderboard />
 
         {/* Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
