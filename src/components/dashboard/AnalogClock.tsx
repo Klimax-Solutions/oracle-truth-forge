@@ -74,13 +74,13 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
     return { minH, minM, maxH, maxM };
   }, [trades]);
 
-  // Group trades by 10-minute slots
+  // Group trades by 30-minute slots
   const tradeSlots = useMemo(() => {
     const slots: Record<string, { trades: Trade[]; totalRR: number }> = {};
     trades.forEach(t => {
       if (!t.entry_time) return;
       const [h, m] = t.entry_time.split(":").map(Number);
-      const slotMin = Math.floor(m / 10) * 10;
+      const slotMin = Math.floor(m / 30) * 30;
       const key = `${h.toString().padStart(2, "0")}:${slotMin.toString().padStart(2, "0")}`;
       if (!slots[key]) slots[key] = { trades: [], totalRR: 0 };
       slots[key].trades.push(t);
@@ -91,7 +91,7 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
 
   const getSlotRangeLabel = (key: string) => {
     const [h, m] = key.split(":").map(Number);
-    const endMin = m + 10;
+    const endMin = m + 30;
     const endH = endMin >= 60 ? h + 1 : h;
     const endM = endMin >= 60 ? endMin - 60 : endMin;
     return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} à ${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}`;
@@ -137,16 +137,17 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
     };
   }, [entryTimeRange]);
 
-  // Zoomed viewBox focusing on entry zone
+  // Zoomed viewBox — wider to give more spacing between needles
   const getViewBox = useCallback(() => {
     if (!entryTimeRange || !isZoomed) return "0 0 400 400";
     const { minH, minM, maxH, maxM } = entryTimeRange;
     const startAngle = timeToAngle(minH, minM);
     const endAngle = timeToAngle(maxH, maxM);
     const midAngle = ((startAngle + endAngle) / 2) * Math.PI / 180;
-    const zoomCx = cx + 50 * Math.cos(midAngle);
-    const zoomCy = cy + 50 * Math.sin(midAngle);
-    return `${zoomCx - 100} ${zoomCy - 100} 200 200`;
+    const zoomCx = cx + 40 * Math.cos(midAngle);
+    const zoomCy = cy + 40 * Math.sin(midAngle);
+    // Wider viewBox (280x280) for better needle spacing
+    return `${zoomCx - 140} ${zoomCy - 140} 280 280`;
   }, [entryTimeRange, isZoomed]);
 
   // Handle zoom toggle via button
@@ -171,7 +172,6 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
   // 3D perspective styles
   const clockContainerStyle = useMemo(() => {
     if (zoomTransitioning && !isZoomed) {
-      // Transitioning INTO zoom — tilt then flatten
       return {
         transform: "perspective(800px) rotateX(15deg) scale(1.05)",
         transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
@@ -193,7 +193,7 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
     <div className="flex flex-col items-center w-full max-w-full overflow-hidden relative">
       {/* ── Clock with 3D perspective ── */}
       <div className="w-full flex flex-col items-center" style={clockContainerStyle}>
-        <div className="relative w-full max-w-[min(520px,100%)] md:max-w-[600px] lg:max-w-[640px] aspect-square mx-auto">
+        <div className="relative w-full max-w-[min(480px,90vw)] md:max-w-[560px] lg:max-w-[600px] aspect-square mx-auto">
           <svg
             width="100%"
             height="100%"
@@ -234,10 +234,10 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
               </filter>
             </defs>
 
-            {/* Background */}
+            {/* Background — uses themed colors */}
             <circle cx={cx} cy={cy} r={radius + 20} fill="url(#clockGlow)" />
-            <circle cx={cx} cy={cy} r={radius} fill="none" stroke="hsl(0 0% 20%)" strokeWidth="1" />
-            <circle cx={cx} cy={cy} r={radius - 2} fill="hsl(0 0% 4%)" />
+            <circle cx={cx} cy={cy} r={radius} fill="none" className="stroke-border" strokeWidth="1" />
+            <circle cx={cx} cy={cy} r={radius - 2} className="fill-card" />
 
             {/* Entry Zone Arc */}
             {entryZoneArc && (
@@ -267,13 +267,13 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
 
               return (
                 <g key={i}>
-                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="hsl(0 0% 60%)" strokeWidth="2" />
+                  <line x1={x1} y1={y1} x2={x2} y2={y2} className="stroke-muted-foreground" strokeWidth="2" />
                   <text
                     x={labelX}
                     y={labelY}
                     textAnchor="middle"
                     dominantBaseline="central"
-                    fill="hsl(0 0% 50%)"
+                    className="fill-muted-foreground"
                     fontSize="11"
                     fontFamily="monospace"
                   >
@@ -292,10 +292,10 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
               const y1 = cy + (radius - 6) * Math.sin(rad);
               const x2 = cx + (radius - 2) * Math.cos(rad);
               const y2 = cy + (radius - 2) * Math.sin(rad);
-              return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="hsl(0 0% 15%)" strokeWidth="0.5" />;
+              return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} className="stroke-border" strokeWidth="0.5" />;
             })}
 
-            {/* Trade needles */}
+            {/* Trade needles — 30min slots */}
             {Object.entries(tradeSlots).map(([key, data]) => {
               const [h, m] = key.split(":").map(Number);
               const angle = timeToAngle(h, m);
@@ -329,9 +329,9 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
                     x2={x2}
                     y2={y2}
                     stroke={color}
-                    strokeWidth={isHovered || isSelected ? (isZoomed ? 5 : 4) : (isZoomed ? 3 : 2)}
+                    strokeWidth={isHovered || isSelected ? (isZoomed ? 5 : 4) : (isZoomed ? 3.5 : 2)}
                     strokeLinecap="round"
-                    opacity={isHovered || isSelected ? 1 : (isZoomed ? 0.7 : 0.5)}
+                    opacity={isHovered || isSelected ? 1 : (isZoomed ? 0.8 : 0.5)}
                     filter={isHovered || isSelected ? "url(#strongGlow)" : isZoomed ? "url(#glowFilter)" : undefined}
                   />
                   <circle
@@ -346,21 +346,21 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
                   {isHovered && (
                     <g>
                       <rect
-                        x={x2 - 60}
+                        x={x2 - 65}
                         y={y2 - 32}
-                        width="120"
+                        width="130"
                         height="24"
                         rx="4"
-                        fill="hsl(0 0% 8% / 0.95)"
-                        stroke="hsl(0 0% 25%)"
+                        className="fill-card stroke-border"
+                        fillOpacity="0.95"
                         strokeWidth="0.5"
                       />
                       <text
                         x={x2}
                         y={y2 - 17}
                         textAnchor="middle"
-                        fill="white"
-                        fontSize={isZoomed ? "7" : "7"}
+                        className="fill-foreground"
+                        fontSize="7"
                         fontFamily="monospace"
                       >
                         Trade de {getSlotRangeLabel(key)} · {data.totalRR >= 0 ? "+" : ""}{data.totalRR.toFixed(1)}RR
@@ -371,20 +371,20 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
               );
             })}
 
-            {/* Hour hand */}
+            {/* Hour / Minute / Second hands */}
             {!isZoomed && (
               <>
                 <line
                   x1={cx} y1={cy}
                   x2={cx + 80 * Math.cos(((hourAngle - 90) * Math.PI) / 180)}
                   y2={cy + 80 * Math.sin(((hourAngle - 90) * Math.PI) / 180)}
-                  stroke="hsl(0 0% 85%)" strokeWidth="3" strokeLinecap="round"
+                  className="stroke-foreground" strokeWidth="3" strokeLinecap="round"
                 />
                 <line
                   x1={cx} y1={cy}
                   x2={cx + 110 * Math.cos(((minuteAngle - 90) * Math.PI) / 180)}
                   y2={cy + 110 * Math.sin(((minuteAngle - 90) * Math.PI) / 180)}
-                  stroke="hsl(0 0% 70%)" strokeWidth="2" strokeLinecap="round"
+                  className="stroke-muted-foreground" strokeWidth="2" strokeLinecap="round"
                 />
                 <line
                   x1={cx} y1={cy}
@@ -397,7 +397,7 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
             )}
 
             {/* Center dot */}
-            <circle cx={cx} cy={cy} r="5" fill="hsl(0 0% 85%)" />
+            <circle cx={cx} cy={cy} r="5" className="fill-foreground" />
             <circle cx={cx} cy={cy} r="2" fill="#22c55e" />
 
             {/* Digital time & date — centered under 12 */}
@@ -407,7 +407,7 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
                   x={cx}
                   y={cy - radius + 55}
                   textAnchor="middle"
-                  fill="hsl(0 0% 85%)"
+                  className="fill-foreground"
                   fontSize="13"
                   fontFamily="monospace"
                   fontWeight="bold"
@@ -418,7 +418,7 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
                   x={cx}
                   y={cy - radius + 68}
                   textAnchor="middle"
-                  fill="hsl(0 0% 45%)"
+                  className="fill-muted-foreground"
                   fontSize="7"
                   fontFamily="monospace"
                 >
@@ -428,7 +428,7 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
                   x={cx}
                   y={cy - radius + 78}
                   textAnchor="middle"
-                  fill="hsl(0 0% 35%)"
+                  className="fill-muted-foreground"
                   fontSize="6"
                   fontFamily="monospace"
                   style={{ textTransform: "uppercase" }}
