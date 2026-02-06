@@ -17,6 +17,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { DailyQuestCard } from "./DailyQuestCard";
+import { QuestData } from "@/hooks/useQuestData";
 
 interface Trade {
   id: string;
@@ -30,6 +32,8 @@ interface Trade {
 interface OracleExecutionProps {
   trades: Trade[];
   onNavigateToVideos?: () => void;
+  onNavigateToSetup?: () => void;
+  questData?: QuestData;
 }
 
 interface Cycle {
