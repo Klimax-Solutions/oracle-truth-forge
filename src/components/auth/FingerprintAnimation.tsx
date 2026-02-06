@@ -87,7 +87,7 @@ const FingerprintAnimation = ({ progress, verified }: FingerprintAnimationProps)
     <div className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-700 ${verified ? "animate-pulse" : ""}`}>
       <svg
         viewBox="0 0 300 360"
-        className="w-[22rem] h-[28rem] md:w-[28rem] md:h-[36rem]"
+        className="w-[44rem] h-[56rem] md:w-[56rem] md:h-[72rem]"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
