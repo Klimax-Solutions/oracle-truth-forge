@@ -304,7 +304,7 @@ const SuccessPage = () => {
                     <img
                       src={signedUrls[s.id]}
                       alt="Succès"
-                      className="w-full object-contain max-h-[500px] bg-black/20"
+                      className="w-full object-contain max-h-[500px] bg-muted/30"
                       loading="lazy"
                     />
                   ) : (
