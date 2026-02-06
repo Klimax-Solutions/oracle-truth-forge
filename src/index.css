@@ -211,4 +211,219 @@
     initial-value: 0deg;
     inherits: false;
   }
+
+  /* ===== Auth Page Animations ===== */
+
+  /* Ambient glow behind the card */
+  .auth-ambient-glow {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 600px;
+    height: 600px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(
+      circle,
+      hsl(0 0% 100% / 0.03) 0%,
+      transparent 70%
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .dark .auth-ambient-glow {
+    background: radial-gradient(
+      circle,
+      hsl(0 0% 100% / 0.04) 0%,
+      transparent 70%
+    );
+  }
+
+  /* Glowing border on the auth card */
+  .auth-glow-card {
+    position: relative;
+    padding: 2px;
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+
+  .auth-glow-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 0.5rem;
+    padding: 2px;
+    background: conic-gradient(
+      from var(--glow-angle, 0deg),
+      transparent 0%,
+      hsl(0 0% 100% / 0.5) 8%,
+      hsl(220 60% 70% / 0.25) 16%,
+      transparent 24%,
+      transparent 76%,
+      hsl(45 80% 60% / 0.25) 84%,
+      hsl(0 0% 100% / 0.5) 92%,
+      transparent 100%
+    );
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    animation: glow-rotate 8s linear infinite;
+  }
+
+  .auth-glow-card-inner {
+    position: relative;
+    z-index: 1;
+    border-radius: 0.375rem;
+  }
+
+  /* 3D Orbit container */
+  .auth-orbit-container {
+    position: relative;
+    perspective: 800px;
+    width: 100%;
+    max-width: 28rem; /* max-w-md */
+  }
+
+  /* Orbiting orb track */
+  .auth-orb-track {
+    position: absolute;
+    inset: -40px;
+    z-index: 20;
+    pointer-events: none;
+    animation: auth-orbit 6s linear infinite;
+    transform-style: preserve-3d;
+  }
+
+  .auth-orb-accelerate {
+    animation: auth-orbit 0.4s linear infinite !important;
+  }
+
+  /* The glowing orb */
+  .auth-orb {
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin-left: -8px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      hsl(0 0% 100%) 0%,
+      hsl(220 80% 70%) 40%,
+      hsl(260 60% 60% / 0.6) 70%,
+      transparent 100%
+    );
+    box-shadow:
+      0 0 12px 4px hsl(220 80% 70% / 0.6),
+      0 0 30px 8px hsl(260 60% 60% / 0.3),
+      0 0 60px 16px hsl(220 80% 70% / 0.15);
+  }
+
+  .dark .auth-orb {
+    background: radial-gradient(
+      circle,
+      hsl(0 0% 100%) 0%,
+      hsl(220 80% 75%) 40%,
+      hsl(260 60% 70% / 0.7) 70%,
+      transparent 100%
+    );
+    box-shadow:
+      0 0 16px 6px hsl(220 80% 75% / 0.7),
+      0 0 40px 12px hsl(260 60% 70% / 0.4),
+      0 0 80px 24px hsl(220 80% 70% / 0.2);
+  }
+
+  /* 3D elliptical orbit keyframes */
+  @keyframes auth-orbit {
+    0% {
+      transform: rotateX(65deg) rotateZ(0deg);
+    }
+    100% {
+      transform: rotateX(65deg) rotateZ(360deg);
+    }
+  }
+
+  /* Vortex transition: card gets absorbed */
+  .auth-card-vortex {
+    animation: auth-absorb 1.2s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+  }
+
+  @keyframes auth-absorb {
+    0% {
+      transform: scale(1) rotate(0deg);
+      opacity: 1;
+      filter: blur(0px);
+    }
+    40% {
+      transform: scale(0.95) rotate(2deg);
+      opacity: 1;
+      filter: blur(0px);
+    }
+    70% {
+      transform: scale(0.6) rotate(8deg);
+      opacity: 0.7;
+      filter: blur(2px);
+    }
+    100% {
+      transform: scale(0) rotate(30deg);
+      opacity: 0;
+      filter: blur(10px);
+    }
+  }
+
+  /* Page content absorb */
+  .auth-page-absorb {
+    animation: auth-page-sink 1.4s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+  }
+
+  @keyframes auth-page-sink {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    60% {
+      transform: scale(0.98);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(0.85);
+      opacity: 0;
+    }
+  }
+
+  /* Vortex overlay */
+  .auth-vortex-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    background: radial-gradient(
+      circle at 50% 50%,
+      transparent 0%,
+      transparent 20%,
+      hsl(var(--background)) 80%
+    );
+    animation: auth-vortex-close 1.4s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+  }
+
+  @keyframes auth-vortex-close {
+    0% {
+      opacity: 0;
+      background-size: 200% 200%;
+    }
+    40% {
+      opacity: 0.3;
+    }
+    100% {
+      opacity: 1;
+      background: hsl(var(--background));
+    }
+  }
+
+  /* Background vortex color */
+  .auth-vortex-bg {
+    background: hsl(var(--background)) !important;
+  }
 }
