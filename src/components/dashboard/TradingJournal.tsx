@@ -204,7 +204,22 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
           >
             <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
           </Button>
-          <span className="text-sm md:text-base font-medium capitalize text-foreground">{formatMonthYear(currentDate)}</span>
+          <div className="text-center">
+            <span className="text-sm md:text-base font-medium capitalize text-foreground">{formatMonthYear(currentDate)}</span>
+            {monthlyStats.count > 0 && (
+              <div className="flex items-center justify-center gap-2 mt-0.5">
+                <span className={cn(
+                  "text-[10px] md:text-xs font-mono font-bold",
+                  monthlyStats.totalRR >= 0 ? "text-emerald-500" : "text-red-500"
+                )}>
+                  {monthlyStats.totalRR >= 0 ? "+" : ""}{monthlyStats.totalRR.toFixed(1)} RR
+                </span>
+                <span className="text-[10px] md:text-xs text-muted-foreground font-mono">
+                  · {monthlyStats.count} trade{monthlyStats.count > 1 ? "s" : ""}
+                </span>
+              </div>
+            )}
+          </div>
           <Button
             variant="ghost"
             size="icon"
