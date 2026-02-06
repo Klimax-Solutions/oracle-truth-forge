@@ -468,11 +468,6 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                     <span className="text-[10px] text-muted-foreground hidden md:inline">analysés</span>
                   </div>
                   <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 md:bg-transparent md:px-0 md:py-0">
-                    <span className="text-xs md:text-sm font-mono text-foreground">
-                      ✓ {questData?.ebaucheTradesAnalyzed || 0} analysés
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 md:bg-transparent md:px-0 md:py-0">
                     {getStatusIcon(ebauche.userCycle?.status)}
                     <span className="text-[10px] md:text-xs text-muted-foreground">
                       {getStatusLabel(ebauche.userCycle?.status)}
