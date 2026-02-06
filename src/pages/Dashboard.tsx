@@ -12,7 +12,6 @@ import { DataAnalysisPage } from "@/components/dashboard/DataAnalysisPage";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
-import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
 import { VideoManager } from "@/components/dashboard/VideoManager";
 import { AdminVerification } from "@/components/dashboard/AdminVerification";
