@@ -214,29 +214,39 @@
 
   /* ===== Auth Page Animations ===== */
 
-  /* Ambient glow behind the card */
-  .auth-ambient-glow {
+  /* Background Oracle letters */
+  .auth-bg-letters {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    width: 600px;
-    height: 600px;
-    transform: translate(-50%, -50%);
-    background: radial-gradient(
-      circle,
-      hsl(0 0% 100% / 0.03) 0%,
-      transparent 70%
-    );
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     pointer-events: none;
-    z-index: 0;
+    gap: 0;
   }
 
-  .dark .auth-ambient-glow {
-    background: radial-gradient(
-      circle,
-      hsl(0 0% 100% / 0.04) 0%,
-      transparent 70%
-    );
+  .auth-bg-letter {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: clamp(8rem, 18vw, 16rem);
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 1px hsl(0 0% 50% / 0);
+    opacity: 0;
+    transition: opacity 0.6s ease-out, -webkit-text-stroke 0.6s ease-out;
+    user-select: none;
+  }
+
+  .auth-bg-letter-visible {
+    opacity: 1;
+    -webkit-text-stroke: 1px hsl(0 0% 60% / 0.12);
+  }
+
+  .dark .auth-bg-letter-visible {
+    -webkit-text-stroke: 1px hsl(0 0% 100% / 0.06);
+    text-shadow: 0 0 40px hsl(0 0% 100% / 0.03);
   }
 
   /* Glowing border on the auth card */
@@ -275,74 +285,6 @@
     position: relative;
     z-index: 1;
     border-radius: 0.375rem;
-  }
-
-  /* 3D Orbit container */
-  .auth-orbit-container {
-    position: relative;
-    perspective: 800px;
-    width: 100%;
-    max-width: 28rem; /* max-w-md */
-  }
-
-  /* Orbiting orb track */
-  .auth-orb-track {
-    position: absolute;
-    inset: -40px;
-    z-index: 20;
-    pointer-events: none;
-    animation: auth-orbit 6s linear infinite;
-    transform-style: preserve-3d;
-  }
-
-  .auth-orb-accelerate {
-    animation: auth-orbit 0.4s linear infinite !important;
-  }
-
-  /* The glowing orb */
-  .auth-orb {
-    position: absolute;
-    top: -8px;
-    left: 50%;
-    width: 16px;
-    height: 16px;
-    margin-left: -8px;
-    border-radius: 50%;
-    background: radial-gradient(
-      circle,
-      hsl(0 0% 100%) 0%,
-      hsl(220 80% 70%) 40%,
-      hsl(260 60% 60% / 0.6) 70%,
-      transparent 100%
-    );
-    box-shadow:
-      0 0 12px 4px hsl(220 80% 70% / 0.6),
-      0 0 30px 8px hsl(260 60% 60% / 0.3),
-      0 0 60px 16px hsl(220 80% 70% / 0.15);
-  }
-
-  .dark .auth-orb {
-    background: radial-gradient(
-      circle,
-      hsl(0 0% 100%) 0%,
-      hsl(220 80% 75%) 40%,
-      hsl(260 60% 70% / 0.7) 70%,
-      transparent 100%
-    );
-    box-shadow:
-      0 0 16px 6px hsl(220 80% 75% / 0.7),
-      0 0 40px 12px hsl(260 60% 70% / 0.4),
-      0 0 80px 24px hsl(220 80% 70% / 0.2);
-  }
-
-  /* 3D elliptical orbit keyframes */
-  @keyframes auth-orbit {
-    0% {
-      transform: rotateX(65deg) rotateZ(0deg);
-    }
-    100% {
-      transform: rotateX(65deg) rotateZ(360deg);
-    }
   }
 
   /* Vortex transition: card gets absorbed */
