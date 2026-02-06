@@ -56,6 +56,7 @@ export type Database = {
           banned_by: string | null
           created_at: string
           display_name: string | null
+          first_name: string | null
           frozen_at: string | null
           frozen_by: string | null
           id: string
@@ -69,6 +70,7 @@ export type Database = {
           banned_by?: string | null
           created_at?: string
           display_name?: string | null
+          first_name?: string | null
           frozen_at?: string | null
           frozen_by?: string | null
           id?: string
@@ -82,6 +84,7 @@ export type Database = {
           banned_by?: string | null
           created_at?: string
           display_name?: string | null
+          first_name?: string | null
           frozen_at?: string | null
           frozen_by?: string | null
           id?: string
