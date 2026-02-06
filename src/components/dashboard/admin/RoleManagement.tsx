@@ -603,12 +603,15 @@ export const RoleManagement = () => {
               <div key={user.user_id} className={cn("p-3", user.status !== 'active' && 'opacity-60')}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm truncate">{user.display_name || "Sans nom"}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono">{user.user_id.slice(0, 12)}...</p>
                     {editingNameUserId === user.user_id ? (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 mt-1">
                         <Input
                           value={editingNameValue}
                           onChange={(e) => setEditingNameValue(e.target.value)}
                           className="h-7 text-sm"
+                          placeholder="Nouveau prénom"
                           maxLength={50}
                           autoFocus
                           onKeyDown={(e) => {
@@ -624,14 +627,11 @@ export const RoleManagement = () => {
                         </Button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5">
-                        <p className="font-medium text-sm truncate">{user.display_name || "Sans nom"}</p>
-                        <button onClick={() => startEditingName(user.user_id, user.display_name)} className="text-muted-foreground hover:text-foreground">
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                      </div>
+                      <button onClick={() => startEditingName(user.user_id, user.display_name)} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground mt-0.5">
+                        <Pencil className="w-2.5 h-2.5" />
+                        <span>Modifier le prénom</span>
+                      </button>
                     )}
-                    <p className="text-[10px] text-muted-foreground font-mono">{user.user_id.slice(0, 12)}...</p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {getStatusBadge(user.status)}
@@ -724,12 +724,15 @@ export const RoleManagement = () => {
               users.map((user) => (
                 <TableRow key={user.user_id} className={user.status !== 'active' ? 'opacity-60' : ''}>
                   <TableCell>
+                    <div className="font-medium">{user.display_name || "Sans nom"}</div>
+                    <div className="text-sm text-muted-foreground">{user.user_id.slice(0, 8)}...</div>
                     {editingNameUserId === user.user_id ? (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 mt-1">
                         <Input
                           value={editingNameValue}
                           onChange={(e) => setEditingNameValue(e.target.value)}
                           className="h-7 text-sm w-40"
+                          placeholder="Nouveau prénom"
                           maxLength={50}
                           autoFocus
                           onKeyDown={(e) => {
@@ -745,14 +748,11 @@ export const RoleManagement = () => {
                         </Button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <div className="font-medium">{user.display_name || "Sans nom"}</div>
-                        <button onClick={() => startEditingName(user.user_id, user.display_name)} className="text-muted-foreground hover:text-foreground transition-colors">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      <button onClick={() => startEditingName(user.user_id, user.display_name)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mt-0.5">
+                        <Pencil className="w-3 h-3" />
+                        <span>Modifier le prénom</span>
+                      </button>
                     )}
-                    <div className="text-sm text-muted-foreground">{user.user_id.slice(0, 8)}...</div>
                     {user.status_reason && (
                       <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3" />
