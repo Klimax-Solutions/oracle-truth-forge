@@ -217,7 +217,7 @@ const Dashboard = () => {
       case "execution":
         return <OracleExecution trades={trades} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} />;
       case "setup":
-        return <SetupPage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} />;
+        return <SetupPage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} />;
       case "data-analysis":
         return <DataAnalysisPage trades={displayTrades} onNavigateToDatabase={handleNavigateToDatabase} />;
       case "videos":
