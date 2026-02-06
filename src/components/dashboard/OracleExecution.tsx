@@ -487,7 +487,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos }: OracleExecutionP
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Navigate to videos tab (handled by parent)
+                        onNavigateToVideos?.();
                       }}
                     >
                       <Play className="w-4 h-4 mr-2" />
