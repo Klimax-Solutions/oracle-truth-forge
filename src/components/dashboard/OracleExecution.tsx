@@ -532,7 +532,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                           e.stopPropagation();
                           handleRequestVerification(ebauche);
                         }}
-                        disabled={ebauche.userExecutions.length < ebauche.total_trades || submitting}
+                        disabled={(questData?.ebaucheTradesAnalyzed || 0) < ebauche.total_trades || submitting}
                       >
                         {submitting ? (
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
