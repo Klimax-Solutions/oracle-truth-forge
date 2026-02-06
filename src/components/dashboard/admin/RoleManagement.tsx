@@ -78,6 +78,8 @@ export const RoleManagement = () => {
   const [selectedRole, setSelectedRole] = useState<string>("admin");
   const [actionReason, setActionReason] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [editingNameUserId, setEditingNameUserId] = useState<string | null>(null);
+  const [editingNameValue, setEditingNameValue] = useState("");
 
   useEffect(() => {
     checkSuperAdmin();
