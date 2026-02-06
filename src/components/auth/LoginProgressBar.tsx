@@ -84,7 +84,7 @@ const LoginProgressBar = ({ isActive, onComplete, userName }: LoginProgressBarPr
         {/* Welcome message - large centered when verified */}
         {showMessage ? (
           <div className="text-center space-y-6 animate-fade-in">
-            <p className="text-6xl md:text-8xl font-bold text-foreground tracking-wide">
+            <p className="text-4xl md:text-6xl font-bold text-foreground tracking-wide whitespace-nowrap">
               Bonjour, {displayName}
             </p>
             <p className="text-base md:text-lg text-muted-foreground">
