@@ -108,7 +108,7 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
         </div>
       </div>
 
-      <div className="flex-1 p-4 md:p-6 overflow-auto scrollbar-hide">
+      <div className="flex-1 p-4 md:p-6 overflow-y-auto overflow-x-hidden scrollbar-hide">
         <div className="space-y-6">
           {/* Row 1: Données clés (Distribution RR key stats + quick access) */}
           <div
