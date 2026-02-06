@@ -43,6 +43,7 @@ interface OraclePageProps {
   trades: Trade[];
   initialFilters?: any;
   analyzedTradeNumbers?: number[];
+  onAnalysisToggle?: (tradeNumber: number, checked: boolean) => void;
 }
 
 interface TradeComparison {
