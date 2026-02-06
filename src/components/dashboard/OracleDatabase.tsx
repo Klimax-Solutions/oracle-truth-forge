@@ -60,35 +60,9 @@ interface Filters {
   hasScreenshots?: boolean;
 }
 
-export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [] }: OracleDatabaseProps) => {
+export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [], onAnalysisToggle }: OracleDatabaseProps) => {
   const chartColors = useChartColors();
   const { toast } = useToast();
-
-  const handleAnalysisToggle = async (tradeNumber: number, checked: boolean) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      if (checked) {
-        await supabase.from("user_trade_analyses").insert({
-          user_id: user.id,
-          trade_number: tradeNumber,
-        });
-      } else {
-        await supabase.from("user_trade_analyses")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("trade_number", tradeNumber);
-      }
-    } catch (error) {
-      console.error("Error toggling analysis:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour l'analyse.",
-        variant: "destructive",
-      });
-    }
-  };
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [filters, setFilters] = useState<Filters>(initialFilters || {
     direction: [],
