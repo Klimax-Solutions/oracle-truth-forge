@@ -233,7 +233,7 @@ const Dashboard = () => {
       case "roles":
         return <RoleManagement />;
       default:
-        return <OracleExecution trades={trades} />;
+        return <OracleExecution trades={trades} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} />;
     }
   };
 
