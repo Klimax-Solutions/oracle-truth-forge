@@ -64,46 +64,68 @@ const LoginProgressBar = ({ isActive, onComplete, userName }: LoginProgressBarPr
   const displayName = userName || "Trader";
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm">
+    <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm transition-all duration-700"
+      style={{
+        backgroundColor: showMessage 
+          ? "hsl(var(--background) / 0.98)" 
+          : "hsl(var(--background) / 0.95)",
+      }}
+    >
+      {/* Darkening overlay when message appears */}
+      <div 
+        className="absolute inset-0 bg-black transition-opacity duration-700 pointer-events-none"
+        style={{ opacity: showMessage ? 0.4 : 0 }}
+      />
+
       {/* Fingerprint background animation */}
       <FingerprintAnimation progress={progress} verified={showMessage} />
 
       <div className="relative z-10 w-full max-w-md px-6 space-y-6">
-        {/* Status text */}
-        <div className="text-center space-y-2">
-          <p className="text-[10px] font-mono uppercase tracking-[0.4em] text-muted-foreground">
-            {showMessage ? "Accès autorisé" : "Vérification en cours"}
-          </p>
-        </div>
-
-        {/* Progress bar */}
-        <div className="space-y-3">
-          <div className="h-1 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-75 ease-linear"
-              style={{
-                width: `${progress}%`,
-                background: "linear-gradient(90deg, hsl(var(--foreground) / 0.4), hsl(var(--foreground)))",
-                boxShadow: "0 0 12px hsl(var(--foreground) / 0.3)",
-              }}
-            />
+        {/* Welcome message - large centered when verified */}
+        {showMessage ? (
+          <div className="text-center space-y-4 animate-fade-in">
+            <p className="text-3xl md:text-4xl font-bold text-foreground tracking-wide">
+              Bonjour, {displayName}
+            </p>
+            <p className="text-sm md:text-base text-muted-foreground">
+              Identité confirmée, accès à Oracle déverrouillé
+            </p>
           </div>
+        ) : (
+          <>
+            {/* Status text */}
+            <div className="text-center space-y-2">
+              <p className="text-[10px] font-mono uppercase tracking-[0.4em] text-muted-foreground">
+                Vérification en cours
+              </p>
+            </div>
 
-          {/* Percentage + data readout */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-muted-foreground tracking-wider">
-              {showMessage ? "IDENTITÉ CONFIRMÉE" : "AUTHENTIFICATION"}
-            </span>
-            <span className="text-xs font-mono text-foreground tabular-nums">
-              {Math.floor(progress)}%
-            </span>
-          </div>
-        </div>
+            {/* Progress bar */}
+            <div className="space-y-3">
+              <div className="h-1 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-75 ease-linear"
+                  style={{
+                    width: `${progress}%`,
+                    background: "linear-gradient(90deg, hsl(var(--foreground) / 0.4), hsl(var(--foreground)))",
+                    boxShadow: "0 0 12px hsl(var(--foreground) / 0.3)",
+                  }}
+                />
+              </div>
 
-        {/* Data stream effect */}
-        <div className="font-mono text-[10px] text-muted-foreground/60 space-y-0.5 overflow-hidden h-12">
-          {!showMessage && (
-            <>
+              {/* Percentage + data readout */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono text-muted-foreground tracking-wider">
+                  AUTHENTIFICATION
+                </span>
+                <span className="text-xs font-mono text-foreground tabular-nums">
+                  {Math.floor(progress)}%
+                </span>
+              </div>
+            </div>
+
+            {/* Data stream effect */}
+            <div className="font-mono text-[10px] text-muted-foreground/60 space-y-0.5 overflow-hidden h-12">
               <p className="animate-fade-in" style={{ animationDelay: "0s" }}>
                 → Vérification des credentials...
               </p>
@@ -122,20 +144,8 @@ const LoginProgressBar = ({ isActive, onComplete, userName }: LoginProgressBarPr
                   → Initialisation du dashboard...
                 </p>
               )}
-            </>
-          )}
-        </div>
-
-        {/* Welcome message with name */}
-        {showMessage && (
-          <div className="text-center space-y-3 animate-fade-in">
-            <p className="text-xl md:text-2xl font-bold text-foreground tracking-wide">
-              Bonjour, {displayName}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Identité confirmée, accès à Oracle déverrouillé
-            </p>
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>
