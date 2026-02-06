@@ -43,6 +43,7 @@ interface OracleDatabaseProps {
   trades: Trade[];
   initialFilters?: Filters;
   analyzedTradeNumbers?: number[];
+  onAnalysisToggle?: (tradeNumber: number, checked: boolean) => void;
 }
 
 interface Filters {
