@@ -423,8 +423,8 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
           </div>
         </div>
 
-        {/* Ébauche Section */}
-        {ebauche && (
+        {/* Ébauche Section — hidden once validated */}
+        {ebauche && ebauche.userCycle?.status !== 'validated' && (
           <div>
             <div className="flex items-center gap-3 mb-4">
               <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
@@ -447,9 +447,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0",
-                    ebauche.userCycle?.status === 'validated' 
-                      ? "bg-emerald-500/20" 
-                      : "bg-muted"
+                    "bg-muted"
                   )}>
                     <Play className="w-4 h-4 md:w-5 md:h-5 text-foreground" />
                   </div>
@@ -468,17 +466,6 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                       {questData?.ebaucheTradesAnalyzed || 0}/{ebauche.total_trades}
                     </span>
                     <span className="text-[10px] text-muted-foreground hidden md:inline">analysés</span>
-                  </div>
-                  <div className={cn(
-                    "flex items-center gap-1.5 px-2 py-1 rounded-md md:bg-transparent md:px-0 md:py-0",
-                    ebauche.userRR >= 0 ? "bg-emerald-500/10 md:bg-transparent" : "bg-red-500/10 md:bg-transparent"
-                  )}>
-                    <span className={cn(
-                      "text-xs md:text-sm font-mono",
-                      ebauche.userRR >= 0 ? "text-emerald-400" : "text-red-400"
-                    )}>
-                      {ebauche.userRR >= 0 ? "+" : ""}{ebauche.userRR.toFixed(1)} RR
-                    </span>
                   </div>
                   <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 md:bg-transparent md:px-0 md:py-0">
                     {getStatusIcon(ebauche.userCycle?.status)}
@@ -500,7 +487,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                 <div 
                   className={cn(
                     "h-full rounded-full transition-all",
-                    ebauche.userCycle?.status === 'validated' ? "bg-emerald-500" : "bg-blue-500"
+                    "bg-blue-500"
                   )}
                   style={{ width: `${Math.min(((questData?.ebaucheTradesAnalyzed || 0) / ebauche.total_trades) * 100, 100)}%` }}
                 />
@@ -665,59 +652,75 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
             Récapitulatif des Cycles
           </h3>
           <div className="space-y-2">
-            {cyclesWithProgress.map((cycle) => (
-              <div 
-                key={cycle.id}
-                className="flex items-center gap-4 py-2 border-b border-border last:border-0"
-              >
-                <div className={cn(
-                  "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                  cycle.userCycle?.status === 'validated'
-                    ? "bg-emerald-500/20 text-emerald-400" 
-                    : cycle.userCycle?.status === 'in_progress'
-                    ? "bg-blue-500/20 text-blue-400"
-                    : cycle.userCycle?.status === 'pending_review'
-                    ? "bg-orange-500/20 text-orange-400"
-                    : cycle.userCycle?.status === 'rejected'
-                    ? "bg-red-500/20 text-red-400"
-                    : "bg-muted text-muted-foreground"
-                )}>
-                  {cycle.cycle_number === 0 ? "É" : cycle.cycle_number}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">{cycle.name}</span>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(cycle.userCycle?.status)}
-                      <span className="text-xs text-muted-foreground">
-                        {cycle.userExecutions.length}/{cycle.total_trades} saisis
-                      </span>
+            {cyclesWithProgress.map((cycle) => {
+              const isEbauche = cycle.cycle_number === 0;
+              const ebaucheAnalyzed = questData?.ebaucheTradesAnalyzed || 0;
+              const displayCount = isEbauche ? ebaucheAnalyzed : cycle.userExecutions.length;
+              const displayLabel = isEbauche ? "analysés" : "saisis";
+              const displayProgress = isEbauche 
+                ? Math.min((ebaucheAnalyzed / cycle.total_trades) * 100, 100)
+                : cycle.progress;
+
+              return (
+                <div 
+                  key={cycle.id}
+                  className="flex items-center gap-4 py-2 border-b border-border last:border-0"
+                >
+                  <div className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                    cycle.userCycle?.status === 'validated'
+                      ? "bg-emerald-500/20 text-emerald-400" 
+                      : cycle.userCycle?.status === 'in_progress'
+                      ? "bg-blue-500/20 text-blue-400"
+                      : cycle.userCycle?.status === 'pending_review'
+                      ? "bg-orange-500/20 text-orange-400"
+                      : cycle.userCycle?.status === 'rejected'
+                      ? "bg-red-500/20 text-red-400"
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    {isEbauche ? "É" : cycle.cycle_number}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-foreground">{cycle.name}</span>
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(cycle.userCycle?.status)}
+                        <span className="text-xs text-muted-foreground">
+                          {displayCount}/{cycle.total_trades} {displayLabel}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-1 bg-muted rounded-full overflow-hidden mt-1">
+                      <div 
+                        className={cn(
+                          "h-full rounded-full",
+                          cycle.userCycle?.status === 'validated' ? "bg-emerald-500" 
+                          : cycle.userCycle?.status === 'in_progress' ? "bg-blue-500"
+                          : cycle.userCycle?.status === 'pending_review' ? "bg-orange-500"
+                          : cycle.userCycle?.status === 'rejected' ? "bg-red-500"
+                          : "bg-foreground/30"
+                        )}
+                        style={{ width: `${displayProgress}%` }}
+                      />
                     </div>
                   </div>
-                  <div className="h-1 bg-muted rounded-full overflow-hidden mt-1">
-                    <div 
-                      className={cn(
-                        "h-full rounded-full",
-                        cycle.userCycle?.status === 'validated' ? "bg-emerald-500" 
-                        : cycle.userCycle?.status === 'in_progress' ? "bg-blue-500"
-                        : cycle.userCycle?.status === 'pending_review' ? "bg-orange-500"
-                        : cycle.userCycle?.status === 'rejected' ? "bg-red-500"
-                        : "bg-foreground/30"
-                      )}
-                      style={{ width: `${cycle.progress}%` }}
-                    />
-                  </div>
+                  {isEbauche ? (
+                    <span className="text-sm font-mono w-20 text-right text-foreground">
+                      {ebaucheAnalyzed}/{cycle.total_trades}
+                    </span>
+                  ) : (
+                    <span className={cn(
+                      "text-sm font-mono w-20 text-right",
+                      cycle.userRR > 0 ? "text-emerald-400" 
+                      : cycle.userRR < 0 ? "text-red-400"
+                      : "text-muted-foreground"
+                    )}>
+                      {cycle.userRR >= 0 ? "+" : ""}{cycle.userRR.toFixed(1)} RR
+                    </span>
+                  )}
                 </div>
-                <span className={cn(
-                  "text-sm font-mono w-20 text-right",
-                  cycle.userRR > 0 ? "text-emerald-400" 
-                  : cycle.userRR < 0 ? "text-red-400"
-                  : "text-muted-foreground"
-                )}>
-                  {cycle.userRR >= 0 ? "+" : ""}{cycle.userRR.toFixed(1)} RR
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
