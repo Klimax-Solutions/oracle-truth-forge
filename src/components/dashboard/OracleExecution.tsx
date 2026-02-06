@@ -29,6 +29,7 @@ interface Trade {
 
 interface OracleExecutionProps {
   trades: Trade[];
+  onNavigateToVideos?: () => void;
 }
 
 interface Cycle {
