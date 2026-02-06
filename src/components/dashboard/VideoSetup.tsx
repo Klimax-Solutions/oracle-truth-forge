@@ -104,7 +104,7 @@ export const VideoSetup = () => {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-4 md:p-6 border-b border-border">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <h2 className="text-lg md:text-xl font-semibold text-foreground">
               Vidéo du Setup Oracle
@@ -113,19 +113,32 @@ export const VideoSetup = () => {
               {totalCount} vidéos
             </Badge>
           </div>
-          {/* Progress */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground">
-              <Eye className="w-3.5 h-3.5" />
-              <span>
-                {viewedCount}/{totalCount} vues
-              </span>
-            </div>
-            <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full transition-all duration-500"
-                style={{ width: `${totalCount > 0 ? (viewedCount / totalCount) * 100 : 0}%` }}
-              />
+          <div className="flex items-center gap-3">
+            {/* Bonus videos button */}
+            <a
+              href="https://mercure-institute.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-md text-[10px] md:text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all bg-card"
+            >
+              <ExternalLink className="w-3 h-3" />
+              <span className="hidden sm:inline">Accéder aux vidéos bonus du Mercure Institute</span>
+              <span className="sm:hidden">Vidéos bonus</span>
+            </a>
+            {/* Progress */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground">
+                <Eye className="w-3.5 h-3.5" />
+                <span>
+                  {viewedCount}/{totalCount} vues
+                </span>
+              </div>
+              <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-500"
+                  style={{ width: `${totalCount > 0 ? (viewedCount / totalCount) * 100 : 0}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>

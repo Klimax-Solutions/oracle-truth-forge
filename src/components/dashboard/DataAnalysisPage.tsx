@@ -56,7 +56,7 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
   // Expanded views
   if (expandedView === "journal") {
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col overflow-hidden">
         <button
           onClick={() => setExpandedView(null)}
           className="flex items-center gap-2 p-4 border-b border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -73,7 +73,7 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
 
   if (expandedView === "distribution") {
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col overflow-hidden">
         <button
           onClick={() => setExpandedView(null)}
           className="flex items-center gap-2 p-4 border-b border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -95,9 +95,9 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
   ];
 
   return (
-    <div className="h-full flex flex-col overflow-hidden max-w-full">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-4 md:p-6 border-b border-border">
+      <div className="p-4 md:p-6 border-b border-border flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">Data Analysis</h2>
@@ -108,9 +108,9 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
         </div>
       </div>
 
-      <div className="flex-1 p-4 md:p-6 overflow-y-auto overflow-x-hidden scrollbar-hide">
-        <div className="space-y-6">
-          {/* Row 1: Données clés (Distribution RR key stats + quick access) */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
+        <div className="p-4 md:p-6 space-y-6 max-w-full">
+          {/* Row 1: Données clés + quick access */}
           <div
             className={cn("space-y-4", isEntering && "opacity-0")}
             style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms forwards" }}
@@ -119,20 +119,20 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
 
             {/* Quick access buttons */}
             <div className="grid grid-cols-2 gap-3">
-              {quickSections.map((section, idx) => (
+              {quickSections.map((section) => (
                 <button
                   key={section.id}
                   onClick={() => setExpandedView(section.id)}
                   className={cn(
-                    "data-analysis-card border border-border rounded-md p-4 text-left transition-all group",
+                    "data-analysis-card border border-border rounded-md p-3 md:p-4 text-left transition-all group",
                     "hover:border-foreground/30 bg-card"
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-md border border-border flex items-center justify-center group-hover:border-foreground/30 transition-colors">
+                    <div className="w-8 h-8 rounded-md border border-border flex items-center justify-center group-hover:border-foreground/30 transition-colors flex-shrink-0">
                       <section.icon className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h3 className="text-sm font-medium text-foreground">{section.label}</h3>
                       <p className="text-[9px] text-muted-foreground font-mono uppercase">Ouvrir</p>
                     </div>
@@ -142,10 +142,10 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
             </div>
           </div>
 
-          {/* Row 2: Analog Clock — prominent, no boxy container */}
+          {/* Row 2: Analog Clock */}
           <div
             className={cn(
-              "py-6 md:py-10",
+              "py-4 md:py-8",
               isEntering && "opacity-0"
             )}
             style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 160ms forwards" }}
@@ -182,13 +182,11 @@ const DonneesClés = ({ trades }: { trades: { rr: number; direction?: string; tr
     const minRR = Math.min(...allRR, 0);
     const winRate = allRR.length > 0 ? (allRR.filter(rr => rr > 0).length / allRR.length) * 100 : 0;
 
-    // Direction breakdown
     const longTrades = trades.filter(t => (t as any).direction === "Long");
     const shortTrades = trades.filter(t => (t as any).direction === "Short");
     const longRR = longTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
     const shortRR = shortTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
 
-    // Std deviation
     const variance = allRR.length > 0
       ? allRR.reduce((sum, rr) => sum + Math.pow(rr - avgRR, 2), 0) / allRR.length
       : 0;
