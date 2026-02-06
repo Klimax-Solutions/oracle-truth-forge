@@ -15,6 +15,7 @@ import { RRDistributionChart } from "@/components/dashboard/RRDistributionChart"
 import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
+import { VideoManager } from "@/components/dashboard/VideoManager";
 import { AdminVerification } from "@/components/dashboard/AdminVerification";
 import { RoleManagement } from "@/components/dashboard/admin/RoleManagement";
 import { BatchImportPage } from "@/components/dashboard/BatchImportPage";
@@ -230,6 +231,8 @@ const Dashboard = () => {
         return <BatchImportPage />;
       case "admin":
         return <AdminVerification />;
+      case "video-manager":
+        return <VideoManager />;
       case "roles":
         return <RoleManagement />;
       default:
