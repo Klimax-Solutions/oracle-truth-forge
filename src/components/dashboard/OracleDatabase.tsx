@@ -1,10 +1,13 @@
-import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X } from "lucide-react";
+import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X, CheckSquare } from "lucide-react";
 import { SignedImageCard } from "./SignedImageCard";
 import { cn } from "@/lib/utils";
 import { useState, useMemo, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useChartColors } from "@/hooks/useChartColors";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
