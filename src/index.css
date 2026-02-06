@@ -465,3 +465,108 @@
     background: hsl(var(--background)) !important;
   }
 }
+
+/* ===== DATA ANALYSIS ANIMATIONS ===== */
+
+/* Card dealing animation */
+@keyframes data-card-deal {
+  0% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95) rotateX(5deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.01) rotateX(0deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotateX(0deg);
+  }
+}
+
+.data-analysis-card {
+  transform-origin: center bottom;
+  perspective: 800px;
+}
+
+/* Chart glow container */
+.chart-glow-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-glow-container::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    ellipse at center,
+    hsl(142 71% 45% / 0.03) 0%,
+    transparent 60%
+  );
+  animation: chart-glow-pulse 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes chart-glow-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+/* Glowing line on curves */
+.chart-line-glow {
+  filter: drop-shadow(0 0 6px hsl(142 71% 45% / 0.4));
+}
+
+/* Bar glow */
+.chart-bar-glow rect {
+  filter: drop-shadow(0 0 4px currentColor);
+  transition: filter 0.3s ease;
+}
+
+.chart-bar-glow rect:hover {
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+/* Clock glow */
+.clock-glow {
+  filter: drop-shadow(0 0 20px hsl(142 71% 45% / 0.1));
+}
+
+.clock-second-hand {
+  filter: drop-shadow(0 0 4px hsl(142 71% 45% / 0.6));
+}
+
+/* Recharts line glow animation */
+@keyframes line-glow-travel {
+  0% { stroke-dashoffset: 100%; }
+  100% { stroke-dashoffset: 0%; }
+}
+
+/* Pie chart glow */
+.recharts-pie-sector path {
+  filter: drop-shadow(0 0 6px currentColor);
+  transition: filter 0.3s ease, transform 0.3s ease;
+}
+
+.recharts-pie-sector path:hover {
+  filter: drop-shadow(0 0 12px currentColor);
+}
+
+/* Area chart stroke glow */
+.recharts-area-curve {
+  filter: drop-shadow(0 0 4px hsl(142 71% 45% / 0.5));
+}
+
+/* Bar chart entry animation */
+.recharts-bar-rectangle {
+  animation: bar-grow 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes bar-grow {
+  0% { transform: scaleY(0); transform-origin: bottom; }
+  100% { transform: scaleY(1); transform-origin: bottom; }
+}
