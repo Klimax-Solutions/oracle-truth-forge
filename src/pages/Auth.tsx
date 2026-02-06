@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import CursorTrail from "@/components/auth/CursorTrail";
 import VortexTransition from "@/components/auth/VortexTransition";
+import LoginProgressBar from "@/components/auth/LoginProgressBar";
 
 type AuthMode = "login" | "signup" | "forgot-password";
 
@@ -20,6 +21,7 @@ const Auth = () => {
   const [mode, setMode] = useState<AuthMode>("login");
   const [isLoading, setIsLoading] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [isProgressActive, setIsProgressActive] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [revealedLetters, setRevealedLetters] = useState<boolean[]>(new Array(6).fill(false));
   const navigate = useNavigate();
@@ -32,13 +34,11 @@ const Auth = () => {
     const w = rect.width;
     const h = rect.height;
 
-    // Each letter has a trigger zone — horizontal bands across the viewport
     const letterWidth = w / 6;
     const newRevealed = ORACLE_LETTERS.map((_, i) => {
       const zoneLeft = i * letterWidth;
       const zoneRight = zoneLeft + letterWidth;
       const inX = x >= zoneLeft && x <= zoneRight;
-      // Only trigger in the outer areas (not directly on the card)
       const cardTop = h * 0.3;
       const cardBottom = h * 0.7;
       const inOuterY = y < cardTop || y > cardBottom;
@@ -46,17 +46,22 @@ const Auth = () => {
     });
 
     setRevealedLetters(prev => {
-      // Once revealed, keep visible for a moment (handled by CSS transition)
       return prev.map((wasRevealed, i) => wasRevealed || newRevealed[i]);
     });
   }, []);
 
-  // Reset letters after they've been shown
   const handleMouseLeave = useCallback(() => {
     setTimeout(() => {
       setRevealedLetters(new Array(6).fill(false));
     }, 1500);
   }, []);
+
+  const handleProgressComplete = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      navigate("/dashboard");
+    }, 1400);
+  }, [navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,10 +74,9 @@ const Auth = () => {
           password,
         });
         if (error) throw error;
-        setIsTransitioning(true);
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 1400);
+        // Start progress bar instead of vortex directly
+        setIsLoading(false);
+        setIsProgressActive(true);
       } else if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email,
@@ -87,6 +91,7 @@ const Auth = () => {
           description: "Vous pouvez maintenant vous connecter.",
         });
         setMode("login");
+        setIsLoading(false);
       }
     } catch (error: any) {
       toast({
@@ -94,10 +99,7 @@ const Auth = () => {
         description: error.message,
         variant: "destructive",
       });
-    } finally {
-      if (!isTransitioning) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     }
   };
 
@@ -126,14 +128,16 @@ const Auth = () => {
     }
   };
 
+  const showingAnimation = isProgressActive || isTransitioning;
+
   return (
     <div
       className={`min-h-screen bg-background relative overflow-hidden transition-colors duration-700 ${isTransitioning ? "auth-vortex-bg" : ""}`}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onMouseMove={!showingAnimation ? handleMouseMove : undefined}
+      onMouseLeave={!showingAnimation ? handleMouseLeave : undefined}
     >
       {/* Cursor trail with ORACLE letters */}
-      {!isTransitioning && <CursorTrail />}
+      {!showingAnimation && <CursorTrail />}
 
       {/* Background Oracle letters revealed by mouse proximity */}
       <div className="auth-bg-letters" aria-hidden="true">
@@ -155,7 +159,7 @@ const Auth = () => {
 
       <div className={`relative z-10 min-h-screen flex flex-col items-center justify-center px-4 md:px-6 py-8 transition-all duration-700 ${isTransitioning ? "auth-page-absorb" : ""}`}>
         {/* Header */}
-        <div className={`text-center mb-8 md:mb-16 transition-all duration-500 ${isTransitioning ? "opacity-0 scale-75" : "animate-fade-in"}`}>
+        <div className={`text-center mb-8 md:mb-16 transition-all duration-500 ${showingAnimation ? "opacity-0 scale-75" : "animate-fade-in"}`}>
           <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.3em] md:tracking-[0.4em] text-muted-foreground mb-4 md:mb-6">
             {mode === "forgot-password" ? "Récupération" : "Authentification"}
           </p>
@@ -165,10 +169,10 @@ const Auth = () => {
         </div>
 
         {/* Divider */}
-        <div className={`w-full max-w-md h-px bg-border mb-8 md:mb-12 transition-all duration-500 ${isTransitioning ? "opacity-0 scale-x-0" : ""}`} />
+        <div className={`w-full max-w-md h-px bg-border mb-8 md:mb-12 transition-all duration-500 ${showingAnimation ? "opacity-0 scale-x-0" : ""}`} />
 
         {/* Card with glowing border */}
-        <div className={`w-full max-w-md ${isTransitioning ? "auth-card-vortex" : ""}`}>
+        <div className={`w-full max-w-md ${isTransitioning ? "auth-card-vortex" : ""} ${isProgressActive ? "opacity-0 scale-90 transition-all duration-500" : ""}`}>
           <div className="auth-glow-card">
             <div className="auth-glow-card-inner border border-border bg-card p-6 md:p-8 rounded-md">
               {mode === "forgot-password" ? (
@@ -255,7 +259,7 @@ const Auth = () => {
                       </div>
                     </div>
 
-                    <Button type="submit" className="w-full h-12 bg-primary text-primary-foreground font-bold hover:bg-primary/90 rounded-md transition-colors" disabled={isLoading || isTransitioning}>
+                    <Button type="submit" className="w-full h-12 bg-primary text-primary-foreground font-bold hover:bg-primary/90 rounded-md transition-colors" disabled={isLoading || showingAnimation}>
                       {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : mode === "login" ? "Se connecter" : "Créer le compte"}
                     </Button>
                   </form>
@@ -272,10 +276,16 @@ const Auth = () => {
         </div>
 
         {/* Footer */}
-        <p className={`mt-8 md:mt-16 text-[10px] md:text-xs text-muted-foreground font-mono uppercase tracking-[0.2em] md:tracking-[0.3em] text-center transition-all duration-500 ${isTransitioning ? "opacity-0 translate-y-8" : ""}`}>
+        <p className={`mt-8 md:mt-16 text-[10px] md:text-xs text-muted-foreground font-mono uppercase tracking-[0.2em] md:tracking-[0.3em] text-center transition-all duration-500 ${showingAnimation ? "opacity-0 translate-y-8" : ""}`}>
           Oracle © 2026 — Accès confidentiel
         </p>
       </div>
+
+      {/* Progress bar overlay */}
+      <LoginProgressBar
+        isActive={isProgressActive}
+        onComplete={handleProgressComplete}
+      />
 
       {/* Enhanced vortex transition with speed streaks */}
       {isTransitioning && <VortexTransition isActive={isTransitioning} />}
