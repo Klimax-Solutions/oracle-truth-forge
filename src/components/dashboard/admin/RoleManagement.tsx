@@ -697,9 +697,16 @@ export const RoleManagement = () => {
               users.map((user) => (
                 <TableRow key={user.user_id} className={user.status !== 'active' ? 'opacity-60' : ''}>
                   <TableCell>
-                    <div className="font-medium">{user.display_name || "Sans nom"}</div>
-                    <div className="text-sm text-muted-foreground">{user.user_id.slice(0, 8)}...</div>
-                    {editingNameUserId === user.user_id ? (
+                    <div className="text-xs text-muted-foreground font-mono mb-0.5">{user.user_id.slice(0, 16)}...</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{user.display_name || "Sans nom"}</span>
+                      {editingNameUserId !== user.user_id && (
+                        <button onClick={() => startEditingName(user.user_id, user.display_name)} className="text-muted-foreground hover:text-foreground transition-colors">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    {editingNameUserId === user.user_id && (
                       <div className="flex items-center gap-1 mt-1">
                         <Input
                           value={editingNameValue}
@@ -720,11 +727,6 @@ export const RoleManagement = () => {
                           <X className="w-3.5 h-3.5" />
                         </Button>
                       </div>
-                    ) : (
-                      <button onClick={() => startEditingName(user.user_id, user.display_name)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mt-0.5">
-                        <Pencil className="w-3 h-3" />
-                        <span>Modifier le prénom</span>
-                      </button>
                     )}
                     {user.status_reason && (
                       <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
@@ -764,53 +766,9 @@ export const RoleManagement = () => {
                       )}
                       
                       {!user.roles.includes('super_admin') && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {user.status === 'active' && (
-                              <>
-                                <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'freeze')}>
-                                  <Snowflake className="w-4 h-4 mr-2 text-blue-500" />
-                                  Geler
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'ban')}>
-                                  <Ban className="w-4 h-4 mr-2 text-destructive" />
-                                  Bannir
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {user.status === 'frozen' && (
-                              <>
-                                <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'unfreeze')}>
-                                  <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-                                  Dégeler
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'ban')}>
-                                  <Ban className="w-4 h-4 mr-2 text-destructive" />
-                                  Bannir
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {user.status === 'banned' && (
-                              <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'unban')}>
-                                <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-                                Débannir
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => openActionDialog(user.user_id, 'remove')}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <UserX className="w-4 h-4 mr-2" />
-                              Supprimer
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button variant="ghost" size="sm" onClick={() => openQuickActionsDialog(user.user_id)}>
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
                       )}
                     </div>
                   </TableCell>
