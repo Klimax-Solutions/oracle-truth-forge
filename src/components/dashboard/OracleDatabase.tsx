@@ -42,6 +42,7 @@ interface Trade {
 interface OracleDatabaseProps {
   trades: Trade[];
   initialFilters?: Filters;
+  analyzedTradeNumbers?: number[];
 }
 
 interface Filters {
