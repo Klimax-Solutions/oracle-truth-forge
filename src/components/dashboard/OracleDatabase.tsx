@@ -413,9 +413,23 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                 {/* Main row - clickable */}
                 <div 
                   onClick={() => setSelectedTrade(selectedTrade?.id === trade.id ? null : trade)}
-                  className="px-5 py-3 flex items-center justify-between cursor-pointer"
+                  className="px-3 md:px-5 py-3 flex items-center justify-between cursor-pointer"
                 >
-                  <div className="flex items-center gap-5">
+                  <div className="flex items-center gap-3 md:gap-5">
+                    {/* Checkbox for trades 1-15 */}
+                    {trade.trade_number >= 1 && trade.trade_number <= 15 && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center"
+                        title="Trade analysé et compris"
+                      >
+                        <Checkbox
+                          checked={analyzedTradeNumbers.includes(trade.trade_number)}
+                          onCheckedChange={(checked) => handleAnalysisToggle(trade.trade_number, !!checked)}
+                          className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                        />
+                      </div>
+                    )}
                     <span className="text-lg font-bold text-muted-foreground/50 w-10">
                       {String(trade.trade_number).padStart(3, "0")}
                     </span>
