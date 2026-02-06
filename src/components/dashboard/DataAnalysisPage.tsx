@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Calendar, BarChart3, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, BarChart3, ChevronUp } from "lucide-react";
 import { TradingJournal } from "./TradingJournal";
 import { RRDistributionChart } from "./RRDistributionChart";
 import { AnalogClock } from "./AnalogClock";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area } from "recharts";
+import { CumulativeEvolution } from "./CumulativeEvolution";
 
 interface Trade {
   id: string;
@@ -35,107 +35,30 @@ interface DataAnalysisPageProps {
   onNavigateToDatabase?: (filters: any) => void;
 }
 
-type Section = "journal" | "distribution" | "timing";
-
-const DAYS_ORDER = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
+type ExpandedView = "journal" | "distribution" | null;
 
 export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisPageProps) => {
   const [isEntering, setIsEntering] = useState(true);
-  const [expandedSection, setExpandedSection] = useState<Section | null>(null);
+  const [expandedView, setExpandedView] = useState<ExpandedView>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsEntering(false), 100);
     return () => clearTimeout(timer);
   }, []);
 
-  // Timing stats for compact chart
-  const timingStats = useMemo(() => {
-    const byDay: Record<string, { trades: number; totalRR: number }> = {};
-    DAYS_ORDER.forEach(d => { byDay[d] = { trades: 0, totalRR: 0 }; });
-
-    const byHour: Record<string, { trades: number; totalRR: number }> = {};
-
-    trades.forEach(t => {
-      if (byDay[t.day_of_week]) {
-        byDay[t.day_of_week].trades++;
-        byDay[t.day_of_week].totalRR += t.rr || 0;
-      }
-      if (t.entry_time) {
-        const hour = t.entry_time.split(":")[0];
-        if (!byHour[hour]) byHour[hour] = { trades: 0, totalRR: 0 };
-        byHour[hour].trades++;
-        byHour[hour].totalRR += t.rr || 0;
-      }
-    });
-
-    const dayData = DAYS_ORDER.map(day => ({
-      day: day.substring(0, 3),
-      fullDay: day,
-      rr: parseFloat(byDay[day].totalRR.toFixed(2)),
-      trades: byDay[day].trades,
-    }));
-
-    const hourData = Object.entries(byHour)
-      .sort(([a], [b]) => parseInt(a) - parseInt(b))
-      .map(([hour, data]) => ({
-        hour: `${hour}h`,
-        hourKey: hour,
-        rr: parseFloat(data.totalRR.toFixed(2)),
-        trades: data.trades,
-      }));
-
-    // Timeline data
-    const byMonth: Record<string, { trades: number; totalRR: number; label: string }> = {};
-    trades.forEach(t => {
-      const date = new Date(t.trade_date);
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const monthNames = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"];
-      const key = `${year}-${month.toString().padStart(2, "0")}`;
-      if (!byMonth[key]) byMonth[key] = { trades: 0, totalRR: 0, label: `${monthNames[month]} ${year}` };
-      byMonth[key].trades++;
-      byMonth[key].totalRR += t.rr || 0;
-    });
-
-    const timelineData = Object.entries(byMonth)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([, data]) => ({
-        label: data.label,
-        rr: parseFloat(data.totalRR.toFixed(2)),
-        trades: data.trades,
-      }));
-
-    // Cumulative for timeline
-    let cumul = 0;
-    const cumulativeTimeline = timelineData.map(d => {
-      cumul += d.rr;
-      return { ...d, cumulative: parseFloat(cumul.toFixed(2)) };
-    });
-
-    const bestDay = dayData.length > 0 ? dayData.reduce((best, curr) => curr.rr > best.rr ? curr : best, dayData[0]) : null;
-    const bestHour = hourData.length > 0 ? hourData.reduce((best, curr) => curr.rr > best.rr ? curr : best, hourData[0]) : null;
-
-    return { dayData, hourData, timelineData, cumulativeTimeline, bestDay, bestHour };
-  }, [trades]);
-
   const totalRR = trades.reduce((sum, t) => sum + (t.rr || 0), 0);
   const winRate = trades.length > 0 ? ((trades.filter(t => (t.rr || 0) > 0).length / trades.length) * 100).toFixed(1) : "0";
-
-  const sections = [
-    { id: "journal" as Section, label: "Journal", icon: Calendar, delay: "0ms" },
-    { id: "distribution" as Section, label: "Distribution RR", icon: BarChart3, delay: "80ms" },
-    { id: "timing" as Section, label: "Timing & Clock", icon: Clock, delay: "160ms" },
-  ];
 
   const handleTimingSelect = (key: string, selectedTrades: Trade[]) => {
     // Could navigate to database with filter
   };
 
-  if (expandedSection === "journal") {
+  // Expanded views
+  if (expandedView === "journal") {
     return (
       <div className="h-full flex flex-col">
         <button
-          onClick={() => setExpandedSection(null)}
+          onClick={() => setExpandedView(null)}
           className="flex items-center gap-2 p-4 border-b border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ChevronUp className="w-4 h-4" />
@@ -148,11 +71,11 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
     );
   }
 
-  if (expandedSection === "distribution") {
+  if (expandedView === "distribution") {
     return (
       <div className="h-full flex flex-col">
         <button
-          onClick={() => setExpandedSection(null)}
+          onClick={() => setExpandedView(null)}
           className="flex items-center gap-2 p-4 border-b border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ChevronUp className="w-4 h-4" />
@@ -164,6 +87,12 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
       </div>
     );
   }
+
+  // Quick access sections
+  const quickSections = [
+    { id: "journal" as const, label: "Journal", icon: Calendar },
+    { id: "distribution" as const, label: "Distribution RR", icon: BarChart3 },
+  ];
 
   return (
     <div className="h-full flex flex-col">
@@ -180,129 +109,36 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
       </div>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto scrollbar-hide">
-        {/* Section Cards - Animated entry */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
-          {sections.map((section, idx) => (
-            <button
-              key={section.id}
-              onClick={() => setExpandedSection(section.id)}
-              className={cn(
-                "data-analysis-card border border-border rounded-md p-5 text-left transition-all group",
-                "hover:border-foreground/30 bg-card",
-                isEntering && "opacity-0 translate-y-4"
-              )}
-              style={{
-                animationDelay: section.delay,
-                animation: isEntering ? "none" : `data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) ${section.delay} forwards`,
-              }}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-md border border-border flex items-center justify-center group-hover:border-foreground/30 transition-colors">
-                  <section.icon className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-foreground">{section.label}</h3>
-                  <p className="text-[10px] text-muted-foreground font-mono uppercase">Cliquer pour ouvrir</p>
-                </div>
-              </div>
-              <ChevronDown className="w-4 h-4 text-muted-foreground mx-auto mt-2 group-hover:translate-y-1 transition-transform" />
-            </button>
-          ))}
-        </div>
-
-        {/* Condensed Charts Overview */}
         <div className="space-y-6">
-          {/* Row 1: Day performance + Hour performance */}
+          {/* Row 1: Données clés (Distribution RR key stats + quick access) */}
           <div
-            className={cn("grid grid-cols-1 md:grid-cols-2 gap-4", isEntering && "opacity-0")}
-            style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 240ms forwards" }}
+            className={cn("space-y-4", isEntering && "opacity-0")}
+            style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms forwards" }}
           >
-            {/* Day bar chart */}
-            <div className="border border-border p-4 md:p-5 bg-card rounded-md chart-glow-container">
-              <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-3">
-                Performance par Jour
-                {timingStats.bestDay && (
-                  <span className="text-emerald-500 ml-2">★ {timingStats.bestDay.day}</span>
-                )}
-              </p>
-              <div className="h-36 md:h-44">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={timingStats.dayData} barSize={20}>
-                    <XAxis
-                      dataKey="day"
-                      tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
-                      axisLine={{ stroke: "var(--chart-axis-line)" }}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
-                      axisLine={{ stroke: "var(--chart-axis-line)" }}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "var(--chart-tooltip-bg)",
-                        border: "1px solid var(--chart-tooltip-border)",
-                        borderRadius: 8,
-                        color: "var(--chart-tooltip-text)",
-                      }}
-                      formatter={(value: number, _: string, props: any) => [
-                        `${value.toFixed(2)} RR (${props.payload.trades} trades)`,
-                        props.payload.fullDay,
-                      ]}
-                    />
-                    <Bar dataKey="rr" radius={[4, 4, 0, 0]} className="chart-bar-glow">
-                      {timingStats.dayData.map((entry, index) => (
-                        <Cell key={index} fill={entry.rr >= 0 ? "#22c55e" : "#ef4444"} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            <DonneesClés trades={trades} />
 
-            {/* Hour bar chart */}
-            <div className="border border-border p-4 md:p-5 bg-card rounded-md chart-glow-container">
-              <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-3">
-                Performance par Heure
-                {timingStats.bestHour && (
-                  <span className="text-emerald-500 ml-2">★ {timingStats.bestHour.hour}</span>
-                )}
-              </p>
-              <div className="h-36 md:h-44">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={timingStats.hourData} barSize={12}>
-                    <XAxis
-                      dataKey="hour"
-                      tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
-                      axisLine={{ stroke: "var(--chart-axis-line)" }}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
-                      axisLine={{ stroke: "var(--chart-axis-line)" }}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "var(--chart-tooltip-bg)",
-                        border: "1px solid var(--chart-tooltip-border)",
-                        borderRadius: 8,
-                        color: "var(--chart-tooltip-text)",
-                      }}
-                      formatter={(value: number, _: string, props: any) => [
-                        `${value.toFixed(2)} RR (${props.payload.trades} trades)`,
-                        props.payload.hour,
-                      ]}
-                    />
-                    <Bar dataKey="rr" radius={[3, 3, 0, 0]} className="chart-bar-glow">
-                      {timingStats.hourData.map((entry, index) => (
-                        <Cell key={index} fill={entry.rr >= 0 ? "#22c55e" : "#ef4444"} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            {/* Quick access buttons */}
+            <div className="grid grid-cols-2 gap-3">
+              {quickSections.map((section, idx) => (
+                <button
+                  key={section.id}
+                  onClick={() => setExpandedView(section.id)}
+                  className={cn(
+                    "data-analysis-card border border-border rounded-md p-4 text-left transition-all group",
+                    "hover:border-foreground/30 bg-card"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-md border border-border flex items-center justify-center group-hover:border-foreground/30 transition-colors">
+                      <section.icon className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">{section.label}</h3>
+                      <p className="text-[9px] text-muted-foreground font-mono uppercase">Ouvrir</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -312,94 +148,100 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
               "border border-border p-4 md:p-6 bg-card rounded-md chart-glow-container",
               isEntering && "opacity-0"
             )}
-            style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 320ms forwards" }}
+            style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 160ms forwards" }}
           >
             <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-4">
-              Horloge des Timings · Paris GMT+1
+              Horloge des Timings
             </p>
             <AnalogClock trades={trades} onSelectTiming={handleTimingSelect} />
           </div>
 
-          {/* Row 3: Timeline */}
+          {/* Row 3: Cumulative Evolution */}
           <div
             className={cn(
               "border border-border p-4 md:p-5 bg-card rounded-md chart-glow-container",
               isEntering && "opacity-0"
             )}
-            style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 400ms forwards" }}
+            style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 320ms forwards" }}
           >
-            <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-3">
-              Frise Chronologique · Évolution Cumulative
-            </p>
-            <div className="h-44 md:h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={timingStats.cumulativeTimeline}>
-                  <defs>
-                    <linearGradient id="colorTimeline" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
-                    axisLine={{ stroke: "var(--chart-axis-line)" }}
-                    tickLine={false}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis
-                    tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
-                    axisLine={{ stroke: "var(--chart-axis-line)" }}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--chart-tooltip-bg)",
-                      border: "1px solid var(--chart-tooltip-border)",
-                      borderRadius: 8,
-                      color: "var(--chart-tooltip-text)",
-                    }}
-                    formatter={(value: number, _: string, props: any) => [
-                      `${value.toFixed(2)} RR cumulé (${props.payload.trades} trades)`,
-                      props.payload.label,
-                    ]}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="cumulative"
-                    stroke="#22c55e"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorTimeline)"
-                    className="chart-line-glow"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Timeline markers */}
-            <div className="mt-4 flex items-center gap-1 overflow-auto scrollbar-hide pb-2">
-              {timingStats.timelineData.map((d, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    const parts = d.label.split(" ");
-                    if (parts.length === 2) {
-                      onNavigateToDatabase?.({ year: [parts[1]] });
-                    }
-                  }}
-                  className={cn(
-                    "flex-shrink-0 px-2 py-1 border rounded text-[9px] font-mono transition-all",
-                    d.rr >= 0
-                      ? "border-emerald-500/30 text-emerald-500 hover:border-emerald-400"
-                      : "border-red-500/30 text-red-500 hover:border-red-400"
-                  )}
-                >
-                  {d.label}
-                </button>
-              ))}
-            </div>
+            <CumulativeEvolution trades={trades} />
           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Données Clés component ───
+const DonneesClés = ({ trades }: { trades: { rr: number; direction?: string; trade_number: number }[] }) => {
+  const stats = useMemo(() => {
+    const allRR = trades.map(t => t.rr || 0);
+    const totalRR = allRR.reduce((a, b) => a + b, 0);
+    const avgRR = allRR.length > 0 ? totalRR / allRR.length : 0;
+    const maxRR = Math.max(...allRR, 0);
+    const minRR = Math.min(...allRR, 0);
+    const winRate = allRR.length > 0 ? (allRR.filter(rr => rr > 0).length / allRR.length) * 100 : 0;
+
+    // Direction breakdown
+    const longTrades = trades.filter(t => (t as any).direction === "Long");
+    const shortTrades = trades.filter(t => (t as any).direction === "Short");
+    const longRR = longTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
+    const shortRR = shortTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
+
+    // Std deviation
+    const variance = allRR.length > 0
+      ? allRR.reduce((sum, rr) => sum + Math.pow(rr - avgRR, 2), 0) / allRR.length
+      : 0;
+    const stdDev = Math.sqrt(variance);
+
+    return { totalRR, avgRR, maxRR, minRR, winRate, longCount: longTrades.length, shortCount: shortTrades.length, longRR, shortRR, stdDev };
+  }, [trades]);
+
+  return (
+    <div className="border border-border rounded-md p-4 md:p-5 bg-card chart-glow-container">
+      <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-3">
+        Données Clés
+      </p>
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
+        <div className="text-center p-2 border border-emerald-500/30 rounded-md bg-emerald-500/5">
+          <p className="text-[8px] text-muted-foreground font-mono uppercase">RR Total</p>
+          <p className="text-lg font-bold text-emerald-500">{stats.totalRR >= 0 ? "+" : ""}{stats.totalRR.toFixed(0)}</p>
+        </div>
+        <div className="text-center p-2 border border-border rounded-md">
+          <p className="text-[8px] text-muted-foreground font-mono uppercase">Moy. RR</p>
+          <p className="text-lg font-bold text-foreground">{stats.avgRR.toFixed(2)}</p>
+        </div>
+        <div className="text-center p-2 border border-border rounded-md">
+          <p className="text-[8px] text-muted-foreground font-mono uppercase">Win Rate</p>
+          <p className="text-lg font-bold text-foreground">{stats.winRate.toFixed(0)}%</p>
+        </div>
+        <div className="text-center p-2 border border-border rounded-md">
+          <p className="text-[8px] text-muted-foreground font-mono uppercase">Meilleur</p>
+          <p className="text-lg font-bold text-emerald-500">+{stats.maxRR.toFixed(1)}</p>
+        </div>
+        <div className="text-center p-2 border border-border rounded-md">
+          <p className="text-[8px] text-muted-foreground font-mono uppercase">Pire</p>
+          <p className="text-lg font-bold text-red-500">{stats.minRR.toFixed(1)}</p>
+        </div>
+        <div className="text-center p-2 border border-border rounded-md">
+          <p className="text-[8px] text-muted-foreground font-mono uppercase">Écart-type</p>
+          <p className="text-lg font-bold text-foreground">{stats.stdDev.toFixed(2)}</p>
+        </div>
+      </div>
+
+      {/* Direction split */}
+      <div className="grid grid-cols-2 gap-2 mt-3">
+        <div className="flex items-center justify-between p-2 border border-emerald-500/20 rounded-md bg-emerald-500/5">
+          <span className="text-[9px] font-mono text-emerald-400 uppercase">Long</span>
+          <span className="text-xs font-mono font-bold text-emerald-500">
+            {stats.longCount}t · {stats.longRR >= 0 ? "+" : ""}{stats.longRR.toFixed(1)} RR
+          </span>
+        </div>
+        <div className="flex items-center justify-between p-2 border border-red-500/20 rounded-md bg-red-500/5">
+          <span className="text-[9px] font-mono text-red-400 uppercase">Short</span>
+          <span className="text-xs font-mono font-bold text-red-500">
+            {stats.shortCount}t · {stats.shortRR >= 0 ? "+" : ""}{stats.shortRR.toFixed(1)} RR
+          </span>
         </div>
       </div>
     </div>
