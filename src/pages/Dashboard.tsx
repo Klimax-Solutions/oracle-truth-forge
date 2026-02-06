@@ -62,6 +62,7 @@ const Dashboard = () => {
   const [dataSource, setDataSource] = useState<DataSource>("all");
   const { trades: personalTrades } = usePersonalTrades();
   const { isAdmin, isSuperAdmin } = useSidebarRoles();
+  const questData = useQuestData();
   const navigate = useNavigate();
 
   useEffect(() => {
