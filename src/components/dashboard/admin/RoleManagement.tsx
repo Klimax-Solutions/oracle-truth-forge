@@ -779,6 +779,92 @@ export const RoleManagement = () => {
         </Table>
       </div>
 
+      {/* Quick Actions Dialog */}
+      <Dialog open={quickActionsOpen} onOpenChange={setQuickActionsOpen}>
+        <DialogContent className="max-w-sm">
+          {(() => {
+            const qaUser = users.find(u => u.user_id === quickActionsUserId);
+            if (!qaUser) return null;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <MoreHorizontal className="w-5 h-5" />
+                    Actions rapides
+                  </DialogTitle>
+                  <DialogDescription>
+                    <span className="font-medium text-foreground">{qaUser.display_name || "Sans nom"}</span>
+                    <br />
+                    <span className="text-xs font-mono">{qaUser.user_id.slice(0, 20)}...</span>
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2 py-2">
+                  {qaUser.status === 'active' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3 h-11"
+                        onClick={() => openActionDialog(qaUser.user_id, 'freeze')}
+                      >
+                        <Snowflake className="w-4 h-4 text-blue-500" />
+                        Geler l'utilisateur
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3 h-11"
+                        onClick={() => openActionDialog(qaUser.user_id, 'ban')}
+                      >
+                        <Ban className="w-4 h-4 text-destructive" />
+                        Bannir l'utilisateur
+                      </Button>
+                    </>
+                  )}
+                  {qaUser.status === 'frozen' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3 h-11"
+                        onClick={() => openActionDialog(qaUser.user_id, 'unfreeze')}
+                      >
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        Dégeler l'utilisateur
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3 h-11"
+                        onClick={() => openActionDialog(qaUser.user_id, 'ban')}
+                      >
+                        <Ban className="w-4 h-4 text-destructive" />
+                        Bannir l'utilisateur
+                      </Button>
+                    </>
+                  )}
+                  {qaUser.status === 'banned' && (
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-11"
+                      onClick={() => openActionDialog(qaUser.user_id, 'unban')}
+                    >
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      Débannir l'utilisateur
+                    </Button>
+                  )}
+                  <div className="border-t border-border my-2" />
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-3 h-11 text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={() => openActionDialog(qaUser.user_id, 'remove')}
+                  >
+                    <UserX className="w-4 h-4" />
+                    Supprimer définitivement
+                  </Button>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
       {/* Action Confirmation Dialog */}
       <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
         <DialogContent>
