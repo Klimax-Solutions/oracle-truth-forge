@@ -1,15 +1,17 @@
 import { useEffect, useState, useRef } from "react";
+import FingerprintAnimation from "./FingerprintAnimation";
 
 interface LoginProgressBarProps {
   isActive: boolean;
   onComplete: () => void;
+  userName?: string;
 }
 
 const TOTAL_DURATION = 3500; // ms for 0→100%
-const MESSAGE_DURATION = 1200; // ms to show the message before vortex
+const MESSAGE_DURATION = 1800; // ms to show the welcome message before vortex
 const TICK_INTERVAL = 30; // ms between updates
 
-const LoginProgressBar = ({ isActive, onComplete }: LoginProgressBarProps) => {
+const LoginProgressBar = ({ isActive, onComplete, userName }: LoginProgressBarProps) => {
   const [progress, setProgress] = useState(0);
   const [showMessage, setShowMessage] = useState(false);
   const startTimeRef = useRef<number>(0);
@@ -33,11 +35,11 @@ const LoginProgressBar = ({ isActive, onComplete }: LoginProgressBarProps) => {
       let eased: number;
       const t = rawProgress / 100;
       if (t < 0.6) {
-        eased = t * 1.4 * 100; // faster first 60%
+        eased = t * 1.4 * 100;
       } else if (t < 0.85) {
-        eased = 84 + (t - 0.6) * 40; // slower 60-85%
+        eased = 84 + (t - 0.6) * 40;
       } else {
-        eased = 94 + (t - 0.85) * 40; // final burst
+        eased = 94 + (t - 0.85) * 40;
       }
       eased = Math.min(eased, 100);
 
@@ -59,9 +61,14 @@ const LoginProgressBar = ({ isActive, onComplete }: LoginProgressBarProps) => {
 
   if (!isActive) return null;
 
+  const displayName = userName || "Trader";
+
   return (
     <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm">
-      <div className="w-full max-w-md px-6 space-y-6">
+      {/* Fingerprint background animation */}
+      <FingerprintAnimation progress={progress} verified={showMessage} />
+
+      <div className="relative z-10 w-full max-w-md px-6 space-y-6">
         {/* Status text */}
         <div className="text-center space-y-2">
           <p className="text-[10px] font-mono uppercase tracking-[0.4em] text-muted-foreground">
@@ -119,10 +126,13 @@ const LoginProgressBar = ({ isActive, onComplete }: LoginProgressBarProps) => {
           )}
         </div>
 
-        {/* Success message */}
+        {/* Welcome message with name */}
         {showMessage && (
-          <div className="text-center animate-fade-in">
-            <p className="text-sm font-semibold text-foreground tracking-wide">
+          <div className="text-center space-y-3 animate-fade-in">
+            <p className="text-xl md:text-2xl font-bold text-foreground tracking-wide">
+              Bonjour, {displayName}
+            </p>
+            <p className="text-sm text-muted-foreground">
               Identité confirmée, accès à Oracle déverrouillé
             </p>
           </div>

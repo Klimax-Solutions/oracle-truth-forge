@@ -36,6 +36,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { 
   Shield, 
   ShieldCheck, 
@@ -48,7 +49,10 @@ import {
   Ban,
   UserX,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
