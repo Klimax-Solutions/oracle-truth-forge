@@ -100,7 +100,7 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers }: Setu
           </div>
         </div>
         <div className="flex-1 overflow-hidden">
-          <OraclePage trades={trades} initialFilters={initialFilters} />
+          <OraclePage trades={trades} initialFilters={initialFilters} analyzedTradeNumbers={analyzedTradeNumbers} />
         </div>
       </div>
     );
