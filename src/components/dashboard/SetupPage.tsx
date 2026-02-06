@@ -33,6 +33,7 @@ interface Trade {
 interface SetupPageProps {
   trades: Trade[];
   initialFilters?: any;
+  analyzedTradeNumbers?: number[];
 }
 
 type ActiveView = "overview" | "oracle" | "perso";
