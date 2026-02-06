@@ -287,6 +287,14 @@ const Dashboard = () => {
           </div>
         </main>
       </div>
+
+      {/* Quest Floating Bubble */}
+      <QuestFloatingBubble
+        questData={questData}
+        onNavigateToVideos={() => setActiveTab("videos")}
+        onNavigateToSetup={() => setActiveTab("setup")}
+        onNavigateToExecution={() => setActiveTab("execution")}
+      />
     </div>
   );
 };
