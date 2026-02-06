@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Database, User, ArrowRight, TrendingUp, BarChart3, Clock, Target } from "lucide-react";
+import { Database, User, ArrowRight, TrendingUp, BarChart3, Clock, Target, AlertTriangle, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { OraclePage } from "./OraclePage";
