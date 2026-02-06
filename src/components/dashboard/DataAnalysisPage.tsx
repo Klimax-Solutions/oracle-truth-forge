@@ -118,6 +118,9 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
           >
             <DonneesClés trades={trades} />
 
+            {/* Data Rankings */}
+            <DataRankings trades={trades} />
+
             {/* Quick access buttons */}
             <div className="grid grid-cols-2 gap-3">
               {quickSections.map((section) => (
