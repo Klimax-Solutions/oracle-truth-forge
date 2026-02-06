@@ -215,7 +215,7 @@ const Dashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "execution":
-        return <OracleExecution trades={trades} onNavigateToVideos={() => setActiveTab("videos")} />;
+        return <OracleExecution trades={trades} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} />;
       case "setup":
         return <SetupPage trades={trades} initialFilters={databaseFilters} />;
       case "data-analysis":
