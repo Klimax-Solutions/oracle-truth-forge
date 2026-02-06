@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 type AuthMode = "login" | "signup" | "forgot-password";
 
+const ORACLE_LETTERS = ["O", "R", "A", "C", "L", "E"];
+
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,9 +19,42 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [revealedLetters, setRevealedLetters] = useState<boolean[]>(new Array(6).fill(false));
   const navigate = useNavigate();
   const { toast } = useToast();
-  const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const w = rect.width;
+    const h = rect.height;
+
+    // Each letter has a trigger zone — horizontal bands across the viewport
+    const letterWidth = w / 6;
+    const newRevealed = ORACLE_LETTERS.map((_, i) => {
+      const zoneLeft = i * letterWidth;
+      const zoneRight = zoneLeft + letterWidth;
+      const inX = x >= zoneLeft && x <= zoneRight;
+      // Only trigger in the outer areas (not directly on the card)
+      const cardTop = h * 0.3;
+      const cardBottom = h * 0.7;
+      const inOuterY = y < cardTop || y > cardBottom;
+      return inX && inOuterY;
+    });
+
+    setRevealedLetters(prev => {
+      // Once revealed, keep visible for a moment (handled by CSS transition)
+      return prev.map((wasRevealed, i) => wasRevealed || newRevealed[i]);
+    });
+  }, []);
+
+  // Reset letters after they've been shown
+  const handleMouseLeave = useCallback(() => {
+    setTimeout(() => {
+      setRevealedLetters(new Array(6).fill(false));
+    }, 1500);
+  }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,8 +67,6 @@ const Auth = () => {
           password,
         });
         if (error) throw error;
-        
-        // Trigger vortex transition
         setIsTransitioning(true);
         setTimeout(() => {
           navigate("/dashboard");
@@ -74,9 +107,7 @@ const Auth = () => {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
-
       if (error) throw error;
-
       setResetEmailSent(true);
       toast({
         title: "Email envoyé",
@@ -94,9 +125,23 @@ const Auth = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-background relative overflow-hidden transition-colors duration-700 ${isTransitioning ? "auth-vortex-bg" : ""}`}>
-      {/* Ambient glow behind card */}
-      <div className="auth-ambient-glow" />
+    <div
+      className={`min-h-screen bg-background relative overflow-hidden transition-colors duration-700 ${isTransitioning ? "auth-vortex-bg" : ""}`}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* Background Oracle letters */}
+      <div className="auth-bg-letters" aria-hidden="true">
+        {ORACLE_LETTERS.map((letter, i) => (
+          <span
+            key={i}
+            className={`auth-bg-letter ${revealedLetters[i] ? "auth-bg-letter-visible" : ""}`}
+            style={{ animationDelay: `${i * 0.06}s` }}
+          >
+            {letter}
+          </span>
+        ))}
+      </div>
 
       {/* Theme toggle */}
       <div className="absolute top-3 right-3 md:top-4 md:right-4 z-20">
@@ -117,31 +162,23 @@ const Auth = () => {
         {/* Divider */}
         <div className={`w-full max-w-md h-px bg-border mb-8 md:mb-12 transition-all duration-500 ${isTransitioning ? "opacity-0 scale-x-0" : ""}`} />
 
-        {/* Card container with orbiting orb */}
-        <div className={`relative auth-orbit-container ${isTransitioning ? "auth-card-vortex" : ""}`} ref={cardRef}>
-          {/* Orbiting light orb */}
-          <div className={`auth-orb-track ${isTransitioning ? "auth-orb-accelerate" : ""}`}>
-            <div className="auth-orb" />
-          </div>
-
-          {/* Auth form with glowing border */}
-          <div className="w-full max-w-md auth-glow-card">
+        {/* Card with glowing border */}
+        <div className={`w-full max-w-md ${isTransitioning ? "auth-card-vortex" : ""}`}>
+          <div className="auth-glow-card">
             <div className="auth-glow-card-inner border border-border bg-card p-6 md:p-8 rounded-md">
               {mode === "forgot-password" ? (
                 <>
-                  {mode === "forgot-password" && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMode("login");
-                        setResetEmailSent(false);
-                      }}
-                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      Retour
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("login");
+                      setResetEmailSent(false);
+                    }}
+                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Retour
+                  </button>
                   <div className="mb-6 md:mb-8">
                     <h2 className="text-base md:text-lg font-bold text-foreground mb-1">
                       Mot de passe oublié
@@ -156,61 +193,25 @@ const Auth = () => {
                   {resetEmailSent ? (
                     <div className="text-center py-4">
                       <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg
-                          className="w-8 h-8 text-primary"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                          />
+                        <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                       </div>
                       <p className="text-sm text-muted-foreground mb-4">
                         Vérifiez votre boîte mail à <strong>{email}</strong>
                       </p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setMode("login");
-                          setResetEmailSent(false);
-                        }}
-                        className="w-full"
-                      >
+                      <Button type="button" variant="outline" onClick={() => { setMode("login"); setResetEmailSent(false); }} className="w-full">
                         Retour à la connexion
                       </Button>
                     </div>
                   ) : (
                     <form onSubmit={handleForgotPassword} className="space-y-6">
                       <div className="space-y-2">
-                        <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-                          Email
-                        </label>
-                        <Input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="vous@exemple.com"
-                          required
-                          className="h-12 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring rounded-md"
-                        />
+                        <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Email</label>
+                        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@exemple.com" required className="h-12 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring rounded-md" />
                       </div>
-
-                      <Button
-                        type="submit"
-                        className="w-full h-12 bg-primary text-primary-foreground font-bold hover:bg-primary/90 rounded-md transition-colors"
-                        disabled={isLoading}
-                      >
-                        {isLoading ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          "Envoyer le lien"
-                        )}
+                      <Button type="submit" className="w-full h-12 bg-primary text-primary-foreground font-bold hover:bg-primary/90 rounded-md transition-colors" disabled={isLoading}>
+                        {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Envoyer le lien"}
                       </Button>
                     </form>
                   )}
@@ -222,90 +223,41 @@ const Auth = () => {
                       {mode === "login" ? "Connexion" : "Créer un compte"}
                     </h2>
                     <p className="text-xs md:text-sm text-muted-foreground">
-                      {mode === "login"
-                        ? "Accédez à votre base de données"
-                        : "Rejoignez la plateforme Oracle"}
+                      {mode === "login" ? "Accédez à votre base de données" : "Rejoignez la plateforme Oracle"}
                     </p>
                   </div>
 
                   <form onSubmit={handleAuth} className="space-y-4 md:space-y-6">
                     <div className="space-y-2">
-                      <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-                        Email
-                      </label>
-                      <Input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="vous@exemple.com"
-                        required
-                        className="h-12 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring rounded-md"
-                      />
+                      <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Email</label>
+                      <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@exemple.com" required className="h-12 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring rounded-md" />
                     </div>
 
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-                          Mot de passe
-                        </label>
+                        <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Mot de passe</label>
                         {mode === "login" && (
-                          <button
-                            type="button"
-                            onClick={() => setMode("forgot-password")}
-                            className="text-xs text-primary hover:text-primary/80 transition-colors"
-                          >
+                          <button type="button" onClick={() => setMode("forgot-password")} className="text-xs text-primary hover:text-primary/80 transition-colors">
                             Mot de passe oublié ?
                           </button>
                         )}
                       </div>
                       <div className="relative">
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="••••••••"
-                          required
-                          minLength={6}
-                          className="h-12 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring rounded-md pr-12"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {showPassword ? (
-                            <EyeOff className="w-5 h-5" />
-                          ) : (
-                            <Eye className="w-5 h-5" />
-                          )}
+                        <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} className="h-12 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring rounded-md pr-12" />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                       </div>
                     </div>
 
-                    <Button
-                      type="submit"
-                      className="w-full h-12 bg-primary text-primary-foreground font-bold hover:bg-primary/90 rounded-md transition-colors"
-                      disabled={isLoading || isTransitioning}
-                    >
-                      {isLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : mode === "login" ? (
-                        "Se connecter"
-                      ) : (
-                        "Créer le compte"
-                      )}
+                    <Button type="submit" className="w-full h-12 bg-primary text-primary-foreground font-bold hover:bg-primary/90 rounded-md transition-colors" disabled={isLoading || isTransitioning}>
+                      {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : mode === "login" ? "Se connecter" : "Créer le compte"}
                     </Button>
                   </form>
 
                   <div className="mt-6 text-center">
-                    <button
-                      type="button"
-                      onClick={() => setMode(mode === "login" ? "signup" : "login")}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {mode === "login"
-                        ? "Pas de compte ? Créer un compte"
-                        : "Déjà un compte ? Se connecter"}
+                    <button type="button" onClick={() => setMode(mode === "login" ? "signup" : "login")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                      {mode === "login" ? "Pas de compte ? Créer un compte" : "Déjà un compte ? Se connecter"}
                     </button>
                   </div>
                 </>
@@ -320,7 +272,6 @@ const Auth = () => {
         </p>
       </div>
 
-      {/* Vortex overlay on transition */}
       {isTransitioning && <div className="auth-vortex-overlay" />}
     </div>
   );
