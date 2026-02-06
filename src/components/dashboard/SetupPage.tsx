@@ -38,7 +38,7 @@ interface SetupPageProps {
 
 type ActiveView = "overview" | "oracle" | "perso";
 
-export const SetupPage = ({ trades, initialFilters }: SetupPageProps) => {
+export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers }: SetupPageProps) => {
   // If initialFilters are provided, go directly to Oracle view
   const [activeView, setActiveView] = useState<ActiveView>(
     initialFilters && Object.values(initialFilters).some((arr: any) => arr?.length > 0) 
