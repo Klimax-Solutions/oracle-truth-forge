@@ -30,8 +30,6 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
-  const [hoveredZone, setHoveredZone] = useState(false);
-  const [showOverlay, setShowOverlay] = useState(false);
   const [zoomTransitioning, setZoomTransitioning] = useState(false);
 
   useEffect(() => {
@@ -151,37 +149,21 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
     return `${zoomCx - 100} ${zoomCy - 100} 200 200`;
   }, [entryTimeRange, isZoomed]);
 
-  // Handle zone hover => show overlay
-  const handleZoneEnter = () => {
-    if (!isZoomed) {
-      setHoveredZone(true);
-      setShowOverlay(true);
-    }
-  };
-
-  const handleZoneLeave = () => {
-    setHoveredZone(false);
-    setShowOverlay(false);
-  };
-
-  // Handle zoom activation
-  const handleZoomIn = () => {
-    setShowOverlay(false);
-    setHoveredZone(false);
-    setZoomTransitioning(true);
-    // Small delay for the 3D tilt to kick in before zoom
-    setTimeout(() => {
-      setIsZoomed(true);
+  // Handle zoom toggle via button
+  const handleToggleZoom = () => {
+    if (isZoomed) {
+      setZoomTransitioning(true);
+      setIsZoomed(false);
+      setSelectedSlot(null);
+      setSelectedTrade(null);
       setTimeout(() => setZoomTransitioning(false), 800);
-    }, 200);
-  };
-
-  const handleZoomOut = () => {
-    setZoomTransitioning(true);
-    setIsZoomed(false);
-    setSelectedSlot(null);
-    setSelectedTrade(null);
-    setTimeout(() => setZoomTransitioning(false), 800);
+    } else {
+      setZoomTransitioning(true);
+      setTimeout(() => {
+        setIsZoomed(true);
+        setTimeout(() => setZoomTransitioning(false), 800);
+      }, 200);
+    }
   };
 
   const selectedTrades = selectedSlot ? tradeSlots[selectedSlot]?.trades || [] : [];
@@ -208,29 +190,10 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
   }, [isZoomed, zoomTransitioning]);
 
   return (
-    <div className="flex flex-col items-center w-full relative">
-      {/* ── Full-page darkening overlay on zone hover ── */}
-      {showOverlay && !isZoomed && (
-        <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in cursor-pointer"
-          onClick={handleZoomIn}
-          onMouseLeave={handleZoneLeave}
-        >
-          <div className="flex flex-col items-center gap-4 animate-scale-in">
-            <div className="w-16 h-16 rounded-full border border-emerald-500/40 bg-emerald-500/10 flex items-center justify-center">
-              <Eye className="w-7 h-7 text-emerald-400" />
-            </div>
-            <p className="text-lg md:text-xl font-semibold text-foreground text-center px-6">
-              Voir les timings d'entrée en détail
-            </p>
-            <p className="text-xs text-muted-foreground font-mono">Cliquez pour zoomer</p>
-          </div>
-        </div>
-      )}
-
+    <div className="flex flex-col items-center w-full max-w-full overflow-hidden relative">
       {/* ── Clock with 3D perspective ── */}
       <div className="w-full flex flex-col items-center" style={clockContainerStyle}>
-        <div className="relative w-full max-w-[520px] md:max-w-[600px] lg:max-w-[640px] aspect-square mx-auto">
+        <div className="relative w-full max-w-[min(520px,100%)] md:max-w-[600px] lg:max-w-[640px] aspect-square mx-auto">
           <svg
             width="100%"
             height="100%"
@@ -278,17 +241,13 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
 
             {/* Entry Zone Arc */}
             {entryZoneArc && (
-              <g
-                className="cursor-pointer"
-                onMouseEnter={handleZoneEnter}
-                onMouseLeave={handleZoneLeave}
-              >
+              <g>
                 <path
                   d={entryZoneArc.path}
-                  fill={isZoomed ? "hsl(142 71% 45% / 0.15)" : hoveredZone ? "hsl(142 71% 45% / 0.12)" : "hsl(142 71% 45% / 0.06)"}
+                  fill={isZoomed ? "hsl(142 71% 45% / 0.15)" : "hsl(142 71% 45% / 0.06)"}
                   stroke="hsl(142 71% 45% / 0.4)"
-                  strokeWidth={isZoomed ? 1.5 : hoveredZone ? 1.5 : 0.5}
-                  filter={isZoomed || hoveredZone ? "url(#zoneGlow)" : undefined}
+                  strokeWidth={isZoomed ? 1.5 : 0.5}
+                  filter={isZoomed ? "url(#zoneGlow)" : undefined}
                   className="transition-all duration-300"
                 />
               </g>
@@ -481,16 +440,23 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
           </svg>
         </div>
 
-        {/* Zoom out button */}
-        {isZoomed && (
-          <button
-            onClick={handleZoomOut}
-            className="mt-3 flex items-center gap-2 px-4 py-2 border border-border rounded-md bg-card/80 backdrop-blur-sm hover:bg-accent/50 transition-colors animate-fade-in"
-          >
-            <ZoomOut className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs font-mono text-muted-foreground">Vue complète</span>
-          </button>
-        )}
+        {/* Toggle zoom button */}
+        <button
+          onClick={handleToggleZoom}
+          className="mt-4 flex items-center gap-2 px-5 py-2.5 border border-border rounded-md bg-card/80 backdrop-blur-sm hover:bg-accent/50 hover:border-foreground/20 transition-all animate-fade-in"
+        >
+          {isZoomed ? (
+            <>
+              <ZoomOut className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs font-mono text-muted-foreground">Vue complète</span>
+            </>
+          ) : (
+            <>
+              <Eye className="w-4 h-4 text-emerald-500" />
+              <span className="text-xs font-mono text-muted-foreground">Voir les timings d'entrée en détail</span>
+            </>
+          )}
+        </button>
 
         {/* Legend */}
         <div className="flex items-center justify-center gap-4 mt-3">
