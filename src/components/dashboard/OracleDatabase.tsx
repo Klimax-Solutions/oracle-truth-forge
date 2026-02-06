@@ -400,7 +400,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                       >
                         <Checkbox
                           checked={analyzedTradeNumbers.includes(trade.trade_number)}
-                          onCheckedChange={(checked) => handleAnalysisToggle(trade.trade_number, !!checked)}
+                          onCheckedChange={(checked) => onAnalysisToggle?.(trade.trade_number, !!checked)}
                           className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                         />
                       </div>
