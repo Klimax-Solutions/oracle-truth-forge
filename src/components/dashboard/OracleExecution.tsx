@@ -492,7 +492,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                 <div 
                   className={cn(
                     "h-full rounded-full transition-all",
-                    ebauche.userCycle?.status === 'validated' ? "bg-emerald-500" : "bg-blue-500"
+                    "bg-blue-500"
                   )}
                   style={{ width: `${Math.min(((questData?.ebaucheTradesAnalyzed || 0) / ebauche.total_trades) * 100, 100)}%` }}
                 />
