@@ -224,6 +224,8 @@ const Dashboard = () => {
         return <TimingAnalysis trades={displayTrades} onNavigateToDatabase={handleNavigateToDatabase} />;
       case "videos":
         return <VideoSetup />;
+      case "successes":
+        return <SuccessPage />;
       case "batch-import":
         return <BatchImportPage />;
       case "admin":

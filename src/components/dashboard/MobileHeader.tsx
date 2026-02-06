@@ -22,6 +22,7 @@ const tabs = [
   { id: "distribution", label: "Distribution RR", icon: BarChart3 },
   { id: "timing", label: "Timing Analysis", icon: Clock },
   { id: "videos", label: "Vidéo du Setup", icon: Video },
+  { id: "successes", label: "Vos Succès", icon: Trophy },
 ];
 
 const adminTabs = [
