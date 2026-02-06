@@ -205,15 +205,28 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
   const handleRequestVerification = async (cycleData: CycleWithProgress) => {
     if (!cycleData.userCycle) return;
     
-    // Check if user has entered enough trades (based on user_executions)
-    const isComplete = cycleData.userExecutions.length >= cycleData.total_trades;
-    if (!isComplete) {
-      toast({
-        title: "Cycle incomplet",
-        description: `Vous devez saisir ${cycleData.total_trades} trades dans "Saisie des Trades" avant de demander la vérification. (${cycleData.userExecutions.length}/${cycleData.total_trades})`,
-        variant: "destructive",
-      });
-      return;
+    // For ebauche (cycle 0), check trade analyses instead of user executions
+    if (cycleData.cycle_number === 0) {
+      const analyzedCount = questData?.ebaucheTradesAnalyzed || 0;
+      if (analyzedCount < cycleData.total_trades) {
+        toast({
+          title: "Analyse incomplète",
+          description: `Vous devez analyser et cocher les ${cycleData.total_trades} trades avant de demander la vérification. (${analyzedCount}/${cycleData.total_trades})`,
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+      // For other cycles, check user_executions
+      const isComplete = cycleData.userExecutions.length >= cycleData.total_trades;
+      if (!isComplete) {
+        toast({
+          title: "Cycle incomplet",
+          description: `Vous devez saisir ${cycleData.total_trades} trades dans "Saisie des Trades" avant de demander la vérification. (${cycleData.userExecutions.length}/${cycleData.total_trades})`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setSubmitting(true);
