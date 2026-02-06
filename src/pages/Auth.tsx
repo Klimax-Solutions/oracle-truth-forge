@@ -277,7 +277,8 @@ const Auth = () => {
         </p>
       </div>
 
-      {isTransitioning && <div className="auth-vortex-overlay" />}
+      {/* Enhanced vortex transition with speed streaks */}
+      {isTransitioning && <VortexTransition isActive={isTransitioning} />}
     </div>
   );
 };
