@@ -11,9 +11,7 @@ interface DashboardSidebarProps {
 const tabs = [
   { id: "execution", label: "Exécution d'Oracle", icon: Crosshair },
   { id: "setup", label: "Setup", icon: Database },
-  { id: "journal", label: "Journal de Trading", icon: Calendar },
-  { id: "distribution", label: "Distribution RR", icon: BarChart3 },
-  { id: "timing", label: "Timing Analysis", icon: Clock },
+  { id: "data-analysis", label: "Data Analysis", icon: BarChart3 },
   { id: "videos", label: "Vidéo du Setup Oracle", icon: Video },
   { id: "successes", label: "Vos Succès", icon: Trophy },
 ];
