@@ -469,15 +469,9 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                     </span>
                     <span className="text-[10px] text-muted-foreground hidden md:inline">analysés</span>
                   </div>
-                  <div className={cn(
-                    "flex items-center gap-1.5 px-2 py-1 rounded-md md:bg-transparent md:px-0 md:py-0",
-                    ebauche.userRR >= 0 ? "bg-emerald-500/10 md:bg-transparent" : "bg-red-500/10 md:bg-transparent"
-                  )}>
-                    <span className={cn(
-                      "text-xs md:text-sm font-mono",
-                      ebauche.userRR >= 0 ? "text-emerald-400" : "text-red-400"
-                    )}>
-                      {ebauche.userRR >= 0 ? "+" : ""}{ebauche.userRR.toFixed(1)} RR
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 md:bg-transparent md:px-0 md:py-0">
+                    <span className="text-xs md:text-sm font-mono text-foreground">
+                      ✓ {questData?.ebaucheTradesAnalyzed || 0} analysés
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 md:bg-transparent md:px-0 md:py-0">
