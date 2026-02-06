@@ -29,13 +29,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { 
   Shield, 
@@ -223,7 +216,16 @@ export const RoleManagement = () => {
     setEditingNameUserId(null);
   };
 
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
+  const [quickActionsUserId, setQuickActionsUserId] = useState<string | null>(null);
+
+  const openQuickActionsDialog = (userId: string) => {
+    setQuickActionsUserId(userId);
+    setQuickActionsOpen(true);
+  };
+
   const openActionDialog = (userId: string, action: "freeze" | "ban" | "remove" | "unfreeze" | "unban") => {
+    setQuickActionsOpen(false);
     setSelectedUser(userId);
     setActionType(action);
     setActionReason("");
@@ -603,9 +605,16 @@ export const RoleManagement = () => {
               <div key={user.user_id} className={cn("p-3", user.status !== 'active' && 'opacity-60')}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm truncate">{user.display_name || "Sans nom"}</p>
-                    <p className="text-[10px] text-muted-foreground font-mono">{user.user_id.slice(0, 12)}...</p>
-                    {editingNameUserId === user.user_id ? (
+                    <p className="text-[10px] text-muted-foreground font-mono mb-0.5">{user.user_id.slice(0, 16)}...</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm truncate">{user.display_name || "Sans nom"}</p>
+                      {editingNameUserId !== user.user_id && (
+                        <button onClick={() => startEditingName(user.user_id, user.display_name)} className="text-muted-foreground hover:text-foreground transition-colors">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    {editingNameUserId === user.user_id && (
                       <div className="flex items-center gap-1 mt-1">
                         <Input
                           value={editingNameValue}
@@ -626,57 +635,14 @@ export const RoleManagement = () => {
                           <X className="w-3 h-3" />
                         </Button>
                       </div>
-                    ) : (
-                      <button onClick={() => startEditingName(user.user_id, user.display_name)} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground mt-0.5">
-                        <Pencil className="w-2.5 h-2.5" />
-                        <span>Modifier le prénom</span>
-                      </button>
                     )}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {getStatusBadge(user.status)}
                     {!user.roles.includes('super_admin') && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {user.status === 'active' && (
-                            <>
-                              <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'freeze')}>
-                                <Snowflake className="w-4 h-4 mr-2 text-blue-500" />
-                                Geler
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'ban')}>
-                                <Ban className="w-4 h-4 mr-2 text-destructive" />
-                                Bannir
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          {user.status === 'frozen' && (
-                            <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'unfreeze')}>
-                              <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-                              Dégeler
-                            </DropdownMenuItem>
-                          )}
-                          {user.status === 'banned' && (
-                            <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'unban')}>
-                              <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-                              Débannir
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => openActionDialog(user.user_id, 'remove')}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <UserX className="w-4 h-4 mr-2" />
-                            Supprimer
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openQuickActionsDialog(user.user_id)}>
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -724,9 +690,16 @@ export const RoleManagement = () => {
               users.map((user) => (
                 <TableRow key={user.user_id} className={user.status !== 'active' ? 'opacity-60' : ''}>
                   <TableCell>
-                    <div className="font-medium">{user.display_name || "Sans nom"}</div>
-                    <div className="text-sm text-muted-foreground">{user.user_id.slice(0, 8)}...</div>
-                    {editingNameUserId === user.user_id ? (
+                    <div className="text-xs text-muted-foreground font-mono mb-0.5">{user.user_id.slice(0, 16)}...</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{user.display_name || "Sans nom"}</span>
+                      {editingNameUserId !== user.user_id && (
+                        <button onClick={() => startEditingName(user.user_id, user.display_name)} className="text-muted-foreground hover:text-foreground transition-colors">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    {editingNameUserId === user.user_id && (
                       <div className="flex items-center gap-1 mt-1">
                         <Input
                           value={editingNameValue}
@@ -747,11 +720,6 @@ export const RoleManagement = () => {
                           <X className="w-3.5 h-3.5" />
                         </Button>
                       </div>
-                    ) : (
-                      <button onClick={() => startEditingName(user.user_id, user.display_name)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mt-0.5">
-                        <Pencil className="w-3 h-3" />
-                        <span>Modifier le prénom</span>
-                      </button>
                     )}
                     {user.status_reason && (
                       <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
@@ -791,53 +759,9 @@ export const RoleManagement = () => {
                       )}
                       
                       {!user.roles.includes('super_admin') && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {user.status === 'active' && (
-                              <>
-                                <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'freeze')}>
-                                  <Snowflake className="w-4 h-4 mr-2 text-blue-500" />
-                                  Geler
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'ban')}>
-                                  <Ban className="w-4 h-4 mr-2 text-destructive" />
-                                  Bannir
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {user.status === 'frozen' && (
-                              <>
-                                <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'unfreeze')}>
-                                  <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-                                  Dégeler
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'ban')}>
-                                  <Ban className="w-4 h-4 mr-2 text-destructive" />
-                                  Bannir
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {user.status === 'banned' && (
-                              <DropdownMenuItem onClick={() => openActionDialog(user.user_id, 'unban')}>
-                                <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-                                Débannir
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => openActionDialog(user.user_id, 'remove')}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <UserX className="w-4 h-4 mr-2" />
-                              Supprimer
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button variant="ghost" size="sm" onClick={() => openQuickActionsDialog(user.user_id)}>
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
                       )}
                     </div>
                   </TableCell>
@@ -847,6 +771,92 @@ export const RoleManagement = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Quick Actions Dialog */}
+      <Dialog open={quickActionsOpen} onOpenChange={setQuickActionsOpen}>
+        <DialogContent className="max-w-sm">
+          {(() => {
+            const qaUser = users.find(u => u.user_id === quickActionsUserId);
+            if (!qaUser) return null;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <MoreHorizontal className="w-5 h-5" />
+                    Actions rapides
+                  </DialogTitle>
+                  <DialogDescription>
+                    <span className="font-medium text-foreground">{qaUser.display_name || "Sans nom"}</span>
+                    <br />
+                    <span className="text-xs font-mono">{qaUser.user_id.slice(0, 20)}...</span>
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2 py-2">
+                  {qaUser.status === 'active' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3 h-11"
+                        onClick={() => openActionDialog(qaUser.user_id, 'freeze')}
+                      >
+                        <Snowflake className="w-4 h-4 text-blue-500" />
+                        Geler l'utilisateur
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3 h-11"
+                        onClick={() => openActionDialog(qaUser.user_id, 'ban')}
+                      >
+                        <Ban className="w-4 h-4 text-destructive" />
+                        Bannir l'utilisateur
+                      </Button>
+                    </>
+                  )}
+                  {qaUser.status === 'frozen' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3 h-11"
+                        onClick={() => openActionDialog(qaUser.user_id, 'unfreeze')}
+                      >
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        Dégeler l'utilisateur
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3 h-11"
+                        onClick={() => openActionDialog(qaUser.user_id, 'ban')}
+                      >
+                        <Ban className="w-4 h-4 text-destructive" />
+                        Bannir l'utilisateur
+                      </Button>
+                    </>
+                  )}
+                  {qaUser.status === 'banned' && (
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-11"
+                      onClick={() => openActionDialog(qaUser.user_id, 'unban')}
+                    >
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      Débannir l'utilisateur
+                    </Button>
+                  )}
+                  <div className="border-t border-border my-2" />
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-3 h-11 text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={() => openActionDialog(qaUser.user_id, 'remove')}
+                  >
+                    <UserX className="w-4 h-4" />
+                    Supprimer définitivement
+                  </Button>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Action Confirmation Dialog */}
       <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>

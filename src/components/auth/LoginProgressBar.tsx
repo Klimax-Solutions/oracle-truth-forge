@@ -83,11 +83,11 @@ const LoginProgressBar = ({ isActive, onComplete, userName }: LoginProgressBarPr
       <div className="relative z-10 w-full max-w-md px-6 space-y-6">
         {/* Welcome message - large centered when verified */}
         {showMessage ? (
-          <div className="text-center space-y-4 animate-fade-in">
-            <p className="text-3xl md:text-4xl font-bold text-foreground tracking-wide">
+          <div className="text-center space-y-6 animate-fade-in">
+            <p className="text-6xl md:text-8xl font-bold text-foreground tracking-wide">
               Bonjour, {displayName}
             </p>
-            <p className="text-sm md:text-base text-muted-foreground">
+            <p className="text-base md:text-lg text-muted-foreground">
               Identité confirmée, accès à Oracle déverrouillé
             </p>
           </div>
