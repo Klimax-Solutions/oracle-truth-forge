@@ -132,7 +132,10 @@ const Auth = () => {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Background Oracle letters */}
+      {/* Cursor trail with ORACLE letters */}
+      {!isTransitioning && <CursorTrail />}
+
+      {/* Background Oracle letters revealed by mouse proximity */}
       <div className="auth-bg-letters" aria-hidden="true">
         {ORACLE_LETTERS.map((letter, i) => (
           <span
