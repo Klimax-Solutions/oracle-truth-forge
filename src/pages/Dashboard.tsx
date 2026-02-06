@@ -8,6 +8,7 @@ import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DataSourceSelector, DataSource } from "@/components/dashboard/DataSourceSelector";
 import { usePersonalTrades } from "@/hooks/usePersonalTrades";
+import { useQuestData } from "@/hooks/useQuestData";
 import { DataAnalysisPage } from "@/components/dashboard/DataAnalysisPage";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
@@ -18,6 +19,7 @@ import { AdminVerification } from "@/components/dashboard/AdminVerification";
 import { RoleManagement } from "@/components/dashboard/admin/RoleManagement";
 import { BatchImportPage } from "@/components/dashboard/BatchImportPage";
 import { SuccessPage } from "@/components/dashboard/SuccessPage";
+import { QuestFloatingBubble } from "@/components/dashboard/QuestFloatingBubble";
 
 interface Trade {
   id: string;
