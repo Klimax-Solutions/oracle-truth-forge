@@ -36,6 +36,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { 
   Shield, 
   ShieldCheck, 
@@ -48,7 +49,10 @@ import {
   Ban,
   UserX,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -74,6 +78,8 @@ export const RoleManagement = () => {
   const [selectedRole, setSelectedRole] = useState<string>("admin");
   const [actionReason, setActionReason] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [editingNameUserId, setEditingNameUserId] = useState<string | null>(null);
+  const [editingNameValue, setEditingNameValue] = useState("");
 
   useEffect(() => {
     checkSuperAdmin();
@@ -185,6 +191,36 @@ export const RoleManagement = () => {
 
     toast.success("Rôle retiré avec succès");
     fetchUsersWithRoles();
+  };
+
+  const startEditingName = (userId: string, currentName: string | null) => {
+    setEditingNameUserId(userId);
+    setEditingNameValue(currentName || "");
+  };
+
+  const saveDisplayName = async () => {
+    if (!editingNameUserId) return;
+    const trimmed = editingNameValue.trim();
+    if (!trimmed) {
+      toast.error("Le prénom ne peut pas être vide");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ display_name: trimmed })
+      .eq("user_id", editingNameUserId);
+
+    if (error) {
+      toast.error("Erreur lors de la mise à jour du prénom");
+      console.error(error);
+    } else {
+      toast.success("Prénom mis à jour");
+      setUsers(prev => prev.map(u => 
+        u.user_id === editingNameUserId ? { ...u, display_name: trimmed } : u
+      ));
+    }
+    setEditingNameUserId(null);
   };
 
   const openActionDialog = (userId: string, action: "freeze" | "ban" | "remove" | "unfreeze" | "unban") => {
@@ -567,7 +603,34 @@ export const RoleManagement = () => {
               <div key={user.user_id} className={cn("p-3", user.status !== 'active' && 'opacity-60')}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm truncate">{user.display_name || "Sans nom"}</p>
+                    {editingNameUserId === user.user_id ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={editingNameValue}
+                          onChange={(e) => setEditingNameValue(e.target.value)}
+                          className="h-7 text-sm"
+                          maxLength={50}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveDisplayName();
+                            if (e.key === "Escape") setEditingNameUserId(null);
+                          }}
+                        />
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={saveDisplayName}>
+                          <Check className="w-3 h-3 text-emerald-500" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setEditingNameUserId(null)}>
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-sm truncate">{user.display_name || "Sans nom"}</p>
+                        <button onClick={() => startEditingName(user.user_id, user.display_name)} className="text-muted-foreground hover:text-foreground">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
                     <p className="text-[10px] text-muted-foreground font-mono">{user.user_id.slice(0, 12)}...</p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -661,7 +724,34 @@ export const RoleManagement = () => {
               users.map((user) => (
                 <TableRow key={user.user_id} className={user.status !== 'active' ? 'opacity-60' : ''}>
                   <TableCell>
-                    <div className="font-medium">{user.display_name || "Sans nom"}</div>
+                    {editingNameUserId === user.user_id ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={editingNameValue}
+                          onChange={(e) => setEditingNameValue(e.target.value)}
+                          className="h-7 text-sm w-40"
+                          maxLength={50}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveDisplayName();
+                            if (e.key === "Escape") setEditingNameUserId(null);
+                          }}
+                        />
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={saveDisplayName}>
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setEditingNameUserId(null)}>
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className="font-medium">{user.display_name || "Sans nom"}</div>
+                        <button onClick={() => startEditingName(user.user_id, user.display_name)} className="text-muted-foreground hover:text-foreground transition-colors">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                     <div className="text-sm text-muted-foreground">{user.user_id.slice(0, 8)}...</div>
                     {user.status_reason && (
                       <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
