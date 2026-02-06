@@ -75,7 +75,7 @@ interface CycleWithProgress extends Cycle {
   progress: number;
 }
 
-export const OracleExecution = ({ trades, onNavigateToVideos }: OracleExecutionProps) => {
+export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup, questData }: OracleExecutionProps) => {
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [userCycles, setUserCycles] = useState<UserCycle[]>([]);
   const [userExecutions, setUserExecutions] = useState<UserExecution[]>([]);
