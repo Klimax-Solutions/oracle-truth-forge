@@ -337,15 +337,14 @@
 
   /* Vortex overlay */
   .auth-vortex-overlay {
-    position: fixed;
+    position: absolute;
     inset: 0;
-    z-index: 50;
     pointer-events: none;
     background: radial-gradient(
       circle at 50% 50%,
       transparent 0%,
-      transparent 20%,
-      hsl(var(--background)) 80%
+      transparent 15%,
+      hsl(var(--background)) 70%
     );
     animation: auth-vortex-close 1.4s cubic-bezier(0.55, 0, 1, 0.45) forwards;
   }
@@ -361,6 +360,103 @@
     100% {
       opacity: 1;
       background: hsl(var(--background));
+    }
+  }
+
+  /* Speed streaks for vortex transition */
+  .auth-speed-streak {
+    position: absolute;
+    width: 2px;
+    height: 0;
+    top: 50%;
+    left: 50%;
+    transform-origin: 0 0;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      hsl(0 0% 100% / 0.4) 30%,
+      hsl(0 0% 100% / 0.8) 50%,
+      hsl(0 0% 100% / 0.4) 70%,
+      transparent 100%
+    );
+    border-radius: 1px;
+    animation: auth-streak 1.2s cubic-bezier(0.25, 0, 0.3, 1) forwards;
+    box-shadow: 0 0 8px hsl(0 0% 100% / 0.3), 0 0 20px hsl(220 60% 70% / 0.2);
+  }
+
+  .dark .auth-speed-streak {
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      hsl(0 0% 100% / 0.3) 30%,
+      hsl(0 0% 100% / 0.6) 50%,
+      hsl(0 0% 100% / 0.3) 70%,
+      transparent 100%
+    );
+    box-shadow: 0 0 12px hsl(0 0% 100% / 0.4), 0 0 30px hsl(220 60% 70% / 0.3);
+  }
+
+  @keyframes auth-streak {
+    0% {
+      height: 0;
+      opacity: 0;
+    }
+    20% {
+      opacity: 1;
+    }
+    50% {
+      height: var(--streak-length, 50vh);
+      opacity: 0.8;
+    }
+    100% {
+      height: var(--streak-length, 50vh);
+      opacity: 0;
+    }
+  }
+
+  /* Central light burst during vortex */
+  .auth-light-burst {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      hsl(0 0% 100% / 0.6) 0%,
+      hsl(220 40% 80% / 0.3) 30%,
+      transparent 70%
+    );
+    animation: auth-burst 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation-delay: 0.2s;
+  }
+
+  .dark .auth-light-burst {
+    background: radial-gradient(
+      circle,
+      hsl(0 0% 100% / 0.4) 0%,
+      hsl(220 40% 80% / 0.15) 30%,
+      transparent 70%
+    );
+  }
+
+  @keyframes auth-burst {
+    0% {
+      width: 0;
+      height: 0;
+      opacity: 0;
+    }
+    30% {
+      width: 200px;
+      height: 200px;
+      opacity: 1;
+    }
+    100% {
+      width: 300vw;
+      height: 300vw;
+      opacity: 0;
     }
   }
 

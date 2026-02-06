@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import CursorTrail from "@/components/auth/CursorTrail";
+import VortexTransition from "@/components/auth/VortexTransition";
 
 type AuthMode = "login" | "signup" | "forgot-password";
 
@@ -130,7 +132,10 @@ const Auth = () => {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Background Oracle letters */}
+      {/* Cursor trail with ORACLE letters */}
+      {!isTransitioning && <CursorTrail />}
+
+      {/* Background Oracle letters revealed by mouse proximity */}
       <div className="auth-bg-letters" aria-hidden="true">
         {ORACLE_LETTERS.map((letter, i) => (
           <span
@@ -272,7 +277,8 @@ const Auth = () => {
         </p>
       </div>
 
-      {isTransitioning && <div className="auth-vortex-overlay" />}
+      {/* Enhanced vortex transition with speed streaks */}
+      {isTransitioning && <VortexTransition isActive={isTransitioning} />}
     </div>
   );
 };
