@@ -193,6 +193,36 @@ export const RoleManagement = () => {
     fetchUsersWithRoles();
   };
 
+  const startEditingName = (userId: string, currentName: string | null) => {
+    setEditingNameUserId(userId);
+    setEditingNameValue(currentName || "");
+  };
+
+  const saveDisplayName = async () => {
+    if (!editingNameUserId) return;
+    const trimmed = editingNameValue.trim();
+    if (!trimmed) {
+      toast.error("Le prénom ne peut pas être vide");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ display_name: trimmed })
+      .eq("user_id", editingNameUserId);
+
+    if (error) {
+      toast.error("Erreur lors de la mise à jour du prénom");
+      console.error(error);
+    } else {
+      toast.success("Prénom mis à jour");
+      setUsers(prev => prev.map(u => 
+        u.user_id === editingNameUserId ? { ...u, display_name: trimmed } : u
+      ));
+    }
+    setEditingNameUserId(null);
+  };
+
   const openActionDialog = (userId: string, action: "freeze" | "ban" | "remove" | "unfreeze" | "unban") => {
     setSelectedUser(userId);
     setActionType(action);
