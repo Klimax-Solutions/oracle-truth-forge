@@ -561,6 +561,10 @@ export const AdminVerification = () => {
               <ClipboardList className="w-3.5 h-3.5 md:w-4 md:h-4" />
               Suivi
             </TabsTrigger>
+            <TabsTrigger value="history" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              Historique
+            </TabsTrigger>
           </TabsList>
 
           {/* Users Tab */}
