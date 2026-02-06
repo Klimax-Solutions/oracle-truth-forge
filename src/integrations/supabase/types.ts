@@ -672,6 +672,15 @@ export type Database = {
     }
     Functions: {
       can_user_access: { Args: never; Returns: boolean }
+      get_leaderboard_data: {
+        Args: never
+        Returns: {
+          data_count: number
+          display_name: string
+          success_count: number
+          user_id: string
+        }[]
+      }
       get_user_status: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["user_status"]
