@@ -52,7 +52,7 @@ interface TradeComparison {
   status: 'match' | 'warning' | 'error' | 'no-match';
 }
 
-export const OraclePage = ({ trades, initialFilters }: OraclePageProps) => {
+export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers }: OraclePageProps) => {
   const [activeSubTab, setActiveSubTab] = useState("verification");
   const [userExecutions, setUserExecutions] = useState<UserExecution[]>([]);
   const [loading, setLoading] = useState(true);
