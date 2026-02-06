@@ -410,7 +410,7 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
             fill="hsl(0 0% 35%)"
             fontSize="6"
             fontFamily="monospace"
-            textTransform="uppercase"
+            style={{ textTransform: "uppercase" }}
           >
             PARIS GMT+1
           </text>
