@@ -61,7 +61,6 @@ interface Filters {
 
 export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [], onAnalysisToggle }: OracleDatabaseProps) => {
   const chartColors = useChartColors();
-  const { toast } = useToast();
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [filters, setFilters] = useState<Filters>(initialFilters || {
     direction: [],
