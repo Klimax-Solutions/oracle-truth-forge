@@ -23,6 +23,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -43,9 +48,12 @@ import {
   UserX,
   CheckCircle,
   AlertTriangle,
-  Pencil,
   Check,
   X,
+  ChevronDown,
+  Mail,
+  IdCard,
+  UserCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -55,6 +63,7 @@ interface UserWithRole {
   user_id: string;
   email: string;
   display_name: string | null;
+  first_name: string | null;
   roles: string[];
   status: UserStatus;
   status_reason: string | null;
@@ -71,8 +80,9 @@ export const RoleManagement = () => {
   const [selectedRole, setSelectedRole] = useState<string>("admin");
   const [actionReason, setActionReason] = useState("");
   const [processing, setProcessing] = useState(false);
-  const [editingNameUserId, setEditingNameUserId] = useState<string | null>(null);
-  const [editingNameValue, setEditingNameValue] = useState("");
+  const [editingFirstNameUserId, setEditingFirstNameUserId] = useState<string | null>(null);
+  const [editingFirstNameValue, setEditingFirstNameValue] = useState("");
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   useEffect(() => {
     checkSuperAdmin();
@@ -89,10 +99,9 @@ export const RoleManagement = () => {
   const fetchUsersWithRoles = async () => {
     setLoading(true);
     
-    // Fetch all profiles with status
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("user_id, display_name, status, status_reason");
+      .select("user_id, display_name, first_name, status, status_reason");
 
     if (profilesError) {
       console.error("Error fetching profiles:", profilesError);
@@ -100,7 +109,6 @@ export const RoleManagement = () => {
       return;
     }
 
-    // Fetch all roles
     const { data: roles, error: rolesError } = await supabase
       .from("user_roles")
       .select("user_id, role");
@@ -118,6 +126,7 @@ export const RoleManagement = () => {
         user_id: profile.user_id,
         email: profile.display_name || "Unknown",
         display_name: profile.display_name,
+        first_name: (profile as any).first_name || null,
         roles: [],
         status: (profile.status as UserStatus) || "active",
         status_reason: profile.status_reason,
@@ -186,14 +195,8 @@ export const RoleManagement = () => {
     fetchUsersWithRoles();
   };
 
-  const startEditingName = (userId: string, currentName: string | null) => {
-    setEditingNameUserId(userId);
-    setEditingNameValue(currentName || "");
-  };
-
-  const saveDisplayName = async () => {
-    if (!editingNameUserId) return;
-    const trimmed = editingNameValue.trim();
+  const saveFirstName = async (userId: string) => {
+    const trimmed = editingFirstNameValue.trim();
     if (!trimmed) {
       toast.error("Le prénom ne peut pas être vide");
       return;
@@ -201,8 +204,8 @@ export const RoleManagement = () => {
 
     const { error } = await supabase
       .from("profiles")
-      .update({ display_name: trimmed })
-      .eq("user_id", editingNameUserId);
+      .update({ first_name: trimmed } as any)
+      .eq("user_id", userId);
 
     if (error) {
       toast.error("Erreur lors de la mise à jour du prénom");
@@ -210,10 +213,10 @@ export const RoleManagement = () => {
     } else {
       toast.success("Prénom mis à jour");
       setUsers(prev => prev.map(u => 
-        u.user_id === editingNameUserId ? { ...u, display_name: trimmed } : u
+        u.user_id === userId ? { ...u, first_name: trimmed } : u
       ));
     }
-    setEditingNameUserId(null);
+    setEditingFirstNameUserId(null);
   };
 
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
@@ -249,7 +252,6 @@ export const RoleManagement = () => {
             status_reason: actionReason || null,
           })
           .eq("user_id", selectedUser);
-
         if (error) throw error;
         toast.success("Utilisateur gelé avec succès");
       } 
@@ -263,7 +265,6 @@ export const RoleManagement = () => {
             status_reason: actionReason || null,
           })
           .eq("user_id", selectedUser);
-
         if (error) throw error;
         toast.success("Utilisateur banni avec succès");
       }
@@ -279,67 +280,19 @@ export const RoleManagement = () => {
             status_reason: null,
           })
           .eq("user_id", selectedUser);
-
         if (error) throw error;
         toast.success("Utilisateur réactivé avec succès");
       }
       else if (actionType === "remove") {
-        // Delete all user data in order (child tables first)
-        
-        // Delete verification requests
-        await supabase
-          .from("verification_requests")
-          .delete()
-          .eq("user_id", selectedUser);
-
-        // Delete user followups
-        await supabase
-          .from("user_followups")
-          .delete()
-          .eq("user_id", selectedUser);
-
-        // Delete user executions
-        await supabase
-          .from("user_executions")
-          .delete()
-          .eq("user_id", selectedUser);
-
-        // Delete user personal trades
-        await supabase
-          .from("user_personal_trades")
-          .delete()
-          .eq("user_id", selectedUser);
-
-        // Delete user custom variables
-        await supabase
-          .from("user_custom_variables")
-          .delete()
-          .eq("user_id", selectedUser);
-
-        // Delete user variable types
-        await supabase
-          .from("user_variable_types")
-          .delete()
-          .eq("user_id", selectedUser);
-
-        // Delete user cycles
-        await supabase
-          .from("user_cycles")
-          .delete()
-          .eq("user_id", selectedUser);
-
-        // Delete all user roles
-        await supabase
-          .from("user_roles")
-          .delete()
-          .eq("user_id", selectedUser);
-
-        // Finally delete profile
-        const { error } = await supabase
-          .from("profiles")
-          .delete()
-          .eq("user_id", selectedUser);
-
+        await supabase.from("verification_requests").delete().eq("user_id", selectedUser);
+        await supabase.from("user_followups").delete().eq("user_id", selectedUser);
+        await supabase.from("user_executions").delete().eq("user_id", selectedUser);
+        await supabase.from("user_personal_trades").delete().eq("user_id", selectedUser);
+        await supabase.from("user_custom_variables").delete().eq("user_id", selectedUser);
+        await supabase.from("user_variable_types").delete().eq("user_id", selectedUser);
+        await supabase.from("user_cycles").delete().eq("user_id", selectedUser);
+        await supabase.from("user_roles").delete().eq("user_id", selectedUser);
+        const { error } = await supabase.from("profiles").delete().eq("user_id", selectedUser);
         if (error) throw error;
         toast.success("Utilisateur supprimé avec succès");
       }
@@ -356,34 +309,25 @@ export const RoleManagement = () => {
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'super_admin':
-        return <Crown className="w-3 h-3" />;
-      case 'admin':
-        return <ShieldCheck className="w-3 h-3" />;
-      default:
-        return <User className="w-3 h-3" />;
+      case 'super_admin': return <Crown className="w-3 h-3" />;
+      case 'admin': return <ShieldCheck className="w-3 h-3" />;
+      default: return <User className="w-3 h-3" />;
     }
   };
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case 'super_admin':
-        return "default";
-      case 'admin':
-        return "secondary";
-      default:
-        return "outline";
+      case 'super_admin': return "default";
+      case 'admin': return "secondary";
+      default: return "outline";
     }
   };
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'super_admin':
-        return "Super Admin";
-      case 'admin':
-        return "Admin";
-      default:
-        return "Membre";
+      case 'super_admin': return "Super Admin";
+      case 'admin': return "Admin";
+      default: return "Membre";
     }
   };
 
@@ -415,7 +359,7 @@ export const RoleManagement = () => {
 
   const getActionDialogContent = () => {
     const user = users.find(u => u.user_id === selectedUser);
-    const userName = user?.display_name || "cet utilisateur";
+    const userName = user?.first_name || user?.display_name || "cet utilisateur";
 
     switch (actionType) {
       case 'freeze':
@@ -454,6 +398,88 @@ export const RoleManagement = () => {
       default:
         return null;
     }
+  };
+
+  // Expandable profile detail panel
+  const renderProfileDetail = (user: UserWithRole) => {
+    const isEditingFirstName = editingFirstNameUserId === user.user_id;
+
+    return (
+      <div className="px-4 py-3 bg-muted/30 border-t border-border space-y-3">
+        {/* User ID */}
+        <div className="flex items-center gap-2">
+          <IdCard className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <span className="text-xs text-muted-foreground font-mono">{user.user_id}</span>
+        </div>
+
+        {/* Display name (username from signup) */}
+        <div className="flex items-center gap-2">
+          <UserCircle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <span className="text-xs text-muted-foreground">Nom d'utilisateur :</span>
+          <span className="text-sm font-medium">{user.display_name || "—"}</span>
+        </div>
+
+        {/* Email (same as display_name currently, but shown distinctly) */}
+        <div className="flex items-center gap-2">
+          <Mail className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <span className="text-xs text-muted-foreground">Email :</span>
+          <span className="text-sm">{user.email}</span>
+        </div>
+
+        {/* First name - editable, separate field */}
+        <div className="flex items-start gap-2 pt-1 border-t border-border/50">
+          <User className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span className="text-xs text-primary font-semibold uppercase tracking-wider">Prénom (animation)</span>
+            {isEditingFirstName ? (
+              <div className="flex items-center gap-1 mt-1">
+                <Input
+                  value={editingFirstNameValue}
+                  onChange={(e) => setEditingFirstNameValue(e.target.value)}
+                  className="h-8 text-sm flex-1"
+                  placeholder="Entrez le prénom..."
+                  maxLength={50}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveFirstName(user.user_id);
+                    if (e.key === "Escape") setEditingFirstNameUserId(null);
+                  }}
+                />
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => saveFirstName(user.user_id)}>
+                  <Check className="w-4 h-4 text-emerald-500" />
+                </Button>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setEditingFirstNameUserId(null)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-sm font-medium">{user.first_name || "Non défini"}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setEditingFirstNameUserId(user.user_id);
+                    setEditingFirstNameValue(user.first_name || "");
+                  }}
+                >
+                  Modifier
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Status reason if any */}
+        {user.status_reason && (
+          <div className="text-xs text-muted-foreground flex items-center gap-1 pt-1 border-t border-border/50">
+            <AlertTriangle className="w-3 h-3" />
+            {user.status_reason}
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (!isSuperAdmin) {
@@ -539,7 +565,7 @@ export const RoleManagement = () => {
         </Dialog>
       </div>
 
-      {/* Stats - responsive grid */}
+      {/* Stats */}
       <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-4">
         <div className="p-3 md:p-4 rounded-lg border bg-card">
           <div className="flex items-center gap-1.5 md:gap-2 text-muted-foreground mb-1">
@@ -588,10 +614,9 @@ export const RoleManagement = () => {
         </div>
       </div>
 
-      {/* Users List - Card layout on mobile, table on desktop */}
+      {/* Users List */}
       <div className="rounded-lg border overflow-hidden">
-        {/* Mobile: Card view */}
-        <div className="block md:hidden divide-y divide-border">
+        <div className="divide-y divide-border">
           {loading ? (
             <div className="py-8 text-center">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
@@ -602,174 +627,75 @@ export const RoleManagement = () => {
             </div>
           ) : (
             users.map((user) => (
-              <div key={user.user_id} className={cn("p-3", user.status !== 'active' && 'opacity-60')}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] text-muted-foreground font-mono mb-0.5">{user.user_id.slice(0, 16)}...</p>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm truncate">{user.display_name || "Sans nom"}</p>
-                      {editingNameUserId !== user.user_id && (
-                        <button onClick={() => startEditingName(user.user_id, user.display_name)} className="text-muted-foreground hover:text-foreground transition-colors">
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                    {editingNameUserId === user.user_id && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <Input
-                          value={editingNameValue}
-                          onChange={(e) => setEditingNameValue(e.target.value)}
-                          className="h-7 text-sm"
-                          placeholder="Nouveau prénom"
-                          maxLength={50}
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveDisplayName();
-                            if (e.key === "Escape") setEditingNameUserId(null);
-                          }}
-                        />
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={saveDisplayName}>
-                          <Check className="w-3 h-3 text-emerald-500" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setEditingNameUserId(null)}>
-                          <X className="w-3 h-3" />
-                        </Button>
+              <Collapsible
+                key={user.user_id}
+                open={expandedUserId === user.user_id}
+                onOpenChange={(open) => setExpandedUserId(open ? user.user_id : null)}
+              >
+                <div className={cn(
+                  "transition-colors",
+                  user.status !== 'active' && 'opacity-60',
+                  expandedUserId === user.user_id && 'bg-muted/10'
+                )}>
+                  {/* Main row - clickable to expand */}
+                  <CollapsibleTrigger asChild>
+                    <div className="flex items-center justify-between gap-3 p-3 md:p-4 cursor-pointer hover:bg-muted/20 transition-colors">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <ChevronDown className={cn(
+                          "w-4 h-4 text-muted-foreground transition-transform flex-shrink-0",
+                          expandedUserId === user.user_id && "rotate-180"
+                        )} />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm truncate">
+                            {user.display_name || "Sans nom"}
+                            {user.first_name && (
+                              <span className="text-muted-foreground font-normal ml-2">
+                                — {user.first_name}
+                              </span>
+                            )}
+                          </p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {user.roles.map((role) => (
+                              <Badge 
+                                key={role} 
+                                variant={getRoleBadgeVariant(role) as any}
+                                className="flex items-center gap-1 text-[10px]"
+                              >
+                                {getRoleIcon(role)}
+                                {getRoleLabel(role)}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {getStatusBadge(user.status)}
-                    {!user.roles.includes('super_admin') && (
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openQuickActionsDialog(user.user_id)}>
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {getStatusBadge(user.status)}
+                        {!user.roles.includes('super_admin') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openQuickActionsDialog(user.user_id);
+                            }}
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+
+                  {/* Expanded detail panel */}
+                  <CollapsibleContent>
+                    {renderProfileDetail(user)}
+                  </CollapsibleContent>
                 </div>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {user.roles.map((role) => (
-                    <Badge 
-                      key={role} 
-                      variant={getRoleBadgeVariant(role) as any}
-                      className="flex items-center gap-1 text-[10px]"
-                    >
-                      {getRoleIcon(role)}
-                      {getRoleLabel(role)}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
+              </Collapsible>
             ))
           )}
         </div>
-
-        {/* Desktop: Table view */}
-        <Table className="hidden md:table">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Utilisateur</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead>Rôles</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-8">
-                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-                </TableCell>
-              </TableRow>
-            ) : users.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                  Aucun utilisateur trouvé
-                </TableCell>
-              </TableRow>
-            ) : (
-              users.map((user) => (
-                <TableRow key={user.user_id} className={user.status !== 'active' ? 'opacity-60' : ''}>
-                  <TableCell>
-                    <div className="text-xs text-muted-foreground font-mono mb-0.5">{user.user_id.slice(0, 16)}...</div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{user.display_name || "Sans nom"}</span>
-                      {editingNameUserId !== user.user_id && (
-                        <button onClick={() => startEditingName(user.user_id, user.display_name)} className="text-muted-foreground hover:text-foreground transition-colors">
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                    {editingNameUserId === user.user_id && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <Input
-                          value={editingNameValue}
-                          onChange={(e) => setEditingNameValue(e.target.value)}
-                          className="h-7 text-sm w-40"
-                          placeholder="Nouveau prénom"
-                          maxLength={50}
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveDisplayName();
-                            if (e.key === "Escape") setEditingNameUserId(null);
-                          }}
-                        />
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={saveDisplayName}>
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setEditingNameUserId(null)}>
-                          <X className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    )}
-                    {user.status_reason && (
-                      <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        {user.status_reason}
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(user.status)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2 flex-wrap">
-                      {user.roles.map((role) => (
-                        <Badge 
-                          key={role} 
-                          variant={getRoleBadgeVariant(role) as any}
-                          className="flex items-center gap-1"
-                        >
-                          {getRoleIcon(role)}
-                          {getRoleLabel(role)}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {user.roles.includes('admin') && !user.roles.includes('super_admin') && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeRole(user.user_id, 'admin')}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                      
-                      {!user.roles.includes('super_admin') && (
-                        <Button variant="ghost" size="sm" onClick={() => openQuickActionsDialog(user.user_id)}>
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
       </div>
 
       {/* Quick Actions Dialog */}
@@ -787,6 +713,9 @@ export const RoleManagement = () => {
                   </DialogTitle>
                   <DialogDescription>
                     <span className="font-medium text-foreground">{qaUser.display_name || "Sans nom"}</span>
+                    {qaUser.first_name && (
+                      <span className="text-muted-foreground"> — Prénom: {qaUser.first_name}</span>
+                    )}
                     <br />
                     <span className="text-xs font-mono">{qaUser.user_id.slice(0, 20)}...</span>
                   </DialogDescription>
@@ -794,19 +723,11 @@ export const RoleManagement = () => {
                 <div className="space-y-2 py-2">
                   {qaUser.status === 'active' && (
                     <>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start gap-3 h-11"
-                        onClick={() => openActionDialog(qaUser.user_id, 'freeze')}
-                      >
+                      <Button variant="outline" className="w-full justify-start gap-3 h-11" onClick={() => openActionDialog(qaUser.user_id, 'freeze')}>
                         <Snowflake className="w-4 h-4 text-blue-500" />
                         Geler l'utilisateur
                       </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start gap-3 h-11"
-                        onClick={() => openActionDialog(qaUser.user_id, 'ban')}
-                      >
+                      <Button variant="outline" className="w-full justify-start gap-3 h-11" onClick={() => openActionDialog(qaUser.user_id, 'ban')}>
                         <Ban className="w-4 h-4 text-destructive" />
                         Bannir l'utilisateur
                       </Button>
@@ -814,32 +735,33 @@ export const RoleManagement = () => {
                   )}
                   {qaUser.status === 'frozen' && (
                     <>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start gap-3 h-11"
-                        onClick={() => openActionDialog(qaUser.user_id, 'unfreeze')}
-                      >
+                      <Button variant="outline" className="w-full justify-start gap-3 h-11" onClick={() => openActionDialog(qaUser.user_id, 'unfreeze')}>
                         <CheckCircle className="w-4 h-4 text-green-500" />
                         Dégeler l'utilisateur
                       </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start gap-3 h-11"
-                        onClick={() => openActionDialog(qaUser.user_id, 'ban')}
-                      >
+                      <Button variant="outline" className="w-full justify-start gap-3 h-11" onClick={() => openActionDialog(qaUser.user_id, 'ban')}>
                         <Ban className="w-4 h-4 text-destructive" />
                         Bannir l'utilisateur
                       </Button>
                     </>
                   )}
                   {qaUser.status === 'banned' && (
+                    <Button variant="outline" className="w-full justify-start gap-3 h-11" onClick={() => openActionDialog(qaUser.user_id, 'unban')}>
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      Débannir l'utilisateur
+                    </Button>
+                  )}
+                  {qaUser.roles.includes('admin') && !qaUser.roles.includes('super_admin') && (
                     <Button
                       variant="outline"
                       className="w-full justify-start gap-3 h-11"
-                      onClick={() => openActionDialog(qaUser.user_id, 'unban')}
+                      onClick={() => {
+                        setQuickActionsOpen(false);
+                        removeRole(qaUser.user_id, 'admin');
+                      }}
                     >
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      Débannir l'utilisateur
+                      <Trash2 className="w-4 h-4 text-orange-500" />
+                      Retirer le rôle Admin
                     </Button>
                   )}
                   <div className="border-t border-border my-2" />
@@ -885,14 +807,15 @@ export const RoleManagement = () => {
                 </div>
               )}
               
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setActionDialogOpen(false)}>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => setActionDialogOpen(false)} className="w-full sm:w-auto" disabled={processing}>
                   Annuler
                 </Button>
-                <Button 
+                <Button
                   variant={dialogContent.buttonVariant}
                   onClick={executeAction}
                   disabled={processing}
+                  className="w-full sm:w-auto"
                 >
                   {processing ? (
                     <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />

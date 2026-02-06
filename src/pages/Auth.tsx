@@ -77,15 +77,15 @@ const Auth = () => {
         });
         if (error) throw error;
 
-        // Fetch display_name from profiles
+        // Fetch first_name (priority) or display_name from profiles
         if (data.user) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("display_name")
+            .select("display_name, first_name")
             .eq("user_id", data.user.id)
             .single();
 
-          setUserName(profile?.display_name || email.split("@")[0]);
+          setUserName((profile as any)?.first_name || profile?.display_name || email.split("@")[0]);
         }
 
         setIsLoading(false);
