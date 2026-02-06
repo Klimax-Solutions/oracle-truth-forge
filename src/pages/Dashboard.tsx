@@ -8,11 +8,9 @@ import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DataSourceSelector, DataSource } from "@/components/dashboard/DataSourceSelector";
 import { usePersonalTrades } from "@/hooks/usePersonalTrades";
+import { DataAnalysisPage } from "@/components/dashboard/DataAnalysisPage";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
-import { TradingJournal } from "@/components/dashboard/TradingJournal";
-import { RRDistributionChart } from "@/components/dashboard/RRDistributionChart";
-import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
 import { VideoManager } from "@/components/dashboard/VideoManager";
@@ -209,7 +207,7 @@ const Dashboard = () => {
   };
 
   const displayTrades = getDisplayTrades();
-  const showDataSourceSelector = ["journal", "distribution", "timing"].includes(activeTab);
+  const showDataSourceSelector = ["data-analysis"].includes(activeTab);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -217,12 +215,8 @@ const Dashboard = () => {
         return <OracleExecution trades={trades} onNavigateToVideos={() => setActiveTab("videos")} />;
       case "setup":
         return <SetupPage trades={trades} initialFilters={databaseFilters} />;
-      case "journal":
-        return <TradingJournal trades={displayTrades} />;
-      case "distribution":
-        return <RRDistributionChart trades={displayTrades} />;
-      case "timing":
-        return <TimingAnalysis trades={displayTrades} onNavigateToDatabase={handleNavigateToDatabase} />;
+      case "data-analysis":
+        return <DataAnalysisPage trades={displayTrades} onNavigateToDatabase={handleNavigateToDatabase} />;
       case "videos":
         return <VideoSetup />;
       case "successes":
