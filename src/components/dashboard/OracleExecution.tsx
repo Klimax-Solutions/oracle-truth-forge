@@ -465,9 +465,9 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                 <div className="flex flex-wrap items-center gap-2 md:gap-4">
                   <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-md md:bg-transparent md:px-0 md:py-0">
                     <span className="text-xs md:text-sm font-mono text-foreground">
-                      {ebauche.userExecutions.length}/{ebauche.total_trades}
+                      {questData?.ebaucheTradesAnalyzed || 0}/{ebauche.total_trades}
                     </span>
-                    <span className="text-[10px] text-muted-foreground hidden md:inline">trades</span>
+                    <span className="text-[10px] text-muted-foreground hidden md:inline">analysés</span>
                   </div>
                   <div className={cn(
                     "flex items-center gap-1.5 px-2 py-1 rounded-md md:bg-transparent md:px-0 md:py-0",
