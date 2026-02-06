@@ -41,6 +41,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { UserFollowupTab } from "./admin/UserFollowupTab";
+import { UserHistoryTab } from "./admin/UserHistoryTab";
 import { ScreenshotLink } from "./ScreenshotLink";
 
 // Oracle trade from the master database
