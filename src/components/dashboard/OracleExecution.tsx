@@ -334,6 +334,20 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
       </div>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto space-y-6 md:space-y-8">
+        {/* Daily Quest Card */}
+        {questData && !questData.loading && (
+          <DailyQuestCard
+            questData={questData}
+            onNavigateToVideos={() => onNavigateToVideos?.()}
+            onNavigateToSetup={() => onNavigateToSetup?.()}
+            onRequestVerification={
+              ebauche && ebauche.userCycle?.status === 'in_progress'
+                ? () => handleRequestVerification(ebauche)
+                : undefined
+            }
+          />
+        )}
+
         {/* Overview stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <div className="border border-emerald-500/30 p-3 md:p-5 bg-transparent rounded-md">
