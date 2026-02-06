@@ -11,8 +11,7 @@ import { usePersonalTrades } from "@/hooks/usePersonalTrades";
 import { DataAnalysisPage } from "@/components/dashboard/DataAnalysisPage";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
-import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
-import { TimingAnalysis } from "@/components/dashboard/TimingAnalysis";
+import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
 import { VideoManager } from "@/components/dashboard/VideoManager";
