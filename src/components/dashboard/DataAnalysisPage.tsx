@@ -5,6 +5,7 @@ import { TradingJournal } from "./TradingJournal";
 import { RRDistributionChart } from "./RRDistributionChart";
 import { AnalogClock } from "./AnalogClock";
 import { CumulativeEvolution } from "./CumulativeEvolution";
+import { DataRankings } from "./DataRankings";
 
 interface Trade {
   id: string;
