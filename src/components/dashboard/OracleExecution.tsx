@@ -509,7 +509,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
               {expandedCycle === 0 && (
                 <div className="mt-4 pt-4 border-t border-border space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Regardez les 4 vidéos explicatives du setup Oracle puis complétez les 15 premiers trades.
+                    Regardez les vidéos explicatives du setup Oracle puis cochez chaque trade analysé et compris.
                   </p>
                   
                   <div className="flex items-center gap-3">
