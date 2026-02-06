@@ -724,7 +724,34 @@ export const RoleManagement = () => {
               users.map((user) => (
                 <TableRow key={user.user_id} className={user.status !== 'active' ? 'opacity-60' : ''}>
                   <TableCell>
-                    <div className="font-medium">{user.display_name || "Sans nom"}</div>
+                    {editingNameUserId === user.user_id ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={editingNameValue}
+                          onChange={(e) => setEditingNameValue(e.target.value)}
+                          className="h-7 text-sm w-40"
+                          maxLength={50}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveDisplayName();
+                            if (e.key === "Escape") setEditingNameUserId(null);
+                          }}
+                        />
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={saveDisplayName}>
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setEditingNameUserId(null)}>
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className="font-medium">{user.display_name || "Sans nom"}</div>
+                        <button onClick={() => startEditingName(user.user_id, user.display_name)} className="text-muted-foreground hover:text-foreground transition-colors">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                     <div className="text-sm text-muted-foreground">{user.user_id.slice(0, 8)}...</div>
                     {user.status_reason && (
                       <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
