@@ -209,7 +209,7 @@ const Dashboard = () => {
   };
 
   const displayTrades = getDisplayTrades();
-  const showDataSourceSelector = ["journal", "distribution", "timing"].includes(activeTab);
+  const showDataSourceSelector = ["data-analysis"].includes(activeTab);
 
   const renderContent = () => {
     switch (activeTab) {
