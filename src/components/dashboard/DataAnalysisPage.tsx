@@ -95,7 +95,7 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
   ];
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col overflow-hidden max-w-full">
       {/* Header */}
       <div className="p-4 md:p-6 border-b border-border">
         <div className="flex items-center justify-between">

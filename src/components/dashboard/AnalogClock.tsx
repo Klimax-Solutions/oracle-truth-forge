@@ -440,16 +440,23 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
           </svg>
         </div>
 
-        {/* Zoom out button */}
-        {isZoomed && (
-          <button
-            onClick={handleZoomOut}
-            className="mt-3 flex items-center gap-2 px-4 py-2 border border-border rounded-md bg-card/80 backdrop-blur-sm hover:bg-accent/50 transition-colors animate-fade-in"
-          >
-            <ZoomOut className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs font-mono text-muted-foreground">Vue complète</span>
-          </button>
-        )}
+        {/* Toggle zoom button */}
+        <button
+          onClick={handleToggleZoom}
+          className="mt-4 flex items-center gap-2 px-5 py-2.5 border border-border rounded-md bg-card/80 backdrop-blur-sm hover:bg-accent/50 hover:border-foreground/20 transition-all animate-fade-in"
+        >
+          {isZoomed ? (
+            <>
+              <ZoomOut className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs font-mono text-muted-foreground">Vue complète</span>
+            </>
+          ) : (
+            <>
+              <Eye className="w-4 h-4 text-emerald-500" />
+              <span className="text-xs font-mono text-muted-foreground">Voir les timings d'entrée en détail</span>
+            </>
+          )}
+        </button>
 
         {/* Legend */}
         <div className="flex items-center justify-center gap-4 mt-3">
