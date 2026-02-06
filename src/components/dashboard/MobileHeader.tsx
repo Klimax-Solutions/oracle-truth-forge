@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { Database, Calendar, BarChart3, Clock, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy } from "lucide-react";
+import { Database, Calendar, BarChart3, Clock, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy, Film } from "lucide-react";
 
 interface MobileHeaderProps {
   userEmail: string;
@@ -30,7 +30,10 @@ const adminTabs = [
   { id: "admin", label: "Vérifications Admin", icon: ShieldCheck },
 ];
 
-const superAdminTab = { id: "roles", label: "Gestion des Rôles", icon: Crown };
+const superAdminTabs = [
+  { id: "roles", label: "Gestion des Rôles", icon: Crown },
+  { id: "video-manager", label: "Gestion Vidéos", icon: Film },
+];
 
 export const MobileHeader = ({
   userEmail,
