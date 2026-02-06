@@ -17,6 +17,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { DailyQuestCard } from "./DailyQuestCard";
+import { QuestData } from "@/hooks/useQuestData";
 
 interface Trade {
   id: string;
@@ -30,6 +32,8 @@ interface Trade {
 interface OracleExecutionProps {
   trades: Trade[];
   onNavigateToVideos?: () => void;
+  onNavigateToSetup?: () => void;
+  questData?: QuestData;
 }
 
 interface Cycle {
@@ -71,7 +75,7 @@ interface CycleWithProgress extends Cycle {
   progress: number;
 }
 
-export const OracleExecution = ({ trades, onNavigateToVideos }: OracleExecutionProps) => {
+export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup, questData }: OracleExecutionProps) => {
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [userCycles, setUserCycles] = useState<UserCycle[]>([]);
   const [userExecutions, setUserExecutions] = useState<UserExecution[]>([]);
@@ -330,6 +334,20 @@ export const OracleExecution = ({ trades, onNavigateToVideos }: OracleExecutionP
       </div>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto space-y-6 md:space-y-8">
+        {/* Daily Quest Card */}
+        {questData && !questData.loading && (
+          <DailyQuestCard
+            questData={questData}
+            onNavigateToVideos={() => onNavigateToVideos?.()}
+            onNavigateToSetup={() => onNavigateToSetup?.()}
+            onRequestVerification={
+              ebauche && ebauche.userCycle?.status === 'in_progress'
+                ? () => handleRequestVerification(ebauche)
+                : undefined
+            }
+          />
+        )}
+
         {/* Overview stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <div className="border border-emerald-500/30 p-3 md:p-5 bg-transparent rounded-md">

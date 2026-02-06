@@ -8,6 +8,7 @@ import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DataSourceSelector, DataSource } from "@/components/dashboard/DataSourceSelector";
 import { usePersonalTrades } from "@/hooks/usePersonalTrades";
+import { useQuestData } from "@/hooks/useQuestData";
 import { DataAnalysisPage } from "@/components/dashboard/DataAnalysisPage";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
@@ -18,6 +19,7 @@ import { AdminVerification } from "@/components/dashboard/AdminVerification";
 import { RoleManagement } from "@/components/dashboard/admin/RoleManagement";
 import { BatchImportPage } from "@/components/dashboard/BatchImportPage";
 import { SuccessPage } from "@/components/dashboard/SuccessPage";
+import { QuestFloatingBubble } from "@/components/dashboard/QuestFloatingBubble";
 
 interface Trade {
   id: string;
@@ -60,6 +62,7 @@ const Dashboard = () => {
   const [dataSource, setDataSource] = useState<DataSource>("all");
   const { trades: personalTrades } = usePersonalTrades();
   const { isAdmin, isSuperAdmin } = useSidebarRoles();
+  const questData = useQuestData();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -212,7 +215,7 @@ const Dashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "execution":
-        return <OracleExecution trades={trades} onNavigateToVideos={() => setActiveTab("videos")} />;
+        return <OracleExecution trades={trades} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} />;
       case "setup":
         return <SetupPage trades={trades} initialFilters={databaseFilters} />;
       case "data-analysis":
@@ -230,7 +233,7 @@ const Dashboard = () => {
       case "roles":
         return <RoleManagement />;
       default:
-        return <OracleExecution trades={trades} />;
+        return <OracleExecution trades={trades} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} />;
     }
   };
 
@@ -284,6 +287,14 @@ const Dashboard = () => {
           </div>
         </main>
       </div>
+
+      {/* Quest Floating Bubble */}
+      <QuestFloatingBubble
+        questData={questData}
+        onNavigateToVideos={() => setActiveTab("videos")}
+        onNavigateToSetup={() => setActiveTab("setup")}
+        onNavigateToExecution={() => setActiveTab("execution")}
+      />
     </div>
   );
 };
