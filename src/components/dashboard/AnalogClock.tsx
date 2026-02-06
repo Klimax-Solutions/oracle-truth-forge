@@ -241,17 +241,13 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
 
             {/* Entry Zone Arc */}
             {entryZoneArc && (
-              <g
-                className="cursor-pointer"
-                onMouseEnter={handleZoneEnter}
-                onMouseLeave={handleZoneLeave}
-              >
+              <g>
                 <path
                   d={entryZoneArc.path}
-                  fill={isZoomed ? "hsl(142 71% 45% / 0.15)" : hoveredZone ? "hsl(142 71% 45% / 0.12)" : "hsl(142 71% 45% / 0.06)"}
+                  fill={isZoomed ? "hsl(142 71% 45% / 0.15)" : "hsl(142 71% 45% / 0.06)"}
                   stroke="hsl(142 71% 45% / 0.4)"
-                  strokeWidth={isZoomed ? 1.5 : hoveredZone ? 1.5 : 0.5}
-                  filter={isZoomed || hoveredZone ? "url(#zoneGlow)" : undefined}
+                  strokeWidth={isZoomed ? 1.5 : 0.5}
+                  filter={isZoomed ? "url(#zoneGlow)" : undefined}
                   className="transition-all duration-300"
                 />
               </g>
