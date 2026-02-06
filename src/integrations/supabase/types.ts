@@ -547,6 +547,35 @@ export type Database = {
         }
         Relationships: []
       }
+      user_video_views: {
+        Row: {
+          id: string
+          user_id: string
+          video_id: string
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          video_id: string
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          video_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_video_views_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       verification_requests: {
         Row: {
           admin_comments: string | null
@@ -600,6 +629,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      videos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          embed_url: string
+          id: string
+          open_url: string | null
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          embed_url: string
+          id?: string
+          open_url?: string | null
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          embed_url?: string
+          id?: string
+          open_url?: string | null
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
