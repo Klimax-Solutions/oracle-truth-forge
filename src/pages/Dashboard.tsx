@@ -18,6 +18,7 @@ import { VideoSetup } from "@/components/dashboard/VideoSetup";
 import { AdminVerification } from "@/components/dashboard/AdminVerification";
 import { RoleManagement } from "@/components/dashboard/admin/RoleManagement";
 import { BatchImportPage } from "@/components/dashboard/BatchImportPage";
+import { SuccessPage } from "@/components/dashboard/SuccessPage";
 
 interface Trade {
   id: string;
