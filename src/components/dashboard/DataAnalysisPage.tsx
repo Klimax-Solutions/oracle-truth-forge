@@ -5,6 +5,7 @@ import { TradingJournal } from "./TradingJournal";
 import { RRDistributionChart } from "./RRDistributionChart";
 import { AnalogClock } from "./AnalogClock";
 import { CumulativeEvolution } from "./CumulativeEvolution";
+import { DataRankings } from "./DataRankings";
 
 interface Trade {
   id: string;
@@ -116,6 +117,9 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
             style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms forwards" }}
           >
             <DonneesClés trades={trades} />
+
+            {/* Data Rankings */}
+            <DataRankings trades={trades} />
 
             {/* Quick access buttons */}
             <div className="grid grid-cols-2 gap-3">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { ZoomOut, Clock, Target, TrendingUp, TrendingDown, Calendar, Eye } from "lucide-react";
 
@@ -31,6 +31,8 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomTransitioning, setZoomTransitioning] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const svgContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
@@ -137,17 +139,17 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
     };
   }, [entryTimeRange]);
 
-  // Zoomed viewBox — wider to give more spacing between needles
+  // Zoomed viewBox — much wider for well-spaced needles
   const getViewBox = useCallback(() => {
     if (!entryTimeRange || !isZoomed) return "0 0 400 400";
     const { minH, minM, maxH, maxM } = entryTimeRange;
     const startAngle = timeToAngle(minH, minM);
     const endAngle = timeToAngle(maxH, maxM);
     const midAngle = ((startAngle + endAngle) / 2) * Math.PI / 180;
-    const zoomCx = cx + 40 * Math.cos(midAngle);
-    const zoomCy = cy + 40 * Math.sin(midAngle);
-    // Wider viewBox (280x280) for better needle spacing
-    return `${zoomCx - 140} ${zoomCy - 140} 280 280`;
+    const zoomCx = cx + 30 * Math.cos(midAngle);
+    const zoomCy = cy + 30 * Math.sin(midAngle);
+    // Much wider viewBox (200x200) for maximum spacing between needles
+    return `${zoomCx - 100} ${zoomCy - 100} 200 200`;
   }, [entryTimeRange, isZoomed]);
 
   // Handle zoom toggle via button
@@ -164,6 +166,28 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
         setIsZoomed(true);
         setTimeout(() => setZoomTransitioning(false), 800);
       }, 200);
+    }
+  };
+
+  // Convert SVG coordinates to screen coordinates for HTML tooltip
+  const handleNeedleHover = (key: string, event: React.MouseEvent<SVGGElement>) => {
+    setHoveredSlot(key);
+    if (svgContainerRef.current) {
+      const rect = svgContainerRef.current.getBoundingClientRect();
+      setTooltipPos({
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      });
+    }
+  };
+
+  const handleNeedleMove = (event: React.MouseEvent<SVGGElement>) => {
+    if (svgContainerRef.current) {
+      const rect = svgContainerRef.current.getBoundingClientRect();
+      setTooltipPos({
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      });
     }
   };
 
@@ -190,10 +214,13 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
   }, [isZoomed, zoomTransitioning]);
 
   return (
-    <div className="flex flex-col items-center w-full max-w-full overflow-hidden relative">
+    <div className="flex flex-col items-center w-full max-w-full overflow-visible relative">
       {/* ── Clock with 3D perspective ── */}
       <div className="w-full flex flex-col items-center" style={clockContainerStyle}>
-        <div className="relative w-full max-w-[min(480px,90vw)] md:max-w-[560px] lg:max-w-[600px] aspect-square mx-auto">
+        <div
+          ref={svgContainerRef}
+          className="relative w-full max-w-[min(480px,90vw)] md:max-w-[560px] lg:max-w-[600px] aspect-square mx-auto"
+        >
           <svg
             width="100%"
             height="100%"
@@ -202,7 +229,10 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
               "clock-glow w-full h-full",
               "transition-all duration-700 ease-out"
             )}
-            style={{ filter: isZoomed ? "drop-shadow(0 0 30px hsl(142 71% 45% / 0.15))" : undefined }}
+            style={{
+              overflow: "visible",
+              filter: isZoomed ? "drop-shadow(0 0 30px hsl(142 71% 45% / 0.15))" : undefined,
+            }}
           >
             <defs>
               <radialGradient id="clockGlow" cx="50%" cy="50%" r="50%">
@@ -241,16 +271,14 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
 
             {/* Entry Zone Arc */}
             {entryZoneArc && (
-              <g>
-                <path
-                  d={entryZoneArc.path}
-                  fill={isZoomed ? "hsl(142 71% 45% / 0.15)" : "hsl(142 71% 45% / 0.06)"}
-                  stroke="hsl(142 71% 45% / 0.4)"
-                  strokeWidth={isZoomed ? 1.5 : 0.5}
-                  filter={isZoomed ? "url(#zoneGlow)" : undefined}
-                  className="transition-all duration-300"
-                />
-              </g>
+              <path
+                d={entryZoneArc.path}
+                fill={isZoomed ? "hsl(142 71% 45% / 0.15)" : "hsl(142 71% 45% / 0.06)"}
+                stroke="hsl(142 71% 45% / 0.4)"
+                strokeWidth={isZoomed ? 1.5 : 0.5}
+                filter={isZoomed ? "url(#zoneGlow)" : undefined}
+                className="transition-all duration-300"
+              />
             )}
 
             {/* Hour markers */}
@@ -313,8 +341,9 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
                 <g
                   key={key}
                   className="cursor-pointer"
-                  onMouseEnter={() => setHoveredSlot(key)}
-                  onMouseLeave={() => setHoveredSlot(null)}
+                  onMouseEnter={(e) => handleNeedleHover(key, e)}
+                  onMouseMove={handleNeedleMove}
+                  onMouseLeave={() => { setHoveredSlot(null); setTooltipPos(null); }}
                   onClick={() => {
                     setSelectedSlot(key === selectedSlot ? null : key);
                     setSelectedTrade(null);
@@ -342,31 +371,6 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
                     opacity={isHovered || isSelected ? 1 : 0.7}
                     filter={isHovered || isSelected ? "url(#strongGlow)" : isZoomed ? "url(#glowFilter)" : undefined}
                   />
-                  {/* Tooltip on hover */}
-                  {isHovered && (
-                    <g>
-                      <rect
-                        x={x2 - 65}
-                        y={y2 - 32}
-                        width="130"
-                        height="24"
-                        rx="4"
-                        className="fill-card stroke-border"
-                        fillOpacity="0.95"
-                        strokeWidth="0.5"
-                      />
-                      <text
-                        x={x2}
-                        y={y2 - 17}
-                        textAnchor="middle"
-                        className="fill-foreground"
-                        fontSize="7"
-                        fontFamily="monospace"
-                      >
-                        Trade de {getSlotRangeLabel(key)} · {data.totalRR >= 0 ? "+" : ""}{data.totalRR.toFixed(1)}RR
-                      </text>
-                    </g>
-                  )}
                 </g>
               );
             })}
@@ -438,6 +442,35 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
               </>
             )}
           </svg>
+
+          {/* HTML Tooltip — rendered outside SVG, always on top */}
+          {hoveredSlot && tooltipPos && tradeSlots[hoveredSlot] && (
+            <div
+              className="absolute z-50 pointer-events-none"
+              style={{
+                left: tooltipPos.x,
+                top: tooltipPos.y - 50,
+                transform: "translateX(-50%)",
+              }}
+            >
+              <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-xl backdrop-blur-sm">
+                <p className="text-xs font-mono text-foreground whitespace-nowrap">
+                  {getSlotRangeLabel(hoveredSlot)}
+                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className={cn(
+                    "text-sm font-bold font-mono",
+                    tradeSlots[hoveredSlot].totalRR >= 0 ? "text-emerald-500" : "text-red-500"
+                  )}>
+                    {tradeSlots[hoveredSlot].totalRR >= 0 ? "+" : ""}{tradeSlots[hoveredSlot].totalRR.toFixed(1)} RR
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    · {tradeSlots[hoveredSlot].trades.length} trade{tradeSlots[hoveredSlot].trades.length > 1 ? "s" : ""}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Toggle zoom button */}
