@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Database, Calendar, BarChart3, Clock, ChevronRight, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy } from "lucide-react";
+import { Database, Calendar, BarChart3, Clock, ChevronRight, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy, Film } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,7 +22,10 @@ const adminTabs = [
   { id: "batch-import", label: "Import Batch", icon: FileUp },
   { id: "admin", label: "Vérifications Admin", icon: ShieldCheck },
 ];
-const superAdminTab = { id: "roles", label: "Gestion des Rôles", icon: Crown };
+const superAdminTabs = [
+  { id: "roles", label: "Gestion des Rôles", icon: Crown },
+  { id: "video-manager", label: "Gestion Vidéos", icon: Film },
+];
 
 export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
