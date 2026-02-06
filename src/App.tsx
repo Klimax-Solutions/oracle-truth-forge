@@ -11,6 +11,7 @@ import SetupDetail from "./pages/SetupDetail";
 import OracleM from "./pages/OracleM";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import { SuccessNotification } from "./components/dashboard/SuccessNotification";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <SuccessNotification />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
