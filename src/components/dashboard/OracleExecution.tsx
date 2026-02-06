@@ -29,6 +29,7 @@ interface Trade {
 
 interface OracleExecutionProps {
   trades: Trade[];
+  onNavigateToVideos?: () => void;
 }
 
 interface Cycle {
@@ -70,7 +71,7 @@ interface CycleWithProgress extends Cycle {
   progress: number;
 }
 
-export const OracleExecution = ({ trades }: OracleExecutionProps) => {
+export const OracleExecution = ({ trades, onNavigateToVideos }: OracleExecutionProps) => {
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [userCycles, setUserCycles] = useState<UserCycle[]>([]);
   const [userExecutions, setUserExecutions] = useState<UserExecution[]>([]);
@@ -486,7 +487,7 @@ export const OracleExecution = ({ trades }: OracleExecutionProps) => {
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Navigate to videos tab (handled by parent)
+                        onNavigateToVideos?.();
                       }}
                     >
                       <Play className="w-4 h-4 mr-2" />
