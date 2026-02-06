@@ -8,6 +8,7 @@ import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DataSourceSelector, DataSource } from "@/components/dashboard/DataSourceSelector";
 import { usePersonalTrades } from "@/hooks/usePersonalTrades";
+import { DataAnalysisPage } from "@/components/dashboard/DataAnalysisPage";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
 import { TradingJournal } from "@/components/dashboard/TradingJournal";
