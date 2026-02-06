@@ -31,68 +31,24 @@ const SuccessLeaderboard = () => {
   }, []);
 
   const fetchLeaderboard = async () => {
-    // Get all successes grouped by user
-    const { data: successes } = await supabase
-      .from("user_successes")
-      .select("user_id");
+    // Use the security definer function so all members can see the leaderboard
+    const { data, error } = await supabase.rpc("get_leaderboard_data");
 
-    // Get all personal trades (data) grouped by user
-    const { data: executions } = await supabase
-      .from("user_executions")
-      .select("user_id");
-
-    if (!successes) {
+    if (error || !data) {
+      console.error("Error fetching leaderboard:", error);
       setLoading(false);
       return;
     }
 
-    // Count successes per user
-    const successMap: Record<string, number> = {};
-    successes.forEach((s) => {
-      successMap[s.user_id] = (successMap[s.user_id] || 0) + 1;
-    });
+    const board: LeaderboardEntry[] = (data as any[]).map((row) => ({
+      user_id: row.user_id,
+      display_name: row.display_name || "Anonyme",
+      success_count: Number(row.success_count),
+      data_count: Number(row.data_count),
+      score: Number(row.success_count) + Number(row.data_count),
+    }));
 
-    // Count data per user
-    const dataMap: Record<string, number> = {};
-    if (executions) {
-      executions.forEach((e) => {
-        dataMap[e.user_id] = (dataMap[e.user_id] || 0) + 1;
-      });
-    }
-
-    // Get all relevant user IDs
-    const allUserIds = [...new Set([...Object.keys(successMap), ...Object.keys(dataMap)])];
-
-    // Fetch display names
-    let profileMap: Record<string, string> = {};
-    if (allUserIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name")
-        .in("user_id", allUserIds);
-
-      if (profiles) {
-        profileMap = Object.fromEntries(
-          profiles.map((p) => [p.user_id, p.display_name || "Anonyme"])
-        );
-      }
-    }
-
-    // Build leaderboard
-    const board: LeaderboardEntry[] = allUserIds.map((uid) => {
-      const successCount = successMap[uid] || 0;
-      const dataCount = dataMap[uid] || 0;
-      return {
-        user_id: uid,
-        display_name: profileMap[uid] || "Anonyme",
-        success_count: successCount,
-        data_count: dataCount,
-        score: successCount + dataCount,
-      };
-    });
-
-    board.sort((a, b) => b.score - a.score);
-    setEntries(board.slice(0, 10));
+    setEntries(board);
     setLoading(false);
   };
 

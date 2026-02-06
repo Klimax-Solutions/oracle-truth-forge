@@ -60,6 +60,16 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
+  // Calculate monthly stats
+  const monthlyStats = useMemo(() => {
+    const monthTrades = trades.filter((t) => {
+      const d = new Date(t.trade_date);
+      return d.getFullYear() === year && d.getMonth() === month;
+    });
+    const totalRR = monthTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
+    return { count: monthTrades.length, totalRR };
+  }, [trades, year, month]);
+
   const tradesByDate = useMemo(() => {
     const map = new Map<string, Trade[]>();
     trades.forEach((trade) => {
