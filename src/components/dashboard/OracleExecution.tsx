@@ -423,8 +423,8 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
           </div>
         </div>
 
-        {/* Ébauche Section */}
-        {ebauche && (
+        {/* Ébauche Section — hidden once validated */}
+        {ebauche && ebauche.userCycle?.status !== 'validated' && (
           <div>
             <div className="flex items-center gap-3 mb-4">
               <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
