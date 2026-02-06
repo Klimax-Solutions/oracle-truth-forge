@@ -34,6 +34,8 @@ interface SetupPageProps {
   trades: Trade[];
   initialFilters?: any;
   analyzedTradeNumbers?: number[];
+  onAnalysisToggle?: (tradeNumber: number, checked: boolean) => void;
+  ebaucheComplete?: boolean;
 }
 
 type ActiveView = "overview" | "oracle" | "perso";
