@@ -184,7 +184,6 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers }: Ora
         <TabsContent value="verification" className="flex-1 m-0 data-[state=inactive]:hidden">
           <OracleDatabase trades={trades} initialFilters={initialFilters} analyzedTradeNumbers={analyzedTradeNumbers} />
         </TabsContent>
-        </TabsContent>
 
         <TabsContent value="saisie" className="flex-1 m-0 data-[state=inactive]:hidden">
           <UserDataEntry tradeComparisons={tradeComparisons} oracleTrades={trades} />
