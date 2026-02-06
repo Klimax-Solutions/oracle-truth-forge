@@ -42,6 +42,7 @@ interface UserExecution {
 interface OraclePageProps {
   trades: Trade[];
   initialFilters?: any;
+  analyzedTradeNumbers?: number[];
 }
 
 interface TradeComparison {
