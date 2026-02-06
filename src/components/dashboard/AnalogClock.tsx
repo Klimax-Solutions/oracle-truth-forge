@@ -190,29 +190,10 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
   }, [isZoomed, zoomTransitioning]);
 
   return (
-    <div className="flex flex-col items-center w-full relative">
-      {/* ── Full-page darkening overlay on zone hover ── */}
-      {showOverlay && !isZoomed && (
-        <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in cursor-pointer"
-          onClick={handleZoomIn}
-          onMouseLeave={handleZoneLeave}
-        >
-          <div className="flex flex-col items-center gap-4 animate-scale-in">
-            <div className="w-16 h-16 rounded-full border border-emerald-500/40 bg-emerald-500/10 flex items-center justify-center">
-              <Eye className="w-7 h-7 text-emerald-400" />
-            </div>
-            <p className="text-lg md:text-xl font-semibold text-foreground text-center px-6">
-              Voir les timings d'entrée en détail
-            </p>
-            <p className="text-xs text-muted-foreground font-mono">Cliquez pour zoomer</p>
-          </div>
-        </div>
-      )}
-
+    <div className="flex flex-col items-center w-full max-w-full overflow-hidden relative">
       {/* ── Clock with 3D perspective ── */}
       <div className="w-full flex flex-col items-center" style={clockContainerStyle}>
-        <div className="relative w-full max-w-[520px] md:max-w-[600px] lg:max-w-[640px] aspect-square mx-auto">
+        <div className="relative w-full max-w-[min(520px,100%)] md:max-w-[600px] lg:max-w-[640px] aspect-square mx-auto">
           <svg
             width="100%"
             height="100%"
