@@ -149,37 +149,21 @@ export const AnalogClock = ({ trades, onSelectTiming }: AnalogClockProps) => {
     return `${zoomCx - 100} ${zoomCy - 100} 200 200`;
   }, [entryTimeRange, isZoomed]);
 
-  // Handle zone hover => show overlay
-  const handleZoneEnter = () => {
-    if (!isZoomed) {
-      setHoveredZone(true);
-      setShowOverlay(true);
-    }
-  };
-
-  const handleZoneLeave = () => {
-    setHoveredZone(false);
-    setShowOverlay(false);
-  };
-
-  // Handle zoom activation
-  const handleZoomIn = () => {
-    setShowOverlay(false);
-    setHoveredZone(false);
-    setZoomTransitioning(true);
-    // Small delay for the 3D tilt to kick in before zoom
-    setTimeout(() => {
-      setIsZoomed(true);
+  // Handle zoom toggle via button
+  const handleToggleZoom = () => {
+    if (isZoomed) {
+      setZoomTransitioning(true);
+      setIsZoomed(false);
+      setSelectedSlot(null);
+      setSelectedTrade(null);
       setTimeout(() => setZoomTransitioning(false), 800);
-    }, 200);
-  };
-
-  const handleZoomOut = () => {
-    setZoomTransitioning(true);
-    setIsZoomed(false);
-    setSelectedSlot(null);
-    setSelectedTrade(null);
-    setTimeout(() => setZoomTransitioning(false), 800);
+    } else {
+      setZoomTransitioning(true);
+      setTimeout(() => {
+        setIsZoomed(true);
+        setTimeout(() => setZoomTransitioning(false), 800);
+      }, 200);
+    }
   };
 
   const selectedTrades = selectedSlot ? tradeSlots[selectedSlot]?.trades || [] : [];
