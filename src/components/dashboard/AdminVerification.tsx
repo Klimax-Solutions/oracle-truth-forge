@@ -1324,6 +1324,11 @@ export const AdminVerification = () => {
           <TabsContent value="followup" className="flex-1 overflow-auto mt-0">
             <UserFollowupTab />
           </TabsContent>
+
+          {/* History Tab */}
+          <TabsContent value="history" className="flex-1 overflow-auto mt-0">
+            <UserHistoryTab />
+          </TabsContent>
         </Tabs>
       </div>
     </div>
