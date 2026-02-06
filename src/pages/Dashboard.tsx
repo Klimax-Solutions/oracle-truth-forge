@@ -231,6 +231,8 @@ const Dashboard = () => {
         return <BatchImportPage />;
       case "admin":
         return <AdminVerification />;
+      case "video-manager":
+        return <VideoManager />;
       case "roles":
         return <RoleManagement />;
       default:
