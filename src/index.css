@@ -168,4 +168,47 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Animated glowing border for video player */
+  .video-glow-border {
+    position: relative;
+    padding: 2px;
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+
+  .video-glow-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 0.5rem;
+    padding: 2px;
+    background: conic-gradient(
+      from var(--glow-angle, 0deg),
+      transparent 0%,
+      hsl(0 0% 100% / 0.6) 10%,
+      hsl(220 60% 70% / 0.3) 20%,
+      transparent 30%,
+      transparent 70%,
+      hsl(45 80% 60% / 0.3) 80%,
+      hsl(0 0% 100% / 0.6) 90%,
+      transparent 100%
+    );
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    animation: glow-rotate 8s linear infinite;
+  }
+
+  @keyframes glow-rotate {
+    from { --glow-angle: 0deg; }
+    to { --glow-angle: 360deg; }
+  }
+
+  @property --glow-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+  }
 }

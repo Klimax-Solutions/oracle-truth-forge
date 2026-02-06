@@ -49,7 +49,7 @@ export const MobileHeader = ({
     allTabs = [...allTabs, ...adminTabs];
   }
   if (isSuperAdmin) {
-    allTabs = [...allTabs, superAdminTab];
+    allTabs = [...allTabs, ...superAdminTabs];
   }
 
   const currentTab = allTabs.find((t) => t.id === activeTab);

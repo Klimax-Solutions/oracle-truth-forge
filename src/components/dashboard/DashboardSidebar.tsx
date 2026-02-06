@@ -52,7 +52,7 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
     allTabs = [...allTabs, ...adminTabs];
   }
   if (isSuperAdmin) {
-    allTabs = [...allTabs, superAdminTab];
+    allTabs = [...allTabs, ...superAdminTabs];
   }
 
   return (
