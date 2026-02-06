@@ -223,7 +223,16 @@ export const RoleManagement = () => {
     setEditingNameUserId(null);
   };
 
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
+  const [quickActionsUserId, setQuickActionsUserId] = useState<string | null>(null);
+
+  const openQuickActionsDialog = (userId: string) => {
+    setQuickActionsUserId(userId);
+    setQuickActionsOpen(true);
+  };
+
   const openActionDialog = (userId: string, action: "freeze" | "ban" | "remove" | "unfreeze" | "unban") => {
+    setQuickActionsOpen(false);
     setSelectedUser(userId);
     setActionType(action);
     setActionReason("");
