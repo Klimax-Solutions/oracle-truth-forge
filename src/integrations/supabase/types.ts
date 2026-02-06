@@ -499,6 +499,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_successes: {
+        Row: {
+          created_at: string
+          id: string
+          image_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_path?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_variable_types: {
         Row: {
           created_at: string

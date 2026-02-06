@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { Database, Calendar, BarChart3, Clock, Crosshair, Video, ShieldCheck, Crown, FileUp } from "lucide-react";
+import { Database, Calendar, BarChart3, Clock, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy } from "lucide-react";
 
 interface MobileHeaderProps {
   userEmail: string;
@@ -22,6 +22,7 @@ const tabs = [
   { id: "distribution", label: "Distribution RR", icon: BarChart3 },
   { id: "timing", label: "Timing Analysis", icon: Clock },
   { id: "videos", label: "Vidéo du Setup", icon: Video },
+  { id: "successes", label: "Vos Succès", icon: Trophy },
 ];
 
 const adminTabs = [

@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Database, Calendar, BarChart3, Clock, ChevronRight, Crosshair, Video, ShieldCheck, Crown, FileUp } from "lucide-react";
+import { Database, Calendar, BarChart3, Clock, ChevronRight, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -15,6 +15,7 @@ const tabs = [
   { id: "distribution", label: "Distribution RR", icon: BarChart3 },
   { id: "timing", label: "Timing Analysis", icon: Clock },
   { id: "videos", label: "Vidéo du Setup Oracle", icon: Video },
+  { id: "successes", label: "Vos Succès", icon: Trophy },
 ];
 
 const adminTabs = [
