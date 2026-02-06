@@ -205,15 +205,28 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
   const handleRequestVerification = async (cycleData: CycleWithProgress) => {
     if (!cycleData.userCycle) return;
     
-    // Check if user has entered enough trades (based on user_executions)
-    const isComplete = cycleData.userExecutions.length >= cycleData.total_trades;
-    if (!isComplete) {
-      toast({
-        title: "Cycle incomplet",
-        description: `Vous devez saisir ${cycleData.total_trades} trades dans "Saisie des Trades" avant de demander la vérification. (${cycleData.userExecutions.length}/${cycleData.total_trades})`,
-        variant: "destructive",
-      });
-      return;
+    // For ebauche (cycle 0), check trade analyses instead of user executions
+    if (cycleData.cycle_number === 0) {
+      const analyzedCount = questData?.ebaucheTradesAnalyzed || 0;
+      if (analyzedCount < cycleData.total_trades) {
+        toast({
+          title: "Analyse incomplète",
+          description: `Vous devez analyser et cocher les ${cycleData.total_trades} trades avant de demander la vérification. (${analyzedCount}/${cycleData.total_trades})`,
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+      // For other cycles, check user_executions
+      const isComplete = cycleData.userExecutions.length >= cycleData.total_trades;
+      if (!isComplete) {
+        toast({
+          title: "Cycle incomplet",
+          description: `Vous devez saisir ${cycleData.total_trades} trades dans "Saisie des Trades" avant de demander la vérification. (${cycleData.userExecutions.length}/${cycleData.total_trades})`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -452,9 +465,9 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                 <div className="flex flex-wrap items-center gap-2 md:gap-4">
                   <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-md md:bg-transparent md:px-0 md:py-0">
                     <span className="text-xs md:text-sm font-mono text-foreground">
-                      {ebauche.userExecutions.length}/{ebauche.total_trades}
+                      {questData?.ebaucheTradesAnalyzed || 0}/{ebauche.total_trades}
                     </span>
-                    <span className="text-[10px] text-muted-foreground hidden md:inline">trades</span>
+                    <span className="text-[10px] text-muted-foreground hidden md:inline">analysés</span>
                   </div>
                   <div className={cn(
                     "flex items-center gap-1.5 px-2 py-1 rounded-md md:bg-transparent md:px-0 md:py-0",
@@ -489,14 +502,14 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                     "h-full rounded-full transition-all",
                     ebauche.userCycle?.status === 'validated' ? "bg-emerald-500" : "bg-blue-500"
                   )}
-                  style={{ width: `${ebauche.progress}%` }}
+                  style={{ width: `${Math.min(((questData?.ebaucheTradesAnalyzed || 0) / ebauche.total_trades) * 100, 100)}%` }}
                 />
               </div>
 
               {expandedCycle === 0 && (
                 <div className="mt-4 pt-4 border-t border-border space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Regardez les 4 vidéos explicatives du setup Oracle puis complétez les 15 premiers trades.
+                    Regardez les vidéos explicatives du setup Oracle puis cochez chaque trade analysé et compris.
                   </p>
                   
                   <div className="flex items-center gap-3">
@@ -519,7 +532,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                           e.stopPropagation();
                           handleRequestVerification(ebauche);
                         }}
-                        disabled={ebauche.userExecutions.length < ebauche.total_trades || submitting}
+                        disabled={(questData?.ebaucheTradesAnalyzed || 0) < ebauche.total_trades || submitting}
                       >
                         {submitting ? (
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />

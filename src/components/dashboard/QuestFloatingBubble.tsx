@@ -8,10 +8,14 @@ import {
   Circle,
   Play,
   Database,
+  LogIn,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { QuestData } from "@/hooks/useQuestData";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface QuestFloatingBubbleProps {
   questData: QuestData;
@@ -20,7 +24,8 @@ interface QuestFloatingBubbleProps {
   onNavigateToExecution: () => void;
 }
 
-const FX_REPLAY_URL = "https://app.fxreplay.com/en-US/auth/testing/dashboard";
+const FX_REPLAY_LOGIN_URL = "https://app.fxreplay.com/en-US/login";
+const FX_REPLAY_DASHBOARD_URL = "https://app.fxreplay.com/en-US/auth/testing/dashboard";
 
 export const QuestFloatingBubble = ({
   questData,
@@ -29,6 +34,7 @@ export const QuestFloatingBubble = ({
   onNavigateToExecution,
 }: QuestFloatingBubbleProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { toast } = useToast();
 
   const {
     onboardingComplete,
@@ -36,8 +42,9 @@ export const QuestFloatingBubble = ({
     viewedVideos,
     totalVideos,
     ebaucheComplete,
-    ebaucheTradesEntered,
+    ebaucheTradesAnalyzed,
     ebaucheTradesRequired,
+    fxReplayConnected,
     dailyGoalMet,
     todayWinningExecutions,
     dailyGoal,
@@ -46,8 +53,26 @@ export const QuestFloatingBubble = ({
 
   if (loading) return null;
 
-  // Show badge when daily goal not met, or onboarding incomplete
+  const isFirstExecutionQuest = onboardingComplete && !fxReplayConnected;
   const showBadge = onboardingComplete ? !dailyGoalMet : true;
+
+  const handleFxReplayCheckbox = async (checked: boolean) => {
+    if (!checked) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from("user_quest_flags").insert({
+        user_id: user.id,
+        flag_key: "fxreplay_connected",
+      });
+      toast({
+        title: "FX Replay connecté !",
+        description: "Vous pouvez maintenant récolter vos datas.",
+      });
+    } catch (error) {
+      console.error("Error saving FX Replay flag:", error);
+    }
+  };
 
   return (
     <div className="fixed bottom-6 left-6 z-50 flex flex-col items-start gap-2">
@@ -59,7 +84,11 @@ export const QuestFloatingBubble = ({
             <div className="flex items-center gap-2">
               <Swords className="w-4 h-4 text-primary" />
               <span className="text-sm font-semibold">
-                {onboardingComplete ? "Quête du jour" : "Quêtes d'initiation"}
+                {onboardingComplete
+                  ? isFirstExecutionQuest
+                    ? "Première quête d'exécution"
+                    : "Quête du jour"
+                  : "Quêtes d'initiation"}
               </span>
             </div>
             <button
@@ -74,21 +103,10 @@ export const QuestFloatingBubble = ({
             {/* Onboarding quests summary */}
             {!onboardingComplete && (
               <>
-                {/* Quest 1 */}
-                <div className="flex items-center gap-2.5">
-                  {allVideosWatched ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  ) : (
-                    <Circle className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                  )}
-                  <span className={cn(
-                    "text-xs",
-                    allVideosWatched ? "text-emerald-400 line-through" : "text-foreground"
-                  )}>
-                    Visionner les vidéos ({viewedVideos}/{totalVideos})
-                  </span>
-                </div>
-
+                <BubbleQuestItem
+                  completed={allVideosWatched}
+                  label={`Visionner les vidéos (${viewedVideos}/${totalVideos})`}
+                />
                 {!allVideosWatched && (
                   <Button
                     variant="outline"
@@ -101,21 +119,10 @@ export const QuestFloatingBubble = ({
                   </Button>
                 )}
 
-                {/* Quest 2 */}
-                <div className="flex items-center gap-2.5">
-                  {ebaucheComplete ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  ) : (
-                    <Circle className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                  )}
-                  <span className={cn(
-                    "text-xs",
-                    ebaucheComplete ? "text-emerald-400 line-through" : "text-foreground"
-                  )}>
-                    Analyser les 15 premières datas ({ebaucheTradesEntered}/{ebaucheTradesRequired})
-                  </span>
-                </div>
-
+                <BubbleQuestItem
+                  completed={ebaucheComplete}
+                  label={`Analyser les 15 premières datas (${ebaucheTradesAnalyzed}/${ebaucheTradesRequired})`}
+                />
                 {allVideosWatched && !ebaucheComplete && (
                   <Button
                     variant="outline"
@@ -128,14 +135,10 @@ export const QuestFloatingBubble = ({
                   </Button>
                 )}
 
-                {/* Quest 3 */}
-                <div className="flex items-center gap-2.5">
-                  <Circle className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                  <span className="text-xs text-muted-foreground">
-                    Demander la vérification
-                  </span>
-                </div>
-
+                <BubbleQuestItem
+                  completed={false}
+                  label="Demander la vérification"
+                />
                 {ebaucheComplete && (
                   <Button
                     variant="outline"
@@ -149,8 +152,30 @@ export const QuestFloatingBubble = ({
               </>
             )}
 
+            {/* First execution quest: FX Replay connection */}
+            {isFirstExecutionQuest && (
+              <>
+                <BubbleQuestItem completed={false} label="Se connecter sur FX Replay" />
+                <a href={FX_REPLAY_LOGIN_URL} target="_blank" rel="noopener noreferrer" className="block">
+                  <Button variant="outline" size="sm" className="w-full text-xs h-7 gap-1.5">
+                    <LogIn className="w-3 h-3" />
+                    Accéder à FX Replay
+                  </Button>
+                </a>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="bubble-fxreplay"
+                    onCheckedChange={(checked) => handleFxReplayCheckbox(!!checked)}
+                  />
+                  <label htmlFor="bubble-fxreplay" className="text-[11px] text-muted-foreground cursor-pointer">
+                    Connecté sur FX Replay
+                  </label>
+                </div>
+              </>
+            )}
+
             {/* Daily quest */}
-            {onboardingComplete && (
+            {onboardingComplete && !isFirstExecutionQuest && (
               <>
                 <div className="flex items-center gap-2.5">
                   {dailyGoalMet ? (
@@ -173,7 +198,6 @@ export const QuestFloatingBubble = ({
                   </div>
                 </div>
 
-                {/* Progress */}
                 <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                   <div
                     className={cn(
@@ -186,7 +210,7 @@ export const QuestFloatingBubble = ({
 
                 {!dailyGoalMet && (
                   <a
-                    href={FX_REPLAY_URL}
+                    href={FX_REPLAY_DASHBOARD_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block"
@@ -226,3 +250,20 @@ export const QuestFloatingBubble = ({
     </div>
   );
 };
+
+// Simple quest item for the bubble
+const BubbleQuestItem = ({ completed, label }: { completed: boolean; label: string }) => (
+  <div className="flex items-center gap-2.5">
+    {completed ? (
+      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+    ) : (
+      <Circle className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+    )}
+    <span className={cn(
+      "text-xs",
+      completed ? "text-emerald-400 line-through" : "text-foreground"
+    )}>
+      {label}
+    </span>
+  </div>
+);

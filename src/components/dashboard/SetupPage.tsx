@@ -33,11 +33,12 @@ interface Trade {
 interface SetupPageProps {
   trades: Trade[];
   initialFilters?: any;
+  analyzedTradeNumbers?: number[];
 }
 
 type ActiveView = "overview" | "oracle" | "perso";
 
-export const SetupPage = ({ trades, initialFilters }: SetupPageProps) => {
+export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers }: SetupPageProps) => {
   // If initialFilters are provided, go directly to Oracle view
   const [activeView, setActiveView] = useState<ActiveView>(
     initialFilters && Object.values(initialFilters).some((arr: any) => arr?.length > 0) 
@@ -99,7 +100,7 @@ export const SetupPage = ({ trades, initialFilters }: SetupPageProps) => {
           </div>
         </div>
         <div className="flex-1 overflow-hidden">
-          <OraclePage trades={trades} initialFilters={initialFilters} />
+          <OraclePage trades={trades} initialFilters={initialFilters} analyzedTradeNumbers={analyzedTradeNumbers} />
         </div>
       </div>
     );

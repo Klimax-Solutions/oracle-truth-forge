@@ -1,10 +1,13 @@
-import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X } from "lucide-react";
+import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X, CheckSquare } from "lucide-react";
 import { SignedImageCard } from "./SignedImageCard";
 import { cn } from "@/lib/utils";
 import { useState, useMemo, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useChartColors } from "@/hooks/useChartColors";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +42,7 @@ interface Trade {
 interface OracleDatabaseProps {
   trades: Trade[];
   initialFilters?: Filters;
+  analyzedTradeNumbers?: number[];
 }
 
 interface Filters {
@@ -56,8 +60,35 @@ interface Filters {
   hasScreenshots?: boolean;
 }
 
-export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) => {
+export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [] }: OracleDatabaseProps) => {
   const chartColors = useChartColors();
+  const { toast } = useToast();
+
+  const handleAnalysisToggle = async (tradeNumber: number, checked: boolean) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (checked) {
+        await supabase.from("user_trade_analyses").insert({
+          user_id: user.id,
+          trade_number: tradeNumber,
+        });
+      } else {
+        await supabase.from("user_trade_analyses")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("trade_number", tradeNumber);
+      }
+    } catch (error) {
+      console.error("Error toggling analysis:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour l'analyse.",
+        variant: "destructive",
+      });
+    }
+  };
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [filters, setFilters] = useState<Filters>(initialFilters || {
     direction: [],
@@ -382,9 +413,23 @@ export const OracleDatabase = ({ trades, initialFilters }: OracleDatabaseProps) 
                 {/* Main row - clickable */}
                 <div 
                   onClick={() => setSelectedTrade(selectedTrade?.id === trade.id ? null : trade)}
-                  className="px-5 py-3 flex items-center justify-between cursor-pointer"
+                  className="px-3 md:px-5 py-3 flex items-center justify-between cursor-pointer"
                 >
-                  <div className="flex items-center gap-5">
+                  <div className="flex items-center gap-3 md:gap-5">
+                    {/* Checkbox for trades 1-15 */}
+                    {trade.trade_number >= 1 && trade.trade_number <= 15 && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center"
+                        title="Trade analysé et compris"
+                      >
+                        <Checkbox
+                          checked={analyzedTradeNumbers.includes(trade.trade_number)}
+                          onCheckedChange={(checked) => handleAnalysisToggle(trade.trade_number, !!checked)}
+                          className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                        />
+                      </div>
+                    )}
                     <span className="text-lg font-bold text-muted-foreground/50 w-10">
                       {String(trade.trade_number).padStart(3, "0")}
                     </span>

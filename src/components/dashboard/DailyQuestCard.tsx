@@ -11,10 +11,15 @@ import {
   ChevronUp,
   Calendar as CalendarIcon,
   Trophy,
+  LogIn,
+  CheckSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { QuestData } from "@/hooks/useQuestData";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface DailyQuestCardProps {
   questData: QuestData;
@@ -23,7 +28,8 @@ interface DailyQuestCardProps {
   onRequestVerification?: () => void;
 }
 
-const FX_REPLAY_URL = "https://app.fxreplay.com/en-US/auth/testing/dashboard";
+const FX_REPLAY_LOGIN_URL = "https://app.fxreplay.com/en-US/login";
+const FX_REPLAY_DASHBOARD_URL = "https://app.fxreplay.com/en-US/auth/testing/dashboard";
 
 export const DailyQuestCard = ({
   questData,
@@ -32,16 +38,19 @@ export const DailyQuestCard = ({
   onRequestVerification,
 }: DailyQuestCardProps) => {
   const [showCalendar, setShowCalendar] = useState(false);
+  const { toast } = useToast();
 
   const {
     allVideosWatched,
     viewedVideos,
     totalVideos,
     ebaucheComplete,
-    ebaucheTradesEntered,
+    ebaucheTradesAnalyzed,
     ebaucheTradesRequired,
     ebaucheStatus,
+    fxReplayConnected,
     todayWinningExecutions,
+    todayExecutions,
     dailyGoal,
     dailyGoalMet,
     executionsByDate,
@@ -50,6 +59,29 @@ export const DailyQuestCard = ({
 
   // Determine which onboarding step is active
   const onboardingStep = !allVideosWatched ? 1 : !ebaucheComplete ? 2 : 3;
+
+  // After onboarding, determine execution quest phase
+  const isFirstExecutionQuest = onboardingComplete && !fxReplayConnected;
+
+  const handleFxReplayCheckbox = async (checked: boolean) => {
+    if (!checked) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await supabase.from("user_quest_flags").insert({
+        user_id: user.id,
+        flag_key: "fxreplay_connected",
+      });
+
+      toast({
+        title: "FX Replay connecté !",
+        description: "Vous pouvez maintenant récolter vos datas quotidiennes.",
+      });
+    } catch (error) {
+      console.error("Error saving FX Replay flag:", error);
+    }
+  };
 
   // Build calendar data (last 30 days)
   const calendarDays = [];
@@ -85,7 +117,7 @@ export const DailyQuestCard = ({
           </div>
         </div>
 
-        {onboardingComplete && (
+        {onboardingComplete && !isFirstExecutionQuest && (
           <Button
             variant="ghost"
             size="sm"
@@ -103,137 +135,93 @@ export const DailyQuestCard = ({
       {!onboardingComplete && (
         <div className="space-y-3">
           {/* Quest 1: Videos */}
-          <div className={cn(
-            "flex items-start gap-3 p-3 rounded-md border transition-all",
-            allVideosWatched
-              ? "border-emerald-500/30 bg-emerald-500/5"
-              : onboardingStep === 1
-              ? "border-primary/40 bg-primary/5"
-              : "border-border bg-card/50 opacity-60"
-          )}>
-            <div className="mt-0.5">
-              {allVideosWatched ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              ) : (
-                <Circle className="w-4 h-4 text-primary" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className={cn(
-                "text-sm font-medium",
-                allVideosWatched ? "text-emerald-400 line-through" : "text-foreground"
-              )}>
-                Visionner l'intégralité des vidéos Oracle
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {viewedVideos}/{totalVideos} vidéos vues
-              </p>
-              {!allVideosWatched && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 text-xs h-7 gap-1.5"
-                  onClick={onNavigateToVideos}
-                >
-                  <Play className="w-3 h-3" />
-                  Accéder aux vidéos
-                </Button>
-              )}
-            </div>
-          </div>
+          <QuestItem
+            completed={allVideosWatched}
+            active={onboardingStep === 1}
+            title="Visionner l'intégralité des vidéos Oracle"
+            subtitle={`${viewedVideos}/${totalVideos} vidéos vues`}
+            actionLabel="Accéder aux vidéos"
+            actionIcon={<Play className="w-3 h-3" />}
+            onAction={onNavigateToVideos}
+            showAction={!allVideosWatched}
+          />
 
-          {/* Quest 2: Analyze 15 trades */}
-          <div className={cn(
-            "flex items-start gap-3 p-3 rounded-md border transition-all",
-            ebaucheComplete
-              ? "border-emerald-500/30 bg-emerald-500/5"
-              : onboardingStep === 2
-              ? "border-primary/40 bg-primary/5"
-              : "border-border bg-card/50 opacity-60"
-          )}>
-            <div className="mt-0.5">
-              {ebaucheComplete ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              ) : (
-                <Circle className="w-4 h-4 text-muted-foreground" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className={cn(
-                "text-sm font-medium",
-                ebaucheComplete ? "text-emerald-400 line-through" : "text-foreground"
-              )}>
-                Analyser en détail les 15 premières datas
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {ebaucheTradesEntered}/{ebaucheTradesRequired} datas saisies
-              </p>
-              {!ebaucheComplete && onboardingStep === 2 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 text-xs h-7 gap-1.5"
-                  onClick={onNavigateToSetup}
-                >
-                  <Database className="w-3 h-3" />
-                  Accéder aux 15 premières datas
-                </Button>
-              )}
-            </div>
-          </div>
+          {/* Quest 2: Analyze 15 trades (checkboxes) */}
+          <QuestItem
+            completed={ebaucheComplete}
+            active={onboardingStep === 2}
+            title="Analyser en détail les 15 premières datas"
+            subtitle={`${ebaucheTradesAnalyzed}/${ebaucheTradesRequired} datas analysées et comprises`}
+            actionLabel="Accéder aux 15 premières datas"
+            actionIcon={<Database className="w-3 h-3" />}
+            onAction={onNavigateToSetup}
+            showAction={!ebaucheComplete && onboardingStep === 2}
+          />
 
           {/* Quest 3: Request verification */}
-          <div className={cn(
-            "flex items-start gap-3 p-3 rounded-md border transition-all",
-            ebaucheStatus === "validated" || ebaucheStatus === "pending_review"
-              ? "border-emerald-500/30 bg-emerald-500/5"
-              : onboardingStep === 3
-              ? "border-primary/40 bg-primary/5"
-              : "border-border bg-card/50 opacity-60"
-          )}>
-            <div className="mt-0.5">
-              {ebaucheStatus === "validated" || ebaucheStatus === "pending_review" ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              ) : (
-                <Circle className="w-4 h-4 text-muted-foreground" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className={cn(
-                "text-sm font-medium",
-                ebaucheStatus === "validated" || ebaucheStatus === "pending_review"
-                  ? "text-emerald-400 line-through"
-                  : "text-foreground"
-              )}>
-                Demander la vérification
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {ebaucheStatus === "pending_review"
-                  ? "En attente de validation"
-                  : ebaucheStatus === "validated"
-                  ? "Phase d'ébauche validée !"
-                  : "Débloquer le cycle 1 de récolte"}
-              </p>
-              {onboardingStep === 3 && ebaucheStatus !== "pending_review" && ebaucheStatus !== "validated" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 text-xs h-7 gap-1.5"
-                  onClick={onRequestVerification}
-                >
-                  <Send className="w-3 h-3" />
-                  Demander la vérification
-                </Button>
-              )}
-            </div>
-          </div>
+          <QuestItem
+            completed={ebaucheStatus === "validated" || ebaucheStatus === "pending_review"}
+            active={onboardingStep === 3}
+            title="Demander la vérification"
+            subtitle={
+              ebaucheStatus === "pending_review"
+                ? "En attente de validation"
+                : ebaucheStatus === "validated"
+                ? "Phase d'ébauche validée !"
+                : "Débloquer le cycle 1 de récolte"
+            }
+            actionLabel="Demander la vérification"
+            actionIcon={<Send className="w-3 h-3" />}
+            onAction={onRequestVerification}
+            showAction={onboardingStep === 3 && ebaucheStatus !== "pending_review" && ebaucheStatus !== "validated"}
+          />
         </div>
       )}
 
-      {/* Daily Quest (after onboarding) */}
-      {onboardingComplete && (
+      {/* First Execution Quest (FX Replay setup) */}
+      {isFirstExecutionQuest && (
         <div className="space-y-3">
-          {/* Main daily quest */}
+          <QuestItem
+            completed={false}
+            active={true}
+            title="S'inscrire ou se connecter sur FX Replay"
+            subtitle="Configurez votre accès pour récolter vos datas"
+          >
+            <div className="mt-2 space-y-2">
+              <a
+                href={FX_REPLAY_LOGIN_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" size="sm" className="text-xs h-7 gap-1.5">
+                  <LogIn className="w-3 h-3" />
+                  Accéder à FX Replay
+                </Button>
+              </a>
+              <div className="flex items-center gap-2 mt-2">
+                <Checkbox
+                  id="fxreplay-check"
+                  onCheckedChange={(checked) => handleFxReplayCheckbox(!!checked)}
+                />
+                <label htmlFor="fxreplay-check" className="text-xs text-muted-foreground cursor-pointer">
+                  J'ai créé mon compte / je suis connecté sur FX Replay
+                </label>
+              </div>
+            </div>
+          </QuestItem>
+
+          <QuestItem
+            completed={false}
+            active={false}
+            title="Récolter vos 5 premières datas"
+            subtitle="Disponible après connexion à FX Replay"
+          />
+        </div>
+      )}
+
+      {/* Daily Quest (after onboarding + FX Replay connected) */}
+      {onboardingComplete && !isFirstExecutionQuest && (
+        <div className="space-y-3">
           <div className={cn(
             "flex items-start gap-3 p-3 rounded-md border transition-all",
             dailyGoalMet
@@ -258,6 +246,7 @@ export const DailyQuestCard = ({
               </p>
               <p className="text-[10px] text-muted-foreground mt-0.5">
                 {todayWinningExecutions}/{dailyGoal} datas gagnantes récoltées
+                {todayExecutions > dailyGoal && ` (${todayExecutions} au total)`}
               </p>
 
               {/* Progress bar */}
@@ -273,7 +262,7 @@ export const DailyQuestCard = ({
 
               {!dailyGoalMet && (
                 <a
-                  href={FX_REPLAY_URL}
+                  href={FX_REPLAY_DASHBOARD_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -339,3 +328,68 @@ export const DailyQuestCard = ({
     </div>
   );
 };
+
+// Reusable quest item component
+interface QuestItemProps {
+  completed: boolean;
+  active: boolean;
+  title: string;
+  subtitle: string;
+  actionLabel?: string;
+  actionIcon?: React.ReactNode;
+  onAction?: () => void;
+  showAction?: boolean;
+  children?: React.ReactNode;
+}
+
+const QuestItem = ({
+  completed,
+  active,
+  title,
+  subtitle,
+  actionLabel,
+  actionIcon,
+  onAction,
+  showAction = false,
+  children,
+}: QuestItemProps) => (
+  <div className={cn(
+    "flex items-start gap-3 p-3 rounded-md border transition-all",
+    completed
+      ? "border-emerald-500/30 bg-emerald-500/5"
+      : active
+      ? "border-primary/40 bg-primary/5"
+      : "border-border bg-card/50 opacity-60"
+  )}>
+    <div className="mt-0.5">
+      {completed ? (
+        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+      ) : (
+        <Circle className="w-4 h-4 text-muted-foreground" />
+      )}
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className={cn(
+        "text-sm font-medium",
+        completed ? "text-emerald-400 line-through" : "text-foreground"
+      )}>
+        {title}
+      </p>
+      <p className="text-[10px] text-muted-foreground mt-0.5">
+        {subtitle}
+      </p>
+      {showAction && onAction && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-2 text-xs h-7 gap-1.5"
+          onClick={onAction}
+        >
+          {actionIcon}
+          {actionLabel}
+        </Button>
+      )}
+      {children}
+    </div>
+  </div>
+);

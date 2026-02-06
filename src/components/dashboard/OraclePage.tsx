@@ -42,6 +42,7 @@ interface UserExecution {
 interface OraclePageProps {
   trades: Trade[];
   initialFilters?: any;
+  analyzedTradeNumbers?: number[];
 }
 
 interface TradeComparison {
@@ -51,7 +52,7 @@ interface TradeComparison {
   status: 'match' | 'warning' | 'error' | 'no-match';
 }
 
-export const OraclePage = ({ trades, initialFilters }: OraclePageProps) => {
+export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers }: OraclePageProps) => {
   const [activeSubTab, setActiveSubTab] = useState("verification");
   const [userExecutions, setUserExecutions] = useState<UserExecution[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,7 +182,7 @@ export const OraclePage = ({ trades, initialFilters }: OraclePageProps) => {
 
         {/* Content */}
         <TabsContent value="verification" className="flex-1 m-0 data-[state=inactive]:hidden">
-          <OracleDatabase trades={trades} initialFilters={initialFilters} />
+          <OracleDatabase trades={trades} initialFilters={initialFilters} analyzedTradeNumbers={analyzedTradeNumbers} />
         </TabsContent>
 
         <TabsContent value="saisie" className="flex-1 m-0 data-[state=inactive]:hidden">

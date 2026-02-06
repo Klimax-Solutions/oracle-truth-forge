@@ -475,6 +475,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_quest_flags: {
+        Row: {
+          completed_at: string
+          flag_key: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          flag_key: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          flag_key?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           assigned_by: string | null
@@ -519,6 +540,27 @@ export type Database = {
           id?: string
           image_path?: string
           success_type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_trade_analyses: {
+        Row: {
+          analyzed_at: string
+          id: string
+          trade_number: number
+          user_id: string
+        }
+        Insert: {
+          analyzed_at?: string
+          id?: string
+          trade_number: number
+          user_id: string
+        }
+        Update: {
+          analyzed_at?: string
+          id?: string
+          trade_number?: number
           user_id?: string
         }
         Relationships: []
