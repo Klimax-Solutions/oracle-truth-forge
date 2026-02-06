@@ -217,12 +217,8 @@ const Dashboard = () => {
         return <OracleExecution trades={trades} onNavigateToVideos={() => setActiveTab("videos")} />;
       case "setup":
         return <SetupPage trades={trades} initialFilters={databaseFilters} />;
-      case "journal":
-        return <TradingJournal trades={displayTrades} />;
-      case "distribution":
-        return <RRDistributionChart trades={displayTrades} />;
-      case "timing":
-        return <TimingAnalysis trades={displayTrades} onNavigateToDatabase={handleNavigateToDatabase} />;
+      case "data-analysis":
+        return <DataAnalysisPage trades={displayTrades} onNavigateToDatabase={handleNavigateToDatabase} />;
       case "videos":
         return <VideoSetup />;
       case "successes":
