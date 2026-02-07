@@ -54,8 +54,10 @@ import {
   Mail,
   IdCard,
   UserCircle,
+  Database,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminUserDataViewer } from "./AdminUserDataViewer";
 
 type UserStatus = "active" | "frozen" | "banned";
 
@@ -83,6 +85,8 @@ export const RoleManagement = () => {
   const [editingFirstNameUserId, setEditingFirstNameUserId] = useState<string | null>(null);
   const [editingFirstNameValue, setEditingFirstNameValue] = useState("");
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [dataViewerUserId, setDataViewerUserId] = useState<string | null>(null);
+  const [dataViewerUserName, setDataViewerUserName] = useState("");
 
   useEffect(() => {
     checkSuperAdmin();
@@ -478,6 +482,23 @@ export const RoleManagement = () => {
             {user.status_reason}
           </div>
         )}
+
+        {/* View all data button */}
+        <div className="pt-2 border-t border-border/50">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full gap-2"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDataViewerUserId(user.user_id);
+              setDataViewerUserName(user.first_name || user.display_name || "Utilisateur");
+            }}
+          >
+            <Database className="w-4 h-4" />
+            Voir toutes les données
+          </Button>
+        </div>
       </div>
     );
   };
@@ -828,6 +849,16 @@ export const RoleManagement = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* User Data Viewer */}
+      <AdminUserDataViewer
+        userId={dataViewerUserId}
+        userName={dataViewerUserName}
+        open={!!dataViewerUserId}
+        onOpenChange={(open) => {
+          if (!open) setDataViewerUserId(null);
+        }}
+      />
     </div>
   );
 };

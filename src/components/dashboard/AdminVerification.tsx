@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/tooltip";
 import { UserFollowupTab } from "./admin/UserFollowupTab";
 import { UserHistoryTab } from "./admin/UserHistoryTab";
+import { AdminUserDataViewer } from "./admin/AdminUserDataViewer";
 import { ScreenshotLink } from "./ScreenshotLink";
 
 // Oracle trade from the master database
@@ -157,6 +158,8 @@ export const AdminVerification = () => {
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [processing, setProcessing] = useState<string | null>(null);
+  const [dataViewerUserId, setDataViewerUserId] = useState<string | null>(null);
+  const [dataViewerUserName, setDataViewerUserName] = useState("");
   const { toast } = useToast();
 
   const fetchCycles = async () => {
@@ -854,17 +857,32 @@ export const AdminVerification = () => {
                           )}
 
                           {/* User Info */}
-                          <div className="pt-4 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
-                            <span className="font-mono">
-                              Inscrit le {new Date(user.created_at).toLocaleDateString("fr-FR", {
-                                day: "numeric",
-                                month: "long",
-                                year: "numeric",
-                              })}
-                            </span>
-                            <span className="font-mono">
-                              ID: {user.id.slice(0, 8)}...
-                            </span>
+                          <div className="pt-4 border-t border-border/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-4">
+                              <span className="font-mono">
+                                Inscrit le {new Date(user.created_at).toLocaleDateString("fr-FR", {
+                                  day: "numeric",
+                                  month: "long",
+                                  year: "numeric",
+                                })}
+                              </span>
+                              <span className="font-mono">
+                                ID: {user.id.slice(0, 8)}...
+                              </span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDataViewerUserId(user.id);
+                                setDataViewerUserName(user.displayName);
+                              }}
+                            >
+                              <ClipboardList className="w-4 h-4" />
+                              Voir toutes les données
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -1331,6 +1349,16 @@ export const AdminVerification = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* User Data Viewer */}
+      <AdminUserDataViewer
+        userId={dataViewerUserId}
+        userName={dataViewerUserName}
+        open={!!dataViewerUserId}
+        onOpenChange={(open) => {
+          if (!open) setDataViewerUserId(null);
+        }}
+      />
     </div>
   );
 };
