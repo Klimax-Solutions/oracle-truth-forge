@@ -23,8 +23,13 @@ export interface PersonalTrade {
   take_profit: number | null;
   result: string | null;
   screenshot_url: string | null;
+  screenshot_context_url: string | null;
+  screenshot_entry_url: string | null;
+  chart_link: string | null;
   comment: string | null;
   exit_date: string | null;
+  news_day: boolean | null;
+  news_label: string | null;
 }
 
 export const usePersonalTrades = () => {
