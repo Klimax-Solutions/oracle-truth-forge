@@ -241,7 +241,8 @@
 
   .auth-bg-letter-visible {
     opacity: 1;
-    -webkit-text-stroke: 1px hsl(0 0% 60% / 0.12);
+    -webkit-text-stroke: 1.5px hsl(0 0% 15% / 0.15);
+    text-shadow: 0 0 40px hsl(0 0% 0% / 0.05);
   }
 
   .dark .auth-bg-letter-visible {
@@ -374,14 +375,14 @@
     background: linear-gradient(
       to bottom,
       transparent 0%,
-      hsl(0 0% 100% / 0.4) 30%,
-      hsl(0 0% 100% / 0.8) 50%,
-      hsl(0 0% 100% / 0.4) 70%,
+      hsl(0 0% 0% / 0.3) 30%,
+      hsl(0 0% 0% / 0.6) 50%,
+      hsl(0 0% 0% / 0.3) 70%,
       transparent 100%
     );
     border-radius: 1px;
     animation: auth-streak 1.2s cubic-bezier(0.25, 0, 0.3, 1) forwards;
-    box-shadow: 0 0 8px hsl(0 0% 100% / 0.3), 0 0 20px hsl(220 60% 70% / 0.2);
+    box-shadow: 0 0 8px hsl(0 0% 0% / 0.15), 0 0 20px hsl(220 60% 30% / 0.1);
   }
 
   .dark .auth-speed-streak {
@@ -425,8 +426,8 @@
     border-radius: 50%;
     background: radial-gradient(
       circle,
-      hsl(0 0% 100% / 0.6) 0%,
-      hsl(220 40% 80% / 0.3) 30%,
+      hsl(0 0% 0% / 0.3) 0%,
+      hsl(220 40% 30% / 0.15) 30%,
       transparent 70%
     );
     animation: auth-burst 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;

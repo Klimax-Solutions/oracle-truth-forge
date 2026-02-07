@@ -456,7 +456,7 @@ export const PersonalTradeDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editingTrade ? `Modifier Trade #${editingTrade.trade_number}` : "Nouveau Trade"}
