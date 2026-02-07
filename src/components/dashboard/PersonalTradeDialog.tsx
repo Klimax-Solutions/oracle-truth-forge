@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import {
@@ -20,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, Trash2, X, Image as ImageIcon, Clock } from "lucide-react";
+import { Loader2, Save, Trash2, X, Image as ImageIcon, Clock, Link as LinkIcon } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useCustomVariables } from "@/hooks/useCustomVariables";
-import { CustomizableSelect } from "@/components/dashboard/CustomizableSelect";
+import { CustomizableMultiSelect } from "@/components/dashboard/CustomizableMultiSelect";
 
 // ── Fixed options (non-deletable) ──
 const ENTRY_MODEL_FIXED_OPTIONS = [
@@ -49,8 +50,6 @@ const ENTRY_MODEL_FIXED_OPTIONS = [
 const SETUP_TYPE_FIXED_OPTIONS = ["A", "B", "C"];
 
 const TIMING_FIXED_OPTIONS = ["US Open 15:30", "London Close (16h)"];
-
-// (EntryModelCombo and VariableCombo removed — replaced by CustomizableSelect)
 
 // ── Types ──
 interface PersonalTrade {
@@ -69,6 +68,9 @@ interface PersonalTrade {
   entry_timing: string | null;
   entry_model: string | null;
   screenshot_url?: string | null;
+  screenshot_context_url?: string | null;
+  screenshot_entry_url?: string | null;
+  chart_link?: string | null;
   comment?: string | null;
   entry_price?: number | null;
   exit_price?: number | null;
@@ -76,6 +78,8 @@ interface PersonalTrade {
   take_profit?: number | null;
   result?: string | null;
   exit_date?: string | null;
+  news_day?: boolean | null;
+  news_label?: string | null;
 }
 
 interface PersonalTradeDialogProps {
@@ -109,6 +113,9 @@ interface FormData {
   take_profit: string;
   result: "Win" | "Loss" | "BE" | "";
   notes: string;
+  news_day: boolean;
+  news_label: string;
+  chart_link: string;
 }
 
 const initialFormData: FormData = {
@@ -129,6 +136,9 @@ const initialFormData: FormData = {
   take_profit: "",
   result: "",
   notes: "",
+  news_day: false,
+  news_label: "",
+  chart_link: "",
 };
 
 // ── Duration calculator ──
@@ -158,6 +168,77 @@ function calculateDuration(entryDate: string, entryTime: string, exitDate: strin
   }
 }
 
+// ── TradingView embed helper ──
+function getTradingViewEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  // TradingView chart links like https://www.tradingview.com/chart/xxx/
+  // or TradingView snapshot links like https://www.tradingview.com/x/xxx/
+  if (url.includes("tradingview.com/x/") || url.includes("tradingview.com/chart/")) {
+    return url;
+  }
+  return null;
+}
+
+// ── Screenshot Upload Component ──
+const ScreenshotUploadField = ({
+  label,
+  file,
+  preview,
+  existingUrl,
+  uploading,
+  onFileSelect,
+  onClear,
+}: {
+  label: string;
+  file: File | null;
+  preview: string | null;
+  existingUrl: string | null;
+  uploading: boolean;
+  onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onClear: () => void;
+}) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const currentScreenshot = preview || existingUrl;
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs">{label} <span className="text-muted-foreground">(facultatif)</span></Label>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={onFileSelect}
+        className="hidden"
+      />
+      {currentScreenshot ? (
+        <div className="relative border border-border rounded-md p-2">
+          <img src={currentScreenshot} alt={label} className="max-h-32 object-contain mx-auto rounded" />
+          <Button
+            type="button"
+            variant="destructive"
+            size="icon"
+            className="absolute top-1 right-1 h-5 w-5"
+            onClick={onClear}
+          >
+            <X className="w-3 h-3" />
+          </Button>
+        </div>
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full h-16 border-dashed gap-2 text-xs"
+          disabled={uploading}
+        >
+          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+          {label}
+        </Button>
+      )}
+    </div>
+  );
+};
+
 // ── Main Component ──
 export const PersonalTradeDialog = ({
   isOpen,
@@ -169,10 +250,17 @@ export const PersonalTradeDialog = ({
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
-  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
-  const [existingScreenshot, setExistingScreenshot] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Context screenshot state
+  const [contextFile, setContextFile] = useState<File | null>(null);
+  const [contextPreview, setContextPreview] = useState<string | null>(null);
+  const [existingContextUrl, setExistingContextUrl] = useState<string | null>(null);
+
+  // Entry screenshot state
+  const [entryFile, setEntryFile] = useState<File | null>(null);
+  const [entryPreview, setEntryPreview] = useState<string | null>(null);
+  const [existingEntryUrl, setExistingEntryUrl] = useState<string | null>(null);
+
   const { toast } = useToast();
   const { variables, refetch: refetchVariables } = useCustomVariables();
 
@@ -204,8 +292,13 @@ export const PersonalTradeDialog = ({
           take_profit: editingTrade.take_profit?.toString() || "",
           result: (editingTrade.result as "Win" | "Loss" | "BE") || "",
           notes: editingTrade.comment || "",
+          news_day: editingTrade.news_day || false,
+          news_label: editingTrade.news_label || "",
+          chart_link: editingTrade.chart_link || "",
         });
-        setExistingScreenshot(editingTrade.screenshot_url || null);
+        // Handle existing screenshots - prioritize new fields, fallback to old screenshot_url
+        setExistingContextUrl(editingTrade.screenshot_context_url || editingTrade.screenshot_url || null);
+        setExistingEntryUrl(editingTrade.screenshot_entry_url || null);
       } else {
         const today = new Date().toISOString().split("T")[0];
         setFormData({
@@ -214,59 +307,61 @@ export const PersonalTradeDialog = ({
           trade_date: today,
           exit_date: today,
         });
-        setExistingScreenshot(null);
+        setExistingContextUrl(null);
+        setExistingEntryUrl(null);
       }
-      setScreenshotFile(null);
-      setScreenshotPreview(null);
+      setContextFile(null);
+      setContextPreview(null);
+      setEntryFile(null);
+      setEntryPreview(null);
     }
   }, [isOpen, editingTrade, nextTradeNumber]);
 
-  // Auto-sync exit_date when entry date changes (only if they were the same)
+  // Auto-sync exit_date when entry date changes
   const handleEntryDateChange = (newDate: string) => {
     setFormData(prev => ({
       ...prev,
       trade_date: newDate,
-      // Auto-set exit_date to match entry date if exit_date was same as old entry date or empty
       exit_date: (!prev.exit_date || prev.exit_date === prev.trade_date) ? newDate : prev.exit_date,
     }));
   };
 
-  // Handle file selection
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle file selection for screenshots
+  const handleFileSelect = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setFile: (f: File | null) => void,
+    setPreview: (p: string | null) => void
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
         toast({ title: "Fichier trop volumineux", description: "La taille maximale est de 5 MB.", variant: "destructive" });
         return;
       }
-      setScreenshotFile(file);
+      setFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => setScreenshotPreview(reader.result as string);
+      reader.onloadend = () => setPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  // Upload screenshot
-  const uploadScreenshot = async (userId: string, tradeNumber: number): Promise<string | null> => {
-    if (!screenshotFile) return existingScreenshot;
-    setUploading(true);
-    const fileExt = screenshotFile.name.split('.').pop();
-    const fileName = `${userId}/perso_${tradeNumber}_${Date.now()}.${fileExt}`;
-    const { data, error } = await supabase.storage.from('trade-screenshots').upload(fileName, screenshotFile, { upsert: true });
-    setUploading(false);
+  // Upload a screenshot file
+  const uploadScreenshot = async (
+    userId: string,
+    tradeNumber: number,
+    file: File | null,
+    existingUrl: string | null,
+    suffix: string
+  ): Promise<string | null> => {
+    if (!file) return existingUrl;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}/perso_${tradeNumber}_${suffix}_${Date.now()}.${fileExt}`;
+    const { data, error } = await supabase.storage.from('trade-screenshots').upload(fileName, file, { upsert: true });
     if (error) {
-      console.error("Error uploading screenshot:", error);
-      toast({ title: "Erreur d'upload", description: "Impossible d'envoyer le screenshot.", variant: "destructive" });
-      return existingScreenshot;
+      console.error(`Error uploading ${suffix} screenshot:`, error);
+      return existingUrl;
     }
     return data.path;
-  };
-
-  const clearScreenshot = () => {
-    setScreenshotFile(null);
-    setScreenshotPreview(null);
-    setExistingScreenshot(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSave = async () => {
@@ -279,14 +374,21 @@ export const PersonalTradeDialog = ({
     }
 
     setSaving(true);
-    const screenshotUrl = await uploadScreenshot(user.id, parseInt(formData.trade_number));
+    setUploading(true);
+
+    const tradeNum = parseInt(formData.trade_number);
+    const [contextUrl, entryUrl] = await Promise.all([
+      uploadScreenshot(user.id, tradeNum, contextFile, existingContextUrl, "context"),
+      uploadScreenshot(user.id, tradeNum, entryFile, existingEntryUrl, "entry"),
+    ]);
+    setUploading(false);
 
     const date = new Date(formData.trade_date);
     const dayOfWeek = DAYS_MAP[date.getDay()] || "Inconnu";
 
     const tradeData = {
       user_id: user.id,
-      trade_number: parseInt(formData.trade_number),
+      trade_number: tradeNum,
       trade_date: formData.trade_date,
       exit_date: formData.exit_date || null,
       day_of_week: dayOfWeek,
@@ -305,8 +407,13 @@ export const PersonalTradeDialog = ({
       take_profit: formData.take_profit ? parseFloat(formData.take_profit) : null,
       result: formData.result || null,
       comment: formData.notes || null,
-      screenshot_url: screenshotUrl,
-    };
+      news_day: formData.news_day,
+      news_label: formData.news_day ? (formData.news_label || null) : null,
+      screenshot_context_url: contextUrl,
+      screenshot_entry_url: entryUrl,
+      screenshot_url: contextUrl, // backward compat
+      chart_link: formData.chart_link || null,
+    } as any;
 
     try {
       if (editingTrade) {
@@ -345,7 +452,7 @@ export const PersonalTradeDialog = ({
     }
   };
 
-  const currentScreenshot = screenshotPreview || existingScreenshot;
+  const embedUrl = getTradingViewEmbedUrl(formData.chart_link);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -454,11 +561,11 @@ export const PersonalTradeDialog = ({
             </div>
           </div>
 
-          {/* Row 4: Structure & Type de Setup */}
+          {/* Row 4: Structure & Type de Setup (multi-select) */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Structure</Label>
-              <CustomizableSelect
+              <CustomizableMultiSelect
                 value={formData.direction_structure}
                 onChange={(value) => setFormData({ ...formData, direction_structure: value })}
                 customOptions={variables.direction_structure}
@@ -469,7 +576,7 @@ export const PersonalTradeDialog = ({
             </div>
             <div className="space-y-2">
               <Label>Type de Setup</Label>
-              <CustomizableSelect
+              <CustomizableMultiSelect
                 value={formData.setup_type}
                 onChange={(value) => setFormData({ ...formData, setup_type: value })}
                 fixedOptions={SETUP_TYPE_FIXED_OPTIONS}
@@ -481,11 +588,11 @@ export const PersonalTradeDialog = ({
             </div>
           </div>
 
-          {/* Row 5: Entry Model & Timing */}
+          {/* Row 5: Entry Model & Timing (multi-select) */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Entry Model</Label>
-              <CustomizableSelect
+              <CustomizableMultiSelect
                 value={formData.entry_model}
                 onChange={(value) => setFormData({ ...formData, entry_model: value })}
                 fixedOptions={ENTRY_MODEL_FIXED_OPTIONS}
@@ -497,7 +604,7 @@ export const PersonalTradeDialog = ({
             </div>
             <div className="space-y-2">
               <Label>Timing</Label>
-              <CustomizableSelect
+              <CustomizableMultiSelect
                 value={formData.entry_timing}
                 onChange={(value) => setFormData({ ...formData, entry_timing: value })}
                 fixedOptions={TIMING_FIXED_OPTIONS}
@@ -507,6 +614,31 @@ export const PersonalTradeDialog = ({
                 onOptionsChanged={refetchVariables}
               />
             </div>
+          </div>
+
+          {/* News section */}
+          <div className="border-t border-border my-2" />
+          <p className="text-xs text-muted-foreground font-mono uppercase">News & Contexte</p>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="news_day"
+                checked={formData.news_day}
+                onCheckedChange={(checked) => setFormData({ ...formData, news_day: !!checked, news_label: !!checked ? formData.news_label : "" })}
+              />
+              <Label htmlFor="news_day" className="cursor-pointer">Jour de news</Label>
+            </div>
+            {formData.news_day && (
+              <div className="space-y-2 ml-7">
+                <Label>Label de la news</Label>
+                <Input
+                  value={formData.news_label}
+                  onChange={(e) => setFormData({ ...formData, news_label: e.target.value })}
+                  placeholder="Ex: NFP, CPI, FOMC..."
+                />
+              </div>
+            )}
           </div>
 
           {/* Separator */}
@@ -575,40 +707,52 @@ export const PersonalTradeDialog = ({
             </div>
           </div>
 
-          {/* Screenshot Upload */}
-          <div className="space-y-2">
-            <Label>Screenshot</Label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
+          {/* Screenshots section */}
+          <div className="border-t border-border my-2" />
+          <p className="text-xs text-muted-foreground font-mono uppercase">Screenshots & Graphique</p>
+
+          <div className="grid grid-cols-2 gap-4">
+            <ScreenshotUploadField
+              label="Screenshot Contexte (M15)"
+              file={contextFile}
+              preview={contextPreview}
+              existingUrl={existingContextUrl}
+              uploading={uploading}
+              onFileSelect={(e) => handleFileSelect(e, setContextFile, setContextPreview)}
+              onClear={() => { setContextFile(null); setContextPreview(null); setExistingContextUrl(null); }}
             />
-            {currentScreenshot ? (
-              <div className="relative border border-border rounded-md p-2">
-                <img src={currentScreenshot} alt="Screenshot" className="max-h-40 object-contain mx-auto rounded" />
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2 h-6 w-6"
-                  onClick={clearScreenshot}
-                >
-                  <X className="w-3 h-3" />
-                </Button>
+            <ScreenshotUploadField
+              label="Screenshot Entrée (M5)"
+              file={entryFile}
+              preview={entryPreview}
+              existingUrl={existingEntryUrl}
+              uploading={uploading}
+              onFileSelect={(e) => handleFileSelect(e, setEntryFile, setEntryPreview)}
+              onClear={() => { setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }}
+            />
+          </div>
+
+          {/* TradingView / FX Replay link */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <LinkIcon className="w-3.5 h-3.5 text-muted-foreground" />
+              Lien TradingView / FX Replay
+              <span className="text-muted-foreground text-xs">(facultatif)</span>
+            </Label>
+            <Input
+              value={formData.chart_link}
+              onChange={(e) => setFormData({ ...formData, chart_link: e.target.value })}
+              placeholder="https://www.tradingview.com/chart/..."
+            />
+            {embedUrl && (
+              <div className="border border-border rounded-md overflow-hidden mt-2">
+                <iframe
+                  src={embedUrl}
+                  className="w-full h-48"
+                  title="TradingView Chart"
+                  sandbox="allow-scripts allow-same-origin"
+                />
               </div>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full h-20 border-dashed gap-2"
-                disabled={uploading}
-              >
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                Ajouter un screenshot
-              </Button>
             )}
           </div>
 

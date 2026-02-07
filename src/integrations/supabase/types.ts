@@ -381,6 +381,7 @@ export type Database = {
       }
       user_personal_trades: {
         Row: {
+          chart_link: string | null
           comment: string | null
           created_at: string
           day_of_week: string
@@ -398,6 +399,8 @@ export type Database = {
           news_label: string | null
           result: string | null
           rr: number | null
+          screenshot_context_url: string | null
+          screenshot_entry_url: string | null
           screenshot_url: string | null
           setup_type: string | null
           speculation_hl_valid: boolean | null
@@ -413,6 +416,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          chart_link?: string | null
           comment?: string | null
           created_at?: string
           day_of_week: string
@@ -430,6 +434,8 @@ export type Database = {
           news_label?: string | null
           result?: string | null
           rr?: number | null
+          screenshot_context_url?: string | null
+          screenshot_entry_url?: string | null
           screenshot_url?: string | null
           setup_type?: string | null
           speculation_hl_valid?: boolean | null
@@ -445,6 +451,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          chart_link?: string | null
           comment?: string | null
           created_at?: string
           day_of_week?: string
@@ -462,6 +469,8 @@ export type Database = {
           news_label?: string | null
           result?: string | null
           rr?: number | null
+          screenshot_context_url?: string | null
+          screenshot_entry_url?: string | null
           screenshot_url?: string | null
           setup_type?: string | null
           speculation_hl_valid?: boolean | null
