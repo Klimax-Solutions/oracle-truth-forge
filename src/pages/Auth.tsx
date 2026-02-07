@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import CursorTrail from "@/components/auth/CursorTrail";
 import VortexTransition from "@/components/auth/VortexTransition";
 import LoginProgressBar from "@/components/auth/LoginProgressBar";
 
@@ -163,7 +162,7 @@ const Auth = () => {
       onMouseMove={!showingAnimation ? handleMouseMove : undefined}
       onMouseLeave={!showingAnimation ? handleMouseLeave : undefined}
     >
-      {!showingAnimation && <CursorTrail />}
+      {/* Cursor trail removed */}
 
       <div className="auth-bg-letters" aria-hidden="true">
         {ORACLE_LETTERS.map((letter, i) => (
