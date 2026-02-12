@@ -1458,6 +1458,23 @@ export const AdminVerification = () => {
                             </div>
                           </div>
 
+                          {/* View All Data Button */}
+                          <div className="flex justify-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDataViewerUserId(request.user_id);
+                                setDataViewerUserName(request.userName);
+                              }}
+                            >
+                              <ClipboardList className="w-4 h-4" />
+                              Voir toutes les données
+                            </Button>
+                          </div>
+
                           {/* Feedback */}
                           <div>
                             <label className="text-[10px] md:text-xs font-mono uppercase text-muted-foreground mb-1.5 md:mb-2 block">
