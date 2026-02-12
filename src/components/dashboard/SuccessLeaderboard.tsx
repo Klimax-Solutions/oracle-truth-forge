@@ -65,7 +65,7 @@ const SuccessLeaderboard = () => {
   ];
 
   const podiumOrder = podium.length >= 3 ? [1, 0, 2] : podium.map((_, i) => i);
-  const podiumHeights = [160, 130, 115];
+  const podiumHeights: Record<number, string> = { 0: "min-h-[140px] sm:min-h-[160px]", 1: "min-h-[115px] sm:min-h-[130px]", 2: "min-h-[100px] sm:min-h-[115px]" };
 
   return (
     <div className="border border-border bg-card rounded-lg p-4 space-y-4">
@@ -87,10 +87,10 @@ const SuccessLeaderboard = () => {
             <div
               key={entry.user_id}
               className={cn(
-                "flex flex-col items-center rounded-lg border bg-gradient-to-b p-2 sm:p-3 transition-all flex-1 max-w-[140px]",
-                cfg.gradient, cfg.border
+                "flex flex-col items-center rounded-lg border bg-gradient-to-b p-2 sm:p-3 transition-all flex-1 min-w-0 max-w-[140px]",
+                cfg.gradient, cfg.border,
+                podiumHeights[idx]
               )}
-              style={{ height: isFirst ? podiumHeights[0] : idx === 1 ? podiumHeights[1] : podiumHeights[2] }}
             >
               <div className={cn("mb-1", cfg.accent)}>{cfg.icon}</div>
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary/20 flex items-center justify-center mb-1">

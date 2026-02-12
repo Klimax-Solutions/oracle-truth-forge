@@ -71,10 +71,10 @@ const MILESTONES = [
 const getTypeLabel = (value?: string) =>
   SUCCESS_TYPES.find((t) => t.value === value)?.label || value || "";
 
-const ROLE_BADGE_MAP: Record<string, { label: string; className: string }> = {
-  super_admin: { label: "Super Admin", className: "bg-red-500/20 text-red-400 border-red-500/30" },
-  admin: { label: "Admin", className: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
-  member: { label: "Membre", className: "bg-muted text-muted-foreground border-border" },
+const ROLE_BADGE_MAP: Record<string, { label: string; className: string; nameColor: string }> = {
+  super_admin: { label: "Super Admin", className: "bg-red-500/20 text-red-400 border-red-500/30", nameColor: "text-red-400" },
+  admin: { label: "Admin", className: "bg-blue-500/20 text-blue-400 border-blue-500/30", nameColor: "text-blue-400" },
+  member: { label: "Membre", className: "bg-muted text-muted-foreground border-border", nameColor: "text-foreground" },
 };
 
 /* ─── User Avatar ─── */
@@ -192,28 +192,26 @@ const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
     );
   };
 
+  // Check if message contains @everyone for row highlight
+  const hasEveryone = entry.message?.includes("@everyone");
+
   return (
-    <div className={cn("group flex gap-3 px-4 py-2 hover:bg-muted/30 transition-colors")}>
-      <div className="mt-0.5">
+    <div className={cn(
+      "group flex gap-3 px-4 py-2 hover:bg-muted/30 transition-colors",
+      hasEveryone && "bg-yellow-500/[0.06] border-l-2 border-yellow-500/40"
+    )}>
+      <div className="mt-0.5 flex-shrink-0">
         <UserAvatar avatarUrl={entry.avatar_url} name={entry.display_name || "A"} size="lg" />
       </div>
-      <div className="flex-1 min-w-0 space-y-1">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={cn("text-sm font-semibold", isAdmin ? "text-red-400" : "text-foreground")}>
+      <div className="flex-1 min-w-0 space-y-0.5">
+        <div className="flex items-baseline gap-1.5 flex-wrap">
+          <span className={cn("text-sm font-semibold", roleCfg.nameColor)}>
             {entry.display_name || "Anonyme"}
           </span>
-          {isAdmin && <Shield className="w-3 h-3 text-red-400" />}
-          <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4 border", roleCfg.className)}>
-            {roleCfg.label}
-          </Badge>
-          {entry.success_type && (
-            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-normal">
-              {getTypeLabel(entry.success_type)}
-            </Badge>
-          )}
+          {isAdmin && <Shield className="w-3 h-3 text-red-400 self-center" />}
           <span className="text-[10px] text-muted-foreground">
-            {new Date(entry.created_at).toLocaleDateString("fr-FR", {
-              day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+            {new Date(entry.created_at).toLocaleTimeString("fr-FR", {
+              hour: "2-digit", minute: "2-digit",
             })}
           </span>
           {isOwn && (
@@ -244,13 +242,13 @@ const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
         )}
 
         {entry.message && (
-          <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+          <p className="text-sm text-foreground/90 whitespace-pre-wrap break-words leading-relaxed">
             {renderMessage(entry.message)}
           </p>
         )}
 
         {signedUrl && (
-          <div className="mt-1 max-w-md">
+          <div className="mt-1.5 max-w-sm sm:max-w-md">
             <img src={signedUrl} alt="Succès"
               className="rounded-lg object-contain max-h-[350px] w-auto border border-border cursor-pointer hover:brightness-110 transition"
               loading="lazy" onClick={() => window.open(signedUrl, "_blank")} />
@@ -685,7 +683,7 @@ const SuccessPage = () => {
                     <p className="text-sm">Aucun succès partagé pour le moment.</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-border/30">
+                  <div>
                     {successes.map((s) => (
                       <ChatMessage key={s.id} entry={s} signedUrl={signedUrls[s.id]} isOwn={s.user_id === userId}
                         onDelete={() => handleDelete(s.id, s.image_path)} />
