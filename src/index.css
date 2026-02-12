@@ -336,6 +336,41 @@
     }
   }
 
+  /* Discord @everyone mention — Light mode friendly */
+  .discord-mention-everyone {
+    background-color: hsl(45 90% 55% / 0.15);
+    color: hsl(45 80% 35%);
+    padding: 0 2px;
+    border-radius: 3px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+
+  .discord-mention-everyone:hover {
+    background-color: hsl(45 90% 55% / 0.3);
+  }
+
+  .dark .discord-mention-everyone {
+    background-color: hsl(45 80% 60% / 0.2);
+    color: hsl(45 80% 70%);
+  }
+
+  .dark .discord-mention-everyone:hover {
+    background-color: hsl(45 80% 60% / 0.35);
+  }
+
+  /* Discord @everyone message highlight */
+  .discord-mention-highlight {
+    background-color: hsl(45 80% 55% / 0.06);
+    border-left: 2px solid hsl(45 80% 50% / 0.5);
+  }
+
+  .dark .discord-mention-highlight {
+    background-color: hsl(45 80% 60% / 0.04);
+    border-left-color: hsl(45 80% 60% / 0.4);
+  }
+
   /* Vortex overlay */
   .auth-vortex-overlay {
     position: absolute;

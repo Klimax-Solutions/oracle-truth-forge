@@ -71,32 +71,33 @@ const getTypeLabel = (value?: string) =>
   SUCCESS_TYPES.find((t) => t.value === value)?.label || value || "";
 
 const ROLE_BADGE_MAP: Record<string, { label: string; className: string; nameColor: string }> = {
-  super_admin: { label: "Super Admin", className: "bg-red-500/20 text-red-400 border-red-500/30", nameColor: "text-red-400" },
-  admin: { label: "Admin", className: "bg-blue-500/20 text-blue-400 border-blue-500/30", nameColor: "text-blue-400" },
+  super_admin: { label: "Super Admin", className: "bg-red-500/20 text-red-400 border-red-500/30", nameColor: "text-red-500 dark:text-red-400" },
+  admin: { label: "Admin", className: "bg-blue-500/20 text-blue-400 border-blue-500/30", nameColor: "text-blue-600 dark:text-blue-400" },
   member: { label: "Membre", className: "bg-muted text-muted-foreground border-border", nameColor: "text-foreground" },
 };
 
-/* ─── User Avatar ─── */
+/* ─── User Avatar (Discord L3) ─── */
 const UserAvatar = ({ avatarUrl, name, size = "md", statusColor }: {
   avatarUrl?: string | null; name: string; size?: "sm" | "md" | "lg"; statusColor?: string;
 }) => {
   const sizes = { sm: "w-6 h-6 text-[9px]", md: "w-8 h-8 text-xs", lg: "w-10 h-10 text-sm" };
+  const statusSizes = { sm: "w-2 h-2", md: "w-2.5 h-2.5", lg: "w-3 h-3" };
   const initials = (name || "A").charAt(0).toUpperCase();
 
   return (
     <div className="relative flex-shrink-0">
       {avatarUrl ? (
         <img src={avatarUrl} alt={name}
-          className={cn("rounded-full object-cover", sizes[size])} />
+          className={cn("rounded-full object-cover ring-1 ring-border/30", sizes[size])} />
       ) : (
-        <div className={cn("rounded-full bg-primary/20 flex items-center justify-center", sizes[size])}>
-          <span className="font-bold text-primary">{initials}</span>
+        <div className={cn("rounded-full bg-accent flex items-center justify-center ring-1 ring-border/20", sizes[size])}>
+          <span className="font-bold text-muted-foreground">{initials}</span>
         </div>
       )}
       {statusColor && (
         <div className={cn(
-          "absolute -bottom-0.5 -right-0.5 rounded-full border-2 border-card",
-          size === "sm" ? "w-2.5 h-2.5" : "w-3 h-3",
+          "absolute -bottom-0.5 -right-0.5 rounded-full border-[2.5px] border-card",
+          statusSizes[size],
           statusColor
         )} />
       )}
@@ -180,7 +181,7 @@ const TradePicker = ({
   );
 };
 
-/* ─── Chat Message (Discord-style) ─── */
+/* ─── Chat Message (Discord L3) ─── */
 const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
   entry: SuccessEntry; signedUrl?: string; isOwn: boolean; onDelete: () => void;
 }) => {
@@ -191,7 +192,7 @@ const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
     const parts = msg.split(/(@everyone)/g);
     return parts.map((part, i) =>
       part === "@everyone" ? (
-        <span key={i} className="bg-yellow-500/25 text-yellow-300 px-0.5 rounded font-medium hover:bg-yellow-500/40 cursor-pointer transition-colors">@everyone</span>
+        <span key={i} className="discord-mention-everyone">@everyone</span>
       ) : part
     );
   };
@@ -200,19 +201,24 @@ const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
 
   return (
     <div className={cn(
-      "group flex gap-3 sm:gap-4 px-3 sm:px-4 py-1.5 hover:bg-muted/20 transition-colors",
-      hasEveryone && "bg-yellow-500/[0.04] border-l-2 border-l-yellow-500/50"
+      "group flex gap-3 sm:gap-4 px-3 sm:px-4 py-1 hover:bg-muted/30 transition-colors relative",
+      hasEveryone && "discord-mention-highlight"
     )}>
-      <div className="mt-1 flex-shrink-0">
+      <div className="mt-0.5 flex-shrink-0">
         <UserAvatar avatarUrl={entry.avatar_url} name={entry.display_name || "A"} size="lg" />
       </div>
       <div className="flex-1 min-w-0 space-y-0.5">
         <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className={cn("text-sm font-semibold leading-tight", roleCfg.nameColor)}>
+          <span className={cn("text-sm font-semibold leading-snug cursor-pointer hover:underline", roleCfg.nameColor)}>
             {entry.display_name || "Anonyme"}
           </span>
-          {isAdminUser && <Shield className="w-3 h-3 text-red-400 inline-block self-center" />}
-          <span className="text-[10px] text-muted-foreground/60 font-normal leading-tight">
+          {isAdminUser && (
+            <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-3.5 leading-none font-medium border", roleCfg.className)}>
+              {ROLE_BADGE_MAP[entry.role || "member"].label}
+            </Badge>
+          )}
+          <span className="text-[10px] text-muted-foreground/50 font-normal leading-tight select-none">
+            {new Date(entry.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} à{" "}
             {new Date(entry.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
           </span>
           {isOwn && (
@@ -225,13 +231,13 @@ const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
         </div>
 
         {entry.message && (
-          <p className="text-[13px] sm:text-sm text-foreground/90 whitespace-pre-wrap break-words leading-relaxed">
+          <p className="text-[13px] sm:text-sm text-foreground/90 whitespace-pre-wrap break-words leading-[1.375rem]">
             {renderMessage(entry.message)}
           </p>
         )}
 
         {entry.linked_trade && (
-          <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded bg-muted/40 border border-border/50 w-fit text-xs mt-0.5">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-muted/50 border border-border/40 w-fit text-xs mt-1">
             <span className="font-mono font-bold text-foreground">#{entry.linked_trade.trade_number}</span>
             {entry.linked_trade.direction === "Long"
               ? <TrendingUp className="w-3 h-3 text-emerald-400" />
@@ -248,9 +254,9 @@ const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
         )}
 
         {signedUrl && (
-          <div className="mt-1">
+          <div className="mt-1.5">
             <img src={signedUrl} alt="Succès"
-              className="rounded-lg object-contain max-h-[300px] sm:max-h-[400px] max-w-full sm:max-w-md w-auto border border-border/50 cursor-pointer hover:brightness-110 transition"
+              className="rounded-lg object-contain max-h-[280px] sm:max-h-[360px] max-w-full sm:max-w-md w-auto border border-border/30 cursor-pointer hover:brightness-110 transition-all shadow-sm"
               loading="lazy" onClick={() => window.open(signedUrl, "_blank")} />
           </div>
         )}
@@ -265,7 +271,7 @@ const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
   );
 };
 
-/* ─── Discord-style Member Sidebar ─── */
+/* ─── Discord-style Member Sidebar (L3) ─── */
 const MemberSidebar = ({ myCount, onlineUsers, allUsers, isAdmin }: {
   myCount: number;
   onlineUsers: OnlineUser[];
@@ -284,11 +290,11 @@ const MemberSidebar = ({ myCount, onlineUsers, allUsers, isAdmin }: {
   const offlineUsers = allUsers.filter((u) => !onlineUserIds.has(u.user_id));
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-card/30">
       {/* Progression */}
-      <div className="px-3 pt-3 pb-2 space-y-1.5">
+      <div className="px-3 pt-4 pb-2 space-y-1.5">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Progression</span>
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.08em]">Progression</span>
           <span className="text-[10px] font-mono text-muted-foreground">{myCount}</span>
         </div>
         <div className="relative h-1 bg-muted rounded-full overflow-hidden">
@@ -325,24 +331,24 @@ const MemberSidebar = ({ myCount, onlineUsers, allUsers, isAdmin }: {
         </Collapsible>
       </div>
 
-      <div className="border-t border-border/50 my-1" />
+      <div className="border-t border-border/30 mx-2" />
 
-      {/* Members list — Discord style */}
-      <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-3">
+      {/* Members list — Discord L3 */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-2 pt-3 pb-2 space-y-4">
         {/* Online section */}
         <div>
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1 mb-1.5">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.08em] px-1.5 mb-2">
             En ligne — {onlineUsers.length}
           </p>
-          <div className="space-y-0.5">
+          <div className="space-y-px">
             {onlineUsers.map((u) => (
-              <div key={u.user_id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted/40 transition-colors cursor-default">
+              <div key={u.user_id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-muted/40 transition-colors cursor-default group/member">
                 <UserAvatar avatarUrl={u.avatar_url} name={u.display_name} size="sm" statusColor="bg-emerald-500" />
-                <span className="text-xs font-medium text-foreground truncate">{u.display_name}</span>
+                <span className="text-[13px] font-medium text-muted-foreground group-hover/member:text-foreground truncate transition-colors">{u.display_name}</span>
               </div>
             ))}
             {onlineUsers.length === 0 && (
-              <p className="text-[10px] text-muted-foreground/50 italic px-2">Personne en ligne</p>
+              <p className="text-[10px] text-muted-foreground/40 italic px-2 py-2">Personne en ligne</p>
             )}
           </div>
         </div>
@@ -350,14 +356,14 @@ const MemberSidebar = ({ myCount, onlineUsers, allUsers, isAdmin }: {
         {/* Offline section — admin only */}
         {isAdmin && offlineUsers.length > 0 && (
           <div>
-            <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest px-1 mb-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.08em] px-1.5 mb-2">
               Hors ligne — {offlineUsers.length}
             </p>
-            <div className="space-y-0.5">
+            <div className="space-y-px">
               {offlineUsers.map((u) => (
-                <div key={u.user_id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted/40 transition-colors cursor-default opacity-40">
+                <div key={u.user_id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-muted/40 transition-colors cursor-default opacity-30 hover:opacity-60 group/member">
                   <UserAvatar avatarUrl={u.avatar_url} name={u.display_name} size="sm" statusColor="bg-muted-foreground" />
-                  <span className="text-xs font-medium text-foreground truncate">{u.display_name}</span>
+                  <span className="text-[13px] font-medium text-muted-foreground truncate">{u.display_name}</span>
                 </div>
               ))}
             </div>
@@ -620,39 +626,42 @@ const SuccessPage = () => {
   const insertMention = () => { setMessage((prev) => prev + "@everyone "); };
 
   return (
-    <div className="h-full overflow-hidden flex flex-col">
-      {/* ─── Discord-style Top Bar ─── */}
-      <div className="flex items-center h-12 px-3 sm:px-4 border-b border-border bg-card flex-shrink-0 gap-2">
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* ─── Discord Top Bar ─── */}
+      <div className="flex items-center h-12 px-3 sm:px-4 border-b border-border bg-card/80 flex-shrink-0 gap-2 backdrop-blur-sm">
         <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-        <div className="flex items-center gap-1 min-w-0">
+        <div className="flex items-center gap-0.5 min-w-0">
           <button
             onClick={() => setActiveView("discussion")}
             className={cn(
-              "px-2.5 py-1 rounded text-xs sm:text-sm font-semibold transition-colors",
-              activeView === "discussion" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              "px-2.5 py-1 rounded-md text-sm font-semibold transition-all",
+              activeView === "discussion"
+                ? "text-foreground bg-muted/50"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
             )}
           >
             Discussion
           </button>
-          <span className="text-muted-foreground/30 text-xs">|</span>
           <button
             onClick={() => setActiveView("leaderboard")}
             className={cn(
-              "px-2.5 py-1 rounded text-xs sm:text-sm font-semibold transition-colors",
-              activeView === "leaderboard" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              "px-2.5 py-1 rounded-md text-sm font-semibold transition-all",
+              activeView === "leaderboard"
+                ? "text-foreground bg-muted/50"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
             )}
           >
             Leaderboard
           </button>
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1.5">
           <Badge variant="secondary" className="text-[10px] font-mono hidden sm:flex">{successes.length} msg</Badge>
           <button
             onClick={() => setShowMembers(!showMembers)}
             className={cn(
-              "p-1.5 rounded transition-colors",
-              showMembers ? "text-foreground bg-muted/50" : "text-muted-foreground hover:text-foreground"
+              "p-1.5 rounded-md transition-colors",
+              showMembers ? "text-foreground bg-muted/50" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
             )}
             title="Membres"
           >
@@ -661,21 +670,21 @@ const SuccessPage = () => {
         </div>
       </div>
 
-      {/* ─── Main Content ─── */}
-      <div className="flex-1 overflow-hidden flex">
-        {/* Center — Chat or Leaderboard */}
+      {/* ─── Content area: fills remaining height ─── */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Center column */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           {activeView === "discussion" ? (
             <>
-              {/* Chat feed */}
-              <div className="flex-1 overflow-y-auto">
+              {/* Chat feed — takes ALL available space, pushes composer to bottom */}
+              <div className="flex-1 overflow-y-auto min-h-0 scrollbar-hide">
                 {loading ? (
-                  <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+                  <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
                 ) : successes.length === 0 ? (
-                  <div className="text-center py-16 text-muted-foreground">
-                    <Trophy className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                    <p className="text-sm">Aucun succès partagé pour le moment.</p>
-                    <p className="text-[11px] text-muted-foreground/50 mt-1">Soyez le premier à partager !</p>
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-16">
+                    <Trophy className="w-12 h-12 mb-4 opacity-15" />
+                    <p className="text-sm font-medium">Aucun succès partagé</p>
+                    <p className="text-xs text-muted-foreground/50 mt-1">Soyez le premier à partager !</p>
                   </div>
                 ) : (
                   <div className="py-2">
@@ -688,8 +697,8 @@ const SuccessPage = () => {
                 <div ref={feedEndRef} />
               </div>
 
-              {/* ─── Composer (Discord-style) ─── */}
-              <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-0 flex-shrink-0">
+              {/* ─── Composer — pinned to bottom ─── */}
+              <div className="flex-shrink-0 px-2 sm:px-4 pb-2 sm:pb-4 pt-1">
                 {(filePreview || selectedTrade) && (
                   <div className="flex items-start gap-2 mb-2 flex-wrap px-1">
                     {filePreview && (
@@ -706,7 +715,7 @@ const SuccessPage = () => {
                   </div>
                 )}
 
-                <div className="flex items-end gap-1.5 sm:gap-2 bg-muted/30 border border-border rounded-lg px-2 sm:px-3 py-1.5 sm:py-2">
+                <div className="flex items-end gap-1.5 sm:gap-2 bg-muted/40 border border-border/60 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors focus-within:border-muted-foreground/30">
                   <div className="flex gap-0.5 flex-shrink-0 pb-0.5">
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"
                       onClick={() => fileInputRef.current?.click()}>
@@ -731,7 +740,7 @@ const SuccessPage = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 mt-1.5 px-1 flex-wrap">
+                <div className="flex items-center gap-2 mt-1 px-1 flex-wrap">
                   <Select value={selectedType} onValueChange={setSelectedType}>
                     <SelectTrigger className="h-6 w-auto text-[10px] bg-transparent border-border/50 gap-1 px-2"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-popover z-50">
@@ -752,9 +761,9 @@ const SuccessPage = () => {
           )}
         </div>
 
-        {/* ─── Right sidebar — Discord member list ─── */}
+        {/* ─── Right sidebar — full height, Discord L3 ─── */}
         {showMembers && (
-          <div className="hidden md:flex w-52 lg:w-60 border-l border-border bg-card/50 flex-col overflow-hidden">
+          <div className="hidden md:flex w-56 lg:w-60 border-l border-border bg-secondary/30 flex-col overflow-hidden flex-shrink-0">
             <MemberSidebar myCount={myCount} onlineUsers={onlineUsers} allUsers={allUsers} isAdmin={isAdmin} />
           </div>
         )}
