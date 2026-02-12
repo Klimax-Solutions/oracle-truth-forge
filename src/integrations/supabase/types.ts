@@ -143,6 +143,39 @@ export type Database = {
         }
         Relationships: []
       }
+      security_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          device_info: string | null
+          id: string
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          user_id: string
+        }
+        Insert: {
+          alert_type?: string
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       trades: {
         Row: {
           comment: string | null
@@ -583,6 +616,7 @@ export type Database = {
       user_sessions: {
         Row: {
           created_at: string
+          device_fingerprint: string | null
           device_info: string | null
           id: string
           session_token: string
@@ -591,6 +625,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          device_fingerprint?: string | null
           device_info?: string | null
           id?: string
           session_token?: string
@@ -599,6 +634,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          device_fingerprint?: string | null
           device_info?: string | null
           id?: string
           session_token?: string
