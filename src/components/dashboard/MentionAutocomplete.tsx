@@ -47,8 +47,8 @@ export const MentionAutocomplete = ({
     if (!show) return [];
     const results: MentionUser[] = [];
     
-    // Always show @everyone option first
     const everyoneMatch = !query || "everyone".startsWith(query);
+    const hereMatch = !query || "here".startsWith(query);
     
     const userMatches = allUsers.filter((u) =>
       u.display_name.toLowerCase().startsWith(query) ||
@@ -57,6 +57,9 @@ export const MentionAutocomplete = ({
 
     if (everyoneMatch) {
       results.push({ user_id: "__everyone__", display_name: "everyone", avatar_url: null });
+    }
+    if (hereMatch) {
+      results.push({ user_id: "__here__", display_name: "here", avatar_url: null });
     }
     results.push(...userMatches);
     
@@ -115,7 +118,7 @@ export const MentionAutocomplete = ({
           </span>
         </div>
         {filtered.map((user, i) => {
-          const isEveryone = user.user_id === "__everyone__";
+          const isSpecial = user.user_id === "__everyone__" || user.user_id === "__here__";
           const initials = (user.display_name || "A").charAt(0).toUpperCase();
 
           return (
@@ -134,7 +137,7 @@ export const MentionAutocomplete = ({
                 setShow(false);
               }}
             >
-              {isEveryone ? (
+              {isSpecial ? (
                 <div className="w-7 h-7 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
                   <span className="text-xs">@</span>
                 </div>
@@ -151,9 +154,9 @@ export const MentionAutocomplete = ({
               )}
               <span className={cn(
                 "text-sm font-medium truncate",
-                isEveryone && "text-yellow-600 dark:text-yellow-400"
+                isSpecial && "text-yellow-600 dark:text-yellow-400"
               )}>
-                {isEveryone ? "@everyone" : user.display_name}
+                {isSpecial ? `@${user.display_name}` : user.display_name}
               </span>
             </button>
           );

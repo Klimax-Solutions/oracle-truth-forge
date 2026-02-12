@@ -190,20 +190,19 @@ const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
   const isAdminUser = entry.role === "admin" || entry.role === "super_admin";
 
   const renderMessage = (msg: string) => {
-    // Match @everyone and @username mentions
-    const parts = msg.split(/(@everyone|@\w[\w\s]*?\b)/g);
+    const parts = msg.split(/(@everyone|@here|@\w[\w\s]*?\b)/g);
     return parts.map((part, i) => {
-      if (part === "@everyone") {
-        return <span key={i} className="discord-mention-everyone">@everyone</span>;
+      if (part === "@everyone" || part === "@here") {
+        return <span key={i} className="discord-mention-everyone">{part}</span>;
       }
       if (part.startsWith("@") && part.length > 1) {
-        return <span key={i} className="discord-mention-user">@{part.slice(1)}</span>;
+        return <span key={i} className="discord-mention-user">{part}</span>;
       }
       return part;
     });
   };
 
-  const hasEveryone = entry.message?.includes("@everyone");
+  const hasEveryone = entry.message?.includes("@everyone") || entry.message?.includes("@here");
 
   return (
     <div className={cn(
@@ -613,7 +612,7 @@ const SuccessPage = () => {
     const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
     if (mentionMatch) {
       const beforeMention = textBeforeCursor.slice(0, mentionMatch.index);
-      const mentionText = user.user_id === "__everyone__" ? "@everyone" : `@${user.display_name}`;
+      const mentionText = user.user_id === "__everyone__" ? "@everyone" : user.user_id === "__here__" ? "@here" : `@${user.display_name}`;
       const newMessage = beforeMention + mentionText + " " + textAfterCursor;
       setMessage(newMessage);
       
@@ -660,7 +659,7 @@ const SuccessPage = () => {
     const { data: myProfile } = await supabase.from("profiles").select("display_name").eq("user_id", userId).single();
     const senderName = myProfile?.display_name || "Quelqu'un";
 
-    if (message.includes("@everyone")) {
+    if (message.includes("@everyone") || message.includes("@here")) {
       sendEveryoneNotification(senderName);
     }
 
