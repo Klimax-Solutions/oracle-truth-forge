@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Trophy, Lock, Star, Loader2, Trash2, Send,
   Paperclip, X, Search, TrendingUp, TrendingDown, ChevronDown, Circle,
-  Shield, AtSign, MessageSquare, Award,
+  Shield, AtSign, MessageSquare, Award, Hash, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -22,7 +22,6 @@ import { Input } from "@/components/ui/input";
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface SuccessEntry {
   id: string;
@@ -78,23 +77,29 @@ const ROLE_BADGE_MAP: Record<string, { label: string; className: string; nameCol
 };
 
 /* ─── User Avatar ─── */
-const UserAvatar = ({ avatarUrl, name, size = "md" }: { avatarUrl?: string | null; name: string; size?: "sm" | "md" | "lg" }) => {
-  const sizes = { sm: "w-6 h-6 text-[9px]", md: "w-9 h-9 text-sm", lg: "w-10 h-10 text-sm" };
+const UserAvatar = ({ avatarUrl, name, size = "md", statusColor }: {
+  avatarUrl?: string | null; name: string; size?: "sm" | "md" | "lg"; statusColor?: string;
+}) => {
+  const sizes = { sm: "w-6 h-6 text-[9px]", md: "w-8 h-8 text-xs", lg: "w-10 h-10 text-sm" };
   const initials = (name || "A").charAt(0).toUpperCase();
 
-  if (avatarUrl) {
-    return (
-      <img
-        src={avatarUrl}
-        alt={name}
-        className={cn("rounded-full object-cover flex-shrink-0", sizes[size])}
-      />
-    );
-  }
-
   return (
-    <div className={cn("rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0", sizes[size])}>
-      <span className="font-bold text-primary">{initials}</span>
+    <div className="relative flex-shrink-0">
+      {avatarUrl ? (
+        <img src={avatarUrl} alt={name}
+          className={cn("rounded-full object-cover", sizes[size])} />
+      ) : (
+        <div className={cn("rounded-full bg-primary/20 flex items-center justify-center", sizes[size])}>
+          <span className="font-bold text-primary">{initials}</span>
+        </div>
+      )}
+      {statusColor && (
+        <div className={cn(
+          "absolute -bottom-0.5 -right-0.5 rounded-full border-2 border-card",
+          size === "sm" ? "w-2.5 h-2.5" : "w-3 h-3",
+          statusColor
+        )} />
+      )}
     </div>
   );
 };
@@ -122,7 +127,7 @@ const TradePicker = ({
 
   if (selectedTrade) {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-xs">
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded bg-primary/10 border border-primary/20 text-xs">
         <span className="font-semibold text-primary">#{selectedTrade.trade_number}</span>
         <span className={cn("font-medium", selectedTrade.direction === "Long" ? "text-emerald-400" : "text-red-400")}>
           {selectedTrade.direction}
@@ -175,44 +180,40 @@ const TradePicker = ({
   );
 };
 
-/* ─── Chat Message ─── */
+/* ─── Chat Message (Discord-style) ─── */
 const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
   entry: SuccessEntry; signedUrl?: string; isOwn: boolean; onDelete: () => void;
 }) => {
   const roleCfg = ROLE_BADGE_MAP[entry.role || "member"] || ROLE_BADGE_MAP.member;
-  const isAdmin = entry.role === "admin" || entry.role === "super_admin";
+  const isAdminUser = entry.role === "admin" || entry.role === "super_admin";
 
-  // Render message with @everyone highlighted — Discord yellow style
   const renderMessage = (msg: string) => {
     const parts = msg.split(/(@everyone)/g);
     return parts.map((part, i) =>
       part === "@everyone" ? (
-        <span key={i} className="bg-yellow-500/20 text-yellow-300 px-1 rounded font-semibold cursor-pointer hover:bg-yellow-500/30 transition-colors">@everyone</span>
+        <span key={i} className="bg-yellow-500/25 text-yellow-300 px-0.5 rounded font-medium hover:bg-yellow-500/40 cursor-pointer transition-colors">@everyone</span>
       ) : part
     );
   };
 
-  // Check if message contains @everyone for row highlight
   const hasEveryone = entry.message?.includes("@everyone");
 
   return (
     <div className={cn(
-      "group flex gap-3 px-4 py-2 hover:bg-muted/30 transition-colors",
-      hasEveryone && "bg-yellow-500/[0.06] border-l-2 border-yellow-500/40"
+      "group flex gap-3 sm:gap-4 px-3 sm:px-4 py-1.5 hover:bg-muted/20 transition-colors",
+      hasEveryone && "bg-yellow-500/[0.04] border-l-2 border-l-yellow-500/50"
     )}>
-      <div className="mt-0.5 flex-shrink-0">
+      <div className="mt-1 flex-shrink-0">
         <UserAvatar avatarUrl={entry.avatar_url} name={entry.display_name || "A"} size="lg" />
       </div>
       <div className="flex-1 min-w-0 space-y-0.5">
         <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className={cn("text-sm font-semibold", roleCfg.nameColor)}>
+          <span className={cn("text-sm font-semibold leading-tight", roleCfg.nameColor)}>
             {entry.display_name || "Anonyme"}
           </span>
-          {isAdmin && <Shield className="w-3 h-3 text-red-400 self-center" />}
-          <span className="text-[10px] text-muted-foreground">
-            {new Date(entry.created_at).toLocaleTimeString("fr-FR", {
-              hour: "2-digit", minute: "2-digit",
-            })}
+          {isAdminUser && <Shield className="w-3 h-3 text-red-400 inline-block self-center" />}
+          <span className="text-[10px] text-muted-foreground/60 font-normal leading-tight">
+            {new Date(entry.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
           </span>
           {isOwn && (
             <Button variant="ghost" size="icon"
@@ -223,44 +224,49 @@ const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
           )}
         </div>
 
-        {entry.linked_trade && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 border border-border w-fit text-xs">
-            <span className="font-mono font-bold text-foreground">#{entry.linked_trade.trade_number}</span>
-            {entry.linked_trade.direction === "Long"
-              ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-              : <TrendingDown className="w-3.5 h-3.5 text-red-400" />}
-            <span className={cn("font-medium", entry.linked_trade.direction === "Long" ? "text-emerald-400" : "text-red-400")}>
-              {entry.linked_trade.direction}
-            </span>
-            {entry.linked_trade.setup_type && <span className="text-muted-foreground">· {entry.linked_trade.setup_type}</span>}
-            {entry.linked_trade.rr !== null && (
-              <Badge variant="secondary" className={cn("text-[10px] px-1.5 py-0", entry.linked_trade.rr >= 0 ? "text-emerald-400" : "text-red-400")}>
-                {entry.linked_trade.rr > 0 ? "+" : ""}{entry.linked_trade.rr}R
-              </Badge>
-            )}
-          </div>
-        )}
-
         {entry.message && (
-          <p className="text-sm text-foreground/90 whitespace-pre-wrap break-words leading-relaxed">
+          <p className="text-[13px] sm:text-sm text-foreground/90 whitespace-pre-wrap break-words leading-relaxed">
             {renderMessage(entry.message)}
           </p>
         )}
 
+        {entry.linked_trade && (
+          <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded bg-muted/40 border border-border/50 w-fit text-xs mt-0.5">
+            <span className="font-mono font-bold text-foreground">#{entry.linked_trade.trade_number}</span>
+            {entry.linked_trade.direction === "Long"
+              ? <TrendingUp className="w-3 h-3 text-emerald-400" />
+              : <TrendingDown className="w-3 h-3 text-red-400" />}
+            <span className={cn("font-medium", entry.linked_trade.direction === "Long" ? "text-emerald-400" : "text-red-400")}>
+              {entry.linked_trade.direction}
+            </span>
+            {entry.linked_trade.rr !== null && (
+              <span className={cn("font-mono font-bold", entry.linked_trade.rr >= 0 ? "text-emerald-400" : "text-red-400")}>
+                {entry.linked_trade.rr > 0 ? "+" : ""}{entry.linked_trade.rr}R
+              </span>
+            )}
+          </div>
+        )}
+
         {signedUrl && (
-          <div className="mt-1.5 max-w-sm sm:max-w-md">
+          <div className="mt-1">
             <img src={signedUrl} alt="Succès"
-              className="rounded-lg object-contain max-h-[350px] w-auto border border-border cursor-pointer hover:brightness-110 transition"
+              className="rounded-lg object-contain max-h-[300px] sm:max-h-[400px] max-w-full sm:max-w-md w-auto border border-border/50 cursor-pointer hover:brightness-110 transition"
               loading="lazy" onClick={() => window.open(signedUrl, "_blank")} />
           </div>
+        )}
+
+        {entry.success_type && (
+          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-normal mt-0.5">
+            {getTypeLabel(entry.success_type)}
+          </Badge>
         )}
       </div>
     </div>
   );
 };
 
-/* ─── Right Sidebar ─── */
-const RightSidebar = ({ myCount, onlineUsers, allUsers, isAdmin }: {
+/* ─── Discord-style Member Sidebar ─── */
+const MemberSidebar = ({ myCount, onlineUsers, allUsers, isAdmin }: {
   myCount: number;
   onlineUsers: OnlineUser[];
   allUsers: AllUser[];
@@ -278,40 +284,39 @@ const RightSidebar = ({ myCount, onlineUsers, allUsers, isAdmin }: {
   const offlineUsers = allUsers.filter((u) => !onlineUserIds.has(u.user_id));
 
   return (
-    <div className="space-y-4">
-      {/* Progression — collapsible milestones */}
-      <div className="border border-border bg-card rounded-lg p-3 space-y-2">
+    <div className="h-full flex flex-col">
+      {/* Progression */}
+      <div className="px-3 pt-3 pb-2 space-y-1.5">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Progression</span>
-          <span className="text-[10px] font-mono text-muted-foreground">{myCount} succès</span>
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Progression</span>
+          <span className="text-[10px] font-mono text-muted-foreground">{myCount}</span>
         </div>
-        <div className="relative h-1.5 bg-secondary rounded-full overflow-hidden">
+        <div className="relative h-1 bg-muted rounded-full overflow-hidden">
           <div className="h-full bg-gradient-to-r from-yellow-500 to-amber-400 rounded-full transition-all duration-700 ease-out"
             style={{ width: `${Math.min(progressPercent, 100)}%` }} />
         </div>
         {nextMilestone && (
           <p className="text-[9px] text-muted-foreground">
-            → <span className="font-semibold text-foreground">{nextMilestone.label}</span> ({nextMilestone.count - myCount} restants)
+            → {nextMilestone.label} ({nextMilestone.count - myCount} restants)
           </p>
         )}
-
         <Collapsible open={milestonesOpen} onOpenChange={setMilestonesOpen}>
-          <CollapsibleTrigger className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors w-full pt-1">
-            <ChevronDown className={cn("w-3 h-3 transition-transform", milestonesOpen && "rotate-180")} />
-            <span>Paliers à débloquer</span>
+          <CollapsibleTrigger className="flex items-center gap-1 text-[9px] text-muted-foreground hover:text-foreground transition-colors w-full">
+            <ChevronDown className={cn("w-2.5 h-2.5 transition-transform", milestonesOpen && "rotate-180")} />
+            <span>Paliers</span>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="space-y-1 pt-1.5">
+            <div className="space-y-0.5 pt-1">
               {MILESTONES.map((m) => {
                 const unlocked = myCount >= m.count;
                 return (
                   <div key={m.count} className={cn(
-                    "flex items-center gap-1.5 px-2 py-1 rounded text-[10px]",
+                    "flex items-center gap-1.5 px-1 py-0.5 rounded text-[9px]",
                     unlocked ? "text-yellow-500" : "text-muted-foreground"
                   )}>
-                    {unlocked ? <Star className="w-2.5 h-2.5 fill-yellow-500" /> : <Lock className="w-2.5 h-2.5" />}
-                    <span className="font-medium">{m.label}</span>
-                    <span className="ml-auto text-[9px]">{m.visible || unlocked ? m.reward : "🔒"}</span>
+                    {unlocked ? <Star className="w-2 h-2 fill-yellow-500" /> : <Lock className="w-2 h-2" />}
+                    <span>{m.label}</span>
+                    <span className="ml-auto">{m.visible || unlocked ? m.reward : "🔒"}</span>
                   </div>
                 );
               })}
@@ -320,52 +325,45 @@ const RightSidebar = ({ myCount, onlineUsers, allUsers, isAdmin }: {
         </Collapsible>
       </div>
 
-      {/* Online Users */}
-      <div className="border border-border bg-card rounded-lg p-3">
-        <div className="flex items-center gap-1.5 mb-2">
-          <Circle className="w-2 h-2 fill-emerald-500 text-emerald-500" />
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-            En ligne — {onlineUsers.length}
-          </span>
-        </div>
-        <div className="space-y-1">
-          {onlineUsers.map((u) => (
-            <div key={u.user_id} className="flex items-center gap-2 py-0.5">
-              <div className="relative flex-shrink-0">
-                <UserAvatar avatarUrl={u.avatar_url} name={u.display_name} size="sm" />
-                <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-card" />
-              </div>
-              <span className="text-[10px] font-medium text-foreground truncate">{u.display_name}</span>
-            </div>
-          ))}
-          {onlineUsers.length === 0 && (
-            <p className="text-[10px] text-muted-foreground italic">Personne en ligne</p>
-          )}
-        </div>
-      </div>
+      <div className="border-t border-border/50 my-1" />
 
-      {/* Offline Users — admin only */}
-      {isAdmin && offlineUsers.length > 0 && (
-        <div className="border border-border bg-card rounded-lg p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Circle className="w-2 h-2 fill-muted-foreground text-muted-foreground" />
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Hors ligne — {offlineUsers.length}
-            </span>
-          </div>
-          <div className="space-y-1">
-            {offlineUsers.map((u) => (
-              <div key={u.user_id} className="flex items-center gap-2 py-0.5 opacity-50">
-                <div className="relative flex-shrink-0">
-                  <UserAvatar avatarUrl={u.avatar_url} name={u.display_name} size="sm" />
-                  <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-muted-foreground border border-card" />
-                </div>
-                <span className="text-[10px] font-medium text-foreground truncate">{u.display_name}</span>
+      {/* Members list — Discord style */}
+      <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-3">
+        {/* Online section */}
+        <div>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1 mb-1.5">
+            En ligne — {onlineUsers.length}
+          </p>
+          <div className="space-y-0.5">
+            {onlineUsers.map((u) => (
+              <div key={u.user_id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted/40 transition-colors cursor-default">
+                <UserAvatar avatarUrl={u.avatar_url} name={u.display_name} size="sm" statusColor="bg-emerald-500" />
+                <span className="text-xs font-medium text-foreground truncate">{u.display_name}</span>
               </div>
             ))}
+            {onlineUsers.length === 0 && (
+              <p className="text-[10px] text-muted-foreground/50 italic px-2">Personne en ligne</p>
+            )}
           </div>
         </div>
-      )}
+
+        {/* Offline section — admin only */}
+        {isAdmin && offlineUsers.length > 0 && (
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest px-1 mb-1.5">
+              Hors ligne — {offlineUsers.length}
+            </p>
+            <div className="space-y-0.5">
+              {offlineUsers.map((u) => (
+                <div key={u.user_id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted/40 transition-colors cursor-default opacity-40">
+                  <UserAvatar avatarUrl={u.avatar_url} name={u.display_name} size="sm" statusColor="bg-muted-foreground" />
+                  <span className="text-xs font-medium text-foreground truncate">{u.display_name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -388,7 +386,8 @@ const SuccessPage = () => {
   const [userRole, setUserRole] = useState<string>("member");
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [allUsers, setAllUsers] = useState<AllUser[]>([]);
-  const [activeTab, setActiveTab] = useState("discussion");
+  const [activeView, setActiveView] = useState<"discussion" | "leaderboard">("discussion");
+  const [showMembers, setShowMembers] = useState(true);
   const { fireConfetti } = useSuccessConfetti();
   const { trades: personalTrades } = usePersonalTrades();
   const isAdmin = userRole === "admin" || userRole === "super_admin";
@@ -405,25 +404,15 @@ const SuccessPage = () => {
       setUserId(user.id);
       fetchSuccesses(user.id);
 
-      // Get role
       const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .single();
+        .from("user_roles").select("role").eq("user_id", user.id).single();
       if (roleData) setUserRole(roleData.role);
 
-      // Get profile for presence
       const { data: profile } = await supabase
-        .from("profiles")
-        .select("display_name, avatar_url")
-        .eq("user_id", user.id)
-        .single();
+        .from("profiles").select("display_name, avatar_url").eq("user_id", user.id).single();
 
-      // Fetch all profiles for offline users list
       const { data: allProfiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, avatar_url");
+        .from("profiles").select("user_id, display_name, avatar_url");
       if (allProfiles) {
         setAllUsers(allProfiles.map((p: any) => ({
           user_id: p.user_id,
@@ -464,7 +453,6 @@ const SuccessPage = () => {
       })
       .subscribe();
 
-    // Listen for @everyone notifications
     const notifChannel = supabase
       .channel("my_notifications")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "user_notifications" }, (payload) => {
@@ -486,11 +474,8 @@ const SuccessPage = () => {
 
   const fetchSuccesses = async (uid: string) => {
     setLoading(true);
-
     const { data, error } = await supabase
-      .from("user_successes")
-      .select("*")
-      .order("created_at", { ascending: true });
+      .from("user_successes").select("*").order("created_at", { ascending: true });
 
     if (error) { console.error(error); setLoading(false); return; }
 
@@ -503,7 +488,6 @@ const SuccessPage = () => {
         supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", userIds),
         supabase.from("user_roles").select("user_id, role").in("user_id", userIds),
       ]);
-
       if (profilesRes.data) {
         profileMap = Object.fromEntries(
           profilesRes.data.map((p: any) => [p.user_id, { display_name: p.display_name || "Anonyme", avatar_url: p.avatar_url }])
@@ -562,23 +546,15 @@ const SuccessPage = () => {
   };
 
   const sendEveryoneNotification = useCallback(async (senderName: string) => {
-    // Get all active user IDs
     const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id")
-      .eq("status", "active");
-
+      .from("profiles").select("user_id").eq("status", "active");
     if (!profiles) return;
-
     const notifs = profiles
       .filter((p) => p.user_id !== userId)
       .map((p) => ({
-        user_id: p.user_id,
-        sender_id: userId,
-        type: "mention",
+        user_id: p.user_id, sender_id: userId, type: "mention",
         message: `📢 ${senderName} a mentionné @everyone dans les Succès !`,
       }));
-
     if (notifs.length > 0) {
       await supabase.from("user_notifications").insert(notifs as any);
     }
@@ -587,10 +563,8 @@ const SuccessPage = () => {
   const handleSend = async () => {
     if (!userId) return;
     if (!selectedFile && !message.trim() && !selectedTrade) {
-      toast.error("Ajoutez un message ou une image.");
-      return;
+      toast.error("Ajoutez un message ou une image."); return;
     }
-
     setUploading(true);
     let imagePath = "";
 
@@ -611,16 +585,12 @@ const SuccessPage = () => {
     const { error: insertError } = await supabase
       .from("user_successes")
       .insert({
-        user_id: userId,
-        image_path: imagePath,
-        success_type: selectedType,
-        message: message.trim() || null,
-        linked_trade_id: selectedTrade?.id || null,
+        user_id: userId, image_path: imagePath, success_type: selectedType,
+        message: message.trim() || null, linked_trade_id: selectedTrade?.id || null,
       } as any);
 
     if (insertError) { toast.error(`Erreur: ${insertError.message}`); setUploading(false); return; }
 
-    // Check for @everyone mention
     if (message.includes("@everyone")) {
       const { data: myProfile } = await supabase.from("profiles").select("display_name").eq("user_id", userId).single();
       sendEveryoneNotification(myProfile?.display_name || "Quelqu'un");
@@ -647,43 +617,68 @@ const SuccessPage = () => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const insertMention = () => {
-    setMessage((prev) => prev + "@everyone ");
-  };
+  const insertMention = () => { setMessage((prev) => prev + "@everyone "); };
 
   return (
     <div className="h-full overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-hidden flex flex-col max-w-7xl mx-auto w-full">
-        {/* Main content */}
-        <div className="flex-1 overflow-hidden flex">
-          {/* Left: Tabs (Discussion / Leaderboard) */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border flex-shrink-0">
-              <TabsList className="bg-muted/50 h-8">
-                <TabsTrigger value="discussion" className="text-xs gap-1.5 px-3 h-7">
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  Discussion
-                </TabsTrigger>
-                <TabsTrigger value="leaderboard" className="text-xs gap-1.5 px-3 h-7">
-                  <Award className="w-3.5 h-3.5" />
-                  Leaderboard
-                </TabsTrigger>
-              </TabsList>
-              <Badge variant="secondary" className="text-xs font-mono">{successes.length} messages</Badge>
-            </div>
+      {/* ─── Discord-style Top Bar ─── */}
+      <div className="flex items-center h-12 px-3 sm:px-4 border-b border-border bg-card flex-shrink-0 gap-2">
+        <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+        <div className="flex items-center gap-1 min-w-0">
+          <button
+            onClick={() => setActiveView("discussion")}
+            className={cn(
+              "px-2.5 py-1 rounded text-xs sm:text-sm font-semibold transition-colors",
+              activeView === "discussion" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Discussion
+          </button>
+          <span className="text-muted-foreground/30 text-xs">|</span>
+          <button
+            onClick={() => setActiveView("leaderboard")}
+            className={cn(
+              "px-2.5 py-1 rounded text-xs sm:text-sm font-semibold transition-colors",
+              activeView === "leaderboard" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Leaderboard
+          </button>
+        </div>
 
-            {/* Discussion Tab */}
-            <TabsContent value="discussion" className="flex-1 flex flex-col overflow-hidden mt-0">
+        <div className="ml-auto flex items-center gap-2">
+          <Badge variant="secondary" className="text-[10px] font-mono hidden sm:flex">{successes.length} msg</Badge>
+          <button
+            onClick={() => setShowMembers(!showMembers)}
+            className={cn(
+              "p-1.5 rounded transition-colors",
+              showMembers ? "text-foreground bg-muted/50" : "text-muted-foreground hover:text-foreground"
+            )}
+            title="Membres"
+          >
+            <Users className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Main Content ─── */}
+      <div className="flex-1 overflow-hidden flex">
+        {/* Center — Chat or Leaderboard */}
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          {activeView === "discussion" ? (
+            <>
+              {/* Chat feed */}
               <div className="flex-1 overflow-y-auto">
                 {loading ? (
                   <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
                 ) : successes.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <div className="text-center py-16 text-muted-foreground">
+                    <Trophy className="w-10 h-10 mx-auto mb-3 opacity-20" />
                     <p className="text-sm">Aucun succès partagé pour le moment.</p>
+                    <p className="text-[11px] text-muted-foreground/50 mt-1">Soyez le premier à partager !</p>
                   </div>
                 ) : (
-                  <div>
+                  <div className="py-2">
                     {successes.map((s) => (
                       <ChatMessage key={s.id} entry={s} signedUrl={signedUrls[s.id]} isOwn={s.user_id === userId}
                         onDelete={() => handleDelete(s.id, s.image_path)} />
@@ -693,13 +688,13 @@ const SuccessPage = () => {
                 <div ref={feedEndRef} />
               </div>
 
-              {/* Composer */}
-              <div className="border-t border-border p-3 flex-shrink-0 bg-card">
+              {/* ─── Composer (Discord-style) ─── */}
+              <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-0 flex-shrink-0">
                 {(filePreview || selectedTrade) && (
-                  <div className="flex items-start gap-2 mb-2 flex-wrap">
+                  <div className="flex items-start gap-2 mb-2 flex-wrap px-1">
                     {filePreview && (
                       <div className="relative">
-                        <img src={filePreview} alt="Preview" className="h-20 w-auto rounded-lg border border-border object-cover" />
+                        <img src={filePreview} alt="Preview" className="h-16 sm:h-20 w-auto rounded-lg border border-border object-cover" />
                         <button onClick={clearFile} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center">
                           <X className="w-3 h-3" />
                         </button>
@@ -711,33 +706,34 @@ const SuccessPage = () => {
                   </div>
                 )}
 
-                <div className="flex items-end gap-2">
-                  <div className="flex gap-0.5 flex-shrink-0">
-                    <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                <div className="flex items-end gap-1.5 sm:gap-2 bg-muted/30 border border-border rounded-lg px-2 sm:px-3 py-1.5 sm:py-2">
+                  <div className="flex gap-0.5 flex-shrink-0 pb-0.5">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"
                       onClick={() => fileInputRef.current?.click()}>
                       <Paperclip className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                      onClick={insertMention} title="@everyone">
-                      <AtSign className="w-4 h-4" />
                     </Button>
                     <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
                   </div>
 
-                  <div className="flex-1">
-                    <Textarea value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown}
-                      placeholder="Partagez votre succès…" className="min-h-[40px] max-h-32 resize-none bg-muted/50 border-border text-sm" rows={1} />
-                  </div>
+                  <Textarea value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown}
+                    placeholder="Envoyer un message dans #chatroom"
+                    className="flex-1 min-h-[36px] max-h-28 resize-none bg-transparent border-none text-sm placeholder:text-muted-foreground/40 focus-visible:ring-0 focus-visible:ring-offset-0 p-1" rows={1} />
 
-                  <Button onClick={handleSend} disabled={uploading || (!selectedFile && !message.trim() && !selectedTrade)}
-                    size="icon" className="h-9 w-9 flex-shrink-0">
-                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  </Button>
+                  <div className="flex gap-0.5 flex-shrink-0 pb-0.5">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      onClick={insertMention} title="@everyone">
+                      <AtSign className="w-4 h-4" />
+                    </Button>
+                    <Button onClick={handleSend} disabled={uploading || (!selectedFile && !message.trim() && !selectedTrade)}
+                      size="icon" className="h-8 w-8 flex-shrink-0">
+                      {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <div className="flex items-center gap-2 mt-1.5 px-1 flex-wrap">
                   <Select value={selectedType} onValueChange={setSelectedType}>
-                    <SelectTrigger className="h-7 w-auto text-[10px] bg-muted/50 border-border gap-1 px-2"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-6 w-auto text-[10px] bg-transparent border-border/50 gap-1 px-2"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-popover z-50">
                       {SUCCESS_TYPES.map((t) => <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>)}
                     </SelectContent>
@@ -747,19 +743,21 @@ const SuccessPage = () => {
                   )}
                 </div>
               </div>
-            </TabsContent>
-
-            {/* Leaderboard Tab */}
-            <TabsContent value="leaderboard" className="flex-1 overflow-y-auto mt-0 p-4">
+            </>
+          ) : (
+            /* ─── Leaderboard View ─── */
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
               <SuccessLeaderboard />
-            </TabsContent>
-          </Tabs>
-
-          {/* Right sidebar (desktop) */}
-          <div className="hidden lg:block w-56 border-l border-border overflow-y-auto p-3">
-            <RightSidebar myCount={myCount} onlineUsers={onlineUsers} allUsers={allUsers} isAdmin={isAdmin} />
-          </div>
+            </div>
+          )}
         </div>
+
+        {/* ─── Right sidebar — Discord member list ─── */}
+        {showMembers && (
+          <div className="hidden md:flex w-52 lg:w-60 border-l border-border bg-card/50 flex-col overflow-hidden">
+            <MemberSidebar myCount={myCount} onlineUsers={onlineUsers} allUsers={allUsers} isAdmin={isAdmin} />
+          </div>
+        )}
       </div>
     </div>
   );
