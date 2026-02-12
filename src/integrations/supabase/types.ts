@@ -580,6 +580,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          created_at: string
+          device_info: string | null
+          id: string
+          session_token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          session_token?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          session_token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_successes: {
         Row: {
           created_at: string
@@ -821,7 +848,7 @@ export type Database = {
         | "pending_review"
         | "validated"
         | "rejected"
-      user_status: "active" | "frozen" | "banned"
+      user_status: "active" | "frozen" | "banned" | "pending"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -957,7 +984,7 @@ export const Constants = {
         "validated",
         "rejected",
       ],
-      user_status: ["active", "frozen", "banned"],
+      user_status: ["active", "frozen", "banned", "pending"],
     },
   },
 } as const
