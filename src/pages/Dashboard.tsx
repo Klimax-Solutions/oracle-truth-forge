@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { DataSourceSelector, DataSource } from "@/components/dashboard/DataSourceSelector";
 import { usePersonalTrades } from "@/hooks/usePersonalTrades";
 import { useQuestData } from "@/hooks/useQuestData";
+import { ProfileSettingsDialog } from "@/components/dashboard/ProfileSettingsDialog";
 import { DataAnalysisPage } from "@/components/dashboard/DataAnalysisPage";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
@@ -60,18 +61,29 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("execution");
   const [databaseFilters, setDatabaseFilters] = useState<any>(null);
   const [dataSource, setDataSource] = useState<DataSource>("all");
+  const [displayName, setDisplayName] = useState<string>("");
   const { trades: personalTrades } = usePersonalTrades();
   const { isAdmin, isSuperAdmin } = useSidebarRoles();
   const questData = useQuestData();
   const navigate = useNavigate();
 
   useEffect(() => {
+    const fetchDisplayName = async (uid: string) => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", uid)
+        .single();
+      if (data?.display_name) setDisplayName(data.display_name);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (!session) {
           navigate("/auth");
         } else {
           setUser(session.user);
+          fetchDisplayName(session.user.id);
         }
         setLoading(false);
       }
@@ -82,6 +94,7 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
+        fetchDisplayName(session.user.id);
       }
       setLoading(false);
     });
@@ -241,7 +254,7 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Mobile Header */}
       <MobileHeader
-        userEmail={user?.email || ""}
+        userEmail={displayName || user?.email?.split("@")[0] || ""}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onLogout={handleLogout}
@@ -261,12 +274,13 @@ const Dashboard = () => {
         <header className="hidden md:block border-b border-border bg-card">
           <div className="px-6 py-4 flex items-center justify-between">
             <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-              {user?.email}
+              {displayName || user?.email?.split("@")[0] || ""}
             </span>
             <div className="flex items-center gap-3">
               {showDataSourceSelector && (
                 <DataSourceSelector value={dataSource} onChange={setDataSource} />
               )}
+              <ProfileSettingsDialog onDisplayNameChange={setDisplayName} />
               <ThemeToggle />
               <Button
                 variant="ghost"
