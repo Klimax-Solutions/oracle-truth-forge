@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Trophy, Lock, Star, Loader2, Trash2, Send,
   Paperclip, X, Search, TrendingUp, TrendingDown, ChevronDown, Circle,
-  Shield, AtSign,
+  Shield, AtSign, MessageSquare, Award,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface SuccessEntry {
   id: string;
@@ -38,6 +39,12 @@ interface SuccessEntry {
 }
 
 interface OnlineUser {
+  user_id: string;
+  display_name: string;
+  avatar_url?: string | null;
+}
+
+interface AllUser {
   user_id: string;
   display_name: string;
   avatar_url?: string | null;
@@ -175,12 +182,12 @@ const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
   const roleCfg = ROLE_BADGE_MAP[entry.role || "member"] || ROLE_BADGE_MAP.member;
   const isAdmin = entry.role === "admin" || entry.role === "super_admin";
 
-  // Render message with @everyone highlighted
+  // Render message with @everyone highlighted — Discord yellow style
   const renderMessage = (msg: string) => {
     const parts = msg.split(/(@everyone)/g);
     return parts.map((part, i) =>
       part === "@everyone" ? (
-        <span key={i} className="bg-primary/20 text-primary px-1 rounded font-semibold">@everyone</span>
+        <span key={i} className="bg-yellow-500/20 text-yellow-300 px-1 rounded font-semibold cursor-pointer hover:bg-yellow-500/30 transition-colors">@everyone</span>
       ) : part
     );
   };
@@ -255,7 +262,12 @@ const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
 };
 
 /* ─── Right Sidebar ─── */
-const RightSidebar = ({ myCount, onlineUsers }: { myCount: number; onlineUsers: OnlineUser[] }) => {
+const RightSidebar = ({ myCount, onlineUsers, allUsers, isAdmin }: {
+  myCount: number;
+  onlineUsers: OnlineUser[];
+  allUsers: AllUser[];
+  isAdmin: boolean;
+}) => {
   const [milestonesOpen, setMilestonesOpen] = useState(false);
   const currentMilestoneIndex = MILESTONES.findIndex((m) => myCount < m.count);
   const nextMilestone = currentMilestoneIndex >= 0 ? MILESTONES[currentMilestoneIndex] : null;
@@ -263,6 +275,9 @@ const RightSidebar = ({ myCount, onlineUsers }: { myCount: number; onlineUsers: 
   const progressPercent = nextMilestone
     ? ((myCount - prevMilestoneCount) / (nextMilestone.count - prevMilestoneCount)) * 100
     : 100;
+
+  const onlineUserIds = new Set(onlineUsers.map((u) => u.user_id));
+  const offlineUsers = allUsers.filter((u) => !onlineUserIds.has(u.user_id));
 
   return (
     <div className="space-y-4">
@@ -330,6 +345,29 @@ const RightSidebar = ({ myCount, onlineUsers }: { myCount: number; onlineUsers: 
           )}
         </div>
       </div>
+
+      {/* Offline Users — admin only */}
+      {isAdmin && offlineUsers.length > 0 && (
+        <div className="border border-border bg-card rounded-lg p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Circle className="w-2 h-2 fill-muted-foreground text-muted-foreground" />
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Hors ligne — {offlineUsers.length}
+            </span>
+          </div>
+          <div className="space-y-1">
+            {offlineUsers.map((u) => (
+              <div key={u.user_id} className="flex items-center gap-2 py-0.5 opacity-50">
+                <div className="relative flex-shrink-0">
+                  <UserAvatar avatarUrl={u.avatar_url} name={u.display_name} size="sm" />
+                  <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-muted-foreground border border-card" />
+                </div>
+                <span className="text-[10px] font-medium text-foreground truncate">{u.display_name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -351,8 +389,11 @@ const SuccessPage = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("member");
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [allUsers, setAllUsers] = useState<AllUser[]>([]);
+  const [activeTab, setActiveTab] = useState("discussion");
   const { fireConfetti } = useSuccessConfetti();
   const { trades: personalTrades } = usePersonalTrades();
+  const isAdmin = userRole === "admin" || userRole === "super_admin";
 
   const scrollToBottom = () => { feedEndRef.current?.scrollIntoView({ behavior: "smooth" }); };
 
@@ -380,6 +421,18 @@ const SuccessPage = () => {
         .select("display_name, avatar_url")
         .eq("user_id", user.id)
         .single();
+
+      // Fetch all profiles for offline users list
+      const { data: allProfiles } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url");
+      if (allProfiles) {
+        setAllUsers(allProfiles.map((p: any) => ({
+          user_id: p.user_id,
+          display_name: p.display_name || "Anonyme",
+          avatar_url: p.avatar_url,
+        })));
+      }
 
       const displayName = profile?.display_name || "Anonyme";
       const avatarUrl = (profile as any)?.avatar_url || null;
@@ -603,99 +656,110 @@ const SuccessPage = () => {
   return (
     <div className="h-full overflow-hidden flex flex-col">
       <div className="flex-1 overflow-hidden flex flex-col max-w-7xl mx-auto w-full">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <Trophy className="w-5 h-5 text-yellow-500" />
-            <h1 className="text-lg font-bold tracking-tight">Vos Succès</h1>
-          </div>
-          <Badge variant="secondary" className="text-xs font-mono">{successes.length} messages</Badge>
-        </div>
-
         {/* Main content */}
         <div className="flex-1 overflow-hidden flex">
-          {/* Chat */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-4"><SuccessLeaderboard /></div>
-
-              {loading ? (
-                <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-              ) : successes.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">Aucun succès partagé pour le moment.</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-border/30">
-                  {successes.map((s) => (
-                    <ChatMessage key={s.id} entry={s} signedUrl={signedUrls[s.id]} isOwn={s.user_id === userId}
-                      onDelete={() => handleDelete(s.id, s.image_path)} />
-                  ))}
-                </div>
-              )}
-              <div ref={feedEndRef} />
+          {/* Left: Tabs (Discussion / Leaderboard) */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border flex-shrink-0">
+              <TabsList className="bg-muted/50 h-8">
+                <TabsTrigger value="discussion" className="text-xs gap-1.5 px-3 h-7">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Discussion
+                </TabsTrigger>
+                <TabsTrigger value="leaderboard" className="text-xs gap-1.5 px-3 h-7">
+                  <Award className="w-3.5 h-3.5" />
+                  Leaderboard
+                </TabsTrigger>
+              </TabsList>
+              <Badge variant="secondary" className="text-xs font-mono">{successes.length} messages</Badge>
             </div>
 
-            {/* Composer */}
-            <div className="border-t border-border p-3 flex-shrink-0 bg-card">
-              {(filePreview || selectedTrade) && (
-                <div className="flex items-start gap-2 mb-2 flex-wrap">
-                  {filePreview && (
-                    <div className="relative">
-                      <img src={filePreview} alt="Preview" className="h-20 w-auto rounded-lg border border-border object-cover" />
-                      <button onClick={clearFile} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
-                  {selectedTrade && (
+            {/* Discussion Tab */}
+            <TabsContent value="discussion" className="flex-1 flex flex-col overflow-hidden mt-0">
+              <div className="flex-1 overflow-y-auto">
+                {loading ? (
+                  <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+                ) : successes.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Aucun succès partagé pour le moment.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border/30">
+                    {successes.map((s) => (
+                      <ChatMessage key={s.id} entry={s} signedUrl={signedUrls[s.id]} isOwn={s.user_id === userId}
+                        onDelete={() => handleDelete(s.id, s.image_path)} />
+                    ))}
+                  </div>
+                )}
+                <div ref={feedEndRef} />
+              </div>
+
+              {/* Composer */}
+              <div className="border-t border-border p-3 flex-shrink-0 bg-card">
+                {(filePreview || selectedTrade) && (
+                  <div className="flex items-start gap-2 mb-2 flex-wrap">
+                    {filePreview && (
+                      <div className="relative">
+                        <img src={filePreview} alt="Preview" className="h-20 w-auto rounded-lg border border-border object-cover" />
+                        <button onClick={clearFile} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                    {selectedTrade && (
+                      <TradePicker trades={personalTrades} selectedTrade={selectedTrade} onSelect={setSelectedTrade} onClear={() => setSelectedTrade(null)} />
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-end gap-2">
+                  <div className="flex gap-0.5 flex-shrink-0">
+                    <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                      onClick={() => fileInputRef.current?.click()}>
+                      <Paperclip className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                      onClick={insertMention} title="@everyone">
+                      <AtSign className="w-4 h-4" />
+                    </Button>
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+                  </div>
+
+                  <div className="flex-1">
+                    <Textarea value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown}
+                      placeholder="Partagez votre succès…" className="min-h-[40px] max-h-32 resize-none bg-muted/50 border-border text-sm" rows={1} />
+                  </div>
+
+                  <Button onClick={handleSend} disabled={uploading || (!selectedFile && !message.trim() && !selectedTrade)}
+                    size="icon" className="h-9 w-9 flex-shrink-0">
+                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <Select value={selectedType} onValueChange={setSelectedType}>
+                    <SelectTrigger className="h-7 w-auto text-[10px] bg-muted/50 border-border gap-1 px-2"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-popover z-50">
+                      {SUCCESS_TYPES.map((t) => <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {!selectedTrade && (
                     <TradePicker trades={personalTrades} selectedTrade={selectedTrade} onSelect={setSelectedTrade} onClear={() => setSelectedTrade(null)} />
                   )}
                 </div>
-              )}
-
-              <div className="flex items-end gap-2">
-                <div className="flex gap-0.5 flex-shrink-0">
-                  <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                    onClick={() => fileInputRef.current?.click()}>
-                    <Paperclip className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                    onClick={insertMention} title="@everyone">
-                    <AtSign className="w-4 h-4" />
-                  </Button>
-                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
-                </div>
-
-                <div className="flex-1">
-                  <Textarea value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown}
-                    placeholder="Partagez votre succès…" className="min-h-[40px] max-h-32 resize-none bg-muted/50 border-border text-sm" rows={1} />
-                </div>
-
-                <Button onClick={handleSend} disabled={uploading || (!selectedFile && !message.trim() && !selectedTrade)}
-                  size="icon" className="h-9 w-9 flex-shrink-0">
-                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                </Button>
               </div>
+            </TabsContent>
 
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <Select value={selectedType} onValueChange={setSelectedType}>
-                  <SelectTrigger className="h-7 w-auto text-[10px] bg-muted/50 border-border gap-1 px-2"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-popover z-50">
-                    {SUCCESS_TYPES.map((t) => <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {!selectedTrade && (
-                  <TradePicker trades={personalTrades} selectedTrade={selectedTrade} onSelect={setSelectedTrade} onClear={() => setSelectedTrade(null)} />
-                )}
-              </div>
-            </div>
-          </div>
+            {/* Leaderboard Tab */}
+            <TabsContent value="leaderboard" className="flex-1 overflow-y-auto mt-0 p-4">
+              <SuccessLeaderboard />
+            </TabsContent>
+          </Tabs>
 
           {/* Right sidebar (desktop) */}
           <div className="hidden lg:block w-56 border-l border-border overflow-y-auto p-3">
-            <RightSidebar myCount={myCount} onlineUsers={onlineUsers} />
+            <RightSidebar myCount={myCount} onlineUsers={onlineUsers} allUsers={allUsers} isAdmin={isAdmin} />
           </div>
         </div>
       </div>
