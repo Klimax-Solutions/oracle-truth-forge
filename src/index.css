@@ -371,7 +371,31 @@
     border-left-color: hsl(45 80% 60% / 0.4);
   }
 
-  /* Vortex overlay */
+  /* Discord @user mention */
+  .discord-mention-user {
+    background-color: hsl(235 85% 65% / 0.15);
+    color: hsl(235 85% 50%);
+    padding: 0 2px;
+    border-radius: 3px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .discord-mention-user:hover {
+    background-color: hsl(235 85% 65% / 0.3);
+    text-decoration: underline;
+  }
+
+  .dark .discord-mention-user {
+    background-color: hsl(235 85% 65% / 0.2);
+    color: hsl(235 85% 75%);
+  }
+
+  .dark .discord-mention-user:hover {
+    background-color: hsl(235 85% 65% / 0.35);
+  }
+
+
   .auth-vortex-overlay {
     position: absolute;
     inset: 0;
