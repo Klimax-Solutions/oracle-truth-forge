@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Settings, Save, Loader2, Camera } from "lucide-react";
 import { toast } from "sonner";
+import { AvatarCropper } from "./AvatarCropper";
 
 interface ProfileSettingsDialogProps {
   onDisplayNameChange?: (name: string) => void;
@@ -18,6 +19,8 @@ export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDi
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -42,28 +45,42 @@ export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDi
     fetchProfile();
   }, [open]);
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Seules les images sont acceptées.");
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("L'image ne doit pas dépasser 2 Mo.");
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("L'image ne doit pas dépasser 5 Mo.");
       return;
     }
 
-    setUploading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
+      setCropperOpen(true);
+    };
+    reader.readAsDataURL(file);
+    // Reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
-    const ext = file.name.split(".").pop();
-    const filePath = `${user.id}/avatar.${ext}`;
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setCropperOpen(false);
+    setCropImageSrc(null);
+    setUploading(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setUploading(false); return; }
+
+    const filePath = `${user.id}/avatar.jpg`;
 
     // Remove old avatar if exists
     await supabase.storage.from("avatars").remove([filePath]);
 
+    const file = new File([croppedBlob], "avatar.jpg", { type: "image/jpeg" });
     const { error } = await supabase.storage
       .from("avatars")
       .upload(filePath, file, { upsert: true });
@@ -166,9 +183,19 @@ export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDi
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={handleAvatarUpload}
+                onChange={handleFileSelect}
               />
               <p className="text-[10px] text-muted-foreground">Cliquez pour changer l'avatar</p>
+
+              {/* Avatar Cropper */}
+              {cropImageSrc && (
+                <AvatarCropper
+                  imageSrc={cropImageSrc}
+                  open={cropperOpen}
+                  onClose={() => { setCropperOpen(false); setCropImageSrc(null); }}
+                  onCropComplete={handleCropComplete}
+                />
+              )}
             </div>
 
             {/* Display name */}

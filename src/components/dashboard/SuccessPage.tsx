@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { MentionAutocomplete } from "./MentionAutocomplete";
 
 interface SuccessEntry {
   id: string;
@@ -189,12 +190,17 @@ const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
   const isAdminUser = entry.role === "admin" || entry.role === "super_admin";
 
   const renderMessage = (msg: string) => {
-    const parts = msg.split(/(@everyone)/g);
-    return parts.map((part, i) =>
-      part === "@everyone" ? (
-        <span key={i} className="discord-mention-everyone">@everyone</span>
-      ) : part
-    );
+    // Match @everyone and @username mentions
+    const parts = msg.split(/(@everyone|@\w[\w\s]*?\b)/g);
+    return parts.map((part, i) => {
+      if (part === "@everyone") {
+        return <span key={i} className="discord-mention-everyone">@everyone</span>;
+      }
+      if (part.startsWith("@") && part.length > 1) {
+        return <span key={i} className="discord-mention-user">@{part.slice(1)}</span>;
+      }
+      return part;
+    });
   };
 
   const hasEveryone = entry.message?.includes("@everyone");
@@ -387,6 +393,7 @@ const SuccessPage = () => {
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<PersonalTrade | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const feedEndRef = useRef<HTMLDivElement>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("member");
@@ -566,6 +573,36 @@ const SuccessPage = () => {
     }
   }, [userId]);
 
+  const sendUserMentionNotification = useCallback(async (mentionedUserId: string, senderName: string) => {
+    if (mentionedUserId === userId) return; // Don't notify self
+    await supabase.from("user_notifications").insert({
+      user_id: mentionedUserId, sender_id: userId, type: "mention",
+      message: `💬 ${senderName} vous a mentionné dans les Succès !`,
+    } as any);
+  }, [userId]);
+
+  const handleMentionSelect = useCallback((user: { user_id: string; display_name: string }) => {
+    const cursorPos = textareaRef.current?.selectionStart ?? message.length;
+    const textBeforeCursor = message.slice(0, cursorPos);
+    const textAfterCursor = message.slice(cursorPos);
+    
+    // Find and replace the @query with the mention
+    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+    if (mentionMatch) {
+      const beforeMention = textBeforeCursor.slice(0, mentionMatch.index);
+      const mentionText = user.user_id === "__everyone__" ? "@everyone" : `@${user.display_name}`;
+      const newMessage = beforeMention + mentionText + " " + textAfterCursor;
+      setMessage(newMessage);
+      
+      // Focus back on textarea
+      setTimeout(() => {
+        textareaRef.current?.focus();
+        const newCursorPos = beforeMention.length + mentionText.length + 1;
+        textareaRef.current?.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+    }
+  }, [message]);
+
   const handleSend = async () => {
     if (!userId) return;
     if (!selectedFile && !message.trim() && !selectedTrade) {
@@ -597,9 +634,22 @@ const SuccessPage = () => {
 
     if (insertError) { toast.error(`Erreur: ${insertError.message}`); setUploading(false); return; }
 
+    const { data: myProfile } = await supabase.from("profiles").select("display_name").eq("user_id", userId).single();
+    const senderName = myProfile?.display_name || "Quelqu'un";
+
     if (message.includes("@everyone")) {
-      const { data: myProfile } = await supabase.from("profiles").select("display_name").eq("user_id", userId).single();
-      sendEveryoneNotification(myProfile?.display_name || "Quelqu'un");
+      sendEveryoneNotification(senderName);
+    }
+
+    // Send individual @mention notifications
+    const mentionRegex = /@(\w[\w\s]*?\b)/g;
+    let match;
+    while ((match = mentionRegex.exec(message)) !== null) {
+      if (match[1] === "everyone") continue;
+      const mentionedUser = allUsers.find((u) => u.display_name === match![1]);
+      if (mentionedUser) {
+        sendUserMentionNotification(mentionedUser.user_id, senderName);
+      }
     }
 
     toast.success("Succès partagé !");
@@ -623,7 +673,7 @@ const SuccessPage = () => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const insertMention = () => { setMessage((prev) => prev + "@everyone "); };
+  const insertMention = () => { setMessage((prev) => prev + "@"); textareaRef.current?.focus(); };
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -715,7 +765,13 @@ const SuccessPage = () => {
                   </div>
                 )}
 
-                <div className="flex items-end gap-1.5 sm:gap-2 bg-muted/40 border border-border/60 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors focus-within:border-muted-foreground/30">
+                <div className="relative flex items-end gap-1.5 sm:gap-2 bg-muted/40 border border-border/60 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors focus-within:border-muted-foreground/30">
+                  <MentionAutocomplete
+                    allUsers={allUsers}
+                    message={message}
+                    onSelect={handleMentionSelect}
+                    textareaRef={textareaRef as React.RefObject<HTMLTextAreaElement>}
+                  />
                   <div className="flex gap-0.5 flex-shrink-0 pb-0.5">
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"
                       onClick={() => fileInputRef.current?.click()}>
@@ -724,7 +780,7 @@ const SuccessPage = () => {
                     <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
                   </div>
 
-                  <Textarea value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown}
+                  <Textarea ref={textareaRef} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown}
                     placeholder="Envoyer un message dans #chatroom"
                     className="flex-1 min-h-[36px] max-h-28 resize-none bg-transparent border-none text-sm placeholder:text-muted-foreground/40 focus-visible:ring-0 focus-visible:ring-offset-0 p-1" rows={1} />
 
