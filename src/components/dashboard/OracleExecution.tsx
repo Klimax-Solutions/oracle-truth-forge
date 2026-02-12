@@ -247,33 +247,90 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
 
       if (requestError) throw requestError;
 
-      // Update user cycle status
-      const { error: updateError } = await supabase
-        .from("user_cycles")
-        .update({ 
-          status: "pending_review",
-          completed_at: new Date().toISOString(),
-          completed_trades: cycleData.currentTrades.length,
-          total_rr: cycleData.currentRR,
-        })
-        .eq("id", cycleData.userCycle.id);
+      // For cycles 1+, check accuracy for auto-validation (90%+ = auto-approve)
+      if (cycleData.cycle_number > 0) {
+        const { data: accuracy, error: accError } = await supabase.rpc(
+          "check_cycle_accuracy_and_auto_validate",
+          {
+            p_user_id: user.id,
+            p_cycle_id: cycleData.id,
+            p_user_cycle_id: cycleData.userCycle.id,
+          }
+        );
 
-      if (updateError) throw updateError;
+        if (accError) throw accError;
 
-      // Refresh user cycles
-      const { data: updatedUserCycles } = await supabase
-        .from("user_cycles")
-        .select("*")
-        .eq("user_id", user.id);
+        const accuracyValue = Number(accuracy) || 0;
 
-      if (updatedUserCycles) {
-        setUserCycles(updatedUserCycles as UserCycle[]);
+        // Refresh user cycles
+        const { data: updatedUserCycles } = await supabase
+          .from("user_cycles")
+          .select("*")
+          .eq("user_id", user.id);
+
+        if (updatedUserCycles) {
+          setUserCycles(updatedUserCycles as UserCycle[]);
+        }
+
+        if (accuracyValue >= 90) {
+          toast({
+            title: "🎉 Cycle validé automatiquement !",
+            description: `Précision de ${accuracyValue.toFixed(1)}% — Le palier suivant est débloqué !`,
+          });
+        } else {
+          // Below 90%: set to pending_review for admin
+          const { error: updateError } = await supabase
+            .from("user_cycles")
+            .update({
+              status: "pending_review",
+              completed_at: new Date().toISOString(),
+              completed_trades: cycleData.userExecutions.length,
+              total_rr: cycleData.userRR,
+            })
+            .eq("id", cycleData.userCycle.id);
+
+          if (updateError) throw updateError;
+
+          // Re-refresh after update
+          const { data: reUpdated } = await supabase
+            .from("user_cycles")
+            .select("*")
+            .eq("user_id", user.id);
+          if (reUpdated) setUserCycles(reUpdated as UserCycle[]);
+
+          toast({
+            title: "Demande envoyée !",
+            description: `Précision de ${accuracyValue.toFixed(1)}% — Un administrateur doit valider votre cycle.`,
+          });
+        }
+      } else {
+        // Ébauche (cycle 0): always needs admin review
+        const { error: updateError } = await supabase
+          .from("user_cycles")
+          .update({
+            status: "pending_review",
+            completed_at: new Date().toISOString(),
+            completed_trades: cycleData.currentTrades.length,
+            total_rr: cycleData.currentRR,
+          })
+          .eq("id", cycleData.userCycle.id);
+
+        if (updateError) throw updateError;
+
+        const { data: updatedUserCycles } = await supabase
+          .from("user_cycles")
+          .select("*")
+          .eq("user_id", user.id);
+
+        if (updatedUserCycles) {
+          setUserCycles(updatedUserCycles as UserCycle[]);
+        }
+
+        toast({
+          title: "Demande envoyée !",
+          description: "Votre demande de vérification a été soumise. Vous serez notifié dès validation.",
+        });
       }
-
-      toast({
-        title: "Demande envoyée !",
-        description: "Votre demande de vérification a été soumise. Vous serez notifié dès validation.",
-      });
     } catch (error) {
       console.error("Error requesting verification:", error);
       toast({
