@@ -128,7 +128,7 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
           </div>
         )}
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-auto">
           <OraclePage trades={trades} initialFilters={initialFilters} analyzedTradeNumbers={analyzedTradeNumbers} onAnalysisToggle={onAnalysisToggle} />
         </div>
       </div>
@@ -154,7 +154,7 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
             <span className="text-sm font-medium">Setup Perso</span>
           </div>
         </div>
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-auto">
           <SetupPerso />
         </div>
       </div>
