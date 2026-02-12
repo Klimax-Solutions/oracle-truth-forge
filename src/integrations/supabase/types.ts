@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_trade_notes: {
+        Row: {
+          admin_id: string
+          created_at: string
+          execution_id: string
+          id: string
+          is_valid: boolean | null
+          note: string | null
+          updated_at: string
+          verification_request_id: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          execution_id: string
+          id?: string
+          is_valid?: boolean | null
+          note?: string | null
+          updated_at?: string
+          verification_request_id: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          execution_id?: string
+          id?: string
+          is_valid?: boolean | null
+          note?: string | null
+          updated_at?: string
+          verification_request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_trade_notes_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "user_executions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_trade_notes_verification_request_id_fkey"
+            columns: ["verification_request_id"]
+            isOneToOne: false
+            referencedRelation: "verification_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cycles: {
         Row: {
           created_at: string
