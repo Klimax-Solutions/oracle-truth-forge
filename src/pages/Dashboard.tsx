@@ -278,7 +278,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row">
+    <div className="h-screen bg-background flex flex-col md:flex-row overflow-hidden">
       {/* Mobile Header */}
       <MobileHeader
         userEmail={displayName || user?.email?.split("@")[0] || ""}
@@ -296,7 +296,7 @@ const Dashboard = () => {
       <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-0 md:min-h-screen">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Desktop Header - hidden on mobile */}
         <header className="hidden md:block border-b border-border bg-card">
           <div className="px-6 py-4 flex items-center justify-between">
