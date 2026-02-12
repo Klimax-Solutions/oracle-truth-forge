@@ -76,13 +76,47 @@ const Auth = () => {
         });
         if (error) throw error;
 
-        // Fetch first_name (priority) or display_name from profiles
         if (data.user) {
+          // Check user status
           const { data: profile } = await supabase
             .from("profiles")
-            .select("display_name, first_name")
+            .select("display_name, first_name, status")
             .eq("user_id", data.user.id)
             .single();
+
+          const status = (profile as any)?.status;
+
+          if (status === "pending") {
+            await supabase.auth.signOut();
+            toast({
+              title: "Compte en attente",
+              description: "Votre compte est en cours de validation par un administrateur. Vous serez notifié une fois approuvé.",
+            });
+            setIsLoading(false);
+            return;
+          }
+
+          if (status === "frozen" || status === "banned") {
+            await supabase.auth.signOut();
+            toast({
+              title: "Accès refusé",
+              description: status === "frozen" ? "Votre compte a été gelé." : "Votre compte a été banni.",
+              variant: "destructive",
+            });
+            setIsLoading(false);
+            return;
+          }
+
+          // Register device session
+          const sessionToken = crypto.randomUUID();
+          await supabase
+            .from("user_sessions")
+            .upsert({
+              user_id: data.user.id,
+              session_token: sessionToken,
+              device_info: navigator.userAgent,
+            }, { onConflict: "user_id" });
+          localStorage.setItem("oracle_session_token", sessionToken);
 
           setUserName((profile as any)?.first_name || profile?.display_name || email.split("@")[0]);
         }
@@ -113,8 +147,8 @@ const Auth = () => {
         });
         if (error) throw error;
         toast({
-          title: "Compte créé",
-          description: "Vous pouvez maintenant vous connecter.",
+          title: "Compte créé — En attente d'approbation",
+          description: "Un administrateur doit approuver votre compte avant que vous puissiez vous connecter.",
         });
         setMode("login");
         setIsLoading(false);

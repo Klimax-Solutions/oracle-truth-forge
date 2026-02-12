@@ -68,13 +68,39 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchDisplayName = async (uid: string) => {
+    const checkUserAccess = async (uid: string) => {
       const { data } = await supabase
         .from("profiles")
-        .select("display_name")
+        .select("display_name, status")
         .eq("user_id", uid)
         .single();
+      
       if (data?.display_name) setDisplayName(data.display_name);
+      
+      const status = (data as any)?.status;
+      if (status === "pending" || status === "frozen" || status === "banned") {
+        await supabase.auth.signOut();
+        navigate("/auth");
+        return false;
+      }
+
+      // Verify single device session
+      const localToken = localStorage.getItem("oracle_session_token");
+      if (localToken) {
+        const { data: session } = await supabase
+          .from("user_sessions")
+          .select("session_token")
+          .eq("user_id", uid)
+          .single();
+        
+        if (session && session.session_token !== localToken) {
+          await supabase.auth.signOut();
+          localStorage.removeItem("oracle_session_token");
+          navigate("/auth");
+          return false;
+        }
+      }
+      return true;
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -83,7 +109,7 @@ const Dashboard = () => {
           navigate("/auth");
         } else {
           setUser(session.user);
-          fetchDisplayName(session.user.id);
+          checkUserAccess(session.user.id);
         }
         setLoading(false);
       }
@@ -94,7 +120,7 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
-        fetchDisplayName(session.user.id);
+        checkUserAccess(session.user.id);
       }
       setLoading(false);
     });
@@ -157,6 +183,7 @@ const Dashboard = () => {
   };
 
   const handleLogout = async () => {
+    localStorage.removeItem("oracle_session_token");
     await supabase.auth.signOut();
     navigate("/auth");
   };
