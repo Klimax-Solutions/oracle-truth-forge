@@ -397,7 +397,7 @@ export const SetupPerso = () => {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col min-h-full">
       {/* Header */}
       <div className="p-3 md:p-6 border-b border-border">
         <div className="flex flex-col gap-3 md:gap-4 md:flex-row md:items-center md:justify-between mb-3 md:mb-4">

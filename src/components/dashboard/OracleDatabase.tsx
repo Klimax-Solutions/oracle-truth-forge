@@ -191,7 +191,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col min-h-full">
       {/* Header with stats - redesigned & responsive */}
       <div className="p-3 md:p-4 border-b border-border bg-card">
         {/* Mobile: Stack stats and filters */}

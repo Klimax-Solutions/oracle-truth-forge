@@ -322,7 +322,7 @@ const Dashboard = () => {
         </header>
 
         {/* Content area */}
-        <main className="flex-1 overflow-hidden bg-background">
+        <main className="flex-1 overflow-auto bg-background">
           <div className="h-full">
             {renderContent()}
           </div>

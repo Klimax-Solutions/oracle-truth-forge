@@ -141,7 +141,7 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
   }, [tradeComparisons]);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col min-h-full">
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="flex-1 flex flex-col">
         {/* Sub-tabs header - responsive */}
         <div className="border-b border-border bg-card px-3 md:px-6 py-2 md:py-3">
