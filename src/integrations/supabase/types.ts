@@ -648,6 +648,8 @@ export type Database = {
           created_at: string
           id: string
           image_path: string
+          linked_trade_id: string | null
+          message: string | null
           success_type: string | null
           user_id: string
         }
@@ -655,6 +657,8 @@ export type Database = {
           created_at?: string
           id?: string
           image_path: string
+          linked_trade_id?: string | null
+          message?: string | null
           success_type?: string | null
           user_id: string
         }
@@ -662,10 +666,20 @@ export type Database = {
           created_at?: string
           id?: string
           image_path?: string
+          linked_trade_id?: string | null
+          message?: string | null
           success_type?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_successes_linked_trade_id_fkey"
+            columns: ["linked_trade_id"]
+            isOneToOne: false
+            referencedRelation: "user_personal_trades"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_trade_analyses: {
         Row: {
