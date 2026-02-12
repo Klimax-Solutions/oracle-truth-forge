@@ -22,8 +22,11 @@ import {
   ExternalLink,
   Image as ImageIcon,
   ClipboardList,
+  MessageSquare,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -160,6 +163,9 @@ export const AdminVerification = () => {
   const [processing, setProcessing] = useState<string | null>(null);
   const [dataViewerUserId, setDataViewerUserId] = useState<string | null>(null);
   const [dataViewerUserName, setDataViewerUserName] = useState("");
+  const [tradeNotes, setTradeNotes] = useState<Record<string, string>>({});
+  const [tradeValidity, setTradeValidity] = useState<Record<string, boolean>>({});
+  const [savingNote, setSavingNote] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchCycles = async () => {
@@ -497,6 +503,74 @@ export const AdminVerification = () => {
     const avgRR = executions.length > 0 ? totalRR / executions.length : 0;
     
     return { totalRR, winRate, avgRR, wins, losses: executions.length - wins };
+  };
+
+  // Load existing trade notes for a request
+  const loadTradeNotes = async (requestId: string) => {
+    const { data } = await supabase
+      .from("admin_trade_notes")
+      .select("*")
+      .eq("verification_request_id", requestId);
+
+    if (data) {
+      const notes: Record<string, string> = {};
+      const validity: Record<string, boolean> = {};
+      data.forEach((n: any) => {
+        const key = `${requestId}_${n.execution_id}`;
+        notes[key] = n.note || "";
+        validity[key] = n.is_valid !== false;
+      });
+      setTradeNotes(prev => ({ ...prev, ...notes }));
+      setTradeValidity(prev => ({ ...prev, ...validity }));
+    }
+  };
+
+  // Save a per-trade note
+  const saveTradeNote = async (requestId: string, executionId: string, note: string, isValid: boolean) => {
+    const key = `${requestId}_${executionId}`;
+    setSavingNote(key);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("admin_trade_notes")
+        .upsert({
+          verification_request_id: requestId,
+          execution_id: executionId,
+          admin_id: user.id,
+          note,
+          is_valid: isValid,
+        }, { onConflict: "verification_request_id,execution_id" });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error saving trade note:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder la note.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingNote(null);
+    }
+  };
+
+  // Toggle trade validity
+  const toggleTradeValidity = (requestId: string, executionId: string) => {
+    const key = `${requestId}_${executionId}`;
+    const newValidity = !(tradeValidity[key] !== false);
+    setTradeValidity(prev => ({ ...prev, [key]: newValidity }));
+    const note = tradeNotes[key] || "";
+    saveTradeNote(requestId, executionId, note, newValidity);
+  };
+
+  // Calculate accuracy for a request based on comparisons
+  const getAccuracyPercent = (comparisons: ExecutionComparison[]) => {
+    if (comparisons.length === 0) return 0;
+    const matchCount = comparisons.filter(c => c.status === 'match').length;
+    return (matchCount / comparisons.length) * 100;
   };
 
   const getStatusIcon = (status: string) => {
@@ -931,7 +1005,11 @@ export const AdminVerification = () => {
                       {/* Request Header - Mobile */}
                       <div 
                         className="p-3 md:hidden cursor-pointer hover:bg-orange-500/10 transition-colors"
-                        onClick={() => setExpandedRequest(isExpanded ? null : request.id)}
+                        onClick={() => {
+                          const newId = isExpanded ? null : request.id;
+                          setExpandedRequest(newId);
+                          if (newId) loadTradeNotes(newId);
+                        }}
                       >
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div className="flex items-center gap-2 min-w-0">
@@ -979,7 +1057,11 @@ export const AdminVerification = () => {
                       {/* Request Header - Desktop */}
                       <div 
                         className="hidden md:block p-4 cursor-pointer hover:bg-orange-500/10 transition-colors"
-                        onClick={() => setExpandedRequest(isExpanded ? null : request.id)}
+                        onClick={() => {
+                          const newId = isExpanded ? null : request.id;
+                          setExpandedRequest(newId);
+                          if (newId) loadTradeNotes(newId);
+                        }}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
@@ -1065,27 +1147,50 @@ export const AdminVerification = () => {
                             </div>
                           </div>
 
-                          {/* Comparison Summary - Compact on mobile */}
-                          <div className="flex flex-wrap items-center gap-2 md:gap-4 p-2.5 md:p-3 bg-muted/30 rounded-md">
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-emerald-500" />
-                              <span className="text-[10px] md:text-xs font-mono">
-                                {request.comparisons.filter(c => c.status === 'match').length} OK
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-orange-500" />
-                              <span className="text-[10px] md:text-xs font-mono">
-                                {request.comparisons.filter(c => c.status === 'warning').length} &gt;5h
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-red-500" />
-                              <span className="text-[10px] md:text-xs font-mono">
-                                {request.comparisons.filter(c => c.status === 'error' || c.status === 'no-match').length} Err
-                              </span>
-                            </div>
-                          </div>
+                          {/* Comparison Summary with Accuracy */}
+                          {(() => {
+                            const accuracy = getAccuracyPercent(request.comparisons);
+                            const isAutoEligible = accuracy >= 90;
+                            return (
+                              <div className={cn(
+                                "flex flex-wrap items-center gap-2 md:gap-4 p-2.5 md:p-3 rounded-md",
+                                isAutoEligible ? "bg-emerald-500/10 border border-emerald-500/30" : "bg-muted/30"
+                              )}>
+                                <div className="flex items-center gap-1.5 mr-2">
+                                  <span className={cn(
+                                    "text-sm md:text-base font-bold font-mono",
+                                    isAutoEligible ? "text-emerald-400" : accuracy >= 70 ? "text-orange-400" : "text-red-400"
+                                  )}>
+                                    {accuracy.toFixed(0)}%
+                                  </span>
+                                  <span className="text-[10px] md:text-xs text-muted-foreground">précision</span>
+                                  {isAutoEligible && (
+                                    <span className="text-[9px] md:text-[10px] px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded font-mono">
+                                      AUTO-ÉLIGIBLE
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-emerald-500" />
+                                  <span className="text-[10px] md:text-xs font-mono">
+                                    {request.comparisons.filter(c => c.status === 'match').length} OK
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-orange-500" />
+                                  <span className="text-[10px] md:text-xs font-mono">
+                                    {request.comparisons.filter(c => c.status === 'warning').length} &gt;5h
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-red-500" />
+                                  <span className="text-[10px] md:text-xs font-mono">
+                                    {request.comparisons.filter(c => c.status === 'error' || c.status === 'no-match').length} Err
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           {/* Trades Detail - Mobile Card View */}
                           <div className="md:hidden">
@@ -1163,6 +1268,39 @@ export const AdminVerification = () => {
                                         />
                                       </div>
                                     )}
+                                    {/* Per-trade note + validation - Mobile */}
+                                    <div className="mt-2 space-y-1.5">
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          variant={tradeValidity[`${request.id}_${exec.id}`] !== false ? "outline" : "destructive"}
+                                          size="sm"
+                                          className="h-6 text-[9px] px-2"
+                                          onClick={(e) => { e.stopPropagation(); toggleTradeValidity(request.id, exec.id); }}
+                                        >
+                                          {tradeValidity[`${request.id}_${exec.id}`] !== false ? "✓ Validé" : "✗ Invalidé"}
+                                        </Button>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <Input
+                                          value={tradeNotes[`${request.id}_${exec.id}`] || ""}
+                                          onChange={(e) => setTradeNotes(prev => ({ ...prev, [`${request.id}_${exec.id}`]: e.target.value }))}
+                                          placeholder="Note..."
+                                          className="h-6 text-[9px] bg-card"
+                                        />
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 w-6 p-0 flex-shrink-0"
+                                          disabled={savingNote === `${request.id}_${exec.id}`}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            saveTradeNote(request.id, exec.id, tradeNotes[`${request.id}_${exec.id}`] || "", tradeValidity[`${request.id}_${exec.id}`] !== false);
+                                          }}
+                                        >
+                                          {savingNote === `${request.id}_${exec.id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                        </Button>
+                                      </div>
+                                    </div>
                                   </div>
                                 );
                               })}
@@ -1174,7 +1312,7 @@ export const AdminVerification = () => {
                             <p className="text-xs font-mono uppercase text-muted-foreground mb-2">
                               Comparaison Oracle ({request.cycle?.trade_start}-{request.cycle?.trade_end})
                             </p>
-                            <div className="border border-border rounded-md overflow-hidden max-h-64 overflow-y-auto">
+                            <div className="border border-border rounded-md overflow-hidden max-h-[500px] overflow-y-auto">
                               <Table>
                                 <TableHeader>
                                   <TableRow className="bg-muted/50">
@@ -1187,12 +1325,16 @@ export const AdminVerification = () => {
                                     <TableHead className="h-8 text-[10px] font-mono">Dir</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono text-right">RR</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono">Screenshot</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono w-8">Valid</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono min-w-[180px]">Note Admin</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                   {request.comparisons.map((comp) => {
                                     const exec = comp.execution;
                                     const oracle = comp.oracleTrade;
+                                    const noteKey = `${request.id}_${exec.id}`;
+                                    const isValid = tradeValidity[noteKey] !== false;
                                     
                                     return (
                                       <TableRow 
@@ -1275,6 +1417,38 @@ export const AdminVerification = () => {
                                             alt={`Trade #${exec.trade_number}`}
                                             showExternalIcon
                                           />
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className={cn(
+                                              "h-6 w-6 p-0 rounded-full",
+                                              isValid ? "text-emerald-400 hover:text-emerald-300" : "text-red-400 hover:text-red-300"
+                                            )}
+                                            onClick={() => toggleTradeValidity(request.id, exec.id)}
+                                          >
+                                            {isValid ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                                          </Button>
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          <div className="flex items-center gap-1">
+                                            <Input
+                                              value={tradeNotes[noteKey] || ""}
+                                              onChange={(e) => setTradeNotes(prev => ({ ...prev, [noteKey]: e.target.value }))}
+                                              placeholder="Note..."
+                                              className="h-6 text-[10px] bg-card min-w-[140px]"
+                                            />
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 w-6 p-0 flex-shrink-0"
+                                              disabled={savingNote === noteKey}
+                                              onClick={() => saveTradeNote(request.id, exec.id, tradeNotes[noteKey] || "", isValid)}
+                                            >
+                                              {savingNote === noteKey ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                            </Button>
+                                          </div>
                                         </TableCell>
                                       </TableRow>
                                     );
