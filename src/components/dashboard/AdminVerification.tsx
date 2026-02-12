@@ -178,6 +178,8 @@ export const AdminVerification = () => {
   const [pendingAccounts, setPendingAccounts] = useState<PendingAccount[]>([]);
   const [loadingPending, setLoadingPending] = useState(true);
   const [processingApproval, setProcessingApproval] = useState<string | null>(null);
+  const [securityAlerts, setSecurityAlerts] = useState<any[]>([]);
+  const [loadingAlerts, setLoadingAlerts] = useState(true);
   const { toast } = useToast();
 
   const fetchPendingAccounts = async () => {
@@ -225,6 +227,45 @@ export const AdminVerification = () => {
       fetchPendingAccounts();
     }
     setProcessingApproval(null);
+  };
+  const fetchSecurityAlerts = async () => {
+    setLoadingAlerts(true);
+    const { data } = await supabase
+      .from("security_alerts")
+      .select("*")
+      .eq("resolved", false)
+      .order("created_at", { ascending: false });
+    
+    if (data) setSecurityAlerts(data);
+    setLoadingAlerts(false);
+  };
+
+  const handleResolveAlert = async (alertId: string, userId: string, unfreeze: boolean) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase
+      .from("security_alerts")
+      .update({ resolved: true, resolved_by: user.id, resolved_at: new Date().toISOString() })
+      .eq("id", alertId);
+
+    if (unfreeze) {
+      // Unfreeze the user and clear their extra sessions (keep only 2)
+      await supabase
+        .from("profiles")
+        .update({ status: "active", frozen_at: null, frozen_by: null, status_reason: null })
+        .eq("user_id", userId);
+      
+      // Delete all sessions for this user so they re-register on next login
+      await supabase
+        .from("user_sessions")
+        .delete()
+        .eq("user_id", userId);
+    }
+
+    toast({ title: "Alerte résolue" });
+    fetchSecurityAlerts();
+    fetchUsers();
   };
 
   const fetchCycles = async () => {
@@ -436,6 +477,7 @@ export const AdminVerification = () => {
       await fetchRequests();
       await fetchUsers();
       await fetchPendingAccounts();
+      await fetchSecurityAlerts();
     };
     init();
   }, []);
@@ -705,6 +747,10 @@ export const AdminVerification = () => {
             <TabsTrigger value="history" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
               <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />
               Historique
+            </TabsTrigger>
+            <TabsTrigger value="security" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <AlertTriangle className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Alertes Sécurité</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1683,6 +1729,75 @@ export const AdminVerification = () => {
           {/* History Tab */}
           <TabsContent value="history" className="flex-1 overflow-auto mt-0">
             <UserHistoryTab />
+          </TabsContent>
+
+          {/* Security Alerts Tab */}
+          <TabsContent value="security" className="flex-1 overflow-auto mt-0">
+            {loadingAlerts ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : securityAlerts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <CheckCircle className="w-12 h-12 text-primary mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  Aucune alerte
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Aucune alerte de sécurité en cours.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {securityAlerts.map((alert) => {
+                  const alertProfile = profiles.find(p => p.user_id === alert.user_id);
+                  return (
+                    <div
+                      key={alert.id}
+                      className="p-4 bg-card border border-destructive/30 rounded-md"
+                    >
+                      <div className="flex items-start gap-3 mb-3">
+                        <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-semibold text-foreground">
+                            3ème appareil détecté — {alertProfile?.display_name || alert.user_id.slice(0, 8)}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(alert.created_at).toLocaleDateString("fr-FR", {
+                              day: "numeric", month: "long", year: "numeric",
+                              hour: "2-digit", minute: "2-digit",
+                            })}
+                          </p>
+                          {alert.device_info && (
+                            <p className="text-xs text-muted-foreground mt-2 font-mono break-all">
+                              {alert.device_info}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          size="sm"
+                          onClick={() => handleResolveAlert(alert.id, alert.user_id, true)}
+                          className="gap-1.5"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Débloquer le compte
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleResolveAlert(alert.id, alert.user_id, false)}
+                          className="gap-1.5"
+                        >
+                          Ignorer l'alerte
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

@@ -107,7 +107,44 @@ const Auth = () => {
             return;
           }
 
-          // Register device session
+          // Generate a simple device fingerprint
+          const deviceFingerprint = `${navigator.platform}|${screen.width}x${screen.height}|${navigator.language}`;
+          
+          // Check how many distinct devices this user already has
+          const { data: existingSessions } = await supabase
+            .from("user_sessions")
+            .select("id, device_fingerprint")
+            .eq("user_id", data.user.id);
+          
+          const knownFingerprints = (existingSessions || []).map(s => (s as any).device_fingerprint).filter(Boolean);
+          const isNewDevice = !knownFingerprints.includes(deviceFingerprint);
+          
+          if (isNewDevice && knownFingerprints.length >= 2) {
+            // 3rd device detected — freeze account + create security alert
+            await supabase
+              .from("profiles")
+              .update({ status: "frozen", frozen_at: new Date().toISOString(), status_reason: "Connexion depuis un 3ème appareil détectée" })
+              .eq("user_id", data.user.id);
+            
+            await supabase
+              .from("security_alerts")
+              .insert({
+                user_id: data.user.id,
+                alert_type: "third_device",
+                device_info: `${navigator.userAgent} | Fingerprint: ${deviceFingerprint}`,
+              });
+            
+            await supabase.auth.signOut();
+            toast({
+              title: "Sécurité — Compte gelé",
+              description: "Une connexion depuis un 3ème appareil a été détectée. Votre compte a été temporairement gelé. Contactez un administrateur.",
+              variant: "destructive",
+            });
+            setIsLoading(false);
+            return;
+          }
+          
+          // Register or update device session
           const sessionToken = crypto.randomUUID();
           await supabase
             .from("user_sessions")
@@ -115,7 +152,8 @@ const Auth = () => {
               user_id: data.user.id,
               session_token: sessionToken,
               device_info: navigator.userAgent,
-            }, { onConflict: "user_id" });
+              device_fingerprint: deviceFingerprint,
+            }, { onConflict: "user_id,device_fingerprint" });
           localStorage.setItem("oracle_session_token", sessionToken);
 
           setUserName((profile as any)?.first_name || profile?.display_name || email.split("@")[0]);

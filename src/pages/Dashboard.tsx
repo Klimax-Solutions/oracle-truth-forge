@@ -84,16 +84,16 @@ const Dashboard = () => {
         return false;
       }
 
-      // Verify single device session
+      // Verify device session token matches one of this user's sessions
       const localToken = localStorage.getItem("oracle_session_token");
       if (localToken) {
-        const { data: session } = await supabase
+        const { data: sessions } = await supabase
           .from("user_sessions")
           .select("session_token")
-          .eq("user_id", uid)
-          .single();
+          .eq("user_id", uid);
         
-        if (session && session.session_token !== localToken) {
+        const tokenExists = (sessions || []).some(s => s.session_token === localToken);
+        if (!tokenExists) {
           await supabase.auth.signOut();
           localStorage.removeItem("oracle_session_token");
           navigate("/auth");
