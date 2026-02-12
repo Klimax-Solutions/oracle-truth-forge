@@ -399,7 +399,7 @@ const SuccessPage = () => {
   const [userRole, setUserRole] = useState<string>("member");
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [allUsers, setAllUsers] = useState<AllUser[]>([]);
-  const [activeView, setActiveView] = useState<"discussion" | "leaderboard">("discussion");
+  const [activeView, setActiveView] = useState<"discussion" | "leaderboard" | "m_vision" | "jk_vision">("discussion");
   const [showMembers, setShowMembers] = useState(true);
   const { fireConfetti } = useSuccessConfetti();
   const { trades: personalTrades } = usePersonalTrades();
@@ -703,6 +703,28 @@ const SuccessPage = () => {
           >
             Leaderboard
           </button>
+          <button
+            onClick={() => setActiveView("m_vision")}
+            className={cn(
+              "px-2.5 py-1 rounded-md text-sm font-semibold transition-all",
+              activeView === "m_vision"
+                ? "text-foreground bg-muted/50"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+            )}
+          >
+            M Vision
+          </button>
+          <button
+            onClick={() => setActiveView("jk_vision")}
+            className={cn(
+              "px-2.5 py-1 rounded-md text-sm font-semibold transition-all",
+              activeView === "jk_vision"
+                ? "text-foreground bg-muted/50"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+            )}
+          >
+            JK Vision
+          </button>
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
@@ -809,10 +831,32 @@ const SuccessPage = () => {
                 </div>
               </div>
             </>
-          ) : (
+          ) : activeView === "leaderboard" ? (
             /* ─── Leaderboard View ─── */
             <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
               <SuccessLeaderboard />
+            </div>
+          ) : activeView === "m_vision" ? (
+            /* ─── M Vision ─── */
+            <div className="flex-1 overflow-y-auto flex items-center justify-center p-6">
+              <div className="text-center space-y-3">
+                <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto">
+                  <span className="text-2xl font-bold text-muted-foreground">M</span>
+                </div>
+                <h2 className="text-lg font-semibold text-foreground">M Vision</h2>
+                <p className="text-sm text-muted-foreground max-w-xs">Contenu à venir…</p>
+              </div>
+            </div>
+          ) : (
+            /* ─── JK Vision ─── */
+            <div className="flex-1 overflow-y-auto flex items-center justify-center p-6">
+              <div className="text-center space-y-3">
+                <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto">
+                  <span className="text-2xl font-bold text-muted-foreground">JK</span>
+                </div>
+                <h2 className="text-lg font-semibold text-foreground">JK Vision</h2>
+                <p className="text-sm text-muted-foreground max-w-xs">Contenu à venir…</p>
+              </div>
             </div>
           )}
         </div>
