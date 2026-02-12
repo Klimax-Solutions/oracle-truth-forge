@@ -551,6 +551,29 @@ const SuccessPage = () => {
     setFilePreview(URL.createObjectURL(file));
   };
 
+  // Ctrl+V paste image support (Discord-style)
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      if (activeView !== "discussion") return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (!file) return;
+          if (file.size > 5 * 1024 * 1024) { toast.error("L'image dépasse 5 Mo."); return; }
+          setSelectedFile(file);
+          setFilePreview(URL.createObjectURL(file));
+          toast.success("Image collée !");
+          return;
+        }
+      }
+    };
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [activeView]);
+
   const clearFile = () => {
     setSelectedFile(null);
     if (filePreview) URL.revokeObjectURL(filePreview);
