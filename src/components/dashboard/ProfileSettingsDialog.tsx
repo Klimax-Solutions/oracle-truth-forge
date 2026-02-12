@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Settings, Save, Loader2 } from "lucide-react";
+import { Settings, Save, Loader2, Camera } from "lucide-react";
 import { toast } from "sonner";
 
 interface ProfileSettingsDialogProps {
@@ -14,29 +14,78 @@ interface ProfileSettingsDialogProps {
 export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDialogProps) => {
   const [open, setOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    const fetch = async () => {
+    const fetchProfile = async () => {
       setFetching(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data } = await supabase
         .from("profiles")
-        .select("display_name")
+        .select("display_name, avatar_url")
         .eq("user_id", user.id)
         .single();
 
       if (data) {
         setDisplayName(data.display_name || "");
+        setAvatarUrl((data as any).avatar_url || null);
       }
       setFetching(false);
     };
-    fetch();
+    fetchProfile();
   }, [open]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Seules les images sont acceptées.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("L'image ne doit pas dépasser 2 Mo.");
+      return;
+    }
+
+    setUploading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const ext = file.name.split(".").pop();
+    const filePath = `${user.id}/avatar.${ext}`;
+
+    // Remove old avatar if exists
+    await supabase.storage.from("avatars").remove([filePath]);
+
+    const { error } = await supabase.storage
+      .from("avatars")
+      .upload(filePath, file, { upsert: true });
+
+    if (error) {
+      toast.error("Erreur upload avatar.");
+      setUploading(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
+    const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+    await supabase
+      .from("profiles")
+      .update({ avatar_url: publicUrl } as any)
+      .eq("user_id", user.id);
+
+    setAvatarUrl(publicUrl);
+    toast.success("Avatar mis à jour !");
+    setUploading(false);
+  };
 
   const handleSave = async () => {
     const trimmed = displayName.trim();
@@ -60,14 +109,15 @@ export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDi
 
     if (error) {
       toast.error("Erreur lors de la mise à jour.");
-      console.error(error);
     } else {
-      toast.success("Pseudo mis à jour !");
+      toast.success("Profil mis à jour !");
       onDisplayNameChange?.(trimmed);
       setOpen(false);
     }
     setLoading(false);
   };
+
+  const initials = (displayName || "?").charAt(0).toUpperCase();
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -85,7 +135,43 @@ export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDi
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="space-y-4 pt-2">
+          <div className="space-y-5 pt-2">
+            {/* Avatar */}
+            <div className="flex flex-col items-center gap-3">
+              <div
+                className="relative group cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="w-20 h-20 rounded-full object-cover border-2 border-border"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center border-2 border-border">
+                    <span className="text-2xl font-bold text-primary">{initials}</span>
+                  </div>
+                )}
+                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploading ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-white" />
+                  ) : (
+                    <Camera className="w-5 h-5 text-white" />
+                  )}
+                </div>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
+              <p className="text-[10px] text-muted-foreground">Cliquez pour changer l'avatar</p>
+            </div>
+
+            {/* Display name */}
             <div className="space-y-2">
               <Label htmlFor="display-name">Pseudo (affiché sur le leaderboard)</Label>
               <Input
@@ -96,9 +182,10 @@ export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDi
                 maxLength={30}
               />
               <p className="text-xs text-muted-foreground">
-                Ce nom sera visible par tous les membres sur le leaderboard et la page des succès.
+                Ce nom sera visible par tous les membres.
               </p>
             </div>
+
             <Button onClick={handleSave} disabled={loading} className="w-full gap-2">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Enregistrer

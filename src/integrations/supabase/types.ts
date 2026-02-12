@@ -100,6 +100,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           banned_at: string | null
           banned_by: string | null
           created_at: string
@@ -114,6 +115,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          avatar_url?: string | null
           banned_at?: string | null
           banned_by?: string | null
           created_at?: string
@@ -128,6 +130,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          avatar_url?: string | null
           banned_at?: string | null
           banned_by?: string | null
           created_at?: string
@@ -456,6 +459,36 @@ export type Database = {
           message_sent?: boolean | null
           notes?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          sender_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          sender_id?: string | null
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          sender_id?: string | null
+          type?: string
           user_id?: string
         }
         Relationships: []
