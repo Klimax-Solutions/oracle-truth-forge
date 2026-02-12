@@ -404,7 +404,14 @@ const SuccessPage = () => {
   const { trades: personalTrades } = usePersonalTrades();
   const isAdmin = userRole === "admin" || userRole === "super_admin";
 
-  const scrollToBottom = () => { feedEndRef.current?.scrollIntoView({ behavior: "smooth" }); };
+  // Caches to avoid re-fetching on every message
+  const profileCacheRef = useRef<Record<string, { display_name: string; avatar_url: string | null }>>({});
+  const roleCacheRef = useRef<Record<string, string>>({});
+  const myProfileRef = useRef<{ display_name: string; avatar_url: string | null } | null>(null);
+
+  const scrollToBottom = useCallback(() => {
+    feedEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
 
   // Init + presence
   useEffect(() => {
@@ -414,27 +421,42 @@ const SuccessPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setUserId(user.id);
-      fetchSuccesses(user.id);
 
-      const { data: roleData } = await supabase
-        .from("user_roles").select("role").eq("user_id", user.id).single();
-      if (roleData) setUserRole(roleData.role);
+      const [roleData, profile, allProfiles] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", user.id).single(),
+        supabase.from("profiles").select("display_name, avatar_url").eq("user_id", user.id).single(),
+        supabase.from("profiles").select("user_id, display_name, avatar_url"),
+      ]);
 
-      const { data: profile } = await supabase
-        .from("profiles").select("display_name, avatar_url").eq("user_id", user.id).single();
+      if (roleData.data) setUserRole(roleData.data.role);
 
-      const { data: allProfiles } = await supabase
-        .from("profiles").select("user_id, display_name, avatar_url");
-      if (allProfiles) {
-        setAllUsers(allProfiles.map((p: any) => ({
+      if (profile.data) {
+        myProfileRef.current = {
+          display_name: profile.data.display_name || "Anonyme",
+          avatar_url: (profile.data as any).avatar_url || null,
+        };
+      }
+
+      if (allProfiles.data) {
+        const users = allProfiles.data.map((p: any) => ({
           user_id: p.user_id,
           display_name: p.display_name || "Anonyme",
           avatar_url: p.avatar_url,
-        })));
+        }));
+        setAllUsers(users);
+        // Pre-fill caches
+        for (const p of allProfiles.data as any[]) {
+          profileCacheRef.current[p.user_id] = {
+            display_name: p.display_name || "Anonyme",
+            avatar_url: p.avatar_url || null,
+          };
+        }
       }
 
-      const displayName = profile?.display_name || "Anonyme";
-      const avatarUrl = (profile as any)?.avatar_url || null;
+      fetchSuccesses(user.id);
+
+      const displayName = profile.data?.display_name || "Anonyme";
+      const avatarUrl = (profile.data as any)?.avatar_url || null;
 
       presenceChannel = supabase.channel("online_users", {
         config: { presence: { key: user.id } },
@@ -482,7 +504,7 @@ const SuccessPage = () => {
     };
   }, []);
 
-  useEffect(() => { if (!loading) scrollToBottom(); }, [successes, loading]);
+  useEffect(() => { if (!loading) scrollToBottom(); }, [successes, loading, scrollToBottom]);
 
   const fetchSuccesses = async (uid: string) => {
     setLoading(true);
@@ -491,53 +513,70 @@ const SuccessPage = () => {
 
     if (error) { console.error(error); setLoading(false); return; }
 
+    // Only fetch profiles/roles for users not in cache
     const userIds = [...new Set((data || []).map((s) => s.user_id))];
-    let profileMap: Record<string, { display_name: string; avatar_url: string | null }> = {};
-    let roleMap: Record<string, string> = {};
+    const uncachedProfileIds = userIds.filter((id) => !profileCacheRef.current[id]);
+    const uncachedRoleIds = userIds.filter((id) => !roleCacheRef.current[id]);
 
-    if (userIds.length > 0) {
-      const [profilesRes, rolesRes] = await Promise.all([
-        supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", userIds),
-        supabase.from("user_roles").select("user_id, role").in("user_id", userIds),
-      ]);
-      if (profilesRes.data) {
-        profileMap = Object.fromEntries(
-          profilesRes.data.map((p: any) => [p.user_id, { display_name: p.display_name || "Anonyme", avatar_url: p.avatar_url }])
-        );
-      }
-      if (rolesRes.data) {
-        roleMap = Object.fromEntries(rolesRes.data.map((r) => [r.user_id, r.role]));
-      }
+    const fetches: Promise<any>[] = [];
+    if (uncachedProfileIds.length > 0) {
+      fetches.push((async () => {
+        const { data: pData } = await supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", uncachedProfileIds);
+        if (pData) for (const p of pData as any[]) {
+          profileCacheRef.current[p.user_id] = { display_name: p.display_name || "Anonyme", avatar_url: p.avatar_url };
+        }
+      })());
+    }
+    if (uncachedRoleIds.length > 0) {
+      fetches.push((async () => {
+        const { data: rData } = await supabase.from("user_roles").select("user_id, role").in("user_id", uncachedRoleIds);
+        if (rData) for (const r of rData) roleCacheRef.current[r.user_id] = r.role;
+      })());
     }
 
     const linkedTradeIds = (data || []).map((s) => (s as any).linked_trade_id).filter(Boolean);
     let tradeMap: Record<string, PersonalTrade> = {};
     if (linkedTradeIds.length > 0) {
-      const { data: linkedTrades } = await supabase.from("user_personal_trades").select("*").in("id", linkedTradeIds);
-      if (linkedTrades) tradeMap = Object.fromEntries(linkedTrades.map((t) => [t.id, t as PersonalTrade]));
+      fetches.push((async () => {
+        const { data: linkedTrades } = await supabase.from("user_personal_trades").select("*").in("id", linkedTradeIds);
+        if (linkedTrades) tradeMap = Object.fromEntries(linkedTrades.map((t) => [t.id, t as PersonalTrade]));
+      })());
     }
+
+    await Promise.all(fetches);
 
     const enriched: SuccessEntry[] = (data || []).map((s: any) => ({
       ...s,
-      display_name: profileMap[s.user_id]?.display_name || "Anonyme",
-      avatar_url: profileMap[s.user_id]?.avatar_url || null,
-      role: roleMap[s.user_id] || "member",
+      display_name: profileCacheRef.current[s.user_id]?.display_name || "Anonyme",
+      avatar_url: profileCacheRef.current[s.user_id]?.avatar_url || null,
+      role: roleCacheRef.current[s.user_id] || "member",
       linked_trade: s.linked_trade_id ? tradeMap[s.linked_trade_id] || null : null,
     }));
 
     setSuccesses(enriched);
     setMyCount(enriched.filter((s) => s.user_id === uid).length);
 
-    const urls: Record<string, string> = {};
-    await Promise.all(
-      enriched.map(async (s) => {
-        if (s.image_path && !s.image_path.includes("no-image")) {
-          const url = await getSignedUrl(s.image_path, "success-screenshots");
-          if (url) urls[s.id] = url;
-        }
-      })
+    // Generate signed URLs only for new entries (not already cached)
+    const newEntries = enriched.filter(
+      (s) => s.image_path && !s.image_path.includes("no-image") && !signedUrls[s.id]
     );
-    setSignedUrls(urls);
+    if (newEntries.length > 0) {
+      // Don't block rendering — load URLs in background
+      Promise.all(
+        newEntries.map(async (s) => {
+          const url = await getSignedUrl(s.image_path, "success-screenshots");
+          if (url) return { id: s.id, url };
+          return null;
+        })
+      ).then((results) => {
+        const newUrls: Record<string, string> = {};
+        for (const r of results) { if (r) newUrls[r.id] = r.url; }
+        if (Object.keys(newUrls).length > 0) {
+          setSignedUrls((prev) => ({ ...prev, ...newUrls }));
+        }
+      });
+    }
+
     setLoading(false);
   };
 
@@ -630,65 +669,126 @@ const SuccessPage = () => {
     if (!selectedFile && !message.trim() && !selectedTrade) {
       toast.error("Ajoutez un message ou une image."); return;
     }
-    setUploading(true);
-    let imagePath = "";
 
-    if (selectedFile) {
-      const ext = selectedFile.name.split(".").pop();
-      const filePath = `${userId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("success-screenshots").upload(filePath, selectedFile);
-      if (uploadError) { toast.error(`Erreur upload: ${uploadError.message}`); setUploading(false); return; }
-      imagePath = filePath;
+    // Capture values before clearing UI
+    const msgText = message.trim();
+    const file = selectedFile;
+    const trade = selectedTrade;
+    const type = selectedType;
+    const localPreview = filePreview;
+
+    // ─── Optimistic UI: immediately show the message ───
+    const tempId = `temp-${Date.now()}`;
+    const optimisticEntry: SuccessEntry = {
+      id: tempId,
+      user_id: userId,
+      image_path: "",
+      created_at: new Date().toISOString(),
+      display_name: myProfileRef.current?.display_name || "Anonyme",
+      avatar_url: myProfileRef.current?.avatar_url || null,
+      role: userRole,
+      success_type: type,
+      message: msgText || undefined,
+      linked_trade: trade || null,
+    };
+
+    setSuccesses((prev) => [...prev, optimisticEntry]);
+    setMyCount((prev) => prev + 1);
+    if (localPreview) {
+      setSignedUrls((prev) => ({ ...prev, [tempId]: localPreview }));
     }
 
-    if (!imagePath) {
-      imagePath = `${userId}/no-image-${Date.now()}.txt`;
-      const { error: uploadError } = await supabase.storage.from("success-screenshots").upload(imagePath, new Blob(["no-image"], { type: "text/plain" }));
-      if (uploadError) { toast.error("Veuillez ajouter une image."); setUploading(false); return; }
-    }
-
-    const { error: insertError } = await supabase
-      .from("user_successes")
-      .insert({
-        user_id: userId, image_path: imagePath, success_type: selectedType,
-        message: message.trim() || null, linked_trade_id: selectedTrade?.id || null,
-      } as any);
-
-    if (insertError) { toast.error(`Erreur: ${insertError.message}`); setUploading(false); return; }
-
-    const { data: myProfile } = await supabase.from("profiles").select("display_name").eq("user_id", userId).single();
-    const senderName = myProfile?.display_name || "Quelqu'un";
-
-    if (message.includes("@everyone") || message.includes("@here")) {
-      sendEveryoneNotification(senderName);
-    }
-
-    // Send individual @mention notifications
-    const mentionRegex = /@(\w[\w\s]*?\b)/g;
-    let match;
-    while ((match = mentionRegex.exec(message)) !== null) {
-      if (match[1] === "everyone") continue;
-      const mentionedUser = allUsers.find((u) => u.display_name === match![1]);
-      if (mentionedUser) {
-        sendUserMentionNotification(mentionedUser.user_id, senderName);
-      }
-    }
-
-    toast.success("Succès partagé !");
-    fireConfetti();
+    // Clear UI immediately — user feels instant
     setMessage("");
-    clearFile();
+    setSelectedFile(null);
+    setFilePreview(null);
     setSelectedTrade(null);
-    fetchSuccesses(userId);
-    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    scrollToBottom();
+
+    // ─── Background: actual upload + insert ───
+    setUploading(true);
+
+    try {
+      let imagePath = "";
+
+      if (file) {
+        const ext = file.name.split(".").pop();
+        const filePath = `${userId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from("success-screenshots").upload(filePath, file);
+        if (uploadError) {
+          // Rollback optimistic
+          setSuccesses((prev) => prev.filter((s) => s.id !== tempId));
+          setMyCount((prev) => prev - 1);
+          toast.error(`Erreur upload: ${uploadError.message}`);
+          setUploading(false);
+          return;
+        }
+        imagePath = filePath;
+      }
+
+      if (!imagePath) {
+        // No-image placeholder — use a minimal path without uploading a file
+        imagePath = `${userId}/no-image-${Date.now()}.txt`;
+        await supabase.storage.from("success-screenshots").upload(imagePath, new Blob([""], { type: "text/plain" }));
+      }
+
+      const { error: insertError } = await supabase
+        .from("user_successes")
+        .insert({
+          user_id: userId, image_path: imagePath, success_type: type,
+          message: msgText || null, linked_trade_id: trade?.id || null,
+        } as any);
+
+      if (insertError) {
+        setSuccesses((prev) => prev.filter((s) => s.id !== tempId));
+        setMyCount((prev) => prev - 1);
+        toast.error(`Erreur: ${insertError.message}`);
+        setUploading(false);
+        return;
+      }
+
+      // Fire confetti only after confirmed
+      fireConfetti();
+
+      // ─── Notifications in background (don't await) ───
+      const senderName = myProfileRef.current?.display_name || "Quelqu'un";
+
+      if (msgText.includes("@everyone") || msgText.includes("@here")) {
+        sendEveryoneNotification(senderName);
+      }
+
+      const mentionRegex = /@(\w[\w\s]*?\b)/g;
+      let match;
+      while ((match = mentionRegex.exec(msgText)) !== null) {
+        if (match[1] === "everyone" || match[1] === "here") continue;
+        const mentionedUser = allUsers.find((u) => u.display_name === match![1]);
+        if (mentionedUser) {
+          sendUserMentionNotification(mentionedUser.user_id, senderName);
+        }
+      }
+    } catch (err) {
+      setSuccesses((prev) => prev.filter((s) => s.id !== tempId));
+      setMyCount((prev) => prev - 1);
+      toast.error("Erreur lors de l'envoi.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDelete = async (successId: string, imagePath: string) => {
+    // Optimistic delete
+    setSuccesses((prev) => prev.filter((s) => s.id !== successId));
+    setMyCount((prev) => prev - 1);
+
     const { error } = await supabase.from("user_successes").delete().eq("id", successId);
-    if (error) { toast.error("Erreur suppression"); return; }
-    await supabase.storage.from("success-screenshots").remove([imagePath]);
+    if (error) {
+      toast.error("Erreur suppression");
+      if (userId) fetchSuccesses(userId); // Rollback by refetching
+      return;
+    }
+    supabase.storage.from("success-screenshots").remove([imagePath]); // Fire and forget
     toast.success("Succès supprimé");
-    if (userId) fetchSuccesses(userId);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
