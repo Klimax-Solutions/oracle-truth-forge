@@ -18,6 +18,7 @@ export interface CustomVariables {
   setup_type: string[];
   entry_model: string[];
   entry_timing: string[];
+  entry_timeframe: string[];
   [key: string]: string[]; // Allow dynamic keys for custom types
 }
 
@@ -33,6 +34,7 @@ export const useCustomVariables = () => {
     setup_type: [],
     entry_model: [],
     entry_timing: [],
+    entry_timeframe: [],
   });
   const [customTypes, setCustomTypes] = useState<CustomVariableTypes[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,6 +72,7 @@ export const useCustomVariables = () => {
         setup_type: [],
         entry_model: [],
         entry_timing: [],
+        entry_timeframe: [],
       };
 
       // Initialize custom types in grouped
