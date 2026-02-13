@@ -692,7 +692,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
   }
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex flex-col min-h-full overflow-auto">
       {/* Header - responsive */}
       <div className="p-4 md:p-6 border-b border-border">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
