@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TimePicker } from "@/components/ui/time-picker";
 import { DatePicker } from "@/components/ui/date-picker";
-import { CustomizableSelect } from "@/components/dashboard/CustomizableSelect";
+// CustomizableSelect removed - using CustomizableMultiSelect for all fields
 import { CustomizableMultiSelect } from "@/components/dashboard/CustomizableMultiSelect";
 import { useCustomVariables } from "@/hooks/useCustomVariables";
 import {
@@ -210,11 +210,16 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>(initialFormData);
-  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
-  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
-  const [existingScreenshot, setExistingScreenshot] = useState<string | null>(null);
+  // Dual screenshot state (context M15 + entry M5)
+  const [contextFile, setContextFile] = useState<File | null>(null);
+  const [contextPreview, setContextPreview] = useState<string | null>(null);
+  const [existingContextUrl, setExistingContextUrl] = useState<string | null>(null);
+  const [entryFile, setEntryFile] = useState<File | null>(null);
+  const [entryPreview, setEntryPreview] = useState<string | null>(null);
+  const [existingEntryUrl, setExistingEntryUrl] = useState<string | null>(null);
   const [selectedExecution, setSelectedExecution] = useState<UserExecution | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const contextFileRef = useRef<HTMLInputElement>(null);
+  const entryFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const { variables, refetch: refetchVariables } = useCustomVariables();
@@ -349,8 +354,12 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     return time <= MAX_TIME;
   };
 
-  // Handle file selection
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle file selection for dual screenshots
+  const handleFileSelect = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setFile: (f: File | null) => void,
+    setPreview: (p: string | null) => void
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
@@ -361,65 +370,55 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
         });
         return;
       }
-
-      setScreenshotFile(file);
+      setFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setScreenshotPreview(reader.result as string);
-      };
+      reader.onloadend = () => setPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  // Upload screenshot to storage - returns the storage path (not public URL)
-  const uploadScreenshot = async (userId: string, tradeNumber: number): Promise<string | null> => {
-    if (!screenshotFile) return existingScreenshot;
-
-    setUploading(true);
-    const fileExt = screenshotFile.name.split('.').pop();
-    const fileName = `${userId}/execution_${tradeNumber}_${Date.now()}.${fileExt}`;
-
+  // Upload a screenshot file
+  const uploadScreenshot = async (
+    userId: string,
+    tradeNumber: number,
+    file: File | null,
+    existingUrl: string | null,
+    suffix: string
+  ): Promise<string | null> => {
+    if (!file) return existingUrl;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}/execution_${tradeNumber}_${suffix}_${Date.now()}.${fileExt}`;
     const { data, error } = await supabase.storage
       .from('trade-screenshots')
-      .upload(fileName, screenshotFile, { upsert: true });
-
-    setUploading(false);
-
+      .upload(fileName, file, { upsert: true });
     if (error) {
-      console.error("Error uploading screenshot:", error);
+      console.error(`Error uploading ${suffix} screenshot:`, error);
       toast({
         title: "Erreur d'upload",
-        description: "Impossible d'envoyer le screenshot.",
+        description: `Impossible d'envoyer le screenshot ${suffix}.`,
         variant: "destructive",
       });
-      return null;
+      return existingUrl;
     }
-
-    // Return the storage path, not a public URL
-    // Signed URLs will be generated on-demand when displaying
     return data.path;
-  };
-
-  // Clear screenshot
-  const clearScreenshot = () => {
-    setScreenshotFile(null);
-    setScreenshotPreview(null);
-    setExistingScreenshot(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   };
 
   // Open dialog for new entry
   const handleNewEntry = () => {
+    const today = new Date().toISOString().split("T")[0];
     setFormData({
       ...initialFormData,
       trade_number: getNextTradeNumber().toString(),
+      trade_date: today,
+      exit_date: today,
     });
     setEditingId(null);
-    setScreenshotFile(null);
-    setScreenshotPreview(null);
-    setExistingScreenshot(null);
+    setContextFile(null);
+    setContextPreview(null);
+    setExistingContextUrl(null);
+    setEntryFile(null);
+    setEntryPreview(null);
+    setExistingEntryUrl(null);
     setIsDialogOpen(true);
   };
 
@@ -446,10 +445,22 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       notes: execution.notes || "",
     });
     setEditingId(execution.id);
-    setScreenshotFile(null);
-    setScreenshotPreview(null);
-    setExistingScreenshot(execution.screenshot_url);
+    setContextFile(null);
+    setContextPreview(null);
+    setExistingContextUrl(execution.screenshot_url);
+    setEntryFile(null);
+    setEntryPreview(null);
+    setExistingEntryUrl(null);
     setIsDialogOpen(true);
+  };
+
+  // Auto-sync exit_date when trade_date changes
+  const handleEntryDateChange = (newDate: string) => {
+    setFormData(prev => ({
+      ...prev,
+      trade_date: newDate,
+      exit_date: (!prev.exit_date || prev.exit_date === prev.trade_date) ? newDate : prev.exit_date,
+    }));
   };
 
   // Save execution
@@ -477,13 +488,19 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     }
 
     setSaving(true);
+    setUploading(true);
 
-    // Upload screenshot if present
-    const screenshotUrl = await uploadScreenshot(user.id, parseInt(formData.trade_number));
+    const tradeNum = parseInt(formData.trade_number);
+    // Upload dual screenshots
+    const [contextUrl, entryUrl] = await Promise.all([
+      uploadScreenshot(user.id, tradeNum, contextFile, existingContextUrl, "context"),
+      uploadScreenshot(user.id, tradeNum, entryFile, existingEntryUrl, "entry"),
+    ]);
+    setUploading(false);
 
     const executionData = {
       user_id: user.id,
-      trade_number: parseInt(formData.trade_number),
+      trade_number: tradeNum,
       trade_date: formData.trade_date,
       exit_date: formData.exit_date || null,
       direction: formData.direction,
@@ -501,7 +518,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       entry_timing: formData.entry_timing || null,
       entry_timeframe: formData.entry_timeframe || null,
       notes: formData.notes || null,
-      screenshot_url: screenshotUrl,
+      screenshot_url: contextUrl,
     };
 
     try {
@@ -722,7 +739,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     <Label className="text-xs md:text-sm">Date Entrée</Label>
                     <DatePicker
                       value={formData.trade_date}
-                      onChange={(value) => setFormData({ ...formData, trade_date: value })}
+                      onChange={handleEntryDateChange}
                     />
                   </div>
                   <div className="space-y-2">
@@ -751,10 +768,10 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     </Select>
                   </div>
 
-                  {/* Oracle Filter Fields - Customizable */}
+                  {/* Oracle Filter Fields - Multi-Select */}
                   <div className="space-y-2">
-                    <Label htmlFor="setup_type" className="text-xs md:text-sm">Setup Type</Label>
-                    <CustomizableSelect
+                    <Label className="text-xs md:text-sm">Setup Type</Label>
+                    <CustomizableMultiSelect
                       value={formData.setup_type}
                       onChange={(v) => setFormData({ ...formData, setup_type: v })}
                       fixedOptions={SETUP_TYPE_FIXED_OPTIONS}
@@ -765,8 +782,8 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     />
                   </div>
                 <div className="space-y-2">
-                  <Label htmlFor="direction_structure">Structure</Label>
-                  <CustomizableSelect
+                  <Label>Structure</Label>
+                  <CustomizableMultiSelect
                     value={formData.direction_structure}
                     onChange={(v) => setFormData({ ...formData, direction_structure: v })}
                     customOptions={variables.direction_structure}
@@ -776,8 +793,8 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="entry_model">Entry Model</Label>
-                  <CustomizableSelect
+                  <Label>Entry Model</Label>
+                  <CustomizableMultiSelect
                     value={formData.entry_model}
                     onChange={(v) => setFormData({ ...formData, entry_model: v })}
                     fixedOptions={ENTRY_MODEL_FIXED_OPTIONS}
@@ -788,8 +805,8 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="entry_timing">Timing</Label>
-                    <CustomizableSelect
+                  <Label>Timing</Label>
+                    <CustomizableMultiSelect
                       value={formData.entry_timing}
                       onChange={(v) => setFormData({ ...formData, entry_timing: v })}
                       fixedOptions={TIMING_FIXED_OPTIONS}
@@ -924,50 +941,45 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   />
                 </div>
 
-                {/* Screenshot Upload */}
-                <div className="col-span-4 space-y-2">
-                  <Label>Screenshot</Label>
-                  <div className="flex items-start gap-4">
-                    <div className="flex-1">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full"
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        {screenshotFile ? "Changer le screenshot" : "Ajouter un screenshot"}
-                      </Button>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Max 5 MB - Pour vous souvenir du trade
-                      </p>
-                    </div>
-                    {(screenshotPreview || existingScreenshot) && (
-                      <div className="relative">
-                        <img
-                          src={screenshotPreview || existingScreenshot || ""}
-                          alt="Screenshot preview"
-                          className="w-24 h-24 object-cover rounded-md border border-border"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute -top-2 -right-2 h-6 w-6"
-                          onClick={clearScreenshot}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    )}
+                {/* Dual Screenshot Upload */}
+                <div className="col-span-4">
+                  <div className="border-t border-border pt-4 mt-2">
+                    <p className="text-sm font-medium text-foreground mb-3">Screenshots & Documentation</p>
                   </div>
+                </div>
+                <div className="col-span-2 space-y-2">
+                  <Label className="text-xs">Screenshot Contexte (M15) <span className="text-muted-foreground">(facultatif)</span></Label>
+                  <input ref={contextFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setContextFile, setContextPreview)} className="hidden" />
+                  {(contextPreview || existingContextUrl) ? (
+                    <div className="relative border border-border rounded-md p-2">
+                      <img src={contextPreview || existingContextUrl || ""} alt="Contexte M15" className="max-h-32 object-contain mx-auto rounded" />
+                      <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5" onClick={() => { setContextFile(null); setContextPreview(null); setExistingContextUrl(null); }}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button type="button" variant="outline" onClick={() => contextFileRef.current?.click()} className="w-full h-16 border-dashed gap-2 text-xs" disabled={uploading}>
+                      {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                      Screenshot Contexte (M15)
+                    </Button>
+                  )}
+                </div>
+                <div className="col-span-2 space-y-2">
+                  <Label className="text-xs">Screenshot Entrée (M5) <span className="text-muted-foreground">(facultatif)</span></Label>
+                  <input ref={entryFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setEntryFile, setEntryPreview)} className="hidden" />
+                  {(entryPreview || existingEntryUrl) ? (
+                    <div className="relative border border-border rounded-md p-2">
+                      <img src={entryPreview || existingEntryUrl || ""} alt="Entrée M5" className="max-h-32 object-contain mx-auto rounded" />
+                      <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5" onClick={() => { setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button type="button" variant="outline" onClick={() => entryFileRef.current?.click()} className="w-full h-16 border-dashed gap-2 text-xs" disabled={uploading}>
+                      {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                      Screenshot Entrée (M5)
+                    </Button>
+                  )}
                 </div>
 
                 {/* Notes */}
