@@ -716,15 +716,15 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   <span className="hidden sm:inline">Nouveau</span> Trade
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-[95vw] md:max-w-3xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>
+              <DialogContent className="max-w-[95vw] md:max-w-3xl max-h-[85vh] overflow-y-auto p-4 md:p-6">
+                <DialogHeader className="pb-2">
+                  <DialogTitle className="text-base md:text-lg">
                     {editingId ? `Modifier Trade #${formData.trade_number}` : "Nouveau Trade"}
                   </DialogTitle>
                 </DialogHeader>
                 
-                {/* Form Grid - responsive */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 py-4">
+                {/* Form Grid - responsive: 1 col mobile, 2 col sm, 4 col md+ */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 py-2 md:py-4">
                   {/* Basic Info */}
                   <div className="space-y-2">
                     <Label htmlFor="trade_number" className="text-xs md:text-sm">N° Trade</Label>
@@ -890,7 +890,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                 </div>
 
                 {/* Manual Price fields */}
-                <div className="col-span-4">
+                <div className="col-span-1 sm:col-span-2 md:col-span-4">
                   <div className="border-t border-border pt-4 mt-2">
                     <p className="text-sm font-medium text-foreground mb-3">Données Manuelles</p>
                   </div>
@@ -942,12 +942,12 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                 </div>
 
                 {/* Dual Screenshot Upload */}
-                <div className="col-span-4">
+                <div className="col-span-1 sm:col-span-2 md:col-span-4">
                   <div className="border-t border-border pt-4 mt-2">
                     <p className="text-sm font-medium text-foreground mb-3">Screenshots & Documentation</p>
                   </div>
                 </div>
-                <div className="col-span-2 space-y-2">
+                <div className="col-span-1 sm:col-span-1 md:col-span-2 space-y-2">
                   <Label className="text-xs">Screenshot Contexte (M15) <span className="text-muted-foreground">(facultatif)</span></Label>
                   <input ref={contextFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setContextFile, setContextPreview)} className="hidden" />
                   {(contextPreview || existingContextUrl) ? (
@@ -964,7 +964,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     </Button>
                   )}
                 </div>
-                <div className="col-span-2 space-y-2">
+                <div className="col-span-1 sm:col-span-1 md:col-span-2 space-y-2">
                   <Label className="text-xs">Screenshot Entrée (M5) <span className="text-muted-foreground">(facultatif)</span></Label>
                   <input ref={entryFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setEntryFile, setEntryPreview)} className="hidden" />
                   {(entryPreview || existingEntryUrl) ? (
@@ -983,7 +983,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                 </div>
 
                 {/* Notes */}
-                <div className="col-span-4 space-y-2">
+                <div className="col-span-1 sm:col-span-2 md:col-span-4 space-y-2">
                   <Label htmlFor="notes">Notes</Label>
                   <Textarea
                     id="notes"
