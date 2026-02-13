@@ -69,23 +69,16 @@ export const CumulativeEvolution = ({ trades }: CumulativeEvolutionProps) => {
     });
   }, [filteredTrades]);
 
-  // Simulator calculation with compound capital growth
+  // Simulator calculation
   const simulatorResult = useMemo(() => {
     const cap = parseFloat(capital) || 0;
     const risk = parseFloat(riskPercent) || 0;
-    const sorted = [...filteredTrades].sort((a, b) => a.trade_number - b.trade_number);
-    
-    let currentCapital = cap;
-    sorted.forEach(t => {
-      const riskAmount = currentCapital * (risk / 100);
-      currentCapital += riskAmount * (t.rr || 0);
-    });
-    
-    const initialRiskAmount = cap * (risk / 100);
-    const totalRR = sorted.reduce((sum, t) => sum + (t.rr || 0), 0);
-    const gain = currentCapital - cap;
+    const riskAmount = cap * (risk / 100);
+    const totalRR = filteredTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
+    const gain = riskAmount * totalRR;
+    const finalCapital = cap + gain;
     const percentGain = cap > 0 ? ((gain / cap) * 100) : 0;
-    return { riskAmount: initialRiskAmount, totalRR, gain, finalCapital: currentCapital, percentGain };
+    return { riskAmount, totalRR, gain, finalCapital, percentGain };
   }, [capital, riskPercent, filteredTrades]);
 
   const scrollMonths = (direction: "left" | "right") => {

@@ -51,8 +51,6 @@ const SETUP_TYPE_FIXED_OPTIONS = ["A", "B", "C"];
 
 const TIMING_FIXED_OPTIONS = ["US Open 15:30", "London Close (16h)"];
 
-const ENTRY_TIMEFRAME_FIXED_OPTIONS = ["15s", "30s", "M1", "M3", "M5", "M15"];
-
 // ── Types ──
 interface PersonalTrade {
   id: string;
@@ -108,7 +106,6 @@ interface FormData {
   setup_type: string;
   entry_model: string;
   entry_timing: string;
-  entry_timeframe: string;
   rr: string;
   entry_price: string;
   exit_price: string;
@@ -132,7 +129,6 @@ const initialFormData: FormData = {
   setup_type: "",
   entry_model: "",
   entry_timing: "",
-  entry_timeframe: "",
   rr: "",
   entry_price: "",
   exit_price: "",
@@ -289,7 +285,6 @@ export const PersonalTradeDialog = ({
           setup_type: editingTrade.setup_type || "",
           entry_model: editingTrade.entry_model || "",
           entry_timing: editingTrade.entry_timing || "",
-          entry_timeframe: (editingTrade as any).entry_timeframe || "",
           rr: editingTrade.rr?.toString() || "",
           entry_price: editingTrade.entry_price?.toString() || "",
           exit_price: editingTrade.exit_price?.toString() || "",
@@ -405,7 +400,6 @@ export const PersonalTradeDialog = ({
       setup_type: formData.setup_type || null,
       entry_model: formData.entry_model || null,
       entry_timing: formData.entry_timing || null,
-      entry_timeframe: formData.entry_timeframe || null,
       rr: formData.rr ? parseFloat(formData.rr) : null,
       entry_price: formData.entry_price ? parseFloat(formData.entry_price) : null,
       exit_price: formData.exit_price ? parseFloat(formData.exit_price) : null,
@@ -594,7 +588,7 @@ export const PersonalTradeDialog = ({
             </div>
           </div>
 
-           {/* Row 5: Entry Model & Timing (multi-select) */}
+          {/* Row 5: Entry Model & Timing (multi-select) */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Entry Model</Label>
@@ -616,22 +610,6 @@ export const PersonalTradeDialog = ({
                 fixedOptions={TIMING_FIXED_OPTIONS}
                 customOptions={variables.entry_timing}
                 variableType="entry_timing"
-                placeholder="Sélectionner..."
-                onOptionsChanged={refetchVariables}
-              />
-            </div>
-          </div>
-
-          {/* Row 5b: Time Frame d'entrée */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Time Frame d'entrée</Label>
-              <CustomizableMultiSelect
-                value={formData.entry_timeframe}
-                onChange={(value) => setFormData({ ...formData, entry_timeframe: value })}
-                fixedOptions={ENTRY_TIMEFRAME_FIXED_OPTIONS}
-                customOptions={variables.entry_timeframe}
-                variableType="entry_timeframe"
                 placeholder="Sélectionner..."
                 onOptionsChanged={refetchVariables}
               />
