@@ -1,0 +1,1 @@
+ALTER TABLE public.user_executions ADD COLUMN screenshot_entry_url text DEFAULT NULL;

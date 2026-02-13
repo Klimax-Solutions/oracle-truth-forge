@@ -74,6 +74,7 @@ interface UserExecution {
   entry_timing: string | null;
   notes: string | null;
   screenshot_url: string | null;
+  screenshot_entry_url: string | null;
 }
 
 interface OracleTrade {
@@ -450,7 +451,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     setExistingContextUrl(execution.screenshot_url);
     setEntryFile(null);
     setEntryPreview(null);
-    setExistingEntryUrl(null);
+    setExistingEntryUrl((execution as any).screenshot_entry_url || null);
     setIsDialogOpen(true);
   };
 
@@ -519,6 +520,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       entry_timeframe: formData.entry_timeframe || null,
       notes: formData.notes || null,
       screenshot_url: contextUrl,
+      screenshot_entry_url: entryUrl,
     };
 
     try {
@@ -1464,14 +1466,27 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         );
                       })()}
 
-                      {/* Screenshot */}
-                      {execution.screenshot_url && (
-                        <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
-                          <span className="text-[9px] md:text-xs text-muted-foreground font-mono uppercase block mb-2">Screenshot</span>
-                          <ScreenshotLink
-                            storagePath={execution.screenshot_url}
-                            alt={`Trade #${execution.trade_number}`}
-                          />
+                      {/* Screenshots */}
+                      {(execution.screenshot_url || (execution as any).screenshot_entry_url) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {execution.screenshot_url && (
+                            <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
+                              <span className="text-[9px] md:text-xs text-muted-foreground font-mono uppercase block mb-2">M15 Contexte</span>
+                              <ScreenshotLink
+                                storagePath={execution.screenshot_url}
+                                alt={`Trade #${execution.trade_number} M15`}
+                              />
+                            </div>
+                          )}
+                          {(execution as any).screenshot_entry_url && (
+                            <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
+                              <span className="text-[9px] md:text-xs text-muted-foreground font-mono uppercase block mb-2">M5 Entrée</span>
+                              <ScreenshotLink
+                                storagePath={(execution as any).screenshot_entry_url}
+                                alt={`Trade #${execution.trade_number} M5`}
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
 
