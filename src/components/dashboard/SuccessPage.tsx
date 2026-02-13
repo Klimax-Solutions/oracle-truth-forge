@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getSignedUrl } from "@/hooks/useSignedUrl";
+import { ImageLightbox } from "./ImageLightbox";
 import { SuccessLeaderboard } from "./SuccessLeaderboard";
 import { useSuccessConfetti } from "./SuccessConfetti";
 import { usePersonalTrades, PersonalTrade } from "@/hooks/usePersonalTrades";
@@ -186,6 +187,7 @@ const TradePicker = ({
 const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
   entry: SuccessEntry; signedUrl?: string; isOwn: boolean; onDelete: () => void;
 }) => {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const roleCfg = ROLE_BADGE_MAP[entry.role || "member"] || ROLE_BADGE_MAP.member;
   const isAdminUser = entry.role === "admin" || entry.role === "super_admin";
 
@@ -262,7 +264,12 @@ const ChatMessage = ({ entry, signedUrl, isOwn, onDelete }: {
           <div className="mt-1.5">
             <img src={signedUrl} alt="Succès"
               className="rounded-lg object-contain max-h-[280px] sm:max-h-[360px] max-w-full sm:max-w-md w-auto border border-border/30 cursor-pointer hover:brightness-110 transition-all shadow-sm"
-              loading="lazy" onClick={() => window.open(signedUrl, "_blank")} />
+              loading="lazy" onClick={() => setLightboxOpen(true)} />
+            <a href={signedUrl} target="_blank" rel="noopener noreferrer"
+              className="text-[10px] text-muted-foreground hover:text-primary transition-colors mt-1 inline-block">
+              Ouvrir dans un nouvel onglet ↗
+            </a>
+            <ImageLightbox src={signedUrl} alt="Succès" open={lightboxOpen} onClose={() => setLightboxOpen(false)} />
           </div>
         )}
 

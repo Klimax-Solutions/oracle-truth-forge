@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
 import { extractStoragePath } from "@/hooks/useSignedUrl";
 import { ImageLightbox } from "./ImageLightbox";
 
@@ -80,6 +80,14 @@ export const SignedImageCard = ({
             className="w-full h-48 object-cover hover:opacity-80 transition-opacity cursor-pointer"
             onClick={() => setLightboxOpen(true)}
           />
+        )}
+        {signedUrl && !loading && !error && (
+          <div className="px-2 py-1 border-t border-border">
+            <a href={signedUrl} target="_blank" rel="noopener noreferrer"
+              className="text-[10px] text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1">
+              <ExternalLink className="w-2.5 h-2.5" /> Ouvrir dans un nouvel onglet
+            </a>
+          </div>
         )}
       </div>
       {signedUrl && (
