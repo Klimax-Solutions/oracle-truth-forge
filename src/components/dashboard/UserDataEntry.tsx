@@ -114,6 +114,7 @@ interface FormData {
   entry_model: string;
   direction_structure: string;
   entry_timing: string;
+  entry_timeframe: string;
   notes: string;
 }
 
@@ -130,6 +131,8 @@ const ENTRY_MODEL_FIXED_OPTIONS = [
 const SETUP_TYPE_FIXED_OPTIONS = ["A", "B", "C"];
 
 const TIMING_FIXED_OPTIONS = ["US Open 15:30", "London Close (16h)"];
+
+const ENTRY_TIMEFRAME_FIXED_OPTIONS = ["15s", "30s", "M1", "M3", "M5", "M15"];
 
 // Time constraints
 const MIN_ENTRY_TIME = "15:20";
@@ -194,6 +197,7 @@ const initialFormData: FormData = {
   entry_model: "",
   direction_structure: "",
   entry_timing: "",
+  entry_timeframe: "",
   notes: "",
 };
 
@@ -437,6 +441,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       entry_model: execution.entry_model || "",
       direction_structure: execution.direction_structure || "",
       entry_timing: execution.entry_timing || "",
+      entry_timeframe: (execution as any).entry_timeframe || "",
       notes: execution.notes || "",
     });
     setEditingId(execution.id);
@@ -493,6 +498,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       entry_model: formData.entry_model || null,
       direction_structure: formData.direction_structure || null,
       entry_timing: formData.entry_timing || null,
+      entry_timeframe: formData.entry_timeframe || null,
       notes: formData.notes || null,
       screenshot_url: screenshotUrl,
     };
@@ -788,6 +794,18 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                       fixedOptions={TIMING_FIXED_OPTIONS}
                       customOptions={variables.entry_timing}
                       variableType="entry_timing"
+                      placeholder="Sélectionner..."
+                      onOptionsChanged={refetchVariables}
+                    />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="entry_timeframe">Time Frame d'entrée</Label>
+                    <CustomizableSelect
+                      value={formData.entry_timeframe}
+                      onChange={(v) => setFormData({ ...formData, entry_timeframe: v })}
+                      fixedOptions={ENTRY_TIMEFRAME_FIXED_OPTIONS}
+                      customOptions={variables.entry_timeframe}
+                      variableType="entry_timeframe"
                       placeholder="Sélectionner..."
                       onOptionsChanged={refetchVariables}
                     />
