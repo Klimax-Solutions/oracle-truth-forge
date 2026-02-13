@@ -124,22 +124,22 @@ export const CustomizableMultiSelect = ({
             variant="outline"
             role="combobox"
             className={cn(
-              "flex-1 h-auto min-h-10 justify-start text-left font-normal",
+              "flex-1 h-auto min-h-10 justify-start text-left font-normal overflow-hidden",
               selectedValues.length === 0 && "text-muted-foreground"
             )}
           >
             {selectedValues.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1 max-w-full overflow-hidden">
                 {selectedValues.map((v) => (
                   <Badge
                     key={v}
                     variant="secondary"
-                    className="text-xs px-1.5 py-0 h-5 gap-0.5"
+                    className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0 h-5 gap-0.5 max-w-[120px] shrink-0"
                   >
-                    {v}
+                    <span className="truncate">{v}</span>
                     <button
                       type="button"
-                      className="ml-0.5 hover:text-destructive"
+                      className="ml-0.5 hover:text-destructive shrink-0"
                       onClick={(e) => {
                         e.stopPropagation();
                         removeValue(v);
@@ -151,7 +151,7 @@ export const CustomizableMultiSelect = ({
                 ))}
               </div>
             ) : (
-              <span>{placeholder}</span>
+              <span className="truncate">{placeholder}</span>
             )}
           </Button>
         </PopoverTrigger>
