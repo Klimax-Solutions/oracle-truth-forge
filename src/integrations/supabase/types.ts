@@ -360,6 +360,7 @@ export type Database = {
           notes: string | null
           result: string | null
           rr: number | null
+          screenshot_entry_url: string | null
           screenshot_url: string | null
           setup_type: string | null
           stop_loss: number | null
@@ -385,6 +386,7 @@ export type Database = {
           notes?: string | null
           result?: string | null
           rr?: number | null
+          screenshot_entry_url?: string | null
           screenshot_url?: string | null
           setup_type?: string | null
           stop_loss?: number | null
@@ -410,6 +412,7 @@ export type Database = {
           notes?: string | null
           result?: string | null
           rr?: number | null
+          screenshot_entry_url?: string | null
           screenshot_url?: string | null
           setup_type?: string | null
           stop_loss?: number | null
