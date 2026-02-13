@@ -13,7 +13,7 @@ const tabs = [
   { id: "setup", label: "Setup", icon: Database },
   { id: "data-analysis", label: "Data Analysis", icon: BarChart3 },
   { id: "videos", label: "Vidéo du Setup Oracle", icon: Video },
-  { id: "successes", label: "Vos Succès", icon: Trophy },
+  { id: "successes", label: "Chat", icon: Trophy },
 ];
 
 const adminTabs = [
