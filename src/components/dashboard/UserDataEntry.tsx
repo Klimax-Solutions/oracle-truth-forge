@@ -719,7 +719,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   <span className="hidden sm:inline">Nouveau</span> Trade
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-[95vw] md:max-w-5xl max-h-[90vh] overflow-y-auto p-5 md:p-8 bg-card border-border">
+              <DialogContent className="max-w-[95vw] md:max-w-5xl max-h-[90vh] overflow-y-auto p-4 sm:p-5 md:p-8 bg-card border-border">
                 <DialogHeader className="pb-4 border-b border-border mb-4">
                   <DialogTitle className="text-lg md:text-xl font-bold tracking-tight">
                     {editingId ? `Modifier Trade #${formData.trade_number}` : "Nouveau Trade"}
@@ -766,7 +766,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   {/* Section 2: Filtres multi-select */}
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Paramètres du Setup</p>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
                       <div className="space-y-1.5">
                         <Label className="text-xs">Setup Type</Label>
                         <CustomizableMultiSelect
