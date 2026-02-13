@@ -716,292 +716,256 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   <span className="hidden sm:inline">Nouveau</span> Trade
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-[95vw] md:max-w-3xl max-h-[85vh] overflow-y-auto p-4 md:p-6">
-                <DialogHeader className="pb-2">
-                  <DialogTitle className="text-base md:text-lg">
+              <DialogContent className="max-w-[95vw] md:max-w-5xl max-h-[90vh] overflow-y-auto p-5 md:p-8 bg-card border-border">
+                <DialogHeader className="pb-4 border-b border-border mb-4">
+                  <DialogTitle className="text-lg md:text-xl font-bold tracking-tight">
                     {editingId ? `Modifier Trade #${formData.trade_number}` : "Nouveau Trade"}
                   </DialogTitle>
                 </DialogHeader>
                 
-                {/* Form Grid - responsive: 1 col mobile, 2 col sm, 4 col md+ */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 py-2 md:py-4">
-                  {/* Basic Info */}
-                  <div className="space-y-2">
-                    <Label htmlFor="trade_number" className="text-xs md:text-sm">N° Trade</Label>
-                    <Input
-                      id="trade_number"
-                      type="number"
-                      value={formData.trade_number}
-                      onChange={(e) => setFormData({ ...formData, trade_number: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs md:text-sm">Date Entrée</Label>
-                    <DatePicker
-                      value={formData.trade_date}
-                      onChange={handleEntryDateChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs md:text-sm">Date Sortie</Label>
-                    <DatePicker
-                      value={formData.exit_date}
-                      onChange={(value) => setFormData({ ...formData, exit_date: value })}
-                    />
-                    {!isSameDay && formData.exit_date && (
-                      <p className="text-xs text-orange-400">Sortie J+{Math.ceil((new Date(formData.exit_date).getTime() - new Date(formData.trade_date).getTime()) / (1000 * 60 * 60 * 24))}</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="direction" className="text-xs md:text-sm">Direction</Label>
-                    <Select
-                      value={formData.direction}
-                      onValueChange={(v) => setFormData({ ...formData, direction: v as "Long" | "Short" })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Long">Long</SelectItem>
-                        <SelectItem value="Short">Short</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Oracle Filter Fields - Multi-Select */}
-                  <div className="space-y-2">
-                    <Label className="text-xs md:text-sm">Setup Type</Label>
-                    <CustomizableMultiSelect
-                      value={formData.setup_type}
-                      onChange={(v) => setFormData({ ...formData, setup_type: v })}
-                      fixedOptions={SETUP_TYPE_FIXED_OPTIONS}
-                      customOptions={variables.setup_type}
-                      variableType="setup_type"
-                      placeholder="Sélectionner..."
-                      onOptionsChanged={refetchVariables}
-                    />
-                  </div>
-                <div className="space-y-2">
-                  <Label>Structure</Label>
-                  <CustomizableMultiSelect
-                    value={formData.direction_structure}
-                    onChange={(v) => setFormData({ ...formData, direction_structure: v })}
-                    customOptions={variables.direction_structure}
-                    variableType="direction_structure"
-                    placeholder="Sélectionner..."
-                    onOptionsChanged={refetchVariables}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Entry Model</Label>
-                  <CustomizableMultiSelect
-                    value={formData.entry_model}
-                    onChange={(v) => setFormData({ ...formData, entry_model: v })}
-                    fixedOptions={ENTRY_MODEL_FIXED_OPTIONS}
-                    customOptions={variables.entry_model}
-                    variableType="entry_model"
-                    placeholder="Sélectionner..."
-                    onOptionsChanged={refetchVariables}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Timing</Label>
-                    <CustomizableMultiSelect
-                      value={formData.entry_timing}
-                      onChange={(v) => setFormData({ ...formData, entry_timing: v })}
-                      fixedOptions={TIMING_FIXED_OPTIONS}
-                      customOptions={variables.entry_timing}
-                      variableType="entry_timing"
-                      placeholder="Sélectionner..."
-                      onOptionsChanged={refetchVariables}
-                    />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="entry_timeframe">Time Frame d'entrée</Label>
-                  <CustomizableMultiSelect
-                    value={formData.entry_timeframe}
-                    onChange={(v) => setFormData({ ...formData, entry_timeframe: v })}
-                    fixedOptions={ENTRY_TIMEFRAME_FIXED_OPTIONS}
-                    customOptions={variables.entry_timeframe}
-                    variableType="entry_timeframe"
-                    placeholder="Sélectionner..."
-                    onOptionsChanged={refetchVariables}
-                  />
-                </div>
-
-                {/* Time fields with validation hints */}
-                <div className="space-y-2">
-                  <Label>
-                    Heure Entrée
-                    <span className="text-xs text-muted-foreground ml-1">(min {MIN_ENTRY_TIME})</span>
-                  </Label>
-                  <TimePicker
-                    value={formData.entry_time}
-                    onChange={(value) => setFormData({ ...formData, entry_time: value })}
-                    minTime={MIN_ENTRY_TIME}
-                    maxTime={MAX_TIME}
-                    error={formData.entry_time !== "" && !validateEntryTime(formData.entry_time)}
-                  />
-                  {formData.entry_time && !validateEntryTime(formData.entry_time) && (
-                    <p className="text-xs text-red-400">Minimum {MIN_ENTRY_TIME}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label>
-                    Heure Sortie
-                    <span className="text-xs text-muted-foreground ml-1">(max {MAX_TIME})</span>
-                  </Label>
-                  <TimePicker
-                    value={formData.exit_time}
-                    onChange={(value) => setFormData({ ...formData, exit_time: value })}
-                    maxTime={MAX_TIME}
-                    error={formData.exit_time !== "" && !validateExitTime(formData.exit_time)}
-                  />
-                  {formData.exit_time && !validateExitTime(formData.exit_time) && (
-                    <p className="text-xs text-red-400">Maximum {MAX_TIME}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="result">Résultat</Label>
-                  <Select
-                    value={formData.result}
-                    onValueChange={(v) => setFormData({ ...formData, result: v as "Win" | "Loss" | "BE" | "" })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Win">Win</SelectItem>
-                      <SelectItem value="Loss">Loss</SelectItem>
-                      <SelectItem value="BE">Break Even</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="rr">RR</Label>
-                  <Input
-                    id="rr"
-                    type="number"
-                    step="0.1"
-                    value={formData.rr}
-                    onChange={(e) => setFormData({ ...formData, rr: e.target.value })}
-                    placeholder="Ex: 2.5"
-                  />
-                </div>
-
-                {/* Manual Price fields */}
-                <div className="col-span-1 sm:col-span-2 md:col-span-4">
-                  <div className="border-t border-border pt-4 mt-2">
-                    <p className="text-sm font-medium text-foreground mb-3">Données Manuelles</p>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="entry_price">Prix Entrée</Label>
-                  <Input
-                    id="entry_price"
-                    type="number"
-                    step="0.00001"
-                    value={formData.entry_price}
-                    onChange={(e) => setFormData({ ...formData, entry_price: e.target.value })}
-                    placeholder="Ex: 1.08542"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="exit_price">Prix Sortie</Label>
-                  <Input
-                    id="exit_price"
-                    type="number"
-                    step="0.00001"
-                    value={formData.exit_price}
-                    onChange={(e) => setFormData({ ...formData, exit_price: e.target.value })}
-                    placeholder="Ex: 1.08650"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="stop_loss">Stop Loss</Label>
-                  <Input
-                    id="stop_loss"
-                    type="number"
-                    step="0.00001"
-                    value={formData.stop_loss}
-                    onChange={(e) => setFormData({ ...formData, stop_loss: e.target.value })}
-                    placeholder="Ex: 1.08500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="take_profit">Take Profit</Label>
-                  <Input
-                    id="take_profit"
-                    type="number"
-                    step="0.00001"
-                    value={formData.take_profit}
-                    onChange={(e) => setFormData({ ...formData, take_profit: e.target.value })}
-                    placeholder="Ex: 1.08700"
-                  />
-                </div>
-
-                {/* Dual Screenshot Upload */}
-                <div className="col-span-1 sm:col-span-2 md:col-span-4">
-                  <div className="border-t border-border pt-4 mt-2">
-                    <p className="text-sm font-medium text-foreground mb-3">Screenshots & Documentation</p>
-                  </div>
-                </div>
-                <div className="col-span-1 sm:col-span-1 md:col-span-2 space-y-2">
-                  <Label className="text-xs">Screenshot Contexte (M15) <span className="text-muted-foreground">(facultatif)</span></Label>
-                  <input ref={contextFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setContextFile, setContextPreview)} className="hidden" />
-                  {(contextPreview || existingContextUrl) ? (
-                    <div className="relative border border-border rounded-md p-2">
-                      <img src={contextPreview || existingContextUrl || ""} alt="Contexte M15" className="max-h-32 object-contain mx-auto rounded" />
-                      <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5" onClick={() => { setContextFile(null); setContextPreview(null); setExistingContextUrl(null); }}>
-                        <X className="w-3 h-3" />
-                      </Button>
+                {/* Section 1: Infos principales */}
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Informations</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">N° Trade</Label>
+                        <Input
+                          type="number"
+                          value={formData.trade_number}
+                          onChange={(e) => setFormData({ ...formData, trade_number: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Date Entrée</Label>
+                        <DatePicker value={formData.trade_date} onChange={handleEntryDateChange} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Date Sortie</Label>
+                        <DatePicker value={formData.exit_date} onChange={(value) => setFormData({ ...formData, exit_date: value })} />
+                        {!isSameDay && formData.exit_date && (
+                          <p className="text-[10px] text-orange-400 font-mono">Sortie J+{Math.ceil((new Date(formData.exit_date).getTime() - new Date(formData.trade_date).getTime()) / (1000 * 60 * 60 * 24))}</p>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Direction</Label>
+                        <Select value={formData.direction} onValueChange={(v) => setFormData({ ...formData, direction: v as "Long" | "Short" })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Long">Long</SelectItem>
+                            <SelectItem value="Short">Short</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                  ) : (
-                    <Button type="button" variant="outline" onClick={() => contextFileRef.current?.click()} className="w-full h-16 border-dashed gap-2 text-xs" disabled={uploading}>
-                      {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                      Screenshot Contexte (M15)
-                    </Button>
-                  )}
-                </div>
-                <div className="col-span-1 sm:col-span-1 md:col-span-2 space-y-2">
-                  <Label className="text-xs">Screenshot Entrée (M5) <span className="text-muted-foreground">(facultatif)</span></Label>
-                  <input ref={entryFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setEntryFile, setEntryPreview)} className="hidden" />
-                  {(entryPreview || existingEntryUrl) ? (
-                    <div className="relative border border-border rounded-md p-2">
-                      <img src={entryPreview || existingEntryUrl || ""} alt="Entrée M5" className="max-h-32 object-contain mx-auto rounded" />
-                      <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5" onClick={() => { setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }}>
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button type="button" variant="outline" onClick={() => entryFileRef.current?.click()} className="w-full h-16 border-dashed gap-2 text-xs" disabled={uploading}>
-                      {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                      Screenshot Entrée (M5)
-                    </Button>
-                  )}
-                </div>
+                  </div>
 
-                {/* Notes */}
-                <div className="col-span-1 sm:col-span-2 md:col-span-4 space-y-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="Observations, contexte du trade..."
-                    rows={2}
-                  />
+                  {/* Section 2: Filtres multi-select */}
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Paramètres du Setup</p>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Setup Type</Label>
+                        <CustomizableMultiSelect
+                          value={formData.setup_type}
+                          onChange={(v) => setFormData({ ...formData, setup_type: v })}
+                          fixedOptions={SETUP_TYPE_FIXED_OPTIONS}
+                          customOptions={variables.setup_type}
+                          variableType="setup_type"
+                          placeholder="Sélectionner..."
+                          onOptionsChanged={refetchVariables}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Structure</Label>
+                        <CustomizableMultiSelect
+                          value={formData.direction_structure}
+                          onChange={(v) => setFormData({ ...formData, direction_structure: v })}
+                          customOptions={variables.direction_structure}
+                          variableType="direction_structure"
+                          placeholder="Sélectionner..."
+                          onOptionsChanged={refetchVariables}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Entry Model</Label>
+                        <CustomizableMultiSelect
+                          value={formData.entry_model}
+                          onChange={(v) => setFormData({ ...formData, entry_model: v })}
+                          fixedOptions={ENTRY_MODEL_FIXED_OPTIONS}
+                          customOptions={variables.entry_model}
+                          variableType="entry_model"
+                          placeholder="Sélectionner..."
+                          onOptionsChanged={refetchVariables}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Timing</Label>
+                        <CustomizableMultiSelect
+                          value={formData.entry_timing}
+                          onChange={(v) => setFormData({ ...formData, entry_timing: v })}
+                          fixedOptions={TIMING_FIXED_OPTIONS}
+                          customOptions={variables.entry_timing}
+                          variableType="entry_timing"
+                          placeholder="Sélectionner..."
+                          onOptionsChanged={refetchVariables}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Time Frame</Label>
+                        <CustomizableMultiSelect
+                          value={formData.entry_timeframe}
+                          onChange={(v) => setFormData({ ...formData, entry_timeframe: v })}
+                          fixedOptions={ENTRY_TIMEFRAME_FIXED_OPTIONS}
+                          customOptions={variables.entry_timeframe}
+                          variableType="entry_timeframe"
+                          placeholder="Sélectionner..."
+                          onOptionsChanged={refetchVariables}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 3: Temps & Résultat */}
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Exécution</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">
+                          Heure Entrée <span className="text-muted-foreground">(min {MIN_ENTRY_TIME})</span>
+                        </Label>
+                        <TimePicker
+                          value={formData.entry_time}
+                          onChange={(value) => setFormData({ ...formData, entry_time: value })}
+                          minTime={MIN_ENTRY_TIME}
+                          maxTime={MAX_TIME}
+                          error={formData.entry_time !== "" && !validateEntryTime(formData.entry_time)}
+                        />
+                        {formData.entry_time && !validateEntryTime(formData.entry_time) && (
+                          <p className="text-[10px] text-destructive">Minimum {MIN_ENTRY_TIME}</p>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">
+                          Heure Sortie <span className="text-muted-foreground">(max {MAX_TIME})</span>
+                        </Label>
+                        <TimePicker
+                          value={formData.exit_time}
+                          onChange={(value) => setFormData({ ...formData, exit_time: value })}
+                          maxTime={MAX_TIME}
+                          error={formData.exit_time !== "" && !validateExitTime(formData.exit_time)}
+                        />
+                        {formData.exit_time && !validateExitTime(formData.exit_time) && (
+                          <p className="text-[10px] text-destructive">Maximum {MAX_TIME}</p>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Résultat</Label>
+                        <Select value={formData.result} onValueChange={(v) => setFormData({ ...formData, result: v as "Win" | "Loss" | "BE" | "" })}>
+                          <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Win">Win</SelectItem>
+                            <SelectItem value="Loss">Loss</SelectItem>
+                            <SelectItem value="BE">Break Even</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">RR</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={formData.rr}
+                          onChange={(e) => setFormData({ ...formData, rr: e.target.value })}
+                          placeholder="Ex: 2.5"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 4: Prix manuels */}
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Données Manuelles</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Prix Entrée</Label>
+                        <Input type="number" step="0.00001" value={formData.entry_price} onChange={(e) => setFormData({ ...formData, entry_price: e.target.value })} placeholder="Ex: 1.08542" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Prix Sortie</Label>
+                        <Input type="number" step="0.00001" value={formData.exit_price} onChange={(e) => setFormData({ ...formData, exit_price: e.target.value })} placeholder="Ex: 1.08650" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Stop Loss</Label>
+                        <Input type="number" step="0.00001" value={formData.stop_loss} onChange={(e) => setFormData({ ...formData, stop_loss: e.target.value })} placeholder="Ex: 1.08500" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Take Profit</Label>
+                        <Input type="number" step="0.00001" value={formData.take_profit} onChange={(e) => setFormData({ ...formData, take_profit: e.target.value })} placeholder="Ex: 1.08700" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 5: Screenshots */}
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Screenshots</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Contexte (M15) <span className="text-muted-foreground">(facultatif)</span></Label>
+                        <input ref={contextFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setContextFile, setContextPreview)} className="hidden" />
+                        {(contextPreview || existingContextUrl) ? (
+                          <div className="relative border border-border rounded-lg p-2 bg-muted/30">
+                            <img src={contextPreview || existingContextUrl || ""} alt="Contexte M15" className="max-h-32 object-contain mx-auto rounded" />
+                            <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5" onClick={() => { setContextFile(null); setContextPreview(null); setExistingContextUrl(null); }}>
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button type="button" variant="outline" onClick={() => contextFileRef.current?.click()} className="w-full h-20 border-dashed gap-2 text-xs" disabled={uploading}>
+                            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                            Screenshot Contexte (M15)
+                          </Button>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Entrée (M5) <span className="text-muted-foreground">(facultatif)</span></Label>
+                        <input ref={entryFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setEntryFile, setEntryPreview)} className="hidden" />
+                        {(entryPreview || existingEntryUrl) ? (
+                          <div className="relative border border-border rounded-lg p-2 bg-muted/30">
+                            <img src={entryPreview || existingEntryUrl || ""} alt="Entrée M5" className="max-h-32 object-contain mx-auto rounded" />
+                            <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5" onClick={() => { setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }}>
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button type="button" variant="outline" onClick={() => entryFileRef.current?.click()} className="w-full h-20 border-dashed gap-2 text-xs" disabled={uploading}>
+                            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                            Screenshot Entrée (M5)
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 6: Notes */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Notes</Label>
+                    <Textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Observations, contexte du trade..."
+                      rows={2}
+                    />
+                  </div>
                 </div>
-              </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <div className="flex justify-end gap-3 pt-4 border-t border-border mt-2">
+                <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(false)}>
                   <X className="w-4 h-4 mr-2" />
                   Annuler
                 </Button>
-                <Button onClick={handleSave} disabled={saving || uploading}>
+                <Button size="sm" onClick={handleSave} disabled={saving || uploading}>
                   {(saving || uploading) ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
