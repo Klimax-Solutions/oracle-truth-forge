@@ -351,6 +351,7 @@ export type Database = {
           entry_model: string | null
           entry_price: number | null
           entry_time: string | null
+          entry_timeframe: string | null
           entry_timing: string | null
           exit_date: string | null
           exit_price: number | null
@@ -375,6 +376,7 @@ export type Database = {
           entry_model?: string | null
           entry_price?: number | null
           entry_time?: string | null
+          entry_timeframe?: string | null
           entry_timing?: string | null
           exit_date?: string | null
           exit_price?: number | null
@@ -399,6 +401,7 @@ export type Database = {
           entry_model?: string | null
           entry_price?: number | null
           entry_time?: string | null
+          entry_timeframe?: string | null
           entry_timing?: string | null
           exit_date?: string | null
           exit_price?: number | null
@@ -504,6 +507,7 @@ export type Database = {
           entry_model: string | null
           entry_price: number | null
           entry_time: string | null
+          entry_timeframe: string | null
           entry_timing: string | null
           exit_date: string | null
           exit_price: number | null
@@ -539,6 +543,7 @@ export type Database = {
           entry_model?: string | null
           entry_price?: number | null
           entry_time?: string | null
+          entry_timeframe?: string | null
           entry_timing?: string | null
           exit_date?: string | null
           exit_price?: number | null
@@ -574,6 +579,7 @@ export type Database = {
           entry_model?: string | null
           entry_price?: number | null
           entry_time?: string | null
+          entry_timeframe?: string | null
           entry_timing?: string | null
           exit_date?: string | null
           exit_price?: number | null
