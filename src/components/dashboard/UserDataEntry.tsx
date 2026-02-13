@@ -52,6 +52,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScreenshotLink } from "./ScreenshotLink";
+import { SignedImageCard } from "./SignedImageCard";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 
 interface UserExecution {
@@ -1466,27 +1467,19 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         );
                       })()}
 
-                      {/* Screenshots */}
+                      {/* Screenshots - same display as Oracle Database */}
                       {(execution.screenshot_url || (execution as any).screenshot_entry_url) && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {execution.screenshot_url && (
-                            <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
-                              <span className="text-[9px] md:text-xs text-muted-foreground font-mono uppercase block mb-2">M15 Contexte</span>
-                              <ScreenshotLink
-                                storagePath={execution.screenshot_url}
-                                alt={`Trade #${execution.trade_number} M15`}
-                              />
-                            </div>
-                          )}
-                          {(execution as any).screenshot_entry_url && (
-                            <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
-                              <span className="text-[9px] md:text-xs text-muted-foreground font-mono uppercase block mb-2">M5 Entrée</span>
-                              <ScreenshotLink
-                                storagePath={(execution as any).screenshot_entry_url}
-                                alt={`Trade #${execution.trade_number} M5`}
-                              />
-                            </div>
-                          )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                          <SignedImageCard
+                            storagePath={execution.screenshot_url}
+                            alt={`Trade #${execution.trade_number} M15`}
+                            label="M15 / Contexte"
+                          />
+                          <SignedImageCard
+                            storagePath={(execution as any).screenshot_entry_url}
+                            alt={`Trade #${execution.trade_number} M5`}
+                            label="M5 / Entrée"
+                          />
                         </div>
                       )}
 
