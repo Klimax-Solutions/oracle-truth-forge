@@ -155,8 +155,8 @@ export const CustomizableMultiSelect = ({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-64 p-2" align="start">
-          <div className="space-y-1 max-h-48 overflow-y-auto">
+        <PopoverContent className="w-64 p-2 z-[100]" align="start" onWheel={(e) => e.stopPropagation()}>
+          <div className="space-y-1 max-h-48 overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
             {allOptions.length === 0 && (
               <div className="px-2 py-3 text-sm text-muted-foreground text-center">
                 Aucune option. Cliquez sur ⚙ pour en ajouter.
@@ -203,7 +203,7 @@ export const CustomizableMultiSelect = ({
             <Settings2 className="w-4 h-4" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-72 p-3" align="end" side="bottom">
+        <PopoverContent className="w-72 p-3 z-[100]" align="end" side="bottom" onWheel={(e) => e.stopPropagation()}>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">Gérer les options</p>
