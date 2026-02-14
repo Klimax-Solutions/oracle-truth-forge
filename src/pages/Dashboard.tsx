@@ -11,6 +11,8 @@ import { usePersonalTrades } from "@/hooks/usePersonalTrades";
 import { useQuestData } from "@/hooks/useQuestData";
 import { ProfileSettingsDialog } from "@/components/dashboard/ProfileSettingsDialog";
 import { DataAnalysisPage } from "@/components/dashboard/DataAnalysisPage";
+import { useEarlyAccess } from "@/hooks/useEarlyAccess";
+import { EarlyAccessTimer } from "@/components/dashboard/EarlyAccessTimer";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
@@ -65,6 +67,7 @@ const Dashboard = () => {
   const { trades: personalTrades } = usePersonalTrades();
   const { isAdmin, isSuperAdmin } = useSidebarRoles();
   const questData = useQuestData();
+  const { isEarlyAccess, expiresAt } = useEarlyAccess();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -278,7 +281,11 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="h-screen bg-background flex flex-col md:flex-row overflow-hidden">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
+      {/* Early Access Timer Banner */}
+      {isEarlyAccess && expiresAt && <EarlyAccessTimer expiresAt={expiresAt} />}
+      
+      <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
       {/* Mobile Header */}
       <MobileHeader
         userEmail={displayName || user?.email?.split("@")[0] || ""}
@@ -336,6 +343,7 @@ const Dashboard = () => {
         onNavigateToSetup={() => setActiveTab("setup")}
         onNavigateToExecution={() => setActiveTab("execution")}
       />
+    </div>
     </div>
   );
 };
