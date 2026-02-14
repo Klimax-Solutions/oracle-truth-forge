@@ -69,16 +69,25 @@ export const CumulativeEvolution = ({ trades }: CumulativeEvolutionProps) => {
     });
   }, [filteredTrades]);
 
-  // Simulator calculation
+  // Simulator calculation with compound interest (rolling capital)
   const simulatorResult = useMemo(() => {
-    const cap = parseFloat(capital) || 0;
+    const initialCap = parseFloat(capital) || 0;
     const risk = parseFloat(riskPercent) || 0;
-    const riskAmount = cap * (risk / 100);
-    const totalRR = filteredTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
-    const gain = riskAmount * totalRR;
-    const finalCapital = cap + gain;
-    const percentGain = cap > 0 ? ((gain / cap) * 100) : 0;
-    return { riskAmount, totalRR, gain, finalCapital, percentGain };
+    const sorted = [...filteredTrades].sort((a, b) => a.trade_number - b.trade_number);
+    
+    let currentCapital = initialCap;
+    const totalRR = sorted.reduce((sum, t) => sum + (t.rr || 0), 0);
+    
+    // Compound: risk is recalculated on current capital after each trade
+    sorted.forEach(t => {
+      const riskAmount = currentCapital * (risk / 100);
+      currentCapital += riskAmount * (t.rr || 0);
+    });
+    
+    const gain = currentCapital - initialCap;
+    const percentGain = initialCap > 0 ? ((gain / initialCap) * 100) : 0;
+    const initialRiskAmount = initialCap * (risk / 100);
+    return { riskAmount: initialRiskAmount, totalRR, gain, finalCapital: currentCapital, percentGain };
   }, [capital, riskPercent, filteredTrades]);
 
   const scrollMonths = (direction: "left" | "right") => {
