@@ -315,6 +315,7 @@ export const RoleManagement = () => {
     switch (role) {
       case 'super_admin': return <Crown className="w-3 h-3" />;
       case 'admin': return <ShieldCheck className="w-3 h-3" />;
+      case 'early_access': return <Shield className="w-3 h-3" />;
       default: return <User className="w-3 h-3" />;
     }
   };
@@ -323,6 +324,7 @@ export const RoleManagement = () => {
     switch (role) {
       case 'super_admin': return "default";
       case 'admin': return "secondary";
+      case 'early_access': return "outline";
       default: return "outline";
     }
   };
@@ -331,6 +333,7 @@ export const RoleManagement = () => {
     switch (role) {
       case 'super_admin': return "Super Admin";
       case 'admin': return "Admin";
+      case 'early_access': return "Early Access";
       default: return "Membre";
     }
   };
@@ -569,6 +572,7 @@ export const RoleManagement = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="early_access">Early Access</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -587,7 +591,7 @@ export const RoleManagement = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-4">
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-4">
         <div className="p-3 md:p-4 rounded-lg border bg-card">
           <div className="flex items-center gap-1.5 md:gap-2 text-muted-foreground mb-1">
             <Crown className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -613,6 +617,15 @@ export const RoleManagement = () => {
           </div>
           <p className="text-lg md:text-2xl font-bold">
             {users.filter(u => u.status === 'active').length}
+          </p>
+        </div>
+        <div className="p-3 md:p-4 rounded-lg border bg-card">
+          <div className="flex items-center gap-1.5 md:gap-2 text-amber-500 mb-1">
+            <Shield className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="text-[10px] md:text-sm">Early</span>
+          </div>
+          <p className="text-lg md:text-2xl font-bold text-amber-500">
+            {users.filter(u => u.roles.includes('early_access')).length}
           </p>
         </div>
         <div className="p-3 md:p-4 rounded-lg border bg-card hidden md:block">

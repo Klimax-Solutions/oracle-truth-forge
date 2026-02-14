@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { ExternalLink, Check, Eye, EyeOff } from "lucide-react";
+import { ExternalLink, Check, Eye, EyeOff, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 
 interface VideoData {
   id: string;
@@ -18,6 +19,7 @@ export const VideoSetup = () => {
   const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null);
   const [viewedIds, setViewedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const { isEarlyAccess } = useEarlyAccess();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -158,14 +160,22 @@ export const VideoSetup = () => {
               {/* Video with animated border */}
               <div className="relative rounded-lg overflow-hidden video-glow-border">
                 <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-                  <iframe
-                    key={selectedVideo.id}
-                    src={selectedVideo.embed_url}
-                    className="absolute inset-0 w-full h-full rounded-md"
-                    allow="autoplay; encrypted-media; picture-in-picture"
-                    allowFullScreen
-                    loading="lazy"
-                  />
+                  {isEarlyAccess ? (
+                    <div className="absolute inset-0 bg-muted/80 backdrop-blur-xl flex flex-col items-center justify-center rounded-md">
+                      <Lock className="w-8 h-8 text-muted-foreground mb-3" />
+                      <p className="text-sm font-semibold text-foreground mb-1">Contenu réservé</p>
+                      <p className="text-xs text-muted-foreground">Accès Early Access — vidéos bientôt disponibles</p>
+                    </div>
+                  ) : (
+                    <iframe
+                      key={selectedVideo.id}
+                      src={selectedVideo.embed_url}
+                      className="absolute inset-0 w-full h-full rounded-md"
+                      allow="autoplay; encrypted-media; picture-in-picture"
+                      allowFullScreen
+                      loading="lazy"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -236,13 +246,17 @@ export const VideoSetup = () => {
                     <p
                       className={cn(
                         "text-sm font-medium truncate",
-                        isActive ? "text-foreground" : "text-muted-foreground"
+                        isActive ? "text-foreground" : "text-muted-foreground",
+                        isEarlyAccess && "blur-sm select-none"
                       )}
                     >
                       {video.title}
                     </p>
                     {video.description && (
-                      <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">
+                      <p className={cn(
+                        "text-[10px] text-muted-foreground/60 truncate mt-0.5",
+                        isEarlyAccess && "blur-sm select-none"
+                      )}>
                         {video.description}
                       </p>
                     )}
