@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Clock } from "lucide-react";
 
 interface EarlyAccessTimerProps {
   expiresAt: string;
@@ -37,19 +36,18 @@ export const EarlyAccessTimer = ({ expiresAt }: EarlyAccessTimerProps) => {
   const pad = (n: number) => n.toString().padStart(2, "0");
 
   return (
-    <div className="w-full bg-red-600 text-white px-4 py-2 flex items-center justify-center gap-3 z-[60]">
-      <Clock className="w-4 h-4 flex-shrink-0" />
-      <span className="text-xs font-semibold uppercase tracking-wider">
-        Accès anticipé limité
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground hidden lg:inline">
+        Votre accès anticipé expire dans
       </span>
       <div className="font-mono text-sm font-bold tracking-widest">
         {expired ? (
-          <span>EXPIRÉ</span>
+          <span className="text-destructive">EXPIRÉ</span>
         ) : (
-          <>
+          <span className="text-destructive">
             {timeLeft.days > 0 && <span>{timeLeft.days}j </span>}
             {pad(timeLeft.hours)}:{pad(timeLeft.minutes)}:{pad(timeLeft.seconds)}
-          </>
+          </span>
         )}
       </div>
     </div>

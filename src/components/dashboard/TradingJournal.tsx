@@ -1,11 +1,10 @@
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, SkipBack, SkipForward, Clock, Target, Calendar, TrendingUp, TrendingDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, SkipBack, SkipForward, Clock, Target, Calendar, TrendingUp, TrendingDown, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell
-
- } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 import { SignedImageCard } from "./SignedImageCard";
+import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 
 interface Trade {
   id: string;
@@ -34,6 +33,8 @@ interface TradingJournalProps {
 const DAYS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
 export const TradingJournal = ({ trades }: TradingJournalProps) => {
+  const { isEarlyAccess } = useEarlyAccess();
+
   const firstTrade = useMemo(() => {
     if (trades.length === 0) return null;
     return trades.reduce((earliest, t) => 
@@ -59,6 +60,26 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
+
+  // Check if this month contains ONLY trades beyond #50 (restricted for early access)
+  const monthHasOnlyRestrictedTrades = useMemo(() => {
+    if (!isEarlyAccess) return false;
+    const monthTrades = trades.filter((t) => {
+      const d = new Date(t.trade_date);
+      return d.getFullYear() === year && d.getMonth() === month;
+    });
+    if (monthTrades.length === 0) return false;
+    return monthTrades.every(t => t.trade_number > 50);
+  }, [trades, year, month, isEarlyAccess]);
+
+  // Check if a specific date has only restricted trades
+  const dateHasOnlyRestrictedTrades = (date: Date) => {
+    if (!isEarlyAccess) return false;
+    const dateKey = formatDateKey(date);
+    const dayTrades = tradesByDate.get(dateKey) || [];
+    if (dayTrades.length === 0) return false;
+    return dayTrades.every(t => t.trade_number > 50);
+  };
 
   // Calculate monthly stats
   const monthlyStats = useMemo(() => {
@@ -144,13 +165,12 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
     const tradesUpToNow = trades.slice(0, tradeIndex + 1);
     const cumulativeRR = tradesUpToNow.reduce((sum, t) => sum + (t.rr || 0), 0);
     
-    // Get last 10 trades and show ISOLATED cumul (as if trades 1-10)
     const recentTrades = trades.slice(Math.max(0, tradeIndex - 9), tradeIndex + 1);
     let isolatedCumul = 0;
     const chartData = recentTrades.map((t, idx) => {
       isolatedCumul += t.rr || 0;
       return {
-        trade: idx + 1, // Trades 1-10 isolated
+        trade: idx + 1,
         tradeNum: t.trade_number,
         rr: parseFloat(isolatedCumul.toFixed(2)),
         individual: t.rr || 0,
@@ -173,21 +193,11 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
             Journal de Trading
           </span>
           <div className="flex items-center gap-1 md:gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={goToFirstTrade}
-              className="text-[10px] md:text-xs text-muted-foreground hover:text-foreground hover:bg-accent gap-1 px-2 md:px-3"
-            >
+            <Button variant="ghost" size="sm" onClick={goToFirstTrade} className="text-[10px] md:text-xs text-muted-foreground hover:text-foreground hover:bg-accent gap-1 px-2 md:px-3">
               <SkipBack className="w-3 h-3" />
               <span className="hidden sm:inline">Premier</span>
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={goToLastTrade}
-              className="text-[10px] md:text-xs text-muted-foreground hover:text-foreground hover:bg-accent gap-1 px-2 md:px-3"
-            >
+            <Button variant="ghost" size="sm" onClick={goToLastTrade} className="text-[10px] md:text-xs text-muted-foreground hover:text-foreground hover:bg-accent gap-1 px-2 md:px-3">
               <SkipForward className="w-3 h-3" />
               <span className="hidden sm:inline">Dernier</span>
             </Button>
@@ -196,12 +206,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
 
         {/* Month navigation */}
         <div className="flex items-center justify-between px-4 md:px-5 py-3 md:py-4 border-b border-border/34">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={prevMonth}
-            className="w-8 h-8 md:w-9 md:h-9 text-muted-foreground hover:text-foreground hover:bg-accent"
-          >
+          <Button variant="ghost" size="icon" onClick={prevMonth} className="w-8 h-8 md:w-9 md:h-9 text-muted-foreground hover:text-foreground hover:bg-accent">
             <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
           </Button>
           <div className="text-center">
@@ -220,18 +225,22 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
               </div>
             )}
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={nextMonth}
-            className="w-8 h-8 md:w-9 md:h-9 text-muted-foreground hover:text-foreground hover:bg-accent"
-          >
+          <Button variant="ghost" size="icon" onClick={nextMonth} className="w-8 h-8 md:w-9 md:h-9 text-muted-foreground hover:text-foreground hover:bg-accent">
             <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
           </Button>
         </div>
 
         {/* Calendar grid */}
-        <div className="flex-1 p-3 md:p-4 overflow-auto">
+        <div className="flex-1 p-3 md:p-4 overflow-auto relative">
+          {/* Blur overlay for months with only restricted trades */}
+          {monthHasOnlyRestrictedTrades && (
+            <div className="absolute inset-0 z-20 backdrop-blur-md bg-background/60 flex flex-col items-center justify-center rounded-md">
+              <Lock className="w-6 h-6 text-muted-foreground mb-2" />
+              <p className="text-sm font-semibold text-foreground mb-1">Contenu réservé</p>
+              <p className="text-xs text-muted-foreground">Data bientôt disponible</p>
+            </div>
+          )}
+
           {/* Day headers */}
           <div className="grid grid-cols-7 mb-2">
             {DAYS.map((day) => (
@@ -253,19 +262,22 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
               const hasLoss = totalRR < 0;
               const hasTrades = dayTrades.length > 0;
               const isSelected = selectedDate?.toDateString() === date.toDateString();
+              const isRestricted = dateHasOnlyRestrictedTrades(date);
 
               return (
                 <button
                   key={idx}
                   onClick={() => {
+                    if (isRestricted) return;
                     setSelectedDate(date);
-                    // Auto-select first trade of the day
                     const dayTrades = tradesByDate.get(formatDateKey(date)) || [];
                     setSelectedTrade(dayTrades.length > 0 ? dayTrades[0] : null);
                   }}
+                  disabled={isRestricted}
                   className={cn(
                     "aspect-square border transition-all rounded-md",
-                    "flex flex-col items-center justify-center",
+                    "flex flex-col items-center justify-center relative",
+                    isRestricted && "cursor-not-allowed opacity-50",
                     isSelected
                       ? "border-foreground/30 bg-accent/60"
                       : hasProfit
@@ -275,13 +287,18 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                       : "border-border hover:bg-accent/30"
                   )}
                 >
+                  {isRestricted && (
+                    <div className="absolute inset-0 backdrop-blur-sm bg-background/40 rounded-md flex items-center justify-center">
+                      <Lock className="w-2.5 h-2.5 text-muted-foreground" />
+                    </div>
+                  )}
                   <span className={cn(
                     "text-sm font-medium",
                     hasTrades ? "text-foreground" : "text-muted-foreground"
                   )}>
                     {date.getDate()}
                   </span>
-                  {hasTrades && (
+                  {hasTrades && !isRestricted && (
                     <span className={cn(
                       "text-[10px] font-mono",
                       totalRR >= 0 ? "text-emerald-500" : "text-red-500"
@@ -312,7 +329,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
       <div className="flex-1 flex flex-col overflow-hidden">
         {selectedDayData && selectedDayData.trades.length > 0 ? (
           <>
-            {/* Day header - responsive */}
+            {/* Day header */}
             <div className="p-3 md:p-5 border-b border-border">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                 <span className="text-xs md:text-sm font-mono uppercase tracking-wider text-muted-foreground">
@@ -332,54 +349,67 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
               </div>
             </div>
 
-            {/* Trades list - responsive like OracleDatabase */}
+            {/* Trades list */}
             <div className="p-3 md:p-4 border-b border-border/34 space-y-2">
-              {selectedDayData.trades.map((trade) => (
-                <button
-                  key={trade.id}
-                  onClick={() => setSelectedTrade(selectedTrade?.id === trade.id ? null : trade)}
-                  className={cn(
-                    "w-full flex items-center justify-between py-2 md:py-3 px-3 md:px-4 border transition-all text-left rounded-md",
-                    selectedTrade?.id === trade.id
-                      ? "border-foreground/20 bg-accent/50"
-                      : "border-border bg-transparent hover:bg-accent/30"
-                  )}
-                >
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className={cn(
-                      "w-6 h-6 md:w-8 md:h-8 flex items-center justify-center border rounded-md flex-shrink-0",
-                      trade.direction === "Long" 
-                        ? "border-emerald-500/50 bg-emerald-500/10" 
-                        : "border-red-500/50 bg-red-500/10"
-                    )}>
-                      {trade.direction === "Long" 
-                        ? <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-emerald-500" />
-                        : <TrendingDown className="w-3 h-3 md:w-4 md:h-4 text-red-500" />
-                      }
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-muted-foreground font-mono text-xs md:text-sm">#{trade.trade_number}</span>
-                      <span className="text-[10px] md:text-xs text-muted-foreground ml-2 hidden sm:inline">{trade.entry_time}</span>
-                    </div>
+              {selectedDayData.trades.map((trade) => {
+                const isTradeRestricted = isEarlyAccess && trade.trade_number > 50;
+                return (
+                  <div key={trade.id} className="relative">
+                    {isTradeRestricted && (
+                      <div className="absolute inset-0 z-10 backdrop-blur-md bg-background/50 flex items-center justify-center rounded-md cursor-not-allowed">
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-background/80 rounded-full border border-border">
+                          <Lock className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-[10px] font-mono text-muted-foreground uppercase">Accès complet requis · Data bientôt disponible</span>
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => !isTradeRestricted && setSelectedTrade(selectedTrade?.id === trade.id ? null : trade)}
+                      disabled={isTradeRestricted}
+                      className={cn(
+                        "w-full flex items-center justify-between py-2 md:py-3 px-3 md:px-4 border transition-all text-left rounded-md",
+                        selectedTrade?.id === trade.id
+                          ? "border-foreground/20 bg-accent/50"
+                          : "border-border bg-transparent hover:bg-accent/30"
+                      )}
+                    >
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className={cn(
+                          "w-6 h-6 md:w-8 md:h-8 flex items-center justify-center border rounded-md flex-shrink-0",
+                          trade.direction === "Long" 
+                            ? "border-emerald-500/50 bg-emerald-500/10" 
+                            : "border-red-500/50 bg-red-500/10"
+                        )}>
+                          {trade.direction === "Long" 
+                            ? <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-emerald-500" />
+                            : <TrendingDown className="w-3 h-3 md:w-4 md:h-4 text-red-500" />
+                          }
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-muted-foreground font-mono text-xs md:text-sm">#{trade.trade_number}</span>
+                          <span className="text-[10px] md:text-xs text-muted-foreground ml-2 hidden sm:inline">{trade.entry_time}</span>
+                        </div>
+                      </div>
+                      <span className={cn(
+                        "font-mono font-bold text-sm md:text-base",
+                        (trade.rr || 0) >= 0 ? "text-emerald-500" : "text-red-500"
+                      )}>
+                        {(trade.rr || 0) >= 0 ? "+" : ""}{trade.rr?.toFixed(2)} RR
+                      </span>
+                    </button>
                   </div>
-                  <span className={cn(
-                    "font-mono font-bold text-sm md:text-base",
-                    (trade.rr || 0) >= 0 ? "text-emerald-500" : "text-red-500"
-                  )}>
-                    {(trade.rr || 0) >= 0 ? "+" : ""}{trade.rr?.toFixed(2)} RR
-                  </span>
-                </button>
-              ))}
+                );
+              })}
             </div>
 
             {/* Selected trade details with graphs */}
-            {selectedTrade && (
+            {selectedTrade && !(isEarlyAccess && selectedTrade.trade_number > 50) && (
               <div className="flex-1 overflow-auto p-3 md:p-4 space-y-3 md:space-y-4">
                 {(() => {
                   const context = getTradeContext(selectedTrade);
                   return (
                     <>
-                      {/* Trade header - responsive like OracleDatabase */}
+                      {/* Trade header */}
                       <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 p-3 md:p-4 border border-border bg-transparent rounded-md">
                         <div className={cn(
                           "w-10 h-10 md:w-12 md:h-12 flex items-center justify-center border rounded-md flex-shrink-0",
@@ -413,7 +443,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                         </div>
                       </div>
 
-                      {/* Stats row - responsive grid */}
+                      {/* Stats row */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
                         <div className="border border-border p-2 md:p-3 bg-transparent rounded-md">
                           <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
@@ -447,9 +477,8 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                         </div>
                       </div>
 
-                      {/* RR charts - stacked on mobile */}
+                      {/* RR charts */}
                       <div className="grid grid-cols-1 gap-3 md:gap-4">
-                        {/* Bar chart - individual RR per trade */}
                         <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
                           <div className="flex items-center justify-between mb-3 md:mb-4">
                             <h4 className="text-[10px] md:text-sm font-mono uppercase tracking-wider text-muted-foreground">
@@ -459,42 +488,17 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                           <div className="h-28 md:h-36">
                             <ResponsiveContainer width="100%" height="100%">
                               <BarChart data={context.chartData}>
-                                <XAxis 
-                                  dataKey="trade" 
-                                  tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
-                                  axisLine={{ stroke: "var(--chart-axis-line)" }}
-                                  tickLine={false}
-                                />
-                                <YAxis 
-                                  tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
-                                  axisLine={{ stroke: "var(--chart-axis-line)" }}
-                                  tickLine={false}
-                                  width={25}
-                                />
+                                <XAxis dataKey="trade" tick={{ fill: "var(--chart-axis)", fontSize: 9 }} axisLine={{ stroke: "var(--chart-axis-line)" }} tickLine={false} />
+                                <YAxis tick={{ fill: "var(--chart-axis)", fontSize: 9 }} axisLine={{ stroke: "var(--chart-axis-line)" }} tickLine={false} width={25} />
                                 <Tooltip
-                                  contentStyle={{
-                                    backgroundColor: "var(--chart-tooltip-bg)",
-                                    border: "1px solid var(--chart-tooltip-border)",
-                                    borderRadius: 4,
-                                    color: "var(--chart-tooltip-text)",
-                                    fontSize: 11,
-                                  }}
+                                  contentStyle={{ backgroundColor: "var(--chart-tooltip-bg)", border: "1px solid var(--chart-tooltip-border)", borderRadius: 4, color: "var(--chart-tooltip-text)", fontSize: 11 }}
                                   itemStyle={{ color: "var(--chart-tooltip-text)" }}
                                   labelStyle={{ color: "var(--chart-tooltip-text)" }}
-                                  formatter={(value: number, name: string, props: any) => [
-                                    `${value.toFixed(2)} RR`,
-                                    `Trade #${props.payload.tradeNum}`
-                                  ]}
+                                  formatter={(value: number, name: string, props: any) => [`${value.toFixed(2)} RR`, `Trade #${props.payload.tradeNum}`]}
                                 />
-                                <Bar 
-                                  dataKey="individual" 
-                                  radius={[3, 3, 0, 0]}
-                                >
+                                <Bar dataKey="individual" radius={[3, 3, 0, 0]}>
                                   {context.chartData.map((entry, index) => (
-                                    <Cell 
-                                      key={`cell-${index}`} 
-                                      fill={entry.current ? "var(--chart-bar)" : entry.individual >= 0 ? "rgba(34, 197, 94, 0.6)" : "rgba(239, 68, 68, 0.6)"} 
-                                    />
+                                    <Cell key={`cell-${index}`} fill={entry.current ? "var(--chart-bar)" : entry.individual >= 0 ? "rgba(34, 197, 94, 0.6)" : "rgba(239, 68, 68, 0.6)"} />
                                   ))}
                                 </Bar>
                               </BarChart>
@@ -502,16 +506,12 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                           </div>
                         </div>
 
-                        {/* Cumulative RR chart - ISOLATED */}
                         <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
                           <div className="flex items-center justify-between mb-3 md:mb-4">
                             <h4 className="text-[10px] md:text-sm font-mono uppercase tracking-wider text-muted-foreground">
                               Cumul Isolé (10 trades)
                             </h4>
-                            <span className={cn(
-                              "text-sm md:text-base font-bold",
-                              context.isolatedTotal >= 0 ? "text-emerald-500" : "text-red-500"
-                            )}>
+                            <span className={cn("text-sm md:text-base font-bold", context.isolatedTotal >= 0 ? "text-emerald-500" : "text-red-500")}>
                               {context.isolatedTotal >= 0 ? "+" : ""}{context.isolatedTotal.toFixed(2)} RR
                             </span>
                           </div>
@@ -524,44 +524,22 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                                     <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
                                   </linearGradient>
                                 </defs>
-                                <XAxis 
-                                  dataKey="trade" 
-                                  tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
-                                  axisLine={{ stroke: "var(--chart-axis-line)" }}
-                                  tickLine={false}
-                                />
-                                <YAxis 
-                                  tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
-                                  axisLine={{ stroke: "var(--chart-axis-line)" }}
-                                  tickLine={false}
-                                  width={25}
-                                />
+                                <XAxis dataKey="trade" tick={{ fill: "var(--chart-axis)", fontSize: 9 }} axisLine={{ stroke: "var(--chart-axis-line)" }} tickLine={false} />
+                                <YAxis tick={{ fill: "var(--chart-axis)", fontSize: 9 }} axisLine={{ stroke: "var(--chart-axis-line)" }} tickLine={false} width={25} />
                                 <Tooltip
-                                  contentStyle={{
-                                    backgroundColor: "var(--chart-tooltip-bg)",
-                                    border: "1px solid var(--chart-tooltip-border)",
-                                    borderRadius: 4,
-                                    color: "var(--chart-tooltip-text)",
-                                    fontSize: 11,
-                                  }}
+                                  contentStyle={{ backgroundColor: "var(--chart-tooltip-bg)", border: "1px solid var(--chart-tooltip-border)", borderRadius: 4, color: "var(--chart-tooltip-text)", fontSize: 11 }}
                                   itemStyle={{ color: "var(--chart-tooltip-text)" }}
                                   labelStyle={{ color: "var(--chart-tooltip-text)" }}
                                   formatter={(value: number) => [`${value.toFixed(2)} RR`, "Cumul"]}
                                 />
-                                <Area 
-                                  type="monotone" 
-                                  dataKey="rr" 
-                                  stroke="#22c55e" 
-                                  fillOpacity={1}
-                                  fill="url(#colorCumRR)"
-                                />
+                                <Area type="monotone" dataKey="rr" stroke="#22c55e" fillOpacity={1} fill="url(#colorCumRR)" />
                               </AreaChart>
                             </ResponsiveContainer>
                           </div>
                         </div>
                       </div>
 
-                      {/* Trade details - stacked on mobile */}
+                      {/* Trade details */}
                       <div className="grid grid-cols-1 gap-3">
                         <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
                           <h4 className="text-[10px] md:text-xs font-mono uppercase tracking-wider text-muted-foreground mb-2 md:mb-3">
@@ -599,10 +577,7 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-xs md:text-sm text-muted-foreground">RR après</span>
-                              <span className={cn(
-                                "text-xs md:text-sm",
-                                context.cumulativeRR >= 0 ? "text-emerald-500" : "text-red-500"
-                              )}>
+                              <span className={cn("text-xs md:text-sm", context.cumulativeRR >= 0 ? "text-emerald-500" : "text-red-500")}>
                                 {context.cumulativeRR >= 0 ? "+" : ""}{context.cumulativeRR.toFixed(2)}
                               </span>
                             </div>
@@ -610,18 +585,10 @@ export const TradingJournal = ({ trades }: TradingJournalProps) => {
                         </div>
                       </div>
 
-                      {/* Screenshots - stacked on mobile */}
+                      {/* Screenshots */}
                       <div className="grid grid-cols-1 gap-3">
-                        <SignedImageCard
-                          storagePath={selectedTrade.screenshot_m15_m5}
-                          alt={`Trade ${selectedTrade.trade_number} M15/M5`}
-                          label="M15 / Contexte"
-                        />
-                        <SignedImageCard
-                          storagePath={selectedTrade.screenshot_m1}
-                          alt={`Trade ${selectedTrade.trade_number} M1`}
-                          label="M5 / Entrée"
-                        />
+                        <SignedImageCard storagePath={selectedTrade.screenshot_m15_m5} alt={`Trade ${selectedTrade.trade_number} M15/M5`} label="M15 / Contexte" />
+                        <SignedImageCard storagePath={selectedTrade.screenshot_m1} alt={`Trade ${selectedTrade.trade_number} M1`} label="M5 / Entrée" />
                       </div>
                     </>
                   );

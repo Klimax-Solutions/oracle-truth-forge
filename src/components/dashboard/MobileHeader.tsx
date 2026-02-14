@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { Database, BarChart3, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy, Film } from "lucide-react";
+import { Database, BarChart3, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy, Film, Award } from "lucide-react";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 
 interface MobileHeaderProps {
@@ -14,6 +14,7 @@ interface MobileHeaderProps {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   dataSourceSelector?: React.ReactNode;
+  earlyAccessTimer?: React.ReactNode;
 }
 
 const tabs = [
@@ -24,6 +25,10 @@ const tabs = [
   { id: "successes", label: "Chat", icon: Trophy },
 ];
 
+const earlyAccessTabs = [
+  { id: "results", label: "Résultats", icon: Award },
+];
+
 const adminTabs = [
   { id: "batch-import", label: "Import Batch", icon: FileUp },
   { id: "admin", label: "Vérifications Admin", icon: ShieldCheck },
@@ -32,6 +37,7 @@ const adminTabs = [
 const superAdminTabs = [
   { id: "roles", label: "Gestion des Rôles", icon: Crown },
   { id: "video-manager", label: "Gestion Vidéos", icon: Film },
+  { id: "results-manager", label: "Gestion Résultats", icon: Award },
 ];
 
 export const MobileHeader = ({
@@ -42,11 +48,16 @@ export const MobileHeader = ({
   isAdmin,
   isSuperAdmin,
   dataSourceSelector,
+  earlyAccessTimer,
 }: MobileHeaderProps) => {
   const { isEarlyAccess } = useEarlyAccess();
   let allTabs = isEarlyAccess 
     ? tabs.filter(t => t.id !== "successes") 
     : [...tabs];
+  
+  if (isEarlyAccess) {
+    allTabs = [...allTabs, ...earlyAccessTabs];
+  }
   if (isAdmin) {
     allTabs = [...allTabs, ...adminTabs];
   }
@@ -114,6 +125,7 @@ export const MobileHeader = ({
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          {earlyAccessTimer}
           {dataSourceSelector}
           <ThemeToggle />
         </div>

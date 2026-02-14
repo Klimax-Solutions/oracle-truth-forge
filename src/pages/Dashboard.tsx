@@ -23,6 +23,8 @@ import { RoleManagement } from "@/components/dashboard/admin/RoleManagement";
 import { BatchImportPage } from "@/components/dashboard/BatchImportPage";
 import { SuccessPage } from "@/components/dashboard/SuccessPage";
 import { QuestFloatingBubble } from "@/components/dashboard/QuestFloatingBubble";
+import { ResultsPage } from "@/components/dashboard/ResultsPage";
+import { ResultsManager } from "@/components/dashboard/ResultsManager";
 
 interface Trade {
   id: string;
@@ -87,7 +89,6 @@ const Dashboard = () => {
         return false;
       }
 
-      // Verify device session token matches one of this user's sessions
       const localToken = localStorage.getItem("oracle_session_token");
       if (localToken) {
         const { data: sessions } = await supabase
@@ -267,12 +268,16 @@ const Dashboard = () => {
         return <VideoSetup />;
       case "successes":
         return <SuccessPage />;
+      case "results":
+        return <ResultsPage />;
       case "batch-import":
         return <BatchImportPage />;
       case "admin":
         return <AdminVerification />;
       case "video-manager":
         return <VideoManager />;
+      case "results-manager":
+        return <ResultsManager />;
       case "roles":
         return <RoleManagement />;
       default:
@@ -282,9 +287,6 @@ const Dashboard = () => {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
-      {/* Early Access Timer Banner */}
-      {isEarlyAccess && expiresAt && <EarlyAccessTimer expiresAt={expiresAt} />}
-      
       <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
       {/* Mobile Header */}
       <MobileHeader
@@ -297,6 +299,7 @@ const Dashboard = () => {
         dataSourceSelector={showDataSourceSelector ? (
           <DataSourceSelector value={dataSource} onChange={setDataSource} />
         ) : undefined}
+        earlyAccessTimer={isEarlyAccess && expiresAt ? <EarlyAccessTimer expiresAt={expiresAt} /> : undefined}
       />
 
       {/* Desktop Sidebar */}
@@ -304,13 +307,15 @@ const Dashboard = () => {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* Desktop Header - hidden on mobile */}
+        {/* Desktop Header */}
         <header className="hidden md:block border-b border-border bg-card">
           <div className="px-6 py-4 flex items-center justify-between">
             <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
               {displayName || user?.email?.split("@")[0] || ""}
             </span>
             <div className="flex items-center gap-3">
+              {/* Early Access Timer in header center */}
+              {isEarlyAccess && expiresAt && <EarlyAccessTimer expiresAt={expiresAt} />}
               {showDataSourceSelector && (
                 <DataSourceSelector value={dataSource} onChange={setDataSource} />
               )}
