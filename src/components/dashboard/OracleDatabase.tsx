@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X, CheckSquare } from "lucide-react";
+import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X, CheckSquare, Lock } from "lucide-react";
 import { SignedImageCard } from "./SignedImageCard";
 import { cn } from "@/lib/utils";
 import { useState, useMemo, useEffect } from "react";
@@ -6,6 +6,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useChartColors } from "@/hooks/useChartColors";
+import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,6 +62,7 @@ interface Filters {
 
 export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [], onAnalysisToggle }: OracleDatabaseProps) => {
   const chartColors = useChartColors();
+  const { isEarlyAccess } = useEarlyAccess();
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [filters, setFilters] = useState<Filters>(initialFilters || {
     direction: [],
@@ -363,7 +365,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
 
       {/* Trades list */}
       <div className="flex-1 overflow-auto p-4">
-        {filteredTrades.length === 0 ? (
+      {filteredTrades.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-muted-foreground text-lg mb-4">Aucun trade correspondant aux filtres</p>
             <Button variant="ghost" onClick={clearFilters} className="text-muted-foreground">
@@ -372,19 +374,31 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredTrades.map((trade) => (
+            {filteredTrades.map((trade, tradeIdx) => {
+              const isBlurred = isEarlyAccess && trade.trade_number > 50;
+              return (
               <div
                 key={trade.id}
                 className={cn(
-                  "border transition-all rounded-md overflow-hidden",
+                  "border transition-all rounded-md overflow-hidden relative",
+                  isBlurred && "pointer-events-none",
                   selectedTrade?.id === trade.id
                     ? "border-foreground/20 bg-accent/40"
                     : "border-border hover:bg-accent/30 bg-transparent"
                 )}
               >
+                {/* Blur overlay for Early Access beyond 50 trades */}
+                {isBlurred && (
+                  <div className="absolute inset-0 z-10 backdrop-blur-sm bg-background/40 flex items-center justify-center">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-background/80 rounded-full border border-border">
+                      <Lock className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-[10px] font-mono text-muted-foreground uppercase">Accès complet requis</span>
+                    </div>
+                  </div>
+                )}
                 {/* Main row - clickable */}
                 <div 
-                  onClick={() => setSelectedTrade(selectedTrade?.id === trade.id ? null : trade)}
+                  onClick={() => !isBlurred && setSelectedTrade(selectedTrade?.id === trade.id ? null : trade)}
                   className="px-3 md:px-5 py-3 flex items-center justify-between cursor-pointer"
                 >
                   <div className="flex items-center gap-3 md:gap-5">
@@ -645,18 +659,35 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
 
                           {/* Screenshots - vertical stack on mobile */}
                           {(trade.screenshot_m1 || trade.screenshot_m15_m5) ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                              <SignedImageCard
-                                storagePath={trade.screenshot_m15_m5}
-                                alt={`Trade ${trade.trade_number} M15`}
-                                label="M15 / Contexte"
-                              />
-                              <SignedImageCard
-                                storagePath={trade.screenshot_m1}
-                                alt={`Trade ${trade.trade_number} M5`}
-                                label="M5 / Entrée"
-                              />
-                            </div>
+                            isEarlyAccess ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                                <div className="relative border border-border rounded-md overflow-hidden aspect-video bg-muted/50">
+                                  <div className="absolute inset-0 backdrop-blur-xl bg-background/30 flex flex-col items-center justify-center z-10">
+                                    <Lock className="w-5 h-5 text-muted-foreground mb-1" />
+                                    <span className="text-[10px] font-mono text-muted-foreground">M15 / Contexte</span>
+                                  </div>
+                                </div>
+                                <div className="relative border border-border rounded-md overflow-hidden aspect-video bg-muted/50">
+                                  <div className="absolute inset-0 backdrop-blur-xl bg-background/30 flex flex-col items-center justify-center z-10">
+                                    <Lock className="w-5 h-5 text-muted-foreground mb-1" />
+                                    <span className="text-[10px] font-mono text-muted-foreground">M5 / Entrée</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                                <SignedImageCard
+                                  storagePath={trade.screenshot_m15_m5}
+                                  alt={`Trade ${trade.trade_number} M15`}
+                                  label="M15 / Contexte"
+                                />
+                                <SignedImageCard
+                                  storagePath={trade.screenshot_m1}
+                                  alt={`Trade ${trade.trade_number} M5`}
+                                  label="M5 / Entrée"
+                                />
+                              </div>
+                            )
                           ) : (
                             <div className="border border-dashed border-border p-4 md:p-6 bg-muted/50 rounded-md flex flex-col items-center justify-center">
                               <Image className="w-6 h-6 md:w-8 md:h-8 text-muted-foreground mb-2" />
@@ -669,7 +700,8 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                   </div>
                 )}
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

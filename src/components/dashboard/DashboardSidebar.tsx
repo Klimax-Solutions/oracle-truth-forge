@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { Database, BarChart3, ChevronRight, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy, Film } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 
 interface DashboardSidebarProps {
   activeTab: string;
@@ -29,6 +30,7 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const { isEarlyAccess } = useEarlyAccess();
 
   useEffect(() => {
     const checkRoles = async () => {
@@ -45,7 +47,10 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
     checkRoles();
   }, []);
 
-  let allTabs = [...tabs];
+  // Filter tabs based on role
+  let allTabs = isEarlyAccess 
+    ? tabs.filter(t => t.id !== "successes") 
+    : [...tabs];
   if (isAdmin) {
     allTabs = [...allTabs, ...adminTabs];
   }

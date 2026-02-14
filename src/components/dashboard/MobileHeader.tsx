@@ -4,6 +4,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { Database, BarChart3, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy, Film } from "lucide-react";
+import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 
 interface MobileHeaderProps {
   userEmail: string;
@@ -42,7 +43,10 @@ export const MobileHeader = ({
   isSuperAdmin,
   dataSourceSelector,
 }: MobileHeaderProps) => {
-  let allTabs = [...tabs];
+  const { isEarlyAccess } = useEarlyAccess();
+  let allTabs = isEarlyAccess 
+    ? tabs.filter(t => t.id !== "successes") 
+    : [...tabs];
   if (isAdmin) {
     allTabs = [...allTabs, ...adminTabs];
   }
