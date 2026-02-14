@@ -87,7 +87,8 @@ export const CumulativeEvolution = ({ trades }: CumulativeEvolutionProps) => {
     const gain = currentCapital - initialCap;
     const percentGain = initialCap > 0 ? ((gain / initialCap) * 100) : 0;
     const initialRiskAmount = initialCap * (risk / 100);
-    return { riskAmount: initialRiskAmount, totalRR, gain, finalCapital: currentCapital, percentGain };
+    const currentRiskAmount = currentCapital * (risk / 100);
+    return { initialRiskAmount, currentRiskAmount, totalRR, gain, finalCapital: currentCapital, percentGain };
   }, [capital, riskPercent, filteredTrades]);
 
   const scrollMonths = (direction: "left" | "right") => {
@@ -250,7 +251,10 @@ export const CumulativeEvolution = ({ trades }: CumulativeEvolutionProps) => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <div className="border border-border p-2 rounded-md text-center">
             <p className="text-[8px] text-muted-foreground font-mono uppercase">Risque/trade</p>
-            <p className="text-sm font-mono font-bold text-foreground">{simulatorResult.riskAmount.toLocaleString("fr-FR")} €</p>
+            <p className="text-sm font-mono font-bold text-foreground">{simulatorResult.currentRiskAmount.toLocaleString("fr-FR")} €</p>
+            <p className="text-[9px] font-mono text-muted-foreground">
+              Init: {simulatorResult.initialRiskAmount.toLocaleString("fr-FR")} €
+            </p>
           </div>
           <div className="border border-border p-2 rounded-md text-center">
             <p className="text-[8px] text-muted-foreground font-mono uppercase">RR Total</p>

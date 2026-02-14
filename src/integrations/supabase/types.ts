@@ -635,6 +635,7 @@ export type Database = {
         Row: {
           assigned_by: string | null
           created_at: string
+          expires_at: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
@@ -642,6 +643,7 @@ export type Database = {
         Insert: {
           assigned_by?: string | null
           created_at?: string
+          expires_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
@@ -649,6 +651,7 @@ export type Database = {
         Update: {
           assigned_by?: string | null
           created_at?: string
+          expires_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string

@@ -82,6 +82,7 @@ export const RoleManagement = () => {
   const [selectedRole, setSelectedRole] = useState<string>("admin");
   const [actionReason, setActionReason] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [earlyAccessExpiry, setEarlyAccessExpiry] = useState<string>("");
   const [editingFirstNameUserId, setEditingFirstNameUserId] = useState<string | null>(null);
   const [editingFirstNameValue, setEditingFirstNameValue] = useState("");
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
@@ -153,13 +154,19 @@ export const RoleManagement = () => {
 
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     
+    const insertData: any = {
+      user_id: selectedUser,
+      role: selectedRole as any,
+      assigned_by: currentUser?.id,
+    };
+
+    if (selectedRole === "early_access" && earlyAccessExpiry) {
+      insertData.expires_at = new Date(earlyAccessExpiry).toISOString();
+    }
+
     const { error } = await supabase
       .from("user_roles")
-      .insert({
-        user_id: selectedUser,
-        role: selectedRole as any,
-        assigned_by: currentUser?.id,
-      });
+      .insert(insertData);
 
     if (error) {
       if (error.code === '23505') {
@@ -174,6 +181,7 @@ export const RoleManagement = () => {
     toast.success("Rôle ajouté avec succès");
     setDialogOpen(false);
     setSelectedUser(null);
+    setEarlyAccessExpiry("");
     fetchUsersWithRoles();
   };
 
@@ -576,6 +584,20 @@ export const RoleManagement = () => {
                   </SelectContent>
                 </Select>
               </div>
+
+              {selectedRole === "early_access" && (
+                <div className="space-y-2">
+                  <Label>Date d'expiration du minuteur</Label>
+                  <Input
+                    type="datetime-local"
+                    value={earlyAccessExpiry}
+                    onChange={(e) => setEarlyAccessExpiry(e.target.value)}
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Le minuteur s'affichera en rouge dans le header pour cet utilisateur
+                  </p>
+                </div>
+              )}
             </div>
             
             <DialogFooter className="flex-col sm:flex-row gap-2">
