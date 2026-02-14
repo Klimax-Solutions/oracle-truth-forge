@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Database, BarChart3, ChevronRight, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy, Film } from "lucide-react";
+import { Database, BarChart3, ChevronRight, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy, Film, Award } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
@@ -17,6 +17,10 @@ const tabs = [
   { id: "successes", label: "Chat", icon: Trophy },
 ];
 
+const earlyAccessTabs = [
+  { id: "results", label: "Résultats", icon: Award },
+];
+
 const adminTabs = [
   { id: "batch-import", label: "Import Batch", icon: FileUp },
   { id: "admin", label: "Vérifications Admin", icon: ShieldCheck },
@@ -24,6 +28,7 @@ const adminTabs = [
 const superAdminTabs = [
   { id: "roles", label: "Gestion des Rôles", icon: Crown },
   { id: "video-manager", label: "Gestion Vidéos", icon: Film },
+  { id: "results-manager", label: "Gestion Résultats", icon: Award },
 ];
 
 export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarProps) => {
@@ -35,14 +40,9 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
   useEffect(() => {
     const checkRoles = async () => {
       const { data: isAdminData } = await supabase.rpc('is_admin');
-      if (isAdminData) {
-        setIsAdmin(true);
-      }
-      
+      if (isAdminData) setIsAdmin(true);
       const { data: isSuperAdminData } = await supabase.rpc('is_super_admin');
-      if (isSuperAdminData) {
-        setIsSuperAdmin(true);
-      }
+      if (isSuperAdminData) setIsSuperAdmin(true);
     };
     checkRoles();
   }, []);
@@ -51,6 +51,12 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
   let allTabs = isEarlyAccess 
     ? tabs.filter(t => t.id !== "successes") 
     : [...tabs];
+  
+  // Add Results tab for early access users
+  if (isEarlyAccess) {
+    allTabs = [...allTabs, ...earlyAccessTabs];
+  }
+  
   if (isAdmin) {
     allTabs = [...allTabs, ...adminTabs];
   }
@@ -130,14 +136,9 @@ export const useSidebarRoles = () => {
   useEffect(() => {
     const checkRoles = async () => {
       const { data: isAdminData } = await supabase.rpc('is_admin');
-      if (isAdminData) {
-        setIsAdmin(true);
-      }
-      
+      if (isAdminData) setIsAdmin(true);
       const { data: isSuperAdminData } = await supabase.rpc('is_super_admin');
-      if (isSuperAdminData) {
-        setIsSuperAdmin(true);
-      }
+      if (isSuperAdminData) setIsSuperAdmin(true);
     };
     checkRoles();
   }, []);

@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, RotateCcw, DollarSign } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Input } from "@/components/ui/input";
+import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 
 interface Trade {
   id: string;
@@ -15,11 +16,20 @@ interface CumulativeEvolutionProps {
   trades: Trade[];
 }
 
+const CAPITAL_PRESETS = [
+  { label: "105K", value: "105000" },
+  { label: "205K", value: "205000" },
+  { label: "305K", value: "305000" },
+  { label: "405K", value: "405000" },
+  { label: "1M", value: "1000000" },
+];
+
 export const CumulativeEvolution = ({ trades }: CumulativeEvolutionProps) => {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [capital, setCapital] = useState<string>("10000");
   const [riskPercent, setRiskPercent] = useState<string>("1");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { isEarlyAccess } = useEarlyAccess();
 
   // Build monthly data
   const monthlyData = useMemo(() => {
@@ -69,26 +79,19 @@ export const CumulativeEvolution = ({ trades }: CumulativeEvolutionProps) => {
     });
   }, [filteredTrades]);
 
-  // Simulator calculation with compound interest (rolling capital)
+  // Simulator: risk indexed on INITIAL capital (not rolling/compound)
   const simulatorResult = useMemo(() => {
     const initialCap = parseFloat(capital) || 0;
     const risk = parseFloat(riskPercent) || 0;
     const sorted = [...filteredTrades].sort((a, b) => a.trade_number - b.trade_number);
     
-    let currentCapital = initialCap;
     const totalRR = sorted.reduce((sum, t) => sum + (t.rr || 0), 0);
-    
-    // Compound: risk is recalculated on current capital after each trade
-    sorted.forEach(t => {
-      const riskAmount = currentCapital * (risk / 100);
-      currentCapital += riskAmount * (t.rr || 0);
-    });
-    
-    const gain = currentCapital - initialCap;
+    const riskAmount = initialCap * (risk / 100);
+    const gain = riskAmount * totalRR;
+    const finalCapital = initialCap + gain;
     const percentGain = initialCap > 0 ? ((gain / initialCap) * 100) : 0;
-    const initialRiskAmount = initialCap * (risk / 100);
-    const currentRiskAmount = currentCapital * (risk / 100);
-    return { initialRiskAmount, currentRiskAmount, totalRR, gain, finalCapital: currentCapital, percentGain };
+    
+    return { riskAmount, totalRR, gain, finalCapital, percentGain };
   }, [capital, riskPercent, filteredTrades]);
 
   const scrollMonths = (direction: "left" | "right") => {
@@ -224,9 +227,29 @@ export const CumulativeEvolution = ({ trades }: CumulativeEvolutionProps) => {
           </span>
         </div>
 
+        {/* Capital presets for early access */}
+        {isEarlyAccess && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {CAPITAL_PRESETS.map((preset) => (
+              <button
+                key={preset.value}
+                onClick={() => setCapital(preset.value)}
+                className={cn(
+                  "px-2.5 py-1 rounded text-[10px] font-mono border transition-all",
+                  capital === preset.value
+                    ? "border-foreground/40 bg-accent text-foreground"
+                    : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                )}
+              >
+                ${preset.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="text-[9px] font-mono text-muted-foreground uppercase mb-1 block">Capital (€)</label>
+            <label className="text-[9px] font-mono text-muted-foreground uppercase mb-1 block">Capital ($)</label>
             <Input
               type="number"
               value={capital}
@@ -251,10 +274,7 @@ export const CumulativeEvolution = ({ trades }: CumulativeEvolutionProps) => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <div className="border border-border p-2 rounded-md text-center">
             <p className="text-[8px] text-muted-foreground font-mono uppercase">Risque/trade</p>
-            <p className="text-sm font-mono font-bold text-foreground">{simulatorResult.currentRiskAmount.toLocaleString("fr-FR")} €</p>
-            <p className="text-[9px] font-mono text-muted-foreground">
-              Init: {simulatorResult.initialRiskAmount.toLocaleString("fr-FR")} €
-            </p>
+            <p className="text-sm font-mono font-bold text-foreground">{simulatorResult.riskAmount.toLocaleString("fr-FR")} $</p>
           </div>
           <div className="border border-border p-2 rounded-md text-center">
             <p className="text-[8px] text-muted-foreground font-mono uppercase">RR Total</p>
@@ -266,18 +286,18 @@ export const CumulativeEvolution = ({ trades }: CumulativeEvolutionProps) => {
             </p>
           </div>
           <div className="border border-emerald-500/30 p-2 rounded-md text-center bg-emerald-500/5">
-            <p className="text-[8px] text-muted-foreground font-mono uppercase">Gain/Perte</p>
+            <p className="text-[8px] text-muted-foreground font-mono uppercase">Payout / Retrait</p>
             <p className={cn(
               "text-sm font-mono font-bold",
               simulatorResult.gain >= 0 ? "text-emerald-500" : "text-red-500"
             )}>
-              {simulatorResult.gain >= 0 ? "+" : ""}{simulatorResult.gain.toLocaleString("fr-FR")} €
+              {simulatorResult.gain >= 0 ? "+" : ""}{simulatorResult.gain.toLocaleString("fr-FR")} $
             </p>
           </div>
           <div className="border border-border p-2 rounded-md text-center">
             <p className="text-[8px] text-muted-foreground font-mono uppercase">Capital Final</p>
             <p className="text-sm font-mono font-bold text-foreground">
-              {simulatorResult.finalCapital.toLocaleString("fr-FR")} €
+              {simulatorResult.finalCapital.toLocaleString("fr-FR")} $
             </p>
             <p className={cn(
               "text-[9px] font-mono",
