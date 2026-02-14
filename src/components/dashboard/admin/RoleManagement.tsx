@@ -1,18 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +47,8 @@ import {
   IdCard,
   UserCircle,
   Database,
+  Search,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminUserDataViewer } from "./AdminUserDataViewer";
@@ -88,6 +82,17 @@ export const RoleManagement = () => {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [dataViewerUserId, setDataViewerUserId] = useState<string | null>(null);
   const [dataViewerUserName, setDataViewerUserName] = useState("");
+
+  // Search & filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+
+  // Role change state
+  const [roleChangeDialogOpen, setRoleChangeDialogOpen] = useState(false);
+  const [roleChangeUserId, setRoleChangeUserId] = useState<string | null>(null);
+  const [roleChangeTarget, setRoleChangeTarget] = useState<string>("member");
+  const [roleChangeExpiry, setRoleChangeExpiry] = useState<string>("");
+  const [roleChangeProcessing, setRoleChangeProcessing] = useState(false);
 
   useEffect(() => {
     checkSuperAdmin();
@@ -149,6 +154,48 @@ export const RoleManagement = () => {
     setLoading(false);
   };
 
+  // Filtered users based on search + filter
+  const filteredUsers = useMemo(() => {
+    let result = users;
+
+    // Apply filter
+    if (activeFilter) {
+      switch (activeFilter) {
+        case "super_admin":
+          result = result.filter(u => u.roles.includes("super_admin"));
+          break;
+        case "admin":
+          result = result.filter(u => u.roles.includes("admin"));
+          break;
+        case "active":
+          result = result.filter(u => u.status === "active");
+          break;
+        case "early_access":
+          result = result.filter(u => u.roles.includes("early_access"));
+          break;
+        case "frozen":
+          result = result.filter(u => u.status === "frozen");
+          break;
+        case "banned":
+          result = result.filter(u => u.status === "banned");
+          break;
+      }
+    }
+
+    // Apply search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(u =>
+        (u.display_name || "").toLowerCase().includes(q) ||
+        (u.first_name || "").toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.user_id.toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [users, activeFilter, searchQuery]);
+
   const addRole = async () => {
     if (!selectedUser || !selectedRole) return;
 
@@ -185,7 +232,7 @@ export const RoleManagement = () => {
     fetchUsersWithRoles();
   };
 
-  const removeRole = async (userId: string, role: "super_admin" | "admin" | "member") => {
+  const removeRole = async (userId: string, role: "super_admin" | "admin" | "member" | "early_access") => {
     if (role === 'member') {
       toast.error("Impossible de retirer le rôle membre");
       return;
@@ -205,6 +252,65 @@ export const RoleManagement = () => {
 
     toast.success("Rôle retiré avec succès");
     fetchUsersWithRoles();
+  };
+
+  // Change role: remove all non-member roles, add the new one
+  const executeRoleChange = async () => {
+    if (!roleChangeUserId || !roleChangeTarget) return;
+    setRoleChangeProcessing(true);
+
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const targetUser = users.find(u => u.user_id === roleChangeUserId);
+      if (!targetUser) throw new Error("User not found");
+
+      // Remove non-member roles
+      const rolesToRemove = targetUser.roles.filter(r => r !== "member");
+      for (const role of rolesToRemove) {
+        await supabase.from("user_roles").delete()
+          .eq("user_id", roleChangeUserId)
+          .eq("role", role as any);
+      }
+
+      // Add the target role if it's not 'member' (member is always there)
+      if (roleChangeTarget !== "member") {
+        const insertData: any = {
+          user_id: roleChangeUserId,
+          role: roleChangeTarget as any,
+          assigned_by: currentUser?.id,
+        };
+        if (roleChangeTarget === "early_access" && roleChangeExpiry) {
+          insertData.expires_at = new Date(roleChangeExpiry).toISOString();
+        }
+        const { error } = await supabase.from("user_roles").insert(insertData);
+        if (error) throw error;
+      }
+
+      toast.success(`Rôle modifié en ${getRoleLabel(roleChangeTarget)}`);
+      setRoleChangeDialogOpen(false);
+      setRoleChangeUserId(null);
+      setRoleChangeExpiry("");
+      fetchUsersWithRoles();
+    } catch (error) {
+      console.error("Error changing role:", error);
+      toast.error("Erreur lors du changement de rôle");
+    } finally {
+      setRoleChangeProcessing(false);
+    }
+  };
+
+  const openRoleChangeDialog = (userId: string) => {
+    const user = users.find(u => u.user_id === userId);
+    if (!user) return;
+    setQuickActionsOpen(false);
+    setRoleChangeUserId(userId);
+    // Set current primary role
+    if (user.roles.includes("super_admin")) setRoleChangeTarget("super_admin");
+    else if (user.roles.includes("admin")) setRoleChangeTarget("admin");
+    else if (user.roles.includes("early_access")) setRoleChangeTarget("early_access");
+    else setRoleChangeTarget("member");
+    setRoleChangeExpiry("");
+    setRoleChangeDialogOpen(true);
   };
 
   const saveFirstName = async (userId: string) => {
@@ -427,21 +533,21 @@ export const RoleManagement = () => {
           <span className="text-xs text-muted-foreground font-mono">{user.user_id}</span>
         </div>
 
-        {/* Display name (username from signup) */}
+        {/* Display name */}
         <div className="flex items-center gap-2">
           <UserCircle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <span className="text-xs text-muted-foreground">Nom d'utilisateur :</span>
           <span className="text-sm font-medium">{user.display_name || "—"}</span>
         </div>
 
-        {/* Email (same as display_name currently, but shown distinctly) */}
+        {/* Email */}
         <div className="flex items-center gap-2">
           <Mail className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <span className="text-xs text-muted-foreground">Email :</span>
           <span className="text-sm">{user.email}</span>
         </div>
 
-        {/* First name - editable, separate field */}
+        {/* First name - editable */}
         <div className="flex items-start gap-2 pt-1 border-t border-border/50">
           <User className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
           <div className="flex-1">
@@ -528,6 +634,16 @@ export const RoleManagement = () => {
 
   const dialogContent = getActionDialogContent();
 
+  // Filter button definitions
+  const filterButtons = [
+    { key: "super_admin", label: "Super Admin", icon: <Crown className="w-3 h-3" />, count: users.filter(u => u.roles.includes('super_admin')).length, color: "text-foreground" },
+    { key: "admin", label: "Admin", icon: <ShieldCheck className="w-3 h-3" />, count: users.filter(u => u.roles.includes('admin')).length, color: "text-foreground" },
+    { key: "active", label: "Actifs", icon: <CheckCircle className="w-3 h-3" />, count: users.filter(u => u.status === 'active').length, color: "text-green-500" },
+    { key: "early_access", label: "Early", icon: <Shield className="w-3 h-3" />, count: users.filter(u => u.roles.includes('early_access')).length, color: "text-amber-500" },
+    { key: "frozen", label: "Gelés", icon: <Snowflake className="w-3 h-3" />, count: users.filter(u => u.status === 'frozen').length, color: "text-blue-500" },
+    { key: "banned", label: "Bannis", icon: <Ban className="w-3 h-3" />, count: users.filter(u => u.status === 'banned').length, color: "text-destructive" },
+  ];
+
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -542,7 +658,7 @@ export const RoleManagement = () => {
           <DialogTrigger asChild>
             <Button size="sm" className="w-full sm:w-auto">
               <UserPlus className="w-4 h-4 mr-2" />
-              Ajouter Admin
+              Ajouter Rôle
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-[90vw] md:max-w-md">
@@ -561,13 +677,11 @@ export const RoleManagement = () => {
                     <SelectValue placeholder="Sélectionner un utilisateur" />
                   </SelectTrigger>
                   <SelectContent>
-                    {users
-                      .filter(u => !u.roles.includes('admin') && !u.roles.includes('super_admin'))
-                      .map((user) => (
-                        <SelectItem key={user.user_id} value={user.user_id}>
-                          {user.display_name || user.email}
-                        </SelectItem>
-                      ))}
+                    {users.map((user) => (
+                      <SelectItem key={user.user_id} value={user.user_id}>
+                        {user.display_name || user.email}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -612,62 +726,57 @@ export const RoleManagement = () => {
         </Dialog>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-4">
-        <div className="p-3 md:p-4 rounded-lg border bg-card">
-          <div className="flex items-center gap-1.5 md:gap-2 text-muted-foreground mb-1">
-            <Crown className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="text-[10px] md:text-sm">Super</span>
-          </div>
-          <p className="text-lg md:text-2xl font-bold">
-            {users.filter(u => u.roles.includes('super_admin')).length}
-          </p>
-        </div>
-        <div className="p-3 md:p-4 rounded-lg border bg-card">
-          <div className="flex items-center gap-1.5 md:gap-2 text-muted-foreground mb-1">
-            <ShieldCheck className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="text-[10px] md:text-sm">Admins</span>
-          </div>
-          <p className="text-lg md:text-2xl font-bold">
-            {users.filter(u => u.roles.includes('admin')).length}
-          </p>
-        </div>
-        <div className="p-3 md:p-4 rounded-lg border bg-card">
-          <div className="flex items-center gap-1.5 md:gap-2 text-muted-foreground mb-1">
-            <User className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="text-[10px] md:text-sm">Actifs</span>
-          </div>
-          <p className="text-lg md:text-2xl font-bold">
-            {users.filter(u => u.status === 'active').length}
-          </p>
-        </div>
-        <div className="p-3 md:p-4 rounded-lg border bg-card">
-          <div className="flex items-center gap-1.5 md:gap-2 text-amber-500 mb-1">
-            <Shield className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="text-[10px] md:text-sm">Early</span>
-          </div>
-          <p className="text-lg md:text-2xl font-bold text-amber-500">
-            {users.filter(u => u.roles.includes('early_access')).length}
-          </p>
-        </div>
-        <div className="p-3 md:p-4 rounded-lg border bg-card hidden md:block">
-          <div className="flex items-center gap-1.5 md:gap-2 text-blue-500 mb-1">
-            <Snowflake className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="text-[10px] md:text-sm">Gelés</span>
-          </div>
-          <p className="text-lg md:text-2xl font-bold text-blue-500">
-            {users.filter(u => u.status === 'frozen').length}
-          </p>
-        </div>
-        <div className="p-3 md:p-4 rounded-lg border bg-card hidden md:block">
-          <div className="flex items-center gap-1.5 md:gap-2 text-destructive mb-1">
-            <Ban className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="text-[10px] md:text-sm">Bannis</span>
-          </div>
-          <p className="text-lg md:text-2xl font-bold text-destructive">
-            {users.filter(u => u.status === 'banned').length}
-          </p>
-        </div>
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Rechercher par prénom, email, nom d'utilisateur..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Filter buttons */}
+      <div className="flex flex-wrap gap-2">
+        {filterButtons.map((fb) => (
+          <button
+            key={fb.key}
+            onClick={() => setActiveFilter(activeFilter === fb.key ? null : fb.key)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all",
+              activeFilter === fb.key
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card border-border hover:bg-accent/50 text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <span className={activeFilter === fb.key ? "" : fb.color}>{fb.icon}</span>
+            <span>{fb.label}</span>
+            <span className={cn(
+              "font-bold ml-0.5",
+              activeFilter === fb.key ? "text-primary-foreground" : fb.color
+            )}>
+              {fb.count}
+            </span>
+          </button>
+        ))}
+        {activeFilter && (
+          <button
+            onClick={() => setActiveFilter(null)}
+            className="flex items-center gap-1 px-2 py-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-3 h-3" />
+            Réinitialiser
+          </button>
+        )}
       </div>
 
       {/* Users List */}
@@ -677,12 +786,12 @@ export const RoleManagement = () => {
             <div className="py-8 text-center">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
             </div>
-          ) : users.length === 0 ? (
+          ) : filteredUsers.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
-              Aucun utilisateur
+              {searchQuery || activeFilter ? "Aucun résultat" : "Aucun utilisateur"}
             </div>
           ) : (
-            users.map((user) => (
+            filteredUsers.map((user) => (
               <Collapsible
                 key={user.user_id}
                 open={expandedUserId === user.user_id}
@@ -693,7 +802,6 @@ export const RoleManagement = () => {
                   user.status !== 'active' && 'opacity-60',
                   expandedUserId === user.user_id && 'bg-muted/10'
                 )}>
-                  {/* Main row - clickable to expand */}
                   <CollapsibleTrigger asChild>
                     <div className="flex items-center justify-between gap-3 p-3 md:p-4 cursor-pointer hover:bg-muted/20 transition-colors">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -743,7 +851,6 @@ export const RoleManagement = () => {
                     </div>
                   </CollapsibleTrigger>
 
-                  {/* Expanded detail panel */}
                   <CollapsibleContent>
                     {renderProfileDetail(user)}
                   </CollapsibleContent>
@@ -777,6 +884,14 @@ export const RoleManagement = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-2 py-2">
+                  {/* Role change button */}
+                  <Button variant="outline" className="w-full justify-start gap-3 h-11" onClick={() => openRoleChangeDialog(qaUser.user_id)}>
+                    <RefreshCw className="w-4 h-4 text-primary" />
+                    Modifier le rôle
+                  </Button>
+
+                  <div className="border-t border-border my-2" />
+
                   {qaUser.status === 'active' && (
                     <>
                       <Button variant="outline" className="w-full justify-start gap-3 h-11" onClick={() => openActionDialog(qaUser.user_id, 'freeze')}>
@@ -830,6 +945,71 @@ export const RoleManagement = () => {
                     Supprimer définitivement
                   </Button>
                 </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Role Change Dialog */}
+      <Dialog open={roleChangeDialogOpen} onOpenChange={setRoleChangeDialogOpen}>
+        <DialogContent className="max-w-sm">
+          {(() => {
+            const rcUser = users.find(u => u.user_id === roleChangeUserId);
+            if (!rcUser) return null;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <RefreshCw className="w-5 h-5" />
+                    Modifier le rôle
+                  </DialogTitle>
+                  <DialogDescription>
+                    {rcUser.first_name || rcUser.display_name || "Utilisateur"}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Nouveau rôle</Label>
+                    <Select value={roleChangeTarget} onValueChange={setRoleChangeTarget}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="member">Membre</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="early_access">Early Access</SelectItem>
+                        <SelectItem value="super_admin">Super Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {roleChangeTarget === "early_access" && (
+                    <div className="space-y-2">
+                      <Label>Date d'expiration du minuteur</Label>
+                      <Input
+                        type="datetime-local"
+                        value={roleChangeExpiry}
+                        onChange={(e) => setRoleChangeExpiry(e.target.value)}
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        Le minuteur s'affichera en rouge dans le header
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter className="flex-col sm:flex-row gap-2">
+                  <Button variant="outline" onClick={() => setRoleChangeDialogOpen(false)} className="w-full sm:w-auto">
+                    Annuler
+                  </Button>
+                  <Button onClick={executeRoleChange} disabled={roleChangeProcessing} className="w-full sm:w-auto">
+                    {roleChangeProcessing ? (
+                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      "Confirmer"
+                    )}
+                  </Button>
+                </DialogFooter>
               </>
             );
           })()}

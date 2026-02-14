@@ -111,6 +111,7 @@ export const VideoSetup = () => {
             <h2 className="text-lg md:text-xl font-semibold text-foreground">
               Vidéo du Setup Oracle
             </h2>
+
             <Badge variant="secondary" className="font-mono text-[10px] md:text-xs">
               {totalCount} vidéos
             </Badge>
@@ -124,7 +125,7 @@ export const VideoSetup = () => {
               className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-md text-[10px] md:text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all bg-card"
             >
               <ExternalLink className="w-3 h-3" />
-              <span className="hidden sm:inline">Accéder aux vidéos bonus du Mercure Institute</span>
+              <span className="hidden sm:inline">Accéder aux vidéos bonus du Mercure Institut</span>
               <span className="sm:hidden">Vidéos bonus</span>
             </a>
             {/* Progress */}
@@ -186,7 +187,7 @@ export const VideoSetup = () => {
                     {selectedVideo.description}
                   </p>
                 )}
-                {selectedVideo.open_url && (
+                {selectedVideo.open_url && !isEarlyAccess && (
                   <a
                     href={selectedVideo.open_url}
                     target="_blank"

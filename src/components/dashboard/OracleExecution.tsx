@@ -12,7 +12,8 @@ import {
   Play,
   ChevronDown,
   ChevronUp,
-  Loader2
+  Loader2,
+  ExternalLink
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -397,10 +398,23 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-4 md:p-6 border-b border-border">
-        <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">Exécution d'Oracle</h2>
-        <p className="text-xs md:text-sm text-muted-foreground font-mono">
-          Progression des 8 cycles vers les 314 trades
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">Exécution d'Oracle</h2>
+            <p className="text-xs md:text-sm text-muted-foreground font-mono">
+              Progression des 8 cycles vers les 314 trades
+            </p>
+          </div>
+          <a
+            href="https://mercurefx.webflow.io/utility/connexion"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-primary/50 rounded-md text-xs font-semibold text-primary hover:bg-primary/10 transition-all"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Vidéos bonus — Mercure Institut
+          </a>
+        </div>
       </div>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto space-y-6 md:space-y-8">
