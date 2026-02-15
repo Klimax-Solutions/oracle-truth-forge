@@ -313,9 +313,13 @@ const Dashboard = () => {
             <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
               {displayName || user?.email?.split("@")[0] || ""}
             </span>
+            {/* Early Access Timer centered */}
+            {isEarlyAccess && expiresAt && (
+              <div className="flex-1 flex justify-center">
+                <EarlyAccessTimer expiresAt={expiresAt} />
+              </div>
+            )}
             <div className="flex items-center gap-3">
-              {/* Early Access Timer in header center */}
-              {isEarlyAccess && expiresAt && <EarlyAccessTimer expiresAt={expiresAt} />}
               {showDataSourceSelector && (
                 <DataSourceSelector value={dataSource} onChange={setDataSource} />
               )}

@@ -229,15 +229,15 @@ export const CumulativeEvolution = ({ trades }: CumulativeEvolutionProps) => {
 
         {/* Capital presets for early access */}
         {isEarlyAccess && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
+          <div className="flex flex-wrap gap-2 mb-4">
             {CAPITAL_PRESETS.map((preset) => (
               <button
                 key={preset.value}
                 onClick={() => setCapital(preset.value)}
                 className={cn(
-                  "px-2.5 py-1 rounded text-[10px] font-mono border transition-all",
+                  "px-4 py-2 rounded-md text-sm font-mono font-bold border-2 transition-all",
                   capital === preset.value
-                    ? "border-foreground/40 bg-accent text-foreground"
+                    ? "border-primary bg-primary/10 text-foreground"
                     : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
                 )}
               >

@@ -13,13 +13,18 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  Award
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { DailyQuestCard } from "./DailyQuestCard";
 import { QuestData } from "@/hooks/useQuestData";
+import { useEarlyAccess } from "@/hooks/useEarlyAccess";
+import { CumulativeEvolution } from "./CumulativeEvolution";
+import { ResultsPage } from "./ResultsPage";
+import { ImageLightbox } from "./ImageLightbox";
 
 interface Trade {
   id: string;
@@ -84,6 +89,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
   const [expandedCycle, setExpandedCycle] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+  const { isEarlyAccess } = useEarlyAccess();
 
   // Fetch cycles, user cycles, and user executions
   useEffect(() => {
@@ -418,8 +424,21 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
       </div>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto space-y-6 md:space-y-8">
-        {/* Daily Quest Card */}
-        {questData && !questData.loading && (
+        {/* Early Access: Key Stats + Cumulative Evolution + Results */}
+        {isEarlyAccess && (
+          <>
+            {/* Données Clés */}
+            <EarlyAccessKeyStats trades={trades} />
+
+            {/* Cumulative Evolution with Simulator */}
+            <div className="border border-border rounded-md p-4 md:p-5 bg-card">
+              <CumulativeEvolution trades={trades} />
+            </div>
+          </>
+        )}
+
+        {/* Daily Quest Card - hidden for Early Access */}
+        {!isEarlyAccess && questData && !questData.loading && (
           <DailyQuestCard
             questData={questData}
             onNavigateToVideos={() => onNavigateToVideos?.()}
@@ -432,7 +451,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
           />
         )}
 
-        {/* Overview stats */}
+        {/* Overview stats - condensed for Early Access */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <div className="border border-emerald-500/30 p-3 md:p-5 bg-transparent rounded-md">
             <div className="flex items-center gap-2 mb-2 md:mb-3">
@@ -717,83 +736,100 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
           </div>
         )}
 
-        {/* Summary Table */}
-        <div className="border border-border p-6 bg-transparent rounded-md">
-          <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
-            Récapitulatif des Cycles
-          </h3>
-          <div className="space-y-2">
-            {cyclesWithProgress.map((cycle) => {
-              const isEbauche = cycle.cycle_number === 0;
-              const ebaucheAnalyzed = questData?.ebaucheTradesAnalyzed || 0;
-              const displayCount = isEbauche ? ebaucheAnalyzed : cycle.userExecutions.length;
-              const displayLabel = isEbauche ? "analysés" : "saisis";
-              const displayProgress = isEbauche 
-                ? Math.min((ebaucheAnalyzed / cycle.total_trades) * 100, 100)
-                : cycle.progress;
+        {/* Summary Table - hidden for Early Access */}
+        {!isEarlyAccess && (
+          <div className="border border-border p-6 bg-transparent rounded-md">
+            <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
+              Récapitulatif des Cycles
+            </h3>
+            <div className="space-y-2">
+              {cyclesWithProgress.map((cycle) => {
+                const isEbauche = cycle.cycle_number === 0;
+                const ebaucheAnalyzed = questData?.ebaucheTradesAnalyzed || 0;
+                const displayCount = isEbauche ? ebaucheAnalyzed : cycle.userExecutions.length;
+                const displayLabel = isEbauche ? "analysés" : "saisis";
+                const displayProgress = isEbauche 
+                  ? Math.min((ebaucheAnalyzed / cycle.total_trades) * 100, 100)
+                  : cycle.progress;
 
-              return (
-                <div 
-                  key={cycle.id}
-                  className="flex items-center gap-4 py-2 border-b border-border last:border-0"
-                >
-                  <div className={cn(
-                    "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                    cycle.userCycle?.status === 'validated'
-                      ? "bg-emerald-500/20 text-emerald-400" 
-                      : cycle.userCycle?.status === 'in_progress'
-                      ? "bg-blue-500/20 text-blue-400"
-                      : cycle.userCycle?.status === 'pending_review'
-                      ? "bg-orange-500/20 text-orange-400"
-                      : cycle.userCycle?.status === 'rejected'
-                      ? "bg-red-500/20 text-red-400"
-                      : "bg-muted text-muted-foreground"
-                  )}>
-                    {isEbauche ? "É" : cycle.cycle_number}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-foreground">{cycle.name}</span>
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(cycle.userCycle?.status)}
-                        <span className="text-xs text-muted-foreground">
-                          {displayCount}/{cycle.total_trades} {displayLabel}
-                        </span>
+                return (
+                  <div 
+                    key={cycle.id}
+                    className="flex items-center gap-4 py-2 border-b border-border last:border-0"
+                  >
+                    <div className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                      cycle.userCycle?.status === 'validated'
+                        ? "bg-emerald-500/20 text-emerald-400" 
+                        : cycle.userCycle?.status === 'in_progress'
+                        ? "bg-blue-500/20 text-blue-400"
+                        : cycle.userCycle?.status === 'pending_review'
+                        ? "bg-orange-500/20 text-orange-400"
+                        : cycle.userCycle?.status === 'rejected'
+                        ? "bg-red-500/20 text-red-400"
+                        : "bg-muted text-muted-foreground"
+                    )}>
+                      {isEbauche ? "É" : cycle.cycle_number}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-foreground">{cycle.name}</span>
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(cycle.userCycle?.status)}
+                          <span className="text-xs text-muted-foreground">
+                            {displayCount}/{cycle.total_trades} {displayLabel}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="h-1 bg-muted rounded-full overflow-hidden mt-1">
+                        <div 
+                          className={cn(
+                            "h-full rounded-full",
+                            cycle.userCycle?.status === 'validated' ? "bg-emerald-500" 
+                            : cycle.userCycle?.status === 'in_progress' ? "bg-blue-500"
+                            : cycle.userCycle?.status === 'pending_review' ? "bg-orange-500"
+                            : cycle.userCycle?.status === 'rejected' ? "bg-red-500"
+                            : "bg-foreground/30"
+                          )}
+                          style={{ width: `${displayProgress}%` }}
+                        />
                       </div>
                     </div>
-                    <div className="h-1 bg-muted rounded-full overflow-hidden mt-1">
-                      <div 
-                        className={cn(
-                          "h-full rounded-full",
-                          cycle.userCycle?.status === 'validated' ? "bg-emerald-500" 
-                          : cycle.userCycle?.status === 'in_progress' ? "bg-blue-500"
-                          : cycle.userCycle?.status === 'pending_review' ? "bg-orange-500"
-                          : cycle.userCycle?.status === 'rejected' ? "bg-red-500"
-                          : "bg-foreground/30"
-                        )}
-                        style={{ width: `${displayProgress}%` }}
-                      />
-                    </div>
+                    {isEbauche ? (
+                      <span className="text-sm font-mono w-20 text-right text-foreground">
+                        {ebaucheAnalyzed}/{cycle.total_trades}
+                      </span>
+                    ) : (
+                      <span className={cn(
+                        "text-sm font-mono w-20 text-right",
+                        cycle.userRR > 0 ? "text-emerald-400" 
+                        : cycle.userRR < 0 ? "text-red-400"
+                        : "text-muted-foreground"
+                      )}>
+                        {cycle.userRR >= 0 ? "+" : ""}{cycle.userRR.toFixed(1)} RR
+                      </span>
+                    )}
                   </div>
-                  {isEbauche ? (
-                    <span className="text-sm font-mono w-20 text-right text-foreground">
-                      {ebaucheAnalyzed}/{cycle.total_trades}
-                    </span>
-                  ) : (
-                    <span className={cn(
-                      "text-sm font-mono w-20 text-right",
-                      cycle.userRR > 0 ? "text-emerald-400" 
-                      : cycle.userRR < 0 ? "text-red-400"
-                      : "text-muted-foreground"
-                    )}>
-                      {cycle.userRR >= 0 ? "+" : ""}{cycle.userRR.toFixed(1)} RR
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Results section at bottom - Early Access only */}
+        {isEarlyAccess && (
+          <div className="border border-border rounded-md bg-card overflow-hidden">
+            <div className="p-4 md:p-5 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Award className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
+                  Résultats les plus récents
+                </h3>
+              </div>
+            </div>
+            <EarlyAccessResultsPreview />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -927,5 +963,144 @@ const CycleCard = ({
         </div>
       )}
     </div>
+  );
+};
+
+// ─── Données Clés for Early Access (embedded in OracleExecution) ───
+const EarlyAccessKeyStats = ({ trades }: { trades: { rr: number; direction?: string; trade_number: number }[] }) => {
+  const stats = useMemo(() => {
+    const allRR = trades.map(t => t.rr || 0);
+    const totalRR = allRR.reduce((a, b) => a + b, 0);
+    const avgRR = allRR.length > 0 ? totalRR / allRR.length : 0;
+    const maxRR = Math.max(...allRR, 0);
+    const minRR = Math.min(...allRR, 0);
+    const winRate = allRR.length > 0 ? (allRR.filter(rr => rr > 0).length / allRR.length) * 100 : 0;
+    const longTrades = trades.filter(t => (t as any).direction === "Long");
+    const shortTrades = trades.filter(t => (t as any).direction === "Short");
+    const longRR = longTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
+    const shortRR = shortTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
+    return { totalRR, avgRR, maxRR, minRR, winRate, longCount: longTrades.length, shortCount: shortTrades.length, longRR, shortRR };
+  }, [trades]);
+
+  return (
+    <div className="border border-border rounded-md p-4 md:p-5 bg-card">
+      <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-3">
+        Données Clés
+      </p>
+      <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
+        <div className="text-center p-2 border border-emerald-500/30 rounded-md bg-emerald-500/5">
+          <p className="text-[8px] text-muted-foreground font-mono uppercase">RR Total</p>
+          <p className="text-lg font-bold text-emerald-500">{stats.totalRR >= 0 ? "+" : ""}{stats.totalRR.toFixed(0)}</p>
+        </div>
+        <div className="text-center p-2 border border-border rounded-md">
+          <p className="text-[8px] text-muted-foreground font-mono uppercase">Moy. RR</p>
+          <p className="text-lg font-bold text-foreground">{stats.avgRR.toFixed(2)}</p>
+        </div>
+        <div className="text-center p-2 border border-border rounded-md">
+          <p className="text-[8px] text-muted-foreground font-mono uppercase">Win Rate</p>
+          <p className="text-lg font-bold text-foreground">{stats.winRate.toFixed(0)}%</p>
+        </div>
+        <div className="text-center p-2 border border-border rounded-md">
+          <p className="text-[8px] text-muted-foreground font-mono uppercase">Meilleur</p>
+          <p className="text-lg font-bold text-emerald-500">+{stats.maxRR.toFixed(1)}</p>
+        </div>
+        <div className="text-center p-2 border border-border rounded-md">
+          <p className="text-[8px] text-muted-foreground font-mono uppercase">Pire</p>
+          <p className="text-lg font-bold text-red-500">{stats.minRR.toFixed(1)}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2 mt-3">
+        <div className="flex items-center justify-between p-2 border border-emerald-500/20 rounded-md bg-emerald-500/5">
+          <span className="text-[9px] font-mono text-emerald-400 uppercase">Long</span>
+          <span className="text-xs font-mono font-bold text-emerald-500">
+            {stats.longCount}t · {stats.longRR >= 0 ? "+" : ""}{stats.longRR.toFixed(1)} RR
+          </span>
+        </div>
+        <div className="flex items-center justify-between p-2 border border-red-500/20 rounded-md bg-red-500/5">
+          <span className="text-[9px] font-mono text-red-400 uppercase">Short</span>
+          <span className="text-xs font-mono font-bold text-red-500">
+            {stats.shortCount}t · {stats.shortRR >= 0 ? "+" : ""}{stats.shortRR.toFixed(1)} RR
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Results Preview for Early Access (inline in OracleExecution) ───
+const EarlyAccessResultsPreview = () => {
+  const [results, setResults] = useState<{ id: string; title: string | null; image_path: string }[]>([]);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchResults = async () => {
+      const { data } = await supabase
+        .from("results")
+        .select("id, title, image_path")
+        .order("created_at", { ascending: false })
+        .limit(6);
+      
+      if (data) {
+        setResults(data);
+        const paths = data.map(r => r.image_path).filter(Boolean);
+        if (paths.length > 0) {
+          const { data: signed } = await supabase.storage
+            .from("result-screenshots")
+            .createSignedUrls(paths, 3600);
+          if (signed) {
+            const urlMap: Record<string, string> = {};
+            signed.forEach((s: any) => {
+              if (s.signedUrl) urlMap[s.path] = s.signedUrl;
+            });
+            setSignedUrls(urlMap);
+          }
+        }
+      }
+    };
+    fetchResults();
+  }, []);
+
+  if (results.length === 0) {
+    return (
+      <div className="p-6 text-center text-muted-foreground text-sm">
+        Aucun résultat disponible pour le moment.
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="p-4 md:p-5 grid grid-cols-2 md:grid-cols-3 gap-3">
+        {results.map((result) => {
+          const url = signedUrls[result.image_path];
+          return (
+            <button
+              key={result.id}
+              onClick={() => url && setLightboxUrl(url)}
+              className="border border-border rounded-md overflow-hidden bg-card hover:border-foreground/30 transition-all"
+            >
+              <div className="aspect-video bg-muted relative">
+                {url ? (
+                  <img src={url} alt={result.title || "Résultat"} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-4 h-4 border border-foreground border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+              {result.title && (
+                <div className="p-2">
+                  <p className="text-[10px] font-mono text-muted-foreground truncate">{result.title}</p>
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {lightboxUrl && (
+        <ImageLightbox src={lightboxUrl} alt="Résultat" open={!!lightboxUrl} onClose={() => setLightboxUrl(null)} />
+      )}
+    </>
   );
 };

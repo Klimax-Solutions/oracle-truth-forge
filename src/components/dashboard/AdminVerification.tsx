@@ -106,13 +106,21 @@ interface UserExecution {
   direction: string;
   entry_time: string | null;
   exit_time: string | null;
+  exit_date: string | null;
   rr: number | null;
   result: string | null;
   setup_type: string | null;
   entry_model: string | null;
   direction_structure: string | null;
   entry_timing: string | null;
+  entry_timeframe: string | null;
+  entry_price: number | null;
+  exit_price: number | null;
+  stop_loss: number | null;
+  take_profit: number | null;
+  notes: string | null;
   screenshot_url: string | null;
+  screenshot_entry_url: string | null;
   user_id: string;
 }
 
@@ -969,12 +977,18 @@ export const AdminVerification = () => {
                                       <TableHead className="h-8 text-[10px] font-mono">#</TableHead>
                                       <TableHead className="h-8 text-[10px] font-mono">Date</TableHead>
                                       <TableHead className="h-8 text-[10px] font-mono">Dir</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">Structure</TableHead>
                                       <TableHead className="h-8 text-[10px] font-mono">Entrée</TableHead>
                                       <TableHead className="h-8 text-[10px] font-mono">Sortie</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">Date Sortie</TableHead>
                                       <TableHead className="h-8 text-[10px] font-mono">Setup</TableHead>
                                       <TableHead className="h-8 text-[10px] font-mono">Modèle</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">Timing</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">TF</TableHead>
                                       <TableHead className="h-8 text-[10px] font-mono text-right">RR</TableHead>
-                                      <TableHead className="h-8 text-[10px] font-mono">Screenshot</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">Notes</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">M15</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">M5</TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
@@ -1001,11 +1015,17 @@ export const AdminVerification = () => {
                                             {exec.direction}
                                           </div>
                                         </TableCell>
+                                        <TableCell className="py-1.5 text-[10px] font-mono text-muted-foreground">
+                                          {exec.direction_structure || "—"}
+                                        </TableCell>
                                         <TableCell className="py-1.5 text-xs font-mono text-muted-foreground">
                                           {exec.entry_time || "—"}
                                         </TableCell>
                                         <TableCell className="py-1.5 text-xs font-mono text-muted-foreground">
                                           {exec.exit_time || "—"}
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-xs font-mono text-muted-foreground">
+                                          {exec.exit_date ? new Date(exec.exit_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) : "—"}
                                         </TableCell>
                                         <TableCell className="py-1.5">
                                           {exec.setup_type && (
@@ -1017,6 +1037,12 @@ export const AdminVerification = () => {
                                         <TableCell className="py-1.5 text-[10px] font-mono text-muted-foreground">
                                           {exec.entry_model || "—"}
                                         </TableCell>
+                                        <TableCell className="py-1.5 text-[10px] font-mono text-muted-foreground">
+                                          {exec.entry_timing || "—"}
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-[10px] font-mono text-muted-foreground">
+                                          {exec.entry_timeframe || "—"}
+                                        </TableCell>
                                         <TableCell className="py-1.5 text-right">
                                           <span className={cn(
                                             "font-mono font-bold text-xs",
@@ -1025,10 +1051,20 @@ export const AdminVerification = () => {
                                             {(exec.rr || 0) >= 0 ? "+" : ""}{(exec.rr || 0).toFixed(1)}
                                           </span>
                                         </TableCell>
+                                        <TableCell className="py-1.5 text-[10px] font-mono text-muted-foreground max-w-[120px] truncate" title={exec.notes || ""}>
+                                          {exec.notes || "—"}
+                                        </TableCell>
                                         <TableCell className="py-1.5">
                                           <ScreenshotLink
                                             storagePath={exec.screenshot_url}
-                                            alt={`Trade #${exec.trade_number}`}
+                                            alt={`Trade #${exec.trade_number} M15`}
+                                            showExternalIcon
+                                          />
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          <ScreenshotLink
+                                            storagePath={exec.screenshot_entry_url}
+                                            alt={`Trade #${exec.trade_number} M5`}
                                             showExternalIcon
                                           />
                                         </TableCell>
@@ -1515,8 +1551,13 @@ export const AdminVerification = () => {
                                     <TableHead className="h-8 text-[10px] font-mono">Heure User</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono">Heure Oracle</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono">Dir</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Structure</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Setup</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Modèle</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Timing</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono text-right">RR</TableHead>
-                                    <TableHead className="h-8 text-[10px] font-mono">Screenshot</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">M15</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">M5</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono w-8">Valid</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono min-w-[180px]">Note Admin</TableHead>
                                   </TableRow>
@@ -1595,6 +1636,22 @@ export const AdminVerification = () => {
                                             )}
                                           </div>
                                         </TableCell>
+                                        <TableCell className="py-1.5 text-[10px] font-mono text-muted-foreground">
+                                          {exec.direction_structure || "—"}
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          {exec.setup_type && (
+                                            <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[10px] font-mono rounded">
+                                              {exec.setup_type}
+                                            </span>
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-[10px] font-mono text-muted-foreground">
+                                          {exec.entry_model || "—"}
+                                        </TableCell>
+                                        <TableCell className="py-1.5 text-[10px] font-mono text-muted-foreground">
+                                          {exec.entry_timing || "—"}
+                                        </TableCell>
                                         <TableCell className="py-1.5 text-right">
                                           <span className={cn(
                                             "font-mono font-bold text-xs",
@@ -1606,7 +1663,14 @@ export const AdminVerification = () => {
                                         <TableCell className="py-1.5">
                                           <ScreenshotLink
                                             storagePath={exec.screenshot_url}
-                                            alt={`Trade #${exec.trade_number}`}
+                                            alt={`Trade #${exec.trade_number} M15`}
+                                            showExternalIcon
+                                          />
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          <ScreenshotLink
+                                            storagePath={exec.screenshot_entry_url}
+                                            alt={`Trade #${exec.trade_number} M5`}
                                             showExternalIcon
                                           />
                                         </TableCell>
