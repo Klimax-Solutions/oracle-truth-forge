@@ -23,6 +23,7 @@ export const ResultsManager = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ResultItem | null>(null);
   const [title, setTitle] = useState("");
+  const [resultDate, setResultDate] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
@@ -57,16 +58,20 @@ export const ResultsManager = () => {
 
   const resetForm = () => {
     setTitle("");
+    setResultDate("");
     setFile(null);
     setEditing(null);
   };
 
   const handleSave = async () => {
     if (editing) {
-      // Update title only
+      // Update title and date
+      const finalTitle = resultDate 
+        ? `${resultDate}${title.trim() ? ` — ${title.trim()}` : ""}`
+        : title.trim() || null;
       const { error } = await supabase
         .from("results")
-        .update({ title: title.trim() || null })
+        .update({ title: finalTitle })
         .eq("id", editing.id);
       if (error) {
         toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -92,8 +97,11 @@ export const ResultsManager = () => {
         return;
       }
 
+      const finalTitle = resultDate 
+        ? `${resultDate}${title.trim() ? ` — ${title.trim()}` : ""}`
+        : title.trim() || null;
       const { error } = await supabase.from("results").insert({
-        title: title.trim() || null,
+        title: finalTitle,
         image_path: path,
         sort_order: results.length,
       });
@@ -212,6 +220,10 @@ export const ResultsManager = () => {
             <DialogTitle>{editing ? "Modifier le résultat" : "Ajouter un résultat"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
+            <div className="space-y-2">
+              <Label>Date du résultat</Label>
+              <Input type="date" value={resultDate} onChange={(e) => setResultDate(e.target.value)} />
+            </div>
             <div className="space-y-2">
               <Label>Titre (optionnel)</Label>
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: +3.2 RR NAS100" />

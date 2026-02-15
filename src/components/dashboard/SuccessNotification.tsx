@@ -64,6 +64,22 @@ const SuccessNotification = () => {
       })
       .subscribe();
 
+    // Listen for new results (Early Access notifications)
+    const resultsChannel = supabase
+      .channel("results_notifications")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "results" }, (payload) => {
+        if (!initialLoadDone.current) return;
+        const newRow = payload.new as any;
+        const msg = `🏆 Nouveau résultat Oracle à l'instant${newRow.title ? ` — ${newRow.title}` : ""}`;
+        setNotifications((prev) => [
+          { id: newRow.id, message: msg, timestamp: new Date(), read: false },
+          ...prev,
+        ].slice(0, 50));
+        playSound();
+        fireConfetti();
+      })
+      .subscribe();
+
     // Listen for @everyone notifications
     const notifChannel = supabase
       .channel("bell_notifications")
@@ -87,6 +103,7 @@ const SuccessNotification = () => {
     return () => {
       clearTimeout(timer);
       supabase.removeChannel(channel);
+      supabase.removeChannel(resultsChannel);
       supabase.removeChannel(notifChannel);
     };
   }, [userId, playSound, fireConfetti]);
