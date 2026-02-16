@@ -1,10 +1,20 @@
 import { useState, useCallback, useEffect } from "react";
-import { X, ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight, CheckCircle, XCircle, Save, Loader2, GitCompare } from "lucide-react";
+import { X, ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight, CheckCircle, XCircle, Loader2, GitCompare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { extractStoragePath } from "@/hooks/useSignedUrl";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 export interface TradeScreenshotItem {
   tradeNumber: number;
@@ -40,11 +50,9 @@ interface TradeNavigationLightboxProps {
   initialScreenshot: "m15" | "m5";
   open: boolean;
   onClose: () => void;
-  // Validation props
   onValidate?: (executionId: string, isValid: boolean, note: string) => void;
   validationState?: Record<string, { isValid: boolean; note: string }>;
   savingValidation?: string | null;
-  // Oracle comparison
   oracleTrades?: OracleMatch[];
 }
 
@@ -64,18 +72,17 @@ export const TradeNavigationLightbox = ({
   const [zoom, setZoom] = useState(1);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [loadingUrl, setLoadingUrl] = useState(false);
-  const [localNote, setLocalNote] = useState("");
   const [showOracleComparison, setShowOracleComparison] = useState(false);
   const [oracleSignedUrls, setOracleSignedUrls] = useState<Record<string, string>>({});
+  const [showRefusalDialog, setShowRefusalDialog] = useState(false);
+  const [refusalNote, setRefusalNote] = useState("");
 
   const currentItem = items[currentIndex];
 
   const resetZoom = useCallback(() => setZoom(1), []);
 
-  // Find matching Oracle trade by date
   const matchingOracle = oracleTrades?.find(o => o.tradeDate === currentItem?.tradeDate);
 
-  // Reset state when opening
   useEffect(() => {
     if (open) {
       setCurrentIndex(initialIndex);
@@ -84,14 +91,6 @@ export const TradeNavigationLightbox = ({
       setShowOracleComparison(false);
     }
   }, [open, initialIndex, initialScreenshot]);
-
-  // Sync local note with validation state
-  useEffect(() => {
-    if (currentItem?.executionId && validationState) {
-      const state = validationState[currentItem.executionId];
-      setLocalNote(state?.note || "");
-    }
-  }, [currentIndex, currentItem?.executionId, validationState]);
 
   // Sign URL for current item
   useEffect(() => {
@@ -164,21 +163,12 @@ export const TradeNavigationLightbox = ({
 
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        goToPrev();
-      }
-      if (e.key === "ArrowRight") {
-        e.preventDefault();
-        goToNext();
-      }
+      if (e.key === "ArrowLeft") { e.preventDefault(); goToPrev(); }
+      if (e.key === "ArrowRight") { e.preventDefault(); goToNext(); }
       if (e.key === "+" || e.key === "=") setZoom((z) => Math.min(z + 0.25, 5));
       if (e.key === "-") setZoom((z) => Math.max(z - 0.25, 0.25));
       if (e.key === "0") setZoom(1);
-      if (e.key === "Tab") {
-        e.preventDefault();
-        toggleScreen();
-      }
+      if (e.key === "Tab") { e.preventDefault(); toggleScreen(); }
     };
     document.addEventListener("keydown", handleKey);
     document.body.style.overflow = "hidden";
@@ -205,12 +195,8 @@ export const TradeNavigationLightbox = ({
   };
 
   const toggleScreen = () => {
-    const other = activeScreen === "m15" ? "m5" : "m15";
-    const path = activeScreen === "m15" ? currentItem?.screenshotM5 : currentItem?.screenshotM15;
-    if (path) {
-      setActiveScreen(other);
-      setZoom(1);
-    }
+    setActiveScreen(prev => prev === "m15" ? "m5" : "m15");
+    setZoom(1);
   };
 
   if (!open || !currentItem) return null;
@@ -218,8 +204,6 @@ export const TradeNavigationLightbox = ({
   const currentPath = activeScreen === "m15" ? currentItem.screenshotM15 : currentItem.screenshotM5;
   const cacheKey = `${currentIndex}_${activeScreen}`;
   const imageUrl = signedUrls[cacheKey];
-  const hasM15 = !!currentItem.screenshotM15;
-  const hasM5 = !!currentItem.screenshotM5;
 
   const currentValidation = currentItem.executionId && validationState
     ? validationState[currentItem.executionId]
@@ -240,12 +224,10 @@ export const TradeNavigationLightbox = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 min-w-0 overflow-x-auto">
-          {/* Trade number */}
           <span className="text-lg font-mono font-bold text-foreground flex-shrink-0">
             #{currentItem.tradeNumber}
           </span>
 
-          {/* Direction */}
           <div
             className={cn(
               "inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-mono font-semibold flex-shrink-0",
@@ -262,72 +244,40 @@ export const TradeNavigationLightbox = ({
             {currentItem.direction}
           </div>
 
-          {/* Date */}
           <span className="text-sm font-mono text-muted-foreground flex-shrink-0">
             {new Date(currentItem.tradeDate).toLocaleDateString("fr-FR", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
+              day: "2-digit", month: "short", year: "numeric",
             })}
           </span>
 
-          {/* RR */}
           {currentItem.rr !== null && currentItem.rr !== undefined && (
-            <span
-              className={cn(
-                "text-lg font-mono font-bold flex-shrink-0",
-                currentItem.rr >= 0 ? "text-emerald-400" : "text-red-400"
-              )}
-            >
-              {currentItem.rr >= 0 ? "+" : ""}
-              {currentItem.rr.toFixed(1)}R
+            <span className={cn("text-lg font-mono font-bold flex-shrink-0", currentItem.rr >= 0 ? "text-emerald-400" : "text-red-400")}>
+              {currentItem.rr >= 0 ? "+" : ""}{currentItem.rr.toFixed(1)}R
             </span>
           )}
 
-          {/* Separator */}
           <div className="w-px h-5 bg-border flex-shrink-0" />
 
-          {/* Entry/exit times */}
           {currentItem.entryTime && (
-            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">
-              E: {currentItem.entryTime}
-            </span>
+            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">E: {currentItem.entryTime}</span>
           )}
           {currentItem.exitTime && (
-            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">
-              S: {currentItem.exitTime}
-            </span>
+            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">S: {currentItem.exitTime}</span>
           )}
 
-          {/* Setup */}
           {currentItem.setupType && (
-            <span className="px-2 py-0.5 bg-primary/20 text-primary text-sm font-mono rounded flex-shrink-0">
-              {currentItem.setupType}
-            </span>
+            <span className="px-2 py-0.5 bg-primary/20 text-primary text-sm font-mono rounded flex-shrink-0">{currentItem.setupType}</span>
           )}
-
-          {/* Structure */}
           {currentItem.directionStructure && (
-            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">
-              {currentItem.directionStructure}
-            </span>
+            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">{currentItem.directionStructure}</span>
           )}
-
-          {/* Model */}
           {currentItem.entryModel && (
-            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">
-              {currentItem.entryModel}
-            </span>
+            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">{currentItem.entryModel}</span>
           )}
-
-          {/* Timing */}
           {currentItem.entryTiming && (
-            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">
-              {currentItem.entryTiming}
-            </span>
+            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">{currentItem.entryTiming}</span>
           )}
 
-          {/* Notes */}
           {currentItem.notes && (
             <>
               <div className="w-px h-5 bg-border flex-shrink-0" />
@@ -340,33 +290,27 @@ export const TradeNavigationLightbox = ({
 
         {/* Right controls */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Contexte/Entrée toggle */}
+          {/* Contexte/Entrée toggle - always enabled */}
           <div className="flex items-center gap-1 bg-muted rounded-md p-0.5">
             <button
-              onClick={() => { if (hasM15) { setActiveScreen("m15"); setZoom(1); } }}
+              onClick={() => { setActiveScreen("m15"); setZoom(1); }}
               className={cn(
                 "px-2.5 py-1 text-[11px] font-mono rounded transition-colors",
                 activeScreen === "m15"
                   ? "bg-primary text-primary-foreground"
-                  : hasM15
-                    ? "text-muted-foreground hover:text-foreground"
-                    : "text-muted-foreground/30 cursor-not-allowed"
+                  : "text-muted-foreground hover:text-foreground"
               )}
-              disabled={!hasM15}
             >
               Contexte
             </button>
             <button
-              onClick={() => { if (hasM5) { setActiveScreen("m5"); setZoom(1); } }}
+              onClick={() => { setActiveScreen("m5"); setZoom(1); }}
               className={cn(
                 "px-2.5 py-1 text-[11px] font-mono rounded transition-colors",
                 activeScreen === "m5"
                   ? "bg-primary text-primary-foreground"
-                  : hasM5
-                    ? "text-muted-foreground hover:text-foreground"
-                    : "text-muted-foreground/30 cursor-not-allowed"
+                  : "text-muted-foreground hover:text-foreground"
               )}
-              disabled={!hasM5}
             >
               Entrée
             </button>
@@ -389,41 +333,24 @@ export const TradeNavigationLightbox = ({
           )}
 
           {/* Zoom controls */}
-          <button
-            onClick={() => setZoom((z) => Math.max(z - 0.25, 0.25))}
-            className="p-1.5 rounded-full bg-card/80 border border-border text-foreground hover:bg-card transition-colors"
-          >
+          <button onClick={() => setZoom((z) => Math.max(z - 0.25, 0.25))} className="p-1.5 rounded-full bg-card/80 border border-border text-foreground hover:bg-card transition-colors">
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
-          <span className="text-[10px] font-mono text-foreground/70 min-w-[2.5rem] text-center">
-            {Math.round(zoom * 100)}%
-          </span>
-          <button
-            onClick={() => setZoom((z) => Math.min(z + 0.25, 5))}
-            className="p-1.5 rounded-full bg-card/80 border border-border text-foreground hover:bg-card transition-colors"
-          >
+          <span className="text-[10px] font-mono text-foreground/70 min-w-[2.5rem] text-center">{Math.round(zoom * 100)}%</span>
+          <button onClick={() => setZoom((z) => Math.min(z + 0.25, 5))} className="p-1.5 rounded-full bg-card/80 border border-border text-foreground hover:bg-card transition-colors">
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
-          <button
-            onClick={resetZoom}
-            className="p-1.5 rounded-full bg-card/80 border border-border text-foreground hover:bg-card transition-colors"
-          >
+          <button onClick={resetZoom} className="p-1.5 rounded-full bg-card/80 border border-border text-foreground hover:bg-card transition-colors">
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full bg-card/80 border border-border text-foreground hover:bg-card transition-colors"
-          >
+          <button onClick={onClose} className="p-1.5 rounded-full bg-card/80 border border-border text-foreground hover:bg-card transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       {/* Navigation counter */}
-      <div
-        className="flex-shrink-0 text-center py-1.5 bg-black/50"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="flex-shrink-0 text-center py-1.5 bg-black/50" onClick={(e) => e.stopPropagation()}>
         <span className="text-[10px] font-mono text-muted-foreground">
           {currentIndex + 1} / {items.length}
         </span>
@@ -433,16 +360,11 @@ export const TradeNavigationLightbox = ({
       <div className="flex-1 flex items-center justify-center relative min-h-0">
         {/* Left arrow */}
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            goToPrev();
-          }}
+          onClick={(e) => { e.stopPropagation(); goToPrev(); }}
           disabled={currentIndex === 0}
           className={cn(
             "absolute left-3 z-[210] p-3 rounded-full bg-card/80 border border-border text-foreground transition-all",
-            currentIndex === 0
-              ? "opacity-20 cursor-not-allowed"
-              : "hover:bg-card hover:scale-110"
+            currentIndex === 0 ? "opacity-20 cursor-not-allowed" : "hover:bg-card hover:scale-110"
           )}
         >
           <ChevronLeft className="w-6 h-6" />
@@ -450,10 +372,7 @@ export const TradeNavigationLightbox = ({
 
         {/* Image(s) */}
         <div
-          className={cn(
-            "flex gap-4",
-            showOracleComparison && matchingOracle ? "max-w-[90vw]" : ""
-          )}
+          className={cn("flex gap-4", showOracleComparison && matchingOracle ? "max-w-[90vw]" : "")}
           onClick={(e) => e.stopPropagation()}
         >
           {/* User screenshot */}
@@ -477,17 +396,17 @@ export const TradeNavigationLightbox = ({
                 </span>
               </div>
             )}
-            {loadingUrl || !imageUrl ? (
+            {loadingUrl && currentPath ? (
               <div className="flex items-center justify-center w-64 h-64">
-                {currentPath ? (
-                  <div className="w-6 h-6 border border-foreground border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <span className="text-sm text-muted-foreground font-mono">
-                    Pas de screenshot {activeScreen === "m15" ? "Contexte" : "Entrée"}
-                  </span>
-                )}
+                <div className="w-6 h-6 border border-foreground border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : (
+            ) : !currentPath ? (
+              <div className="flex items-center justify-center w-64 h-64">
+                <span className="text-sm text-muted-foreground font-mono">
+                  Pas de screenshot {activeScreen === "m15" ? "Contexte" : "Entrée"}
+                </span>
+              </div>
+            ) : imageUrl ? (
               <img
                 src={imageUrl}
                 alt={`Trade #${currentItem.tradeNumber} ${activeScreen === "m15" ? "Contexte" : "Entrée"}`}
@@ -495,6 +414,10 @@ export const TradeNavigationLightbox = ({
                 style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
                 draggable={false}
               />
+            ) : (
+              <div className="flex items-center justify-center w-64 h-64">
+                <div className="w-6 h-6 border border-foreground border-t-transparent rounded-full animate-spin" />
+              </div>
             )}
           </div>
 
@@ -539,16 +462,11 @@ export const TradeNavigationLightbox = ({
 
         {/* Right arrow */}
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            goToNext();
-          }}
+          onClick={(e) => { e.stopPropagation(); goToNext(); }}
           disabled={currentIndex === items.length - 1}
           className={cn(
             "absolute right-3 z-[210] p-3 rounded-full bg-card/80 border border-border text-foreground transition-all",
-            currentIndex === items.length - 1
-              ? "opacity-20 cursor-not-allowed"
-              : "hover:bg-card hover:scale-110"
+            currentIndex === items.length - 1 ? "opacity-20 cursor-not-allowed" : "hover:bg-card hover:scale-110"
           )}
         >
           <ChevronRight className="w-6 h-6" />
@@ -563,45 +481,44 @@ export const TradeNavigationLightbox = ({
         >
           <div className="flex items-center gap-3">
             <Button
-              variant={isValid ? "outline" : "destructive"}
               size="sm"
-              className={cn(
-                "gap-1.5 text-xs",
-                isValid && "border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
-              )}
+              className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => {
-                const newValid = !isValid;
-                onValidate(currentItem.executionId!, newValid, localNote);
+                onValidate(currentItem.executionId!, true, "");
               }}
-            >
-              {isValid ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-              {isValid ? "Trade validé" : "Trade invalidé"}
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2 flex-1 max-w-md">
-            <Input
-              value={localNote}
-              onChange={(e) => setLocalNote(e.target.value)}
-              placeholder="Note de vérification..."
-              className="h-8 text-xs bg-card"
-              onClick={(e) => e.stopPropagation()}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 flex-shrink-0"
               disabled={savingValidation === currentItem.executionId}
-              onClick={() => {
-                onValidate(currentItem.executionId!, isValid, localNote);
-              }}
             >
               {savingValidation === currentItem.executionId ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Save className="w-4 h-4" />
+                <CheckCircle className="w-4 h-4" />
               )}
+              Valider le trade
             </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={() => {
+                setRefusalNote("");
+                setShowRefusalDialog(true);
+              }}
+              disabled={savingValidation === currentItem.executionId}
+            >
+              <XCircle className="w-4 h-4" />
+              Refuser le trade
+            </Button>
+
+            {/* Current status indicator */}
+            {currentValidation && (
+              <span className={cn(
+                "text-[10px] font-mono px-2 py-0.5 rounded",
+                isValid ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
+              )}>
+                {isValid ? "✓ Validé" : "✗ Refusé"}
+                {currentValidation.note && ` — ${currentValidation.note}`}
+              </span>
+            )}
           </div>
 
           {/* Oracle match info */}
@@ -616,6 +533,39 @@ export const TradeNavigationLightbox = ({
           )}
         </div>
       )}
+
+      {/* Refusal justification dialog */}
+      <AlertDialog open={showRefusalDialog} onOpenChange={setShowRefusalDialog}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Refuser le trade #{currentItem?.tradeNumber}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Veuillez justifier la raison pour laquelle ce trade est incorrect.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Textarea
+            value={refusalNote}
+            onChange={(e) => setRefusalNote(e.target.value)}
+            placeholder="Raison du refus..."
+            className="min-h-[80px]"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!refusalNote.trim()}
+              onClick={() => {
+                if (currentItem.executionId && onValidate) {
+                  onValidate(currentItem.executionId, false, refusalNote.trim());
+                }
+                setShowRefusalDialog(false);
+              }}
+            >
+              Confirmer le refus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
