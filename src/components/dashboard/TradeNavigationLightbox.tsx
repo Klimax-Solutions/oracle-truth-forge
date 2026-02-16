@@ -551,8 +551,8 @@ export const TradeNavigationLightbox = ({
           />
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            <Button
+              variant="destructive"
               disabled={!refusalNote.trim()}
               onClick={() => {
                 if (currentItem.executionId && onValidate) {
@@ -562,7 +562,7 @@ export const TradeNavigationLightbox = ({
               }}
             >
               Confirmer le refus
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -15,7 +15,22 @@ interface ResultItem {
   image_path: string;
   sort_order: number;
   created_at: string;
+  result_type: string | null;
 }
+
+const RESULT_TYPES = [
+  { value: "trade", label: "Trade" },
+  { value: "payout", label: "Payout" },
+  { value: "challenge_validation", label: "Validation de challenge" },
+  { value: "account_validation", label: "Validation de compte" },
+  { value: "other", label: "Autre" },
+];
+
+const formatLiteralDate = (dateStr: string) => {
+  const months = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+  const d = new Date(dateStr);
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+};
 
 export const ResultsManager = () => {
   const [results, setResults] = useState<ResultItem[]>([]);
@@ -24,6 +39,7 @@ export const ResultsManager = () => {
   const [editing, setEditing] = useState<ResultItem | null>(null);
   const [title, setTitle] = useState("");
   const [resultDate, setResultDate] = useState("");
+  const [resultType, setResultType] = useState("trade");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
@@ -59,19 +75,19 @@ export const ResultsManager = () => {
   const resetForm = () => {
     setTitle("");
     setResultDate("");
+    setResultType("trade");
     setFile(null);
     setEditing(null);
   };
 
   const handleSave = async () => {
     if (editing) {
-      // Update title and date
       const finalTitle = resultDate 
-        ? `${resultDate}${title.trim() ? ` — ${title.trim()}` : ""}`
+        ? `${formatLiteralDate(resultDate)}${title.trim() ? ` — ${title.trim()}` : ""}`
         : title.trim() || null;
       const { error } = await supabase
         .from("results")
-        .update({ title: finalTitle })
+        .update({ title: finalTitle, result_type: resultType })
         .eq("id", editing.id);
       if (error) {
         toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -98,12 +114,13 @@ export const ResultsManager = () => {
       }
 
       const finalTitle = resultDate 
-        ? `${resultDate}${title.trim() ? ` — ${title.trim()}` : ""}`
+        ? `${formatLiteralDate(resultDate)}${title.trim() ? ` — ${title.trim()}` : ""}`
         : title.trim() || null;
       const { error } = await supabase.from("results").insert({
         title: finalTitle,
         image_path: path,
         sort_order: results.length,
+        result_type: resultType,
       });
 
       if (error) {
@@ -189,14 +206,26 @@ export const ResultsManager = () => {
               </div>
 
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{item.title || "Sans titre"}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-foreground truncate">{item.title || "Sans titre"}</p>
+                  {item.result_type && (
+                    <span className="px-1.5 py-0.5 text-[9px] font-mono uppercase bg-primary/15 text-primary rounded flex-shrink-0">
+                      {RESULT_TYPES.find(t => t.value === item.result_type)?.label || item.result_type}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[10px] text-muted-foreground truncate mt-0.5">
-                  {new Date(item.created_at).toLocaleDateString("fr-FR")}
+                  {formatLiteralDate(item.created_at)}
                 </p>
               </div>
 
               <div className="flex items-center gap-1 flex-shrink-0">
-                <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => { setEditing(item); setTitle(item.title || ""); setDialogOpen(true); }}>
+                <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => { 
+                  setEditing(item); 
+                  setTitle(item.title || ""); 
+                  setResultType(item.result_type || "trade");
+                  setDialogOpen(true); 
+                }}>
                   <Pencil className="w-3.5 h-3.5" />
                 </Button>
                 <Button variant="ghost" size="icon" className="w-8 h-8 text-destructive hover:text-destructive" onClick={() => handleDelete(item)}>
@@ -220,6 +249,18 @@ export const ResultsManager = () => {
             <DialogTitle>{editing ? "Modifier le résultat" : "Ajouter un résultat"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
+            <div className="space-y-2">
+              <Label>Type de résultat</Label>
+              <select
+                value={resultType}
+                onChange={(e) => setResultType(e.target.value)}
+                className="w-full h-9 px-3 rounded-md border border-border bg-card text-foreground text-sm"
+              >
+                {RESULT_TYPES.map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
             <div className="space-y-2">
               <Label>Date du résultat</Label>
               <Input type="date" value={resultDate} onChange={(e) => setResultDate(e.target.value)} />

@@ -28,6 +28,7 @@ import { ResultsPage } from "@/components/dashboard/ResultsPage";
 import { ResultsManager } from "@/components/dashboard/ResultsManager";
 import { AdminVerificationPopup } from "@/components/dashboard/AdminVerificationPopup";
 import { EarlyAccessManagement } from "@/components/dashboard/EarlyAccessManagement";
+import { CycleReportPopup } from "@/components/dashboard/CycleReportPopup";
 interface Trade {
   id: string;
   trade_number: number;
@@ -374,6 +375,9 @@ const Dashboard = () => {
       {(isAdmin || isSuperAdmin) && (
         <AdminVerificationPopup onNavigateToAdmin={() => setActiveTab("admin")} />
       )}
+      
+      {/* Cycle Report Popup for members */}
+      <CycleReportPopup />
     </div>
     </div>
   );

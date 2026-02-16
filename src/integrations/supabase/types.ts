@@ -182,6 +182,7 @@ export type Database = {
           created_by: string | null
           id: string
           image_path: string
+          result_type: string | null
           sort_order: number
           title: string | null
         }
@@ -190,6 +191,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           image_path: string
+          result_type?: string | null
           sort_order?: number
           title?: string | null
         }
@@ -198,6 +200,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           image_path?: string
+          result_type?: string | null
           sort_order?: number
           title?: string | null
         }

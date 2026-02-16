@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { ImageLightbox } from "./ImageLightbox";
@@ -10,14 +9,30 @@ interface ResultItem {
   image_path: string;
   sort_order: number;
   created_at: string;
+  result_type: string | null;
 }
+
+const RESULT_TYPES = [
+  { value: "all", label: "Tous" },
+  { value: "trade", label: "Trade" },
+  { value: "payout", label: "Payout" },
+  { value: "challenge_validation", label: "Challenge" },
+  { value: "account_validation", label: "Compte" },
+  { value: "other", label: "Autre" },
+];
+
+const formatLiteralDate = (dateStr: string) => {
+  const months = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+  const d = new Date(dateStr);
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+};
 
 export const ResultsPage = () => {
   const [results, setResults] = useState<ResultItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const [pageTitle, setPageTitle] = useState("Résultats les plus récents");
+  const [activeFilter, setActiveFilter] = useState("all");
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -28,7 +43,6 @@ export const ResultsPage = () => {
       
       if (data) {
         setResults(data as ResultItem[]);
-        // Sign URLs
         const paths = data.map((r: any) => r.image_path).filter(Boolean);
         if (paths.length > 0) {
           const { data: signed } = await supabase.storage
@@ -48,6 +62,10 @@ export const ResultsPage = () => {
     fetchResults();
   }, []);
 
+  const filteredResults = activeFilter === "all" 
+    ? results 
+    : results.filter(r => r.result_type === activeFilter);
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -59,24 +77,42 @@ export const ResultsPage = () => {
   return (
     <div className="h-full flex flex-col">
       <div className="p-4 md:p-6 border-b border-border">
-        <h2 className="text-lg md:text-xl font-semibold text-foreground">{pageTitle}</h2>
-        <p className="text-xs text-muted-foreground font-mono mt-1">{results.length} résultat{results.length > 1 ? "s" : ""}</p>
+        <h2 className="text-lg md:text-xl font-semibold text-foreground">Résultats les plus récents</h2>
+        <p className="text-xs text-muted-foreground font-mono mt-1">{filteredResults.length} résultat{filteredResults.length > 1 ? "s" : ""}</p>
+        
+        {/* Category Filter */}
+        <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+          {RESULT_TYPES.map(type => (
+            <button
+              key={type.value}
+              onClick={() => setActiveFilter(type.value)}
+              className={cn(
+                "px-2.5 py-1 text-[10px] font-mono uppercase rounded-md border transition-all",
+                activeFilter === type.value
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+              )}
+            >
+              {type.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto p-4 md:p-6">
-        {results.length === 0 ? (
+        {filteredResults.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground text-sm">
             Aucun résultat disponible pour le moment.
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-            {results.map((result) => {
+            {filteredResults.map((result) => {
               const url = signedUrls[result.image_path];
               return (
                 <button
                   key={result.id}
                   onClick={() => url && setLightboxUrl(url)}
-                  className="border border-border rounded-md overflow-hidden bg-card hover:border-foreground/30 transition-all group"
+                  className="relative border border-border rounded-md overflow-hidden bg-card hover:border-foreground/30 transition-all group result-glow-card"
                 >
                   <div className="aspect-video bg-muted relative">
                     {url ? (
@@ -85,6 +121,12 @@ export const ResultsPage = () => {
                       <div className="w-full h-full flex items-center justify-center">
                         <div className="w-4 h-4 border border-foreground border-t-transparent rounded-full animate-spin" />
                       </div>
+                    )}
+                    {/* Type badge */}
+                    {result.result_type && result.result_type !== "trade" && (
+                      <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[8px] font-mono uppercase bg-black/60 backdrop-blur-sm text-white rounded">
+                        {RESULT_TYPES.find(t => t.value === result.result_type)?.label || result.result_type}
+                      </span>
                     )}
                   </div>
                   {result.title && (
