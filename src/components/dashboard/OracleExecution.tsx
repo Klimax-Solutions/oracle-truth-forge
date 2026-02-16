@@ -427,23 +427,29 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
               Progression des 8 cycles vers les 314 trades
             </p>
           </div>
-          <a
-            href="https://mercurefx.webflow.io/utility/connexion"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-primary/50 rounded-md text-xs font-semibold text-primary hover:bg-primary/10 transition-all"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            Vidéos bonus — Mercure Institut
-          </a>
+          {(() => {
+            const videoBonusSetting = eaSettings.find(s => s.button_key === "video_bonus_mercure_institut");
+            const videoBonusHref = videoBonusSetting?.button_url || "https://mercurefx.webflow.io/utility/connexion";
+            return (
+              <a
+                href={videoBonusHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-primary/50 rounded-md text-xs font-semibold text-primary hover:bg-primary/10 transition-all"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Vidéos bonus — Mercure Institut
+              </a>
+            );
+          })()}
         </div>
       </div>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto space-y-6 md:space-y-8">
-        {/* Early Access: Key Stats + Cumulative Evolution + Results */}
+      {/* Early Access: Key Stats + Cumulative Evolution + Results */}
         {isEarlyAccess && (
           <>
-            {/* Side-by-side: Last data preview (left) + Custom Actions (right) */}
+            {/* Side-by-side: Last data preview (left) + Quests (right) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Left: Last Data Preview */}
               <LastDataPreviewCard
@@ -465,36 +471,21 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                   const url = harvestBtn?.button_url || "https://app.fxreplay.com/en-US/auth/testing/dashboard";
                   window.open(url, "_blank");
                 }}
-                customButtons={eaSettings
-                  .filter(s => s.button_key !== "continuer_ma_recolte" && s.button_key !== "acceder_a_oracle" && s.button_url)
-                  .map(s => ({ label: s.button_label, url: s.button_url }))}
+                eaSettings={eaSettings}
               />
 
-              {/* Right: Early Access Quests */}
+              {/* Right: Quests / Next Steps */}
               <div className="border border-border rounded-md bg-card p-4 space-y-4">
                 <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
                   Prochaines Étapes
                 </h3>
-                <div className="space-y-3">
-                  {eaSettings.filter(s => s.button_url && s.button_key !== "acceder_a_oracle").length > 0 ? (
-                    eaSettings.filter(s => s.button_url && s.button_key !== "acceder_a_oracle").map((s) => (
-                      <a
-                        key={s.button_key}
-                        href={s.button_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-3 border border-border rounded-md hover:bg-accent/20 transition-colors"
-                      >
-                        <ExternalLink className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-medium text-foreground">{s.button_label}</span>
-                      </a>
-                    ))
-                  ) : (
-                    <div className="text-sm text-muted-foreground text-center py-6">
-                      Vos actions personnalisées seront disponibles ici.
-                    </div>
-                  )}
-                </div>
+                {questData && !questData.loading && (
+                  <DailyQuestCard
+                    questData={questData}
+                    onNavigateToVideos={() => onNavigateToVideos?.()}
+                    onNavigateToSetup={() => onNavigateToSetup?.()}
+                  />
+                )}
               </div>
             </div>
 
@@ -1045,6 +1036,12 @@ const EarlyAccessResultsPreview = () => {
 };
 
 // ─── Last Data Preview Card ───
+interface EASetting {
+  button_key: string;
+  button_label: string;
+  button_url: string;
+}
+
 interface LastDataPreviewCardProps {
   lastExecution?: UserExecution;
   totalUserTrades: number;
@@ -1053,7 +1050,7 @@ interface LastDataPreviewCardProps {
   averageUserRR: number;
   completedCycles: number;
   onContinueHarvest: () => void;
-  customButtons?: { label: string; url: string }[];
+  eaSettings?: EASetting[];
 }
 
 const LastDataPreviewCard = ({
@@ -1064,9 +1061,13 @@ const LastDataPreviewCard = ({
   averageUserRR,
   completedCycles,
   onContinueHarvest,
-  customButtons,
+  eaSettings,
 }: LastDataPreviewCardProps) => {
   const [activeScreen, setActiveScreen] = useState<"m15" | "m5">("m15");
+
+  // Get the URL for "Vidéo bonus Mercure Institut" from EA settings
+  const videoBonusBtn = eaSettings?.find(s => s.button_key === "video_bonus_mercure_institut");
+  const videoBonusUrl = videoBonusBtn?.button_url || "https://mercurefx.webflow.io/utility/connexion";
 
   if (!lastExecution) {
     return (
@@ -1087,28 +1088,49 @@ const LastDataPreviewCard = ({
         </span>
       </div>
 
-      {/* Trade-specific metadata ABOVE the screenshot */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className={cn(
-          "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-semibold",
-          lastExecution.direction === "Long" ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
-        )}>
-          {lastExecution.direction === "Long" ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-          {lastExecution.direction}
+      {/* Trade-specific metadata ABOVE the screenshot — bigger style */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className="flex items-center gap-2 p-2 border border-border rounded-md">
+          <div className={cn(
+            "inline-flex items-center gap-1 px-2 py-1 rounded text-sm font-mono font-bold",
+            lastExecution.direction === "Long" ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
+          )}>
+            {lastExecution.direction === "Long" ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+            {lastExecution.direction}
+          </div>
         </div>
-        <span className="text-xs font-mono text-muted-foreground">
-          {lastExecution.trade_date ? new Date(lastExecution.trade_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
-        </span>
+        <div className="p-2 border border-border rounded-md">
+          <p className="text-[8px] text-muted-foreground font-mono uppercase">Date</p>
+          <p className="text-sm font-mono font-semibold text-foreground">
+            {lastExecution.trade_date ? new Date(lastExecution.trade_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+          </p>
+        </div>
         {lastExecution.rr !== null && lastExecution.rr !== undefined && (
-          <span className={cn("text-sm font-mono font-bold", (lastExecution.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400")}>
-            {(lastExecution.rr || 0) >= 0 ? "+" : ""}{(lastExecution.rr || 0).toFixed(1)}R
-          </span>
+          <div className="p-2 border border-border rounded-md">
+            <p className="text-[8px] text-muted-foreground font-mono uppercase">RR</p>
+            <p className={cn("text-lg font-mono font-bold", (lastExecution.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400")}>
+              {(lastExecution.rr || 0) >= 0 ? "+" : ""}{(lastExecution.rr || 0).toFixed(1)}
+            </p>
+          </div>
         )}
-        {lastExecution.entry_time && <span className="text-xs font-mono text-muted-foreground">E: {lastExecution.entry_time}</span>}
-        {lastExecution.exit_time && <span className="text-xs font-mono text-muted-foreground">S: {lastExecution.exit_time}</span>}
-        {lastExecution.setup_type && <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[10px] font-mono rounded">{lastExecution.setup_type}</span>}
-        {lastExecution.entry_model && <span className="text-[10px] font-mono text-muted-foreground">{lastExecution.entry_model}</span>}
-        {lastExecution.direction_structure && <span className="text-[10px] font-mono text-muted-foreground">{lastExecution.direction_structure}</span>}
+        {lastExecution.entry_time && (
+          <div className="p-2 border border-border rounded-md">
+            <p className="text-[8px] text-muted-foreground font-mono uppercase">Entrée</p>
+            <p className="text-sm font-mono font-semibold text-foreground">{lastExecution.entry_time}</p>
+          </div>
+        )}
+        {lastExecution.setup_type && (
+          <div className="p-2 border border-border rounded-md">
+            <p className="text-[8px] text-muted-foreground font-mono uppercase">Setup</p>
+            <p className="text-sm font-mono font-semibold text-primary">{lastExecution.setup_type}</p>
+          </div>
+        )}
+        {lastExecution.entry_model && (
+          <div className="p-2 border border-border rounded-md">
+            <p className="text-[8px] text-muted-foreground font-mono uppercase">Modèle</p>
+            <p className="text-sm font-mono font-semibold text-foreground">{lastExecution.entry_model}</p>
+          </div>
+        )}
       </div>
 
       {/* Screenshot preview - image fills the container */}
@@ -1139,31 +1161,11 @@ const LastDataPreviewCard = ({
         </div>
       )}
 
-      {/* Continue button */}
+      {/* Continue button - uses EA custom URL if available */}
       <Button size="sm" className="w-full gap-2" onClick={onContinueHarvest}>
         <ExternalLink className="w-3.5 h-3.5" />
         Continuer ma récolte
       </Button>
-
-      {/* Custom buttons */}
-      {customButtons && customButtons.length > 0 && (
-        <div className="space-y-2">
-          {customButtons.map((btn, i) => (
-            <a
-              key={i}
-              href={btn.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 w-full"
-            >
-              <Button variant="outline" size="sm" className="w-full gap-2">
-                <ExternalLink className="w-3.5 h-3.5" />
-                {btn.label}
-              </Button>
-            </a>
-          ))}
-        </div>
-      )}
     </div>
   );
 };

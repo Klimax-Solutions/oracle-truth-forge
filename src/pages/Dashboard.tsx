@@ -20,7 +20,7 @@ import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
 import { VideoManager } from "@/components/dashboard/VideoManager";
 import { AdminVerification } from "@/components/dashboard/AdminVerification";
-import { RoleManagement } from "@/components/dashboard/admin/RoleManagement";
+// RoleManagement is now embedded in AdminVerification
 import { BatchImportPage } from "@/components/dashboard/BatchImportPage";
 import { SuccessPage } from "@/components/dashboard/SuccessPage";
 import { QuestFloatingBubble } from "@/components/dashboard/QuestFloatingBubble";
@@ -282,7 +282,7 @@ const Dashboard = () => {
       case "results-manager":
         return <ResultsManager />;
       case "roles":
-        return <RoleManagement />;
+        return <AdminVerification />;
       case "early-access-mgmt":
         return <EarlyAccessManagement />;
       default:

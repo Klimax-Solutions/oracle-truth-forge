@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Database, BarChart3, ChevronRight, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy, Film, Award } from "lucide-react";
+import { Database, BarChart3, ChevronRight, Crosshair, Video, ShieldCheck, FileUp, Trophy, Film, Award } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
@@ -28,7 +28,6 @@ const adminTabs = [
 import { Users as UsersIcon } from "lucide-react";
 
 const superAdminTabs = [
-  { id: "roles", label: "Gestion des Rôles", icon: Crown },
   { id: "video-manager", label: "Gestion Vidéos", icon: Film },
   { id: "results-manager", label: "Gestion Résultats", icon: Award },
   { id: "early-access-mgmt", label: "Early Access", icon: UsersIcon },
