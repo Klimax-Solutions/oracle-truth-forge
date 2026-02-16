@@ -309,7 +309,7 @@ export const DailyQuestCard = ({
                     >
                       <span className="leading-none">{day.date.getDate()}</span>
                       {hasData && (
-                        <span className="text-[7px] font-bold leading-none mt-0.5">{day.data!.count}</span>
+                        <span className="text-[6px] font-bold leading-none mt-0.5">{day.data!.count} data</span>
                       )}
                     </div>
                   );
