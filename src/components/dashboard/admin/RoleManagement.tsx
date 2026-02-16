@@ -49,6 +49,7 @@ import {
   Database,
   Search,
   RefreshCw,
+  Award,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminUserDataViewer } from "./AdminUserDataViewer";
@@ -173,6 +174,9 @@ export const RoleManagement = () => {
         case "early_access":
           result = result.filter(u => u.roles.includes("early_access"));
           break;
+        case "institute":
+          result = result.filter(u => u.roles.includes("institute"));
+          break;
         case "frozen":
           result = result.filter(u => u.status === "frozen");
           break;
@@ -264,8 +268,8 @@ export const RoleManagement = () => {
       const targetUser = users.find(u => u.user_id === roleChangeUserId);
       if (!targetUser) throw new Error("User not found");
 
-      // Remove non-member roles
-      const rolesToRemove = targetUser.roles.filter(r => r !== "member");
+      // Remove non-member roles (keep institute as it's a complementary role)
+      const rolesToRemove = targetUser.roles.filter(r => r !== "member" && r !== "institute");
       for (const role of rolesToRemove) {
         await supabase.from("user_roles").delete()
           .eq("user_id", roleChangeUserId)
@@ -273,7 +277,7 @@ export const RoleManagement = () => {
       }
 
       // Add the target role if it's not 'member' (member is always there)
-      if (roleChangeTarget !== "member") {
+      if (roleChangeTarget !== "member" && roleChangeTarget !== "institute") {
         const insertData: any = {
           user_id: roleChangeUserId,
           role: roleChangeTarget as any,
@@ -430,6 +434,7 @@ export const RoleManagement = () => {
       case 'super_admin': return <Crown className="w-3 h-3" />;
       case 'admin': return <ShieldCheck className="w-3 h-3" />;
       case 'early_access': return <Shield className="w-3 h-3" />;
+      case 'institute': return <Award className="w-3 h-3" />;
       default: return <User className="w-3 h-3" />;
     }
   };
@@ -439,6 +444,7 @@ export const RoleManagement = () => {
       case 'super_admin': return "default";
       case 'admin': return "secondary";
       case 'early_access': return "outline";
+      case 'institute': return "secondary";
       default: return "outline";
     }
   };
@@ -448,6 +454,7 @@ export const RoleManagement = () => {
       case 'super_admin': return "Super Admin";
       case 'admin': return "Admin";
       case 'early_access': return "Early Access";
+      case 'institute': return "Institute";
       default: return "Membre";
     }
   };
@@ -639,6 +646,7 @@ export const RoleManagement = () => {
     { key: "super_admin", label: "Super Admin", icon: <Crown className="w-3 h-3" />, count: users.filter(u => u.roles.includes('super_admin')).length, color: "text-foreground" },
     { key: "admin", label: "Admin", icon: <ShieldCheck className="w-3 h-3" />, count: users.filter(u => u.roles.includes('admin')).length, color: "text-foreground" },
     { key: "active", label: "Actifs", icon: <CheckCircle className="w-3 h-3" />, count: users.filter(u => u.status === 'active').length, color: "text-green-500" },
+    { key: "institute", label: "Institute", icon: <Award className="w-3 h-3" />, count: users.filter(u => u.roles.includes('institute')).length, color: "text-purple-500" },
     { key: "early_access", label: "Early", icon: <Shield className="w-3 h-3" />, count: users.filter(u => u.roles.includes('early_access')).length, color: "text-amber-500" },
     { key: "frozen", label: "Gelés", icon: <Snowflake className="w-3 h-3" />, count: users.filter(u => u.status === 'frozen').length, color: "text-blue-500" },
     { key: "banned", label: "Bannis", icon: <Ban className="w-3 h-3" />, count: users.filter(u => u.status === 'banned').length, color: "text-destructive" },
@@ -694,6 +702,7 @@ export const RoleManagement = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="institute">Institute</SelectItem>
                     <SelectItem value="early_access">Early Access</SelectItem>
                   </SelectContent>
                 </Select>

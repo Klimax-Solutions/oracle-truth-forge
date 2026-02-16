@@ -4,6 +4,18 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 
+const useHasInstitute = () => {
+  const [hasInstitute, setHasInstitute] = useState(false);
+  useEffect(() => {
+    const check = async () => {
+      const { data } = await supabase.rpc("is_institute" as any);
+      if (data) setHasInstitute(true);
+    };
+    check();
+  }, []);
+  return hasInstitute;
+};
+
 interface DashboardSidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
@@ -38,6 +50,7 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const { isEarlyAccess } = useEarlyAccess();
+  const hasInstitute = useHasInstitute();
 
   useEffect(() => {
     const checkRoles = async () => {
@@ -50,7 +63,8 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
   }, []);
 
   // Filter tabs based on role
-  let allTabs = isEarlyAccess 
+  // Chat (successes) is only visible to institute role holders (and admins)
+  let allTabs = (isEarlyAccess || (!hasInstitute && !isAdmin && !isSuperAdmin))
     ? tabs.filter(t => t.id !== "successes") 
     : [...tabs];
   
