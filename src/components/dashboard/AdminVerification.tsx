@@ -24,6 +24,7 @@ import {
   ClipboardList,
   MessageSquare,
   Save,
+  Crown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ import {
 import { UserFollowupTab } from "./admin/UserFollowupTab";
 import { UserHistoryTab } from "./admin/UserHistoryTab";
 import { AdminUserDataViewer } from "./admin/AdminUserDataViewer";
+import { RoleManagement } from "./admin/RoleManagement";
 import { ScreenshotLink } from "./ScreenshotLink";
 import { TradeNavigationLightbox, type TradeScreenshotItem, type OracleMatch } from "./TradeNavigationLightbox";
 
@@ -773,6 +775,10 @@ export const AdminVerification = () => {
             <TabsTrigger value="users" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
               <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Utilisateurs</span> ({users.length})
+            </TabsTrigger>
+            <TabsTrigger value="roles" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <Crown className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Gestion des Rôles</span>
             </TabsTrigger>
             <TabsTrigger value="approvals" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
               <Shield className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -1968,6 +1974,11 @@ export const AdminVerification = () => {
                 })}
               </div>
             )}
+          </TabsContent>
+
+          {/* Roles Tab - embedded RoleManagement */}
+          <TabsContent value="roles" className="flex-1 overflow-auto mt-0">
+            <RoleManagement />
           </TabsContent>
         </Tabs>
       </div>
