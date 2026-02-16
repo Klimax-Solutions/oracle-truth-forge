@@ -47,6 +47,8 @@ import { UserFollowupTab } from "./admin/UserFollowupTab";
 import { UserHistoryTab } from "./admin/UserHistoryTab";
 import { AdminUserDataViewer } from "./admin/AdminUserDataViewer";
 import { ScreenshotLink } from "./ScreenshotLink";
+import { TradeNavigationLightbox, type TradeScreenshotItem } from "./TradeNavigationLightbox";
+
 
 // Oracle trade from the master database
 interface OracleTrade {
@@ -188,7 +190,34 @@ export const AdminVerification = () => {
   const [processingApproval, setProcessingApproval] = useState<string | null>(null);
   const [securityAlerts, setSecurityAlerts] = useState<any[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(true);
+  const [galleryItems, setGalleryItems] = useState<TradeScreenshotItem[]>([]);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const [galleryScreen, setGalleryScreen] = useState<"m15" | "m5">("m15");
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const { toast } = useToast();
+
+  const openGallery = (executions: UserExecution[], execIndex: number, screen: "m15" | "m5") => {
+    const items: TradeScreenshotItem[] = executions.map((e) => ({
+      tradeNumber: e.trade_number,
+      tradeDate: e.trade_date,
+      direction: e.direction,
+      directionStructure: e.direction_structure,
+      entryTime: e.entry_time,
+      exitTime: e.exit_time,
+      rr: e.rr,
+      setupType: e.setup_type,
+      entryModel: e.entry_model,
+      entryTiming: e.entry_timing,
+      entryTimeframe: e.entry_timeframe,
+      notes: e.notes,
+      screenshotM15: e.screenshot_url,
+      screenshotM5: e.screenshot_entry_url,
+    }));
+    setGalleryItems(items);
+    setGalleryIndex(execIndex);
+    setGalleryScreen(screen);
+    setGalleryOpen(true);
+  };
 
   const fetchPendingAccounts = async () => {
     setLoadingPending(true);
@@ -1055,18 +1084,26 @@ export const AdminVerification = () => {
                                           {exec.notes || "—"}
                                         </TableCell>
                                         <TableCell className="py-1.5">
-                                          <ScreenshotLink
-                                            storagePath={exec.screenshot_url}
-                                            alt={`Trade #${exec.trade_number} M15`}
-                                            showExternalIcon
-                                          />
+                                          <button
+                                            onClick={() => {
+                                              const idx = user.executions.findIndex(e => e.id === exec.id);
+                                              openGallery(user.executions, idx >= 0 ? idx : 0, "m15");
+                                            }}
+                                            className={cn("inline-flex items-center gap-1 text-primary hover:text-primary/80 cursor-pointer", !exec.screenshot_url && "opacity-30 pointer-events-none")}
+                                          >
+                                            <ImageIcon className="w-3.5 h-3.5" />
+                                          </button>
                                         </TableCell>
                                         <TableCell className="py-1.5">
-                                          <ScreenshotLink
-                                            storagePath={exec.screenshot_entry_url}
-                                            alt={`Trade #${exec.trade_number} M5`}
-                                            showExternalIcon
-                                          />
+                                          <button
+                                            onClick={() => {
+                                              const idx = user.executions.findIndex(e => e.id === exec.id);
+                                              openGallery(user.executions, idx >= 0 ? idx : 0, "m5");
+                                            }}
+                                            className={cn("inline-flex items-center gap-1 text-primary hover:text-primary/80 cursor-pointer", !exec.screenshot_entry_url && "opacity-30 pointer-events-none")}
+                                          >
+                                            <ImageIcon className="w-3.5 h-3.5" />
+                                          </button>
                                         </TableCell>
                                       </TableRow>
                                     ))}
@@ -1489,11 +1526,17 @@ export const AdminVerification = () => {
                                     </div>
                                     {exec.screenshot_url && (
                                       <div className="mt-1.5">
-                                        <ScreenshotLink
-                                          storagePath={exec.screenshot_url}
-                                          alt={`Trade #${exec.trade_number}`}
-                                          showExternalIcon
-                                        />
+                                        <button
+                                          onClick={() => {
+                                            const execs = request.executions;
+                                            const idx = execs.findIndex(e => e.id === exec.id);
+                                            openGallery(execs, idx >= 0 ? idx : 0, "m15");
+                                          }}
+                                          className="inline-flex items-center gap-1 text-primary hover:text-primary/80 cursor-pointer text-[10px] font-mono"
+                                        >
+                                          <ImageIcon className="w-3.5 h-3.5" />
+                                          <span>Screenshot</span>
+                                        </button>
                                       </div>
                                     )}
                                     {/* Per-trade note + validation - Mobile */}
@@ -1661,18 +1704,28 @@ export const AdminVerification = () => {
                                           </span>
                                         </TableCell>
                                         <TableCell className="py-1.5">
-                                          <ScreenshotLink
-                                            storagePath={exec.screenshot_url}
-                                            alt={`Trade #${exec.trade_number} M15`}
-                                            showExternalIcon
-                                          />
+                                          <button
+                                            onClick={() => {
+                                              const execs = request.executions;
+                                              const idx = execs.findIndex(e => e.id === exec.id);
+                                              openGallery(execs, idx >= 0 ? idx : 0, "m15");
+                                            }}
+                                            className={cn("inline-flex items-center gap-1 text-primary hover:text-primary/80 cursor-pointer", !exec.screenshot_url && "opacity-30 pointer-events-none")}
+                                          >
+                                            <ImageIcon className="w-3.5 h-3.5" />
+                                          </button>
                                         </TableCell>
                                         <TableCell className="py-1.5">
-                                          <ScreenshotLink
-                                            storagePath={exec.screenshot_entry_url}
-                                            alt={`Trade #${exec.trade_number} M5`}
-                                            showExternalIcon
-                                          />
+                                          <button
+                                            onClick={() => {
+                                              const execs = request.executions;
+                                              const idx = execs.findIndex(e => e.id === exec.id);
+                                              openGallery(execs, idx >= 0 ? idx : 0, "m5");
+                                            }}
+                                            className={cn("inline-flex items-center gap-1 text-primary hover:text-primary/80 cursor-pointer", !exec.screenshot_entry_url && "opacity-30 pointer-events-none")}
+                                          >
+                                            <ImageIcon className="w-3.5 h-3.5" />
+                                          </button>
                                         </TableCell>
                                         <TableCell className="py-1.5">
                                           <Button
@@ -1874,6 +1927,15 @@ export const AdminVerification = () => {
         onOpenChange={(open) => {
           if (!open) setDataViewerUserId(null);
         }}
+      />
+
+      {/* Trade Navigation Lightbox */}
+      <TradeNavigationLightbox
+        items={galleryItems}
+        initialIndex={galleryIndex}
+        initialScreenshot={galleryScreen}
+        open={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
       />
     </div>
   );
