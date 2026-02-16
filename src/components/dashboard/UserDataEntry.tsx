@@ -39,9 +39,6 @@ import {
   Target,
   Calendar,
   Clock,
-  AlertTriangle,
-  AlertCircle,
-  CheckCircle2,
   Upload,
   Image as ImageIcon,
   Play,
@@ -1125,39 +1122,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
         ) : (
           <div className="space-y-2">
             {executions.map((execution) => {
-              // Find comparison for this execution
-              const comparison = tradeComparisons.find(
-                c => c.userExecution.trade_number === execution.trade_number
-              );
-              
-              // Only show comparison indicators after cycle completion
-              const showStatus = shouldShowComparisonStatus(execution.trade_number, executions.length);
-              
-              const getBorderStyle = () => {
-                if (!showStatus || !comparison) return "border-border";
-                switch (comparison.status) {
-                  case 'warning': return "border-orange-500/50";
-                  case 'error': return "border-red-500/50";
-                  case 'match': return "border-emerald-500/30";
-                  default: return "border-border";
-                }
-              };
-
-              const getStatusIcon = () => {
-                if (!showStatus) return null;
-                if (!comparison || comparison.status === 'no-match') return null;
-                switch (comparison.status) {
-                  case 'match': 
-                    return <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-500" />;
-                  case 'warning': 
-                    return <AlertTriangle className="w-3.5 h-3.5 md:w-4 md:h-4 text-orange-500" />;
-                  case 'error': 
-                    return <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4 text-red-500" />;
-                  default: 
-                    return null;
-                }
-              };
-
               const isSelected = selectedExecution?.id === execution.id;
 
               return (
@@ -1167,7 +1131,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     "border transition-all rounded-md overflow-hidden",
                     isSelected
                       ? "border-foreground/20 bg-accent/40"
-                      : `${getBorderStyle()} hover:bg-accent/30 bg-transparent`
+                      : "border-border hover:bg-accent/30 bg-transparent"
                   )}
                 >
                   {/* Main row - clickable */}
@@ -1180,7 +1144,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         <span className="text-sm md:text-lg font-bold text-muted-foreground/50 w-8 md:w-10">
                           {String(execution.trade_number).padStart(3, "0")}
                         </span>
-                        {getStatusIcon()}
                       </div>
 
                       <div
@@ -1491,34 +1454,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         </div>
                       )}
 
-                      {/* Comparison info if available */}
-                      {showStatus && comparison && comparison.oracleTrade && (
-                        <div className={cn(
-                          "border p-2 md:p-3 rounded-md",
-                          comparison.status === 'match' ? "border-emerald-500/30 bg-emerald-500/5" 
-                            : comparison.status === 'warning' ? "border-orange-500/30 bg-orange-500/5"
-                            : "border-red-500/30 bg-red-500/5"
-                        )}>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[9px] md:text-xs text-muted-foreground font-mono uppercase">
-                              Comparaison Oracle
-                            </span>
-                            <span className={cn(
-                              "text-[10px] md:text-xs font-mono",
-                              comparison.status === 'match' ? "text-emerald-400" 
-                                : comparison.status === 'warning' ? "text-orange-400"
-                                : "text-red-400"
-                            )}>
-                              Écart: {comparison.timeDifferenceHours !== null 
-                                ? comparison.timeDifferenceHours < 24 
-                                  ? `${comparison.timeDifferenceHours.toFixed(1)}h`
-                                  : `${(comparison.timeDifferenceHours / 24).toFixed(1)}j`
-                                : "N/A"
-                              }
-                            </span>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>

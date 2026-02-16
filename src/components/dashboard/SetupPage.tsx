@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Database, User, ArrowRight, TrendingUp, BarChart3, Clock, Target, AlertTriangle, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,32 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
       ? trades.reduce((sum, t) => sum + (t.rr || 0), 0) / trades.length 
       : 0,
   };
+
+  // Calculate personal harvest stats (from user_executions, not personal trades)
+  const [executionStats, setExecutionStats] = useState({ totalTrades: 0, totalRR: 0, winRate: 0, avgRR: 0 });
+
+  useEffect(() => {
+    const fetchExecutionStats = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("user_executions")
+        .select("rr, result")
+        .eq("user_id", user.id);
+      if (data) {
+        const total = data.length;
+        const totalRR = data.reduce((sum: number, t: any) => sum + (t.rr || 0), 0);
+        const wins = data.filter((t: any) => t.result === "Win").length;
+        setExecutionStats({
+          totalTrades: total,
+          totalRR,
+          winRate: total > 0 ? (wins / total) * 100 : 0,
+          avgRR: total > 0 ? totalRR / total : 0,
+        });
+      }
+    };
+    fetchExecutionStats();
+  }, []);
 
   // Calculate Perso stats
   const persoStats = {
@@ -243,6 +270,46 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
                   ? "🎉 Base de données Oracle complète !"
                   : `${oracleStats.totalTrades} trades référencés`}
               </p>
+            </div>
+
+            {/* Separator + Personal harvest stats */}
+            <div className="mt-4 pt-4 border-t border-border">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-3">Récolte personnelle</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+                <div className="text-center p-2 md:p-3 bg-muted/50 rounded-md">
+                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                    <BarChart3 className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                    <span className="text-[10px] md:text-xs font-mono uppercase">Trades</span>
+                  </div>
+                  <p className="text-lg md:text-xl font-bold text-foreground">{executionStats.totalTrades}</p>
+                </div>
+                <div className="text-center p-2 md:p-3 bg-muted/50 rounded-md">
+                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                    <TrendingUp className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                    <span className="text-[10px] md:text-xs font-mono uppercase">RR Total</span>
+                  </div>
+                  <p className={cn(
+                    "text-lg md:text-xl font-bold",
+                    executionStats.totalRR >= 0 ? "text-emerald-500" : "text-red-500"
+                  )}>
+                    {executionStats.totalRR >= 0 ? "+" : ""}{executionStats.totalRR.toFixed(1)}
+                  </p>
+                </div>
+                <div className="text-center p-2 md:p-3 bg-muted/50 rounded-md">
+                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                    <Target className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                    <span className="text-[10px] md:text-xs font-mono uppercase">Win Rate</span>
+                  </div>
+                  <p className="text-lg md:text-xl font-bold text-foreground">{executionStats.winRate.toFixed(0)}%</p>
+                </div>
+                <div className="text-center p-2 md:p-3 bg-muted/50 rounded-md">
+                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                    <Clock className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                    <span className="text-[10px] md:text-xs font-mono uppercase">RR Moyen</span>
+                  </div>
+                  <p className="text-lg md:text-xl font-bold text-foreground">{executionStats.avgRR.toFixed(2)}</p>
+                </div>
+              </div>
             </div>
           </div>
 
