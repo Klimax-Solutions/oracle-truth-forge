@@ -14,7 +14,9 @@ import {
   ChevronUp,
   Loader2,
   ExternalLink,
-  Award
+  Award,
+  ArrowUpRight,
+  ArrowDownRight
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,6 +27,7 @@ import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 import { CumulativeEvolution } from "./CumulativeEvolution";
 import { ResultsPage } from "./ResultsPage";
 import { ImageLightbox } from "./ImageLightbox";
+import { SignedImageCard } from "./SignedImageCard";
 
 interface Trade {
   id: string;
@@ -70,6 +73,17 @@ interface UserExecution {
   id: string;
   trade_number: number;
   rr: number | null;
+  trade_date?: string;
+  direction?: string;
+  direction_structure?: string | null;
+  entry_time?: string | null;
+  exit_time?: string | null;
+  setup_type?: string | null;
+  entry_model?: string | null;
+  entry_timing?: string | null;
+  screenshot_url?: string | null;
+  screenshot_entry_url?: string | null;
+  notes?: string | null;
 }
 
 interface CycleWithProgress extends Cycle {
@@ -123,7 +137,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
       // Fetch user executions for progress tracking
       const { data: userExecsData } = await supabase
         .from("user_executions")
-        .select("id, trade_number, rr")
+        .select("id, trade_number, rr, trade_date, direction, direction_structure, entry_time, exit_time, setup_type, entry_model, entry_timing, screenshot_url, screenshot_entry_url, notes")
         .eq("user_id", user.id)
         .order("trade_number", { ascending: true });
 
@@ -145,7 +159,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
         
         const { data } = await supabase
           .from("user_executions")
-          .select("id, trade_number, rr")
+          .select("id, trade_number, rr, trade_date, direction, direction_structure, entry_time, exit_time, setup_type, entry_model, entry_timing, screenshot_url, screenshot_entry_url, notes")
           .eq("user_id", user.id)
           .order("trade_number", { ascending: true });
 
@@ -437,303 +451,142 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
           </>
         )}
 
-        {/* Daily Quest Card - hidden for Early Access */}
-        {!isEarlyAccess && questData && !questData.loading && (
-          <DailyQuestCard
-            questData={questData}
-            onNavigateToVideos={() => onNavigateToVideos?.()}
-            onNavigateToSetup={() => onNavigateToSetup?.()}
-            onRequestVerification={
-              ebauche && ebauche.userCycle?.status === 'in_progress'
-                ? () => handleRequestVerification(ebauche)
-                : undefined
-            }
-          />
-        )}
+        {/* Non-Early Access: Last Data Preview + Daily Quest side by side */}
+        {!isEarlyAccess && (
+          <>
+            {/* Side-by-side: Last data preview (left) + Daily Quest (right) */}
+            {userExecutions.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Left: Last Data Preview with stats */}
+                <LastDataPreviewCard
+                  lastExecution={userExecutions[userExecutions.length - 1]}
+                  totalUserTrades={totalUserTrades}
+                  currentCycleName={currentCycle?.name || "—"}
+                  totalUserRR={totalUserRR}
+                  averageUserRR={averageUserRR}
+                  completedCycles={completedCycles}
+                  onContinueHarvest={() => {
+                    window.open("https://app.fxreplay.com/en-US/auth/testing/dashboard", "_blank");
+                    onNavigateToSetup?.();
+                  }}
+                />
 
-        {/* Overview stats - condensed for Early Access */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          <div className="border border-emerald-500/30 p-3 md:p-5 bg-transparent rounded-md">
-            <div className="flex items-center gap-2 mb-2 md:mb-3">
-              <Target className="w-3 h-3 md:w-4 md:h-4 text-emerald-500" />
-              <span className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
-                Progression
-              </span>
-            </div>
-            <p className="text-2xl md:text-3xl font-bold text-foreground">{totalUserTrades}</p>
-            <p className="text-xs md:text-sm text-muted-foreground">/ 314 trades</p>
-            <div className="mt-2 md:mt-3 h-1.5 md:h-2 bg-muted rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-emerald-500 rounded-full transition-all"
-                style={{ width: `${(totalUserTrades / 314) * 100}%` }}
+                {/* Right: Daily Quest */}
+                {questData && !questData.loading && (
+                  <div className="border border-border rounded-md bg-card overflow-hidden">
+                    <DailyQuestCard
+                      questData={questData}
+                      onNavigateToVideos={() => onNavigateToVideos?.()}
+                      onNavigateToSetup={() => onNavigateToSetup?.()}
+                      onRequestVerification={
+                        ebauche && ebauche.userCycle?.status === 'in_progress'
+                          ? () => handleRequestVerification(ebauche)
+                          : undefined
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* If no executions yet, show daily quest full width */}
+            {userExecutions.length === 0 && questData && !questData.loading && (
+              <DailyQuestCard
+                questData={questData}
+                onNavigateToVideos={() => onNavigateToVideos?.()}
+                onNavigateToSetup={() => onNavigateToSetup?.()}
+                onRequestVerification={
+                  ebauche && ebauche.userCycle?.status === 'in_progress'
+                    ? () => handleRequestVerification(ebauche)
+                    : undefined
+                }
               />
-            </div>
-          </div>
+            )}
 
-          <div className="border border-border p-3 md:p-5 bg-transparent rounded-md">
-            <div className="flex items-center gap-2 mb-2 md:mb-3">
-              <CheckCircle className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
-              <span className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
-                Cycles
-              </span>
-            </div>
-            <p className="text-2xl md:text-3xl font-bold text-foreground">{completedCycles}</p>
-            <p className="text-xs md:text-sm text-muted-foreground">/ 8 validés</p>
-          </div>
-
-          <div className="border border-border p-3 md:p-5 bg-transparent rounded-md">
-            <div className="flex items-center gap-2 mb-2 md:mb-3">
-              <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
-              <span className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
-                RR Cumulé
-              </span>
-            </div>
-            <p className={cn(
-              "text-2xl md:text-3xl font-bold",
-              totalUserRR >= 0 ? "text-emerald-400" : "text-red-400"
-            )}>
-              {totalUserRR >= 0 ? "+" : ""}{totalUserRR.toFixed(1)}
-            </p>
-            <p className="text-xs md:text-sm text-muted-foreground hidden md:block">
-              ≈ {totalUserRR >= 0 ? "+" : ""}{(totalUserRR * 1000).toLocaleString("fr-FR")} €
-            </p>
-          </div>
-
-          <div className="border border-border p-3 md:p-5 bg-transparent rounded-md">
-            <div className="flex items-center gap-2 mb-2 md:mb-3">
-              <Circle className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
-              <span className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
-                RR Moyen
-              </span>
-            </div>
-            <p className="text-2xl md:text-3xl font-bold text-foreground">
-              {averageUserRR.toFixed(2)}
-            </p>
-            <p className="text-xs md:text-sm text-muted-foreground">par trade</p>
-          </div>
-        </div>
-
-        {/* Ébauche Section — hidden once validated */}
-        {ebauche && ebauche.userCycle?.status !== 'validated' && (
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
-                Phase Initiale — Ébauche
-              </h3>
-              <span className="text-[10px] px-2 py-0.5 bg-muted text-muted-foreground rounded-md">
-                15 trades + vidéos explicatives
-              </span>
-            </div>
-            
-            <div 
-              className={cn(
-                "p-5 border rounded-md transition-all cursor-pointer",
-                getCycleStyles(ebauche.userCycle?.status)
-              )}
-              onClick={() => setExpandedCycle(expandedCycle === 0 ? null : 0)}
-            >
-              {/* Mobile: stacked layout / Desktop: side by side */}
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0",
-                    "bg-muted"
-                  )}>
-                    <Play className="w-4 h-4 md:w-5 md:h-5 text-foreground" />
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="font-semibold text-foreground text-sm md:text-base">Ébauche</h4>
-                    <p className="text-[10px] md:text-xs text-muted-foreground truncate">
-                      Première découverte du setup Oracle
-                    </p>
-                  </div>
+            {/* Ébauche Section — hidden once validated */}
+            {ebauche && ebauche.userCycle?.status !== 'validated' && (
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
+                    Phase Initiale — Ébauche
+                  </h3>
+                  <span className="text-[10px] px-2 py-0.5 bg-muted text-muted-foreground rounded-md">
+                    15 trades + vidéos explicatives
+                  </span>
                 </div>
                 
-                {/* Stats row - responsive grid on mobile */}
-                <div className="flex flex-wrap items-center gap-2 md:gap-4">
-                  <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-md md:bg-transparent md:px-0 md:py-0">
-                    <span className="text-xs md:text-sm font-mono text-foreground">
-                      {questData?.ebaucheTradesAnalyzed || 0}/{ebauche.total_trades}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground hidden md:inline">analysés</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 md:bg-transparent md:px-0 md:py-0">
-                    {getStatusIcon(ebauche.userCycle?.status)}
-                    <span className="text-[10px] md:text-xs text-muted-foreground">
-                      {getStatusLabel(ebauche.userCycle?.status)}
-                    </span>
-                  </div>
-                  <div className="hidden md:block">
-                    {expandedCycle === 0 ? (
-                      <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div 
                   className={cn(
-                    "h-full rounded-full transition-all",
-                    "bg-blue-500"
+                    "p-5 border rounded-md transition-all cursor-pointer",
+                    getCycleStyles(ebauche.userCycle?.status)
                   )}
-                  style={{ width: `${Math.min(((questData?.ebaucheTradesAnalyzed || 0) / ebauche.total_trades) * 100, 100)}%` }}
-                />
-              </div>
-
-              {expandedCycle === 0 && (
-                <div className="mt-4 pt-4 border-t border-border space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Regardez les vidéos explicatives du setup Oracle puis cochez chaque trade analysé et compris.
-                  </p>
-                  
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onNavigateToVideos?.();
-                      }}
-                    >
-                      <Play className="w-4 h-4 mr-2" />
-                      Voir les vidéos
-                    </Button>
+                  onClick={() => setExpandedCycle(expandedCycle === 0 ? null : 0)}
+                >
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-muted">
+                        <Play className="w-4 h-4 md:w-5 md:h-5 text-foreground" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-semibold text-foreground text-sm md:text-base">Ébauche</h4>
+                        <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+                          Première découverte du setup Oracle
+                        </p>
+                      </div>
+                    </div>
                     
-                    {ebauche.userCycle?.status === 'in_progress' && (
-                      <Button
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRequestVerification(ebauche);
-                        }}
-                        disabled={(questData?.ebaucheTradesAnalyzed || 0) < ebauche.total_trades || submitting}
-                      >
-                        {submitting ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Send className="w-4 h-4 mr-2" />
-                        )}
-                        Demander la vérification
-                      </Button>
-                    )}
+                    <div className="flex flex-wrap items-center gap-2 md:gap-4">
+                      <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-md md:bg-transparent md:px-0 md:py-0">
+                        <span className="text-xs md:text-sm font-mono text-foreground">
+                          {questData?.ebaucheTradesAnalyzed || 0}/{ebauche.total_trades}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground hidden md:inline">analysés</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 md:bg-transparent md:px-0 md:py-0">
+                        {getStatusIcon(ebauche.userCycle?.status)}
+                        <span className="text-[10px] md:text-xs text-muted-foreground">
+                          {getStatusLabel(ebauche.userCycle?.status)}
+                        </span>
+                      </div>
+                      <div className="hidden md:block">
+                        {expandedCycle === 0 ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all bg-blue-500" style={{ width: `${Math.min(((questData?.ebaucheTradesAnalyzed || 0) / ebauche.total_trades) * 100, 100)}%` }} />
                   </div>
 
-                  {ebauche.userCycle?.status === 'rejected' && ebauche.userCycle.admin_feedback && (
-                    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-md">
-                      <p className="text-xs font-mono uppercase text-red-400 mb-1">Feedback</p>
-                      <p className="text-sm text-foreground">{ebauche.userCycle.admin_feedback}</p>
+                  {expandedCycle === 0 && (
+                    <div className="mt-4 pt-4 border-t border-border space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Regardez les vidéos explicatives du setup Oracle puis cochez chaque trade analysé et compris.
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onNavigateToVideos?.(); }}>
+                          <Play className="w-4 h-4 mr-2" /> Voir les vidéos
+                        </Button>
+                        {ebauche.userCycle?.status === 'in_progress' && (
+                          <Button size="sm" onClick={(e) => { e.stopPropagation(); handleRequestVerification(ebauche); }}
+                            disabled={(questData?.ebaucheTradesAnalyzed || 0) < ebauche.total_trades || submitting}>
+                            {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                            Demander la vérification
+                          </Button>
+                        )}
+                      </div>
+                      {ebauche.userCycle?.status === 'rejected' && ebauche.userCycle.admin_feedback && (
+                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-md">
+                          <p className="text-xs font-mono uppercase text-red-400 mb-1">Feedback</p>
+                          <p className="text-sm text-foreground">{ebauche.userCycle.admin_feedback}</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Phase 1 Cycles */}
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
-              Phase 1 — 100 Trades
-            </h3>
-            <span className="text-[10px] px-2 py-0.5 bg-muted text-muted-foreground rounded-md">
-              4 cycles × 25 trades
-            </span>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {phase1Cycles.map((cycle) => (
-              <CycleCard
-                key={cycle.id}
-                cycle={cycle}
-                expanded={expandedCycle === cycle.cycle_number}
-                onToggle={() => setExpandedCycle(
-                  expandedCycle === cycle.cycle_number ? null : cycle.cycle_number
-                )}
-                onRequestVerification={() => handleRequestVerification(cycle)}
-                submitting={submitting}
-                getStatusIcon={getStatusIcon}
-                getStatusLabel={getStatusLabel}
-                getCycleStyles={getCycleStyles}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Phase 2 Cycles */}
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
-              Phase 2 — 199 Trades
-            </h3>
-            <span className="text-[10px] px-2 py-0.5 bg-muted text-muted-foreground rounded-md">
-              3 cycles × 50 + 1 cycle × 49 trades
-            </span>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {phase2Cycles.map((cycle) => (
-              <CycleCard
-                key={cycle.id}
-                cycle={cycle}
-                expanded={expandedCycle === cycle.cycle_number}
-                onToggle={() => setExpandedCycle(
-                  expandedCycle === cycle.cycle_number ? null : cycle.cycle_number
-                )}
-                onRequestVerification={() => handleRequestVerification(cycle)}
-                submitting={submitting}
-                getStatusIcon={getStatusIcon}
-                getStatusLabel={getStatusLabel}
-                getCycleStyles={getCycleStyles}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Current Cycle Detail */}
-        {currentCycle && expandedCycle === currentCycle.cycle_number && (
-          <div className="border border-border p-6 bg-card rounded-md">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-foreground">
-                📋 {currentCycle.name} — Trades {currentCycle.trade_start}-{currentCycle.trade_end}
-              </h3>
-              <span className="text-sm text-muted-foreground">
-                {currentCycle.userExecutions.length} / {currentCycle.total_trades} saisis
-              </span>
-            </div>
-            
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-64 overflow-auto">
-              {Array.from({ length: currentCycle.total_trades }, (_, i) => {
-                const tradeNumber = currentCycle.trade_start + i;
-                const userExec = currentCycle.userExecutions.find(e => e.trade_number === tradeNumber);
-                const isCompleted = !!userExec;
-                
-                return (
-                  <div
-                    key={tradeNumber}
-                    className={cn(
-                      "p-2 border rounded text-center text-xs font-mono",
-                      isCompleted 
-                        ? (userExec.rr || 0) >= 0 
-                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                          : "bg-red-500/10 border-red-500/30 text-red-400"
-                        : "bg-muted/30 border-border text-muted-foreground"
-                    )}
-                  >
-                    <div className="font-bold">#{tradeNumber}</div>
-                    {isCompleted ? (
-                      <div>{(userExec.rr || 0) >= 0 ? "+" : ""}{userExec.rr?.toFixed(1) || "0"} RR</div>
-                    ) : (
-                      <div>—</div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Summary Table - hidden for Early Access */}
@@ -1102,5 +955,118 @@ const EarlyAccessResultsPreview = () => {
         <ImageLightbox src={lightboxUrl} alt="Résultat" open={!!lightboxUrl} onClose={() => setLightboxUrl(null)} />
       )}
     </>
+  );
+};
+
+// ─── Last Data Preview Card ───
+interface LastDataPreviewCardProps {
+  lastExecution: UserExecution;
+  totalUserTrades: number;
+  currentCycleName: string;
+  totalUserRR: number;
+  averageUserRR: number;
+  completedCycles: number;
+  onContinueHarvest: () => void;
+}
+
+const LastDataPreviewCard = ({
+  lastExecution,
+  totalUserTrades,
+  currentCycleName,
+  totalUserRR,
+  averageUserRR,
+  completedCycles,
+  onContinueHarvest,
+}: LastDataPreviewCardProps) => {
+  const [activeScreen, setActiveScreen] = useState<"m15" | "m5">("m15");
+
+  return (
+    <div className="border border-border rounded-md bg-card p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
+          Dernière data récoltée
+        </h3>
+        <span className="text-xs font-mono text-muted-foreground">
+          #{lastExecution.trade_number}
+        </span>
+      </div>
+
+      {/* Trade metadata */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className={cn(
+          "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-semibold",
+          lastExecution.direction === "Long" ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
+        )}>
+          {lastExecution.direction === "Long" ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+          {lastExecution.direction}
+        </div>
+        <span className="text-xs font-mono text-muted-foreground">
+          {lastExecution.trade_date ? new Date(lastExecution.trade_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+        </span>
+        {lastExecution.rr !== null && lastExecution.rr !== undefined && (
+          <span className={cn("text-sm font-mono font-bold", (lastExecution.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400")}>
+            {(lastExecution.rr || 0) >= 0 ? "+" : ""}{(lastExecution.rr || 0).toFixed(1)}R
+          </span>
+        )}
+        {lastExecution.entry_time && <span className="text-xs font-mono text-muted-foreground">E: {lastExecution.entry_time}</span>}
+        {lastExecution.exit_time && <span className="text-xs font-mono text-muted-foreground">S: {lastExecution.exit_time}</span>}
+        {lastExecution.setup_type && <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[10px] font-mono rounded">{lastExecution.setup_type}</span>}
+      </div>
+
+      {/* Screenshot preview with Contexte/Entrée toggle */}
+      {(lastExecution.screenshot_url || lastExecution.screenshot_entry_url) && (
+        <div>
+          <div className="flex items-center gap-1 mb-2">
+            <button
+              onClick={() => setActiveScreen("m15")}
+              className={cn("px-2 py-0.5 text-[10px] font-mono rounded transition-colors", activeScreen === "m15" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+            >
+              Contexte
+            </button>
+            <button
+              onClick={() => setActiveScreen("m5")}
+              className={cn("px-2 py-0.5 text-[10px] font-mono rounded transition-colors", activeScreen === "m5" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+            >
+              Entrée
+            </button>
+          </div>
+          <div className="rounded-md overflow-hidden border border-border aspect-video bg-muted">
+            <SignedImageCard
+              storagePath={activeScreen === "m15" ? lastExecution.screenshot_url || null : lastExecution.screenshot_entry_url || null}
+              alt={`Trade #${lastExecution.trade_number} ${activeScreen === "m15" ? "Contexte" : "Entrée"}`}
+              label={activeScreen === "m15" ? "Contexte" : "Entrée"}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="p-2 border border-border rounded-md">
+          <p className="text-[8px] font-mono text-muted-foreground uppercase">Data récoltées</p>
+          <p className="text-lg font-bold text-foreground">{totalUserTrades}</p>
+        </div>
+        <div className="p-2 border border-border rounded-md">
+          <p className="text-[8px] font-mono text-muted-foreground uppercase">Cycle</p>
+          <p className="text-sm font-bold text-foreground truncate">{currentCycleName}</p>
+        </div>
+        <div className="p-2 border border-border rounded-md">
+          <p className="text-[8px] font-mono text-muted-foreground uppercase">RR Cumulé</p>
+          <p className={cn("text-lg font-bold", totalUserRR >= 0 ? "text-emerald-400" : "text-red-400")}>
+            {totalUserRR >= 0 ? "+" : ""}{totalUserRR.toFixed(1)}
+          </p>
+        </div>
+        <div className="p-2 border border-border rounded-md">
+          <p className="text-[8px] font-mono text-muted-foreground uppercase">RR Moyen</p>
+          <p className="text-lg font-bold text-foreground">{averageUserRR.toFixed(2)}</p>
+        </div>
+      </div>
+
+      {/* Continue button */}
+      <Button size="sm" className="w-full gap-2" onClick={onContinueHarvest}>
+        <ExternalLink className="w-3.5 h-3.5" />
+        Continuer ma récolte
+      </Button>
+    </div>
   );
 };
