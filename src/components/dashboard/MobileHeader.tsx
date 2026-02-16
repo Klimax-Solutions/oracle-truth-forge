@@ -1,10 +1,11 @@
-import { Menu, LogOut } from "lucide-react";
+import { Menu, LogOut, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { Database, BarChart3, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy, Film, Award } from "lucide-react";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
+import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
 
 interface MobileHeaderProps {
   userEmail: string;
@@ -51,6 +52,9 @@ export const MobileHeader = ({
   earlyAccessTimer,
 }: MobileHeaderProps) => {
   const { isEarlyAccess } = useEarlyAccess();
+  const { settings: eaSettings } = useEarlyAccessSettings();
+  const oracleBtn = eaSettings.find(s => s.button_key === "acceder_a_oracle");
+  const oracleUrl = oracleBtn?.button_url;
   let allTabs = isEarlyAccess 
     ? tabs.filter(t => t.id !== "successes") 
     : [...tabs];
@@ -125,6 +129,13 @@ export const MobileHeader = ({
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          {isEarlyAccess && oracleUrl && (
+            <a href={oracleUrl} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="icon" className="w-8 h-8 shrink-0">
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Button>
+            </a>
+          )}
           {earlyAccessTimer}
           {dataSourceSelector}
           <ThemeToggle />
