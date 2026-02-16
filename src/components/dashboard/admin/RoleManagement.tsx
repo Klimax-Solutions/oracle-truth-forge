@@ -91,7 +91,7 @@ export const RoleManagement = () => {
   // Role change state
   const [roleChangeDialogOpen, setRoleChangeDialogOpen] = useState(false);
   const [roleChangeUserId, setRoleChangeUserId] = useState<string | null>(null);
-  const [roleChangeTarget, setRoleChangeTarget] = useState<string>("member");
+  const [roleChangeSelectedRoles, setRoleChangeSelectedRoles] = useState<string[]>([]);
   const [roleChangeExpiry, setRoleChangeExpiry] = useState<string>("");
   const [roleChangeProcessing, setRoleChangeProcessing] = useState(false);
 
@@ -258,9 +258,9 @@ export const RoleManagement = () => {
     fetchUsersWithRoles();
   };
 
-  // Change role: remove all non-member roles, add the new one
+  // Change roles: sync user roles to match selected set
   const executeRoleChange = async () => {
-    if (!roleChangeUserId || !roleChangeTarget) return;
+    if (!roleChangeUserId) return;
     setRoleChangeProcessing(true);
 
     try {
@@ -268,36 +268,40 @@ export const RoleManagement = () => {
       const targetUser = users.find(u => u.user_id === roleChangeUserId);
       if (!targetUser) throw new Error("User not found");
 
-      // Remove non-member roles (keep institute as it's a complementary role)
-      const rolesToRemove = targetUser.roles.filter(r => r !== "member" && r !== "institute");
-      for (const role of rolesToRemove) {
+      const currentRoles = targetUser.roles.filter(r => r !== "member");
+      const desiredRoles = roleChangeSelectedRoles.filter(r => r !== "member");
+
+      // Roles to remove
+      const toRemove = currentRoles.filter(r => !desiredRoles.includes(r));
+      for (const role of toRemove) {
         await supabase.from("user_roles").delete()
           .eq("user_id", roleChangeUserId)
           .eq("role", role as any);
       }
 
-      // Add the target role if it's not 'member' (member is always there)
-      if (roleChangeTarget !== "member" && roleChangeTarget !== "institute") {
+      // Roles to add
+      const toAdd = desiredRoles.filter(r => !currentRoles.includes(r));
+      for (const role of toAdd) {
         const insertData: any = {
           user_id: roleChangeUserId,
-          role: roleChangeTarget as any,
+          role: role as any,
           assigned_by: currentUser?.id,
         };
-        if (roleChangeTarget === "early_access" && roleChangeExpiry) {
+        if (role === "early_access" && roleChangeExpiry) {
           insertData.expires_at = new Date(roleChangeExpiry).toISOString();
         }
         const { error } = await supabase.from("user_roles").insert(insertData);
-        if (error) throw error;
+        if (error && error.code !== '23505') throw error;
       }
 
-      toast.success(`Rôle modifié en ${getRoleLabel(roleChangeTarget)}`);
+      toast.success("Rôles mis à jour avec succès");
       setRoleChangeDialogOpen(false);
       setRoleChangeUserId(null);
       setRoleChangeExpiry("");
       fetchUsersWithRoles();
     } catch (error) {
-      console.error("Error changing role:", error);
-      toast.error("Erreur lors du changement de rôle");
+      console.error("Error changing roles:", error);
+      toast.error("Erreur lors du changement de rôles");
     } finally {
       setRoleChangeProcessing(false);
     }
@@ -308,13 +312,16 @@ export const RoleManagement = () => {
     if (!user) return;
     setQuickActionsOpen(false);
     setRoleChangeUserId(userId);
-    // Set current primary role
-    if (user.roles.includes("super_admin")) setRoleChangeTarget("super_admin");
-    else if (user.roles.includes("admin")) setRoleChangeTarget("admin");
-    else if (user.roles.includes("early_access")) setRoleChangeTarget("early_access");
-    else setRoleChangeTarget("member");
+    setRoleChangeSelectedRoles([...user.roles]);
     setRoleChangeExpiry("");
     setRoleChangeDialogOpen(true);
+  };
+
+  const toggleRoleSelection = (role: string) => {
+    if (role === "member") return; // member is always present
+    setRoleChangeSelectedRoles(prev =>
+      prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
+    );
   };
 
   const saveFirstName = async (userId: string) => {
@@ -444,9 +451,14 @@ export const RoleManagement = () => {
       case 'super_admin': return "default";
       case 'admin': return "secondary";
       case 'early_access': return "outline";
-      case 'institute': return "secondary";
+      case 'institute': return "outline";
       default: return "outline";
     }
+  };
+
+  const getRoleBadgeClassName = (role: string) => {
+    if (role === 'institute') return "bg-blue-500/10 text-blue-500 border-blue-500/30";
+    return "";
   };
 
   const getRoleLabel = (role: string) => {
@@ -454,7 +466,7 @@ export const RoleManagement = () => {
       case 'super_admin': return "Super Admin";
       case 'admin': return "Admin";
       case 'early_access': return "Early Access";
-      case 'institute': return "Institute";
+      case 'institute': return "Institut";
       default: return "Membre";
     }
   };
@@ -646,7 +658,7 @@ export const RoleManagement = () => {
     { key: "super_admin", label: "Super Admin", icon: <Crown className="w-3 h-3" />, count: users.filter(u => u.roles.includes('super_admin')).length, color: "text-foreground" },
     { key: "admin", label: "Admin", icon: <ShieldCheck className="w-3 h-3" />, count: users.filter(u => u.roles.includes('admin')).length, color: "text-foreground" },
     { key: "active", label: "Actifs", icon: <CheckCircle className="w-3 h-3" />, count: users.filter(u => u.status === 'active').length, color: "text-green-500" },
-    { key: "institute", label: "Institute", icon: <Award className="w-3 h-3" />, count: users.filter(u => u.roles.includes('institute')).length, color: "text-purple-500" },
+    { key: "institute", label: "Institut", icon: <Award className="w-3 h-3" />, count: users.filter(u => u.roles.includes('institute')).length, color: "text-blue-500" },
     { key: "early_access", label: "Early", icon: <Shield className="w-3 h-3" />, count: users.filter(u => u.roles.includes('early_access')).length, color: "text-amber-500" },
     { key: "frozen", label: "Gelés", icon: <Snowflake className="w-3 h-3" />, count: users.filter(u => u.status === 'frozen').length, color: "text-blue-500" },
     { key: "banned", label: "Bannis", icon: <Ban className="w-3 h-3" />, count: users.filter(u => u.status === 'banned').length, color: "text-destructive" },
@@ -702,7 +714,7 @@ export const RoleManagement = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="institute">Institute</SelectItem>
+                    <SelectItem value="institute">Institut</SelectItem>
                     <SelectItem value="early_access">Early Access</SelectItem>
                   </SelectContent>
                 </Select>
@@ -832,7 +844,7 @@ export const RoleManagement = () => {
                               <Badge 
                                 key={role} 
                                 variant={getRoleBadgeVariant(role) as any}
-                                className="flex items-center gap-1 text-[10px]"
+                                className={cn("flex items-center gap-1 text-[10px]", getRoleBadgeClassName(role))}
                               >
                                 {getRoleIcon(role)}
                                 {getRoleLabel(role)}
@@ -979,21 +991,42 @@ export const RoleManagement = () => {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>Nouveau rôle</Label>
-                    <Select value={roleChangeTarget} onValueChange={setRoleChangeTarget}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="member">Membre</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="early_access">Early Access</SelectItem>
-                        <SelectItem value="super_admin">Super Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Rôles</Label>
+                    <div className="space-y-2 mt-1">
+                      {[
+                        { value: "member", label: "Membre", icon: <User className="w-3.5 h-3.5" />, disabled: true },
+                        { value: "admin", label: "Admin", icon: <ShieldCheck className="w-3.5 h-3.5" /> },
+                        { value: "early_access", label: "Early Access", icon: <Shield className="w-3.5 h-3.5" /> },
+                        { value: "institute", label: "Institut", icon: <Award className="w-3.5 h-3.5" /> },
+                        { value: "super_admin", label: "Super Admin", icon: <Crown className="w-3.5 h-3.5" /> },
+                      ].map((r) => {
+                        const isSelected = roleChangeSelectedRoles.includes(r.value);
+                        return (
+                          <button
+                            key={r.value}
+                            type="button"
+                            disabled={r.disabled}
+                            onClick={() => toggleRoleSelection(r.value)}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-3 py-2.5 rounded-md border text-sm transition-all text-left",
+                              isSelected
+                                ? r.value === "institute"
+                                  ? "border-blue-500 bg-blue-500/10 text-blue-500"
+                                  : "border-primary bg-primary/10 text-foreground"
+                                : "border-border bg-card hover:bg-accent/50 text-muted-foreground",
+                              r.disabled && "opacity-50 cursor-not-allowed"
+                            )}
+                          >
+                            {r.icon}
+                            <span className="flex-1">{r.label}</span>
+                            {isSelected && <Check className="w-4 h-4" />}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                  {roleChangeTarget === "early_access" && (
+                  {roleChangeSelectedRoles.includes("early_access") && (
                     <div className="space-y-2">
                       <Label>Date d'expiration du minuteur</Label>
                       <Input
