@@ -135,19 +135,19 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
               <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-foreground">⚠️ Analyse obligatoire des 15 premières datas</h4>
+                <h4 className="text-sm font-semibold text-foreground">⚠️ Récolte obligatoire des 15 premières datas</h4>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Les 15 premières datas doivent être <strong className="text-foreground">analysées et comprises en autonomie</strong>. 
-                  Étudiez chaque trade en détail — ses paramètres, sa logique d'entrée et de sortie.
+                   Les 15 premières datas doivent être <strong className="text-foreground">récoltées manuellement</strong> à l'aide de l'outil de saisie. 
+                   Appuyez-vous <strong className="text-foreground">uniquement sur la date du trade</strong>, sans regarder le modèle d'entrée exact.
                 </p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Dès lors qu'un trade est analysé et maîtrisé, <strong className="text-foreground">cochez la case correspondante</strong> pour valider votre compréhension.
-                  Une fois les 15 trades cochés, vous pourrez passer à l'étape de vérification dans vos quêtes d'initiation.
+                   Une fois la data saisie, <strong className="text-foreground">cochez la case correspondante</strong> pour confirmer que le trade a été récolté, analysé et compris.
+                   Votre progression avancera uniquement lorsque la data est saisie et la case cochée.
                 </p>
                 <div className="flex items-center gap-2 pt-1">
                   <CheckSquare className="w-3.5 h-3.5 text-emerald-500" />
                   <span className="text-xs font-mono text-muted-foreground">
-                    {analyzedTradeNumbers?.filter(n => n >= 1 && n <= 15).length || 0}/15 datas analysées et comprises
+                    {analyzedTradeNumbers?.filter(n => n >= 1 && n <= 15).length || 0}/15 datas récoltées, analysées et comprises
                   </span>
                 </div>
               </div>
