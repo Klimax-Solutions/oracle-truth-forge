@@ -98,6 +98,36 @@ const SuccessNotification = () => {
       })
       .subscribe();
 
+    // Listen for verification requests (admin only)
+    const verificationChannel = supabase
+      .channel("verification_notifications")
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "verification_requests",
+      }, async (payload) => {
+        if (!initialLoadDone.current) return;
+        const { data: isAdminResult } = await supabase.rpc("is_admin");
+        const { data: isSuperAdminResult } = await supabase.rpc("is_super_admin");
+        if (!isAdminResult && !isSuperAdminResult) return;
+
+        const newReq = payload.new as any;
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("user_id", newReq.user_id)
+          .single();
+        const name = profile?.display_name || "Un utilisateur";
+        const msg = `🔔 ${name} a soumis une demande de vérification`;
+        setNotifications((prev) => [
+          { id: newReq.id, message: msg, timestamp: new Date(), read: false },
+          ...prev,
+        ].slice(0, 50));
+        playSound();
+        fireConfetti();
+      })
+      .subscribe();
+
     const timer = setTimeout(() => { initialLoadDone.current = true; }, 2000);
 
     return () => {
@@ -105,6 +135,7 @@ const SuccessNotification = () => {
       supabase.removeChannel(channel);
       supabase.removeChannel(resultsChannel);
       supabase.removeChannel(notifChannel);
+      supabase.removeChannel(verificationChannel);
     };
   }, [userId, playSound, fireConfetti]);
 

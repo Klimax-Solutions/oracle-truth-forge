@@ -25,7 +25,7 @@ import { SuccessPage } from "@/components/dashboard/SuccessPage";
 import { QuestFloatingBubble } from "@/components/dashboard/QuestFloatingBubble";
 import { ResultsPage } from "@/components/dashboard/ResultsPage";
 import { ResultsManager } from "@/components/dashboard/ResultsManager";
-
+import { AdminVerificationPopup } from "@/components/dashboard/AdminVerificationPopup";
 interface Trade {
   id: string;
   trade_number: number;
@@ -352,6 +352,11 @@ const Dashboard = () => {
         onNavigateToSetup={() => setActiveTab("setup")}
         onNavigateToExecution={() => setActiveTab("execution")}
       />
+
+      {/* Admin Verification Popup */}
+      {(isAdmin || isSuperAdmin) && (
+        <AdminVerificationPopup onNavigateToAdmin={() => setActiveTab("admin")} />
+      )}
     </div>
     </div>
   );

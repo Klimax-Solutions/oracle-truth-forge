@@ -163,29 +163,29 @@ export const TradeNavigationLightbox = ({
       >
         <div className="flex items-center gap-3 min-w-0 overflow-x-auto">
           {/* Trade number */}
-          <span className="text-sm font-mono font-bold text-foreground flex-shrink-0">
+          <span className="text-base font-mono font-bold text-foreground flex-shrink-0">
             #{currentItem.tradeNumber}
           </span>
 
           {/* Direction */}
           <div
             className={cn(
-              "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono flex-shrink-0",
+              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-sm font-mono font-semibold flex-shrink-0",
               currentItem.direction === "Long"
                 ? "bg-emerald-500/20 text-emerald-400"
                 : "bg-red-500/20 text-red-400"
             )}
           >
             {currentItem.direction === "Long" ? (
-              <ArrowUpRight className="w-3 h-3" />
+              <ArrowUpRight className="w-4 h-4" />
             ) : (
-              <ArrowDownRight className="w-3 h-3" />
+              <ArrowDownRight className="w-4 h-4" />
             )}
             {currentItem.direction}
           </div>
 
           {/* Date */}
-          <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
+          <span className="text-sm font-mono text-muted-foreground flex-shrink-0">
             {new Date(currentItem.tradeDate).toLocaleDateString("fr-FR", {
               day: "2-digit",
               month: "short",
@@ -197,7 +197,7 @@ export const TradeNavigationLightbox = ({
           {currentItem.rr !== null && currentItem.rr !== undefined && (
             <span
               className={cn(
-                "text-xs font-mono font-bold flex-shrink-0",
+                "text-base font-mono font-bold flex-shrink-0",
                 currentItem.rr >= 0 ? "text-emerald-400" : "text-red-400"
               )}
             >
@@ -207,44 +207,44 @@ export const TradeNavigationLightbox = ({
           )}
 
           {/* Separator */}
-          <div className="w-px h-4 bg-border flex-shrink-0" />
+          <div className="w-px h-5 bg-border flex-shrink-0" />
 
           {/* Entry/exit times */}
           {currentItem.entryTime && (
-            <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
+            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">
               E: {currentItem.entryTime}
             </span>
           )}
           {currentItem.exitTime && (
-            <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
+            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">
               S: {currentItem.exitTime}
             </span>
           )}
 
           {/* Setup */}
           {currentItem.setupType && (
-            <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[10px] font-mono rounded flex-shrink-0">
+            <span className="px-2 py-0.5 bg-primary/20 text-primary text-sm font-mono rounded flex-shrink-0">
               {currentItem.setupType}
             </span>
           )}
 
           {/* Structure */}
           {currentItem.directionStructure && (
-            <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
+            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">
               {currentItem.directionStructure}
             </span>
           )}
 
           {/* Model */}
           {currentItem.entryModel && (
-            <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
+            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">
               {currentItem.entryModel}
             </span>
           )}
 
           {/* Timing */}
           {currentItem.entryTiming && (
-            <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
+            <span className="text-sm font-mono text-muted-foreground flex-shrink-0">
               {currentItem.entryTiming}
             </span>
           )}
@@ -252,8 +252,8 @@ export const TradeNavigationLightbox = ({
           {/* Notes */}
           {currentItem.notes && (
             <>
-              <div className="w-px h-4 bg-border flex-shrink-0" />
-              <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[200px]" title={currentItem.notes}>
+              <div className="w-px h-5 bg-border flex-shrink-0" />
+              <span className="text-sm font-mono text-muted-foreground truncate max-w-[300px]" title={currentItem.notes}>
                 {currentItem.notes}
               </span>
             </>
