@@ -275,9 +275,14 @@ export const DailyQuestCard = ({
           {/* Calendar tracker */}
           {showCalendar && (
             <div className="border border-border rounded-md p-3 bg-card/50">
-              <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-3">
-                Historique de récolte — 30 derniers jours
-              </p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                  Historique de récolte — 30 derniers jours
+                </p>
+                <p className="text-[10px] text-muted-foreground font-mono">
+                  {today.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long", year: "numeric" })}
+                </p>
+              </div>
               <div className="grid grid-cols-10 gap-1">
                 {calendarDays.map((day) => {
                   const hasData = day.data && day.data.count > 0;
@@ -300,7 +305,7 @@ export const DailyQuestCard = ({
                         hasData && "cursor-pointer hover:ring-1 hover:ring-foreground/30",
                         isSelected && "ring-2 ring-foreground"
                       )}
-                      title={`${day.date.toLocaleDateString("fr-FR")} — ${day.data?.count || 0} trades, ${day.data?.wins || 0} wins`}
+                      title={`${day.date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} — ${day.data?.count || 0} data récoltées`}
                     >
                       <span className="leading-none">{day.date.getDate()}</span>
                       {hasData && (
@@ -323,7 +328,7 @@ export const DailyQuestCard = ({
                   <div className="grid grid-cols-3 gap-2">
                     <div className="text-center p-2 bg-muted/50 rounded-md">
                       <p className="text-lg font-bold text-foreground">{selectedDayData.count}</p>
-                      <p className="text-[9px] text-muted-foreground font-mono uppercase">Datas récoltées</p>
+                      <p className="text-[9px] text-muted-foreground font-mono uppercase">Data récoltées</p>
                     </div>
                     <div className="text-center p-2 bg-emerald-500/10 rounded-md">
                       <p className="text-lg font-bold text-emerald-400">{selectedDayData.wins}</p>
