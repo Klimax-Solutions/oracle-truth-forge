@@ -3,12 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, ExternalLink } from "lucide-react";
 import { extractStoragePath } from "@/hooks/useSignedUrl";
 import { ImageLightbox } from "./ImageLightbox";
+import { cn } from "@/lib/utils";
 
 interface SignedImageCardProps {
   storagePath: string | null | undefined;
   alt: string;
   label: string;
   className?: string;
+  fillContainer?: boolean;
 }
 
 export const SignedImageCard = ({
@@ -16,6 +18,7 @@ export const SignedImageCard = ({
   alt,
   label,
   className = "",
+  fillContainer = false,
 }: SignedImageCardProps) => {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,26 +65,31 @@ export const SignedImageCard = ({
   return (
     <>
       <div className={`border border-border rounded-md overflow-hidden ${className}`}>
-        <div className="p-2 bg-muted/30 border-b border-border">
-          <p className="text-[10px] text-muted-foreground font-mono uppercase">{label}</p>
-        </div>
+        {!fillContainer && (
+          <div className="p-2 bg-muted/30 border-b border-border">
+            <p className="text-[10px] text-muted-foreground font-mono uppercase">{label}</p>
+          </div>
+        )}
         {loading ? (
-          <div className="w-full h-48 flex items-center justify-center bg-muted/20">
+          <div className={cn("w-full flex items-center justify-center bg-muted/20", fillContainer ? "aspect-video" : "h-48")}>
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : error || !signedUrl ? (
-          <div className="w-full h-48 flex items-center justify-center bg-muted/20">
+          <div className={cn("w-full flex items-center justify-center bg-muted/20", fillContainer ? "aspect-video" : "h-48")}>
             <p className="text-xs text-muted-foreground">Erreur de chargement</p>
           </div>
         ) : (
           <img
             src={signedUrl}
             alt={alt}
-            className="w-full h-48 object-cover hover:opacity-80 transition-opacity cursor-pointer"
+            className={cn(
+              "w-full object-cover hover:opacity-80 transition-opacity cursor-pointer",
+              fillContainer ? "aspect-video" : "h-48"
+            )}
             onClick={() => setLightboxOpen(true)}
           />
         )}
-        {signedUrl && !loading && !error && (
+        {signedUrl && !loading && !error && !fillContainer && (
           <div className="px-2 py-1 border-t border-border">
             <a href={signedUrl} target="_blank" rel="noopener noreferrer"
               className="text-[10px] text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1">

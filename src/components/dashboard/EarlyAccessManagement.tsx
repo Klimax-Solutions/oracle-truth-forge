@@ -8,10 +8,7 @@ import {
   Loader2,
   Save,
   User,
-  ExternalLink,
   Clock,
-  Plus,
-  Trash2,
 } from "lucide-react";
 
 interface EAUser {
@@ -29,18 +26,22 @@ interface EASetting {
   button_url: string;
 }
 
+const DEFAULT_BUTTONS = [
+  { key: "continuer_ma_recolte", label: "Continuer ma récolte" },
+  { key: "video_bonus_mercure_institut", label: "Vidéo bonus Mercure Institut" },
+  { key: "acceder_a_oracle", label: "Accéder à Oracle" },
+];
+
 export const EarlyAccessManagement = () => {
   const [users, setUsers] = useState<EAUser[]>([]);
   const [settings, setSettings] = useState<EASetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
-  const [newButtonKeys, setNewButtonKeys] = useState<Record<string, { label: string; url: string }>>({});
   const { toast } = useToast();
 
   const fetchData = async () => {
     setLoading(true);
 
-    // Fetch all early_access roles
     const { data: roles } = await supabase
       .from("user_roles")
       .select("id, user_id, expires_at")
@@ -55,13 +56,11 @@ export const EarlyAccessManagement = () => {
 
     const userIds = roles.map((r) => r.user_id);
 
-    // Fetch profiles
     const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, display_name")
       .in("user_id", userIds);
 
-    // Fetch EA settings
     const { data: settingsData } = await supabase
       .from("early_access_settings")
       .select("*")
@@ -86,74 +85,57 @@ export const EarlyAccessManagement = () => {
     fetchData();
   }, []);
 
-  const getUserSettings = (userId: string) => {
-    return settings.filter((s) => s.user_id === userId);
-  };
-
-  const updateSetting = async (settingId: string, field: "button_label" | "button_url", value: string) => {
-    setSettings((prev) =>
-      prev.map((s) => (s.id === settingId ? { ...s, [field]: value } : s))
+  // Get user's URL for a specific button key
+  const getButtonUrl = (userId: string, buttonKey: string) => {
+    const setting = settings.find(
+      (s) => s.user_id === userId && s.button_key === buttonKey
     );
+    return setting?.button_url || "";
   };
 
-  const saveSetting = async (setting: EASetting) => {
-    setSaving(setting.id);
-    const { error } = await supabase
-      .from("early_access_settings")
-      .update({
-        button_label: setting.button_label,
-        button_url: setting.button_url,
-      })
-      .eq("id", setting.id);
+  // Save/update URL for a button
+  const saveButtonUrl = async (userId: string, buttonKey: string, buttonLabel: string, url: string) => {
+    const saveKey = `${userId}_${buttonKey}`;
+    setSaving(saveKey);
 
-    if (error) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    const existing = settings.find(
+      (s) => s.user_id === userId && s.button_key === buttonKey
+    );
+
+    if (existing) {
+      const { error } = await supabase
+        .from("early_access_settings")
+        .update({ button_url: url })
+        .eq("id", existing.id);
+
+      if (error) {
+        toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      } else {
+        setSettings((prev) =>
+          prev.map((s) => (s.id === existing.id ? { ...s, button_url: url } : s))
+        );
+        toast({ title: "URL sauvegardée" });
+      }
     } else {
-      toast({ title: "Sauvegardé" });
+      const { data, error } = await supabase
+        .from("early_access_settings")
+        .insert({
+          user_id: userId,
+          button_key: buttonKey,
+          button_label: buttonLabel,
+          button_url: url,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      } else if (data) {
+        setSettings((prev) => [...prev, data as EASetting]);
+        toast({ title: "URL sauvegardée" });
+      }
     }
     setSaving(null);
-  };
-
-  const addButton = async (userId: string) => {
-    const newData = newButtonKeys[userId];
-    if (!newData?.label?.trim()) return;
-
-    const key = newData.label.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-    setSaving(`new_${userId}`);
-
-    const { data, error } = await supabase
-      .from("early_access_settings")
-      .insert({
-        user_id: userId,
-        button_key: key,
-        button_label: newData.label,
-        button_url: newData.url || "",
-      })
-      .select()
-      .single();
-
-    if (error) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
-    } else if (data) {
-      setSettings((prev) => [...prev, data as EASetting]);
-      setNewButtonKeys((prev) => ({ ...prev, [userId]: { label: "", url: "" } }));
-      toast({ title: "Bouton ajouté" });
-    }
-    setSaving(null);
-  };
-
-  const deleteSetting = async (settingId: string) => {
-    const { error } = await supabase
-      .from("early_access_settings")
-      .delete()
-      .eq("id", settingId);
-
-    if (error) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
-    } else {
-      setSettings((prev) => prev.filter((s) => s.id !== settingId));
-      toast({ title: "Bouton supprimé" });
-    }
   };
 
   const updateExpiration = async (roleId: string, expiresAt: string) => {
@@ -174,6 +156,19 @@ export const EarlyAccessManagement = () => {
     setSaving(null);
   };
 
+  // Local URL state for editing
+  const [urlEdits, setUrlEdits] = useState<Record<string, string>>({});
+
+  const getEditUrl = (userId: string, buttonKey: string) => {
+    const editKey = `${userId}_${buttonKey}`;
+    if (editKey in urlEdits) return urlEdits[editKey];
+    return getButtonUrl(userId, buttonKey);
+  };
+
+  const setEditUrl = (userId: string, buttonKey: string, value: string) => {
+    setUrlEdits((prev) => ({ ...prev, [`${userId}_${buttonKey}`]: value }));
+  };
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -189,7 +184,7 @@ export const EarlyAccessManagement = () => {
           Gestion Early Access
         </h2>
         <p className="text-xs md:text-sm text-muted-foreground font-mono">
-          Personnalisation des boutons et URLs par membre Early Access
+          Configuration des URLs personnalisées par membre Early Access
         </p>
       </div>
 
@@ -205,143 +200,92 @@ export const EarlyAccessManagement = () => {
             </p>
           </div>
         ) : (
-          users.map((user) => {
-            const userSettings = getUserSettings(user.user_id);
-            const newBtn = newButtonKeys[user.user_id] || { label: "", url: "" };
-
-            return (
-              <div
-                key={user.user_id}
-                className="border border-border rounded-md bg-card overflow-hidden"
-              >
-                {/* User header */}
-                <div className="p-4 border-b border-border bg-muted/30">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                        <User className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-foreground text-sm">
-                          {user.display_name}
-                        </h4>
-                        <p className="text-[10px] text-muted-foreground font-mono">
-                          {user.user_id.slice(0, 12)}...
-                        </p>
-                      </div>
+          users.map((user) => (
+            <div
+              key={user.user_id}
+              className="border border-border rounded-md bg-card overflow-hidden"
+            >
+              {/* User header */}
+              <div className="p-4 border-b border-border bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                      <User className="w-4 h-4 text-primary" />
                     </div>
-
-                    {/* Expiration */}
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                      <Input
-                        type="datetime-local"
-                        value={user.expires_at ? new Date(user.expires_at).toISOString().slice(0, 16) : ""}
-                        onChange={(e) => updateExpiration(user.role_id, e.target.value ? new Date(e.target.value).toISOString() : "")}
-                        className="h-7 text-xs w-52"
-                      />
-                      {saving === `exp_${user.role_id}` && (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-                      )}
+                    <div>
+                      <h4 className="font-semibold text-foreground text-sm">
+                        {user.display_name}
+                      </h4>
+                      <p className="text-[10px] text-muted-foreground font-mono">
+                        {user.user_id.slice(0, 12)}...
+                      </p>
                     </div>
+                  </div>
+
+                  {/* Expiration */}
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                    <Input
+                      type="datetime-local"
+                      value={user.expires_at ? new Date(user.expires_at).toISOString().slice(0, 16) : ""}
+                      onChange={(e) => updateExpiration(user.role_id, e.target.value ? new Date(e.target.value).toISOString() : "")}
+                      className="h-7 text-xs w-52"
+                    />
+                    {saving === `exp_${user.role_id}` && (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                    )}
                   </div>
                 </div>
+              </div>
 
-                {/* Buttons configuration */}
-                <div className="p-4 space-y-3">
-                  <p className="text-[10px] font-mono uppercase text-muted-foreground">
-                    Boutons personnalisés ({userSettings.length})
-                  </p>
+              {/* Predefined buttons with URL configuration */}
+              <div className="p-4 space-y-3">
+                <p className="text-[10px] font-mono uppercase text-muted-foreground">
+                  URLs personnalisées par bouton
+                </p>
 
-                  {/* Default buttons info */}
-                  <div className="text-[10px] text-muted-foreground bg-muted/30 p-2 rounded-md font-mono">
-                    Boutons disponibles : "Continuer ma récolte", "Accéder à Oracle". Ajoutez des boutons personnalisés ci-dessous.
-                  </div>
-
-                  {userSettings.map((setting) => (
+                {DEFAULT_BUTTONS.map((btn) => {
+                  const saveKey = `${user.user_id}_${btn.key}`;
+                  return (
                     <div
-                      key={setting.id}
+                      key={btn.key}
                       className="flex items-center gap-2 p-2 border border-border/50 rounded-md"
                     >
+                      <span className="text-xs font-mono text-foreground min-w-[180px] flex-shrink-0">
+                        {btn.label}
+                      </span>
                       <Input
-                        value={setting.button_label}
-                        onChange={(e) => updateSetting(setting.id, "button_label", e.target.value)}
-                        placeholder="Libellé du bouton"
-                        className="h-7 text-xs flex-1"
-                      />
-                      <Input
-                        value={setting.button_url}
-                        onChange={(e) => updateSetting(setting.id, "button_url", e.target.value)}
+                        value={getEditUrl(user.user_id, btn.key)}
+                        onChange={(e) => setEditUrl(user.user_id, btn.key, e.target.value)}
                         placeholder="URL (https://...)"
-                        className="h-7 text-xs flex-[2]"
+                        className="h-7 text-xs flex-1"
                       />
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 p-0"
-                        onClick={() => saveSetting(setting)}
-                        disabled={saving === setting.id}
+                        onClick={() =>
+                          saveButtonUrl(
+                            user.user_id,
+                            btn.key,
+                            btn.label,
+                            getEditUrl(user.user_id, btn.key)
+                          )
+                        }
+                        disabled={saving === saveKey}
                       >
-                        {saving === setting.id ? (
+                        {saving === saveKey ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : (
                           <Save className="w-3.5 h-3.5" />
                         )}
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                        onClick={() => deleteSetting(setting.id)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
                     </div>
-                  ))}
-
-                  {/* Add new button */}
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={newBtn.label}
-                      onChange={(e) =>
-                        setNewButtonKeys((prev) => ({
-                          ...prev,
-                          [user.user_id]: { ...newBtn, label: e.target.value },
-                        }))
-                      }
-                      placeholder="Nouveau bouton (libellé)"
-                      className="h-7 text-xs flex-1"
-                    />
-                    <Input
-                      value={newBtn.url}
-                      onChange={(e) =>
-                        setNewButtonKeys((prev) => ({
-                          ...prev,
-                          [user.user_id]: { ...newBtn, url: e.target.value },
-                        }))
-                      }
-                      placeholder="URL"
-                      className="h-7 text-xs flex-[2]"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 gap-1 text-xs"
-                      onClick={() => addButton(user.user_id)}
-                      disabled={!newBtn.label.trim() || saving === `new_${user.user_id}`}
-                    >
-                      {saving === `new_${user.user_id}` ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <Plus className="w-3 h-3" />
-                      )}
-                      Ajouter
-                    </Button>
-                  </div>
-                </div>
+                  );
+                })}
               </div>
-            );
-          })
+            </div>
+          ))
         )}
       </div>
     </div>

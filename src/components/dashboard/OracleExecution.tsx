@@ -445,7 +445,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
           <>
             {/* Side-by-side: Last data preview (left) + Custom Actions (right) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Left: Last Data Preview with stats */}
+              {/* Left: Last Data Preview */}
               <LastDataPreviewCard
                 lastExecution={trades.length > 0 ? {
                   id: trades[trades.length - 1].id,
@@ -461,25 +461,23 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                 averageUserRR={trades.length > 0 ? trades.reduce((s, t) => s + (t.rr || 0), 0) / trades.length : 0}
                 completedCycles={0}
                 onContinueHarvest={() => {
-                  // Use custom EA URL if available
-                  const harvestBtn = eaSettings.find(s => s.button_key === "continuer_ma_recolte" || s.button_key === "continue_harvest");
+                  const harvestBtn = eaSettings.find(s => s.button_key === "continuer_ma_recolte");
                   const url = harvestBtn?.button_url || "https://app.fxreplay.com/en-US/auth/testing/dashboard";
                   window.open(url, "_blank");
                 }}
-                customButtons={eaSettings.filter(s => s.button_url).map(s => ({
-                  label: s.button_label,
-                  url: s.button_url,
-                }))}
+                customButtons={eaSettings
+                  .filter(s => s.button_key !== "continuer_ma_recolte" && s.button_key !== "acceder_a_oracle" && s.button_url)
+                  .map(s => ({ label: s.button_label, url: s.button_url }))}
               />
 
-              {/* Right: Early Access Actions / Quest */}
+              {/* Right: Early Access Quests */}
               <div className="border border-border rounded-md bg-card p-4 space-y-4">
                 <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
                   Prochaines Étapes
                 </h3>
                 <div className="space-y-3">
-                  {eaSettings.filter(s => s.button_url).length > 0 ? (
-                    eaSettings.filter(s => s.button_url).map((s) => (
+                  {eaSettings.filter(s => s.button_url && s.button_key !== "acceder_a_oracle").length > 0 ? (
+                    eaSettings.filter(s => s.button_url && s.button_key !== "acceder_a_oracle").map((s) => (
                       <a
                         key={s.button_key}
                         href={s.button_url}
@@ -560,6 +558,35 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                     : undefined
                 }
               />
+            )}
+
+            {/* Données Clés - aggregate stats for non-EA users */}
+            {userExecutions.length > 0 && (
+              <div className="border border-border rounded-md p-4 md:p-5 bg-card">
+                <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-3">
+                  Données Clés
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                  <div className="text-center p-2 border border-border rounded-md">
+                    <p className="text-[8px] text-muted-foreground font-mono uppercase">Data récoltées</p>
+                    <p className="text-lg font-bold text-foreground">{totalUserTrades}</p>
+                  </div>
+                  <div className="text-center p-2 border border-border rounded-md">
+                    <p className="text-[8px] text-muted-foreground font-mono uppercase">Cycle</p>
+                    <p className="text-sm font-bold text-foreground truncate">{currentCycle?.name || "—"}</p>
+                  </div>
+                  <div className="text-center p-2 border border-emerald-500/30 rounded-md bg-emerald-500/5">
+                    <p className="text-[8px] text-muted-foreground font-mono uppercase">RR Cumulé</p>
+                    <p className={cn("text-lg font-bold", totalUserRR >= 0 ? "text-emerald-400" : "text-red-400")}>
+                      {totalUserRR >= 0 ? "+" : ""}{totalUserRR.toFixed(1)}
+                    </p>
+                  </div>
+                  <div className="text-center p-2 border border-border rounded-md">
+                    <p className="text-[8px] text-muted-foreground font-mono uppercase">RR Moyen</p>
+                    <p className="text-lg font-bold text-foreground">{averageUserRR.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Ébauche Section — hidden once validated */}
@@ -1050,7 +1077,7 @@ const LastDataPreviewCard = ({
   }
 
   return (
-    <div className="border border-border rounded-md bg-card p-4 space-y-4">
+    <div className="border border-border rounded-md bg-card p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
           Dernière data récoltée
@@ -1060,7 +1087,7 @@ const LastDataPreviewCard = ({
         </span>
       </div>
 
-      {/* Trade metadata */}
+      {/* Trade-specific metadata ABOVE the screenshot */}
       <div className="flex flex-wrap items-center gap-2">
         <div className={cn(
           "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-semibold",
@@ -1080,9 +1107,11 @@ const LastDataPreviewCard = ({
         {lastExecution.entry_time && <span className="text-xs font-mono text-muted-foreground">E: {lastExecution.entry_time}</span>}
         {lastExecution.exit_time && <span className="text-xs font-mono text-muted-foreground">S: {lastExecution.exit_time}</span>}
         {lastExecution.setup_type && <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[10px] font-mono rounded">{lastExecution.setup_type}</span>}
+        {lastExecution.entry_model && <span className="text-[10px] font-mono text-muted-foreground">{lastExecution.entry_model}</span>}
+        {lastExecution.direction_structure && <span className="text-[10px] font-mono text-muted-foreground">{lastExecution.direction_structure}</span>}
       </div>
 
-      {/* Screenshot preview with Contexte/Entrée toggle */}
+      {/* Screenshot preview - image fills the container */}
       {(lastExecution.screenshot_url || lastExecution.screenshot_entry_url) && (
         <div>
           <div className="flex items-center gap-1 mb-2">
@@ -1099,37 +1128,16 @@ const LastDataPreviewCard = ({
               Entrée
             </button>
           </div>
-          <div className="rounded-md overflow-hidden border border-border aspect-video bg-muted">
+          <div className="rounded-md overflow-hidden border border-border">
             <SignedImageCard
               storagePath={activeScreen === "m15" ? lastExecution.screenshot_url || null : lastExecution.screenshot_entry_url || null}
               alt={`Trade #${lastExecution.trade_number} ${activeScreen === "m15" ? "Contexte" : "Entrée"}`}
               label={activeScreen === "m15" ? "Contexte" : "Entrée"}
+              fillContainer
             />
           </div>
         </div>
       )}
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="p-2 border border-border rounded-md">
-          <p className="text-[8px] font-mono text-muted-foreground uppercase">Data récoltées</p>
-          <p className="text-lg font-bold text-foreground">{totalUserTrades}</p>
-        </div>
-        <div className="p-2 border border-border rounded-md">
-          <p className="text-[8px] font-mono text-muted-foreground uppercase">Cycle</p>
-          <p className="text-sm font-bold text-foreground truncate">{currentCycleName}</p>
-        </div>
-        <div className="p-2 border border-border rounded-md">
-          <p className="text-[8px] font-mono text-muted-foreground uppercase">RR Cumulé</p>
-          <p className={cn("text-lg font-bold", totalUserRR >= 0 ? "text-emerald-400" : "text-red-400")}>
-            {totalUserRR >= 0 ? "+" : ""}{totalUserRR.toFixed(1)}
-          </p>
-        </div>
-        <div className="p-2 border border-border rounded-md">
-          <p className="text-[8px] font-mono text-muted-foreground uppercase">RR Moyen</p>
-          <p className="text-lg font-bold text-foreground">{averageUserRR.toFixed(2)}</p>
-        </div>
-      </div>
 
       {/* Continue button */}
       <Button size="sm" className="w-full gap-2" onClick={onContinueHarvest}>

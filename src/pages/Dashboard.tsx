@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, ExternalLink } from "lucide-react";
 import { DashboardSidebar, useSidebarRoles } from "@/components/dashboard/DashboardSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -13,6 +13,7 @@ import { ProfileSettingsDialog } from "@/components/dashboard/ProfileSettingsDia
 import { DataAnalysisPage } from "@/components/dashboard/DataAnalysisPage";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 import { EarlyAccessTimer } from "@/components/dashboard/EarlyAccessTimer";
+import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
@@ -71,6 +72,7 @@ const Dashboard = () => {
   const { isAdmin, isSuperAdmin } = useSidebarRoles();
   const questData = useQuestData();
   const { isEarlyAccess, expiresAt } = useEarlyAccess();
+  const { settings: eaSettings } = useEarlyAccessSettings();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -318,8 +320,20 @@ const Dashboard = () => {
             </span>
             {/* Early Access Timer centered */}
             {isEarlyAccess && expiresAt && (
-              <div className="flex-1 flex justify-center">
+              <div className="flex-1 flex items-center justify-center gap-3">
                 <EarlyAccessTimer expiresAt={expiresAt} />
+                {(() => {
+                  const oracleBtn = eaSettings.find(s => s.button_key === "acceder_a_oracle");
+                  const oracleUrl = oracleBtn?.button_url;
+                  return oracleUrl ? (
+                    <a href={oracleUrl} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-foreground/30 text-foreground hover:bg-accent">
+                        <ExternalLink className="w-3 h-3" />
+                        Accéder à Oracle
+                      </Button>
+                    </a>
+                  ) : null;
+                })()}
               </div>
             )}
             <div className="flex items-center gap-3">
