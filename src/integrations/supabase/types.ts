@@ -987,6 +987,7 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_early_access: { Args: never; Returns: boolean }
+      is_institute: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       unlock_next_cycle: {
         Args: { p_current_cycle_number: number; p_user_id: string }
