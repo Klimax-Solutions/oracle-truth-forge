@@ -47,7 +47,7 @@ import { UserFollowupTab } from "./admin/UserFollowupTab";
 import { UserHistoryTab } from "./admin/UserHistoryTab";
 import { AdminUserDataViewer } from "./admin/AdminUserDataViewer";
 import { ScreenshotLink } from "./ScreenshotLink";
-import { TradeNavigationLightbox, type TradeScreenshotItem } from "./TradeNavigationLightbox";
+import { TradeNavigationLightbox, type TradeScreenshotItem, type OracleMatch } from "./TradeNavigationLightbox";
 
 
 // Oracle trade from the master database
@@ -58,6 +58,8 @@ interface OracleTrade {
   entry_time: string | null;
   direction: string;
   rr: number | null;
+  screenshot_m15_m5?: string | null;
+  screenshot_m1?: string | null;
 }
 
 interface VerificationRequest {
@@ -194,9 +196,10 @@ export const AdminVerification = () => {
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [galleryScreen, setGalleryScreen] = useState<"m15" | "m5">("m15");
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryRequestId, setGalleryRequestId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const openGallery = (executions: UserExecution[], execIndex: number, screen: "m15" | "m5") => {
+  const openGallery = (executions: UserExecution[], execIndex: number, screen: "m15" | "m5", requestId?: string) => {
     const items: TradeScreenshotItem[] = executions.map((e) => ({
       tradeNumber: e.trade_number,
       tradeDate: e.trade_date,
@@ -212,11 +215,13 @@ export const AdminVerification = () => {
       notes: e.notes,
       screenshotM15: e.screenshot_url,
       screenshotM5: e.screenshot_entry_url,
+      executionId: e.id,
     }));
     setGalleryItems(items);
     setGalleryIndex(execIndex);
     setGalleryScreen(screen);
     setGalleryOpen(true);
+    setGalleryRequestId(requestId || null);
   };
 
   const fetchPendingAccounts = async () => {
@@ -371,10 +376,10 @@ export const AdminVerification = () => {
     // Fetch Oracle trades for comparison (the master reference)
     const { data: oracleData } = await supabase
       .from("trades")
-      .select("id, trade_number, trade_date, entry_time, direction, rr")
+      .select("id, trade_number, trade_date, entry_time, direction, rr, screenshot_m15_m5, screenshot_m1")
       .order("trade_number", { ascending: true });
     
-    const oracleTrades = (oracleData || []) as OracleTrade[];
+    const oracleTrades = (oracleData || []) as (OracleTrade & { screenshot_m15_m5?: string | null; screenshot_m1?: string | null })[];
     setOracleTrades(oracleTrades);
 
     // Helper function to compare execution with Oracle trade
@@ -1526,9 +1531,9 @@ export const AdminVerification = () => {
                                       <div className="mt-1.5">
                                         <button
                                           onClick={() => {
-                                            const execs = request.executions;
+                                             const execs = request.executions;
                                             const idx = execs.findIndex(e => e.id === exec.id);
-                                            openGallery(execs, idx >= 0 ? idx : 0, "m15");
+                                            openGallery(execs, idx >= 0 ? idx : 0, "m15", request.id);
                                           }}
                                           className="inline-flex items-center gap-1 text-primary hover:text-primary/80 cursor-pointer text-[10px] font-mono"
                                         >
@@ -1622,7 +1627,7 @@ export const AdminVerification = () => {
                                         onClick={() => {
                                           const execs = request.executions;
                                           const idx = execs.findIndex(e => e.id === exec.id);
-                                          openGallery(execs, idx >= 0 ? idx : 0, exec.screenshot_url ? "m15" : "m5");
+                                          openGallery(execs, idx >= 0 ? idx : 0, exec.screenshot_url ? "m15" : "m5", request.id);
                                         }}
                                       >
                                         <TableCell className="py-1.5">
@@ -1933,6 +1938,30 @@ export const AdminVerification = () => {
         initialScreenshot={galleryScreen}
         open={galleryOpen}
         onClose={() => setGalleryOpen(false)}
+        oracleTrades={oracleTrades.map(o => ({
+          tradeNumber: o.trade_number,
+          tradeDate: o.trade_date,
+          direction: o.direction,
+          entryTime: o.entry_time,
+          rr: o.rr,
+          screenshotM15: o.screenshot_m15_m5 || null,
+          screenshotM5: o.screenshot_m1 || null,
+        }))}
+        onValidate={galleryRequestId ? (executionId, isValid, note) => {
+          const key = `${galleryRequestId}_${executionId}`;
+          setTradeValidity(prev => ({ ...prev, [key]: isValid }));
+          setTradeNotes(prev => ({ ...prev, [key]: note }));
+          saveTradeNote(galleryRequestId!, executionId, note, isValid);
+        } : undefined}
+        validationState={galleryRequestId ? Object.fromEntries(
+          Object.entries(tradeValidity)
+            .filter(([k]) => k.startsWith(`${galleryRequestId}_`))
+            .map(([k, v]) => {
+              const execId = k.replace(`${galleryRequestId}_`, "");
+              return [execId, { isValid: v, note: tradeNotes[k] || "" }];
+            })
+        ) : undefined}
+        savingValidation={savingNote ? savingNote.replace(`${galleryRequestId}_`, "") : null}
       />
     </div>
   );
