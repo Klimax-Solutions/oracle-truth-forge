@@ -112,7 +112,7 @@ export const QuestFloatingBubble = ({
 
                 <BubbleQuestItem
                   completed={ebaucheComplete}
-                  label={`Analyser les 15 premières datas (${ebaucheTradesAnalyzed}/${ebaucheTradesRequired})`}
+                  label={`Récolter les 15 premières data (${ebaucheTradesAnalyzed}/${ebaucheTradesRequired})`}
                 />
                 {allVideosWatched && !ebaucheComplete && (
                   <Button

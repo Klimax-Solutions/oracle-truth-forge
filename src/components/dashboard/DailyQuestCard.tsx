@@ -13,18 +13,31 @@ import {
   Trophy,
   LogIn,
   Info,
+  Phone,
+  Layout,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { QuestData } from "@/hooks/useQuestData";
 import { useToast } from "@/hooks/use-toast";
+import { EarlyAccessTimer } from "./EarlyAccessTimer";
+
+interface EASetting {
+  button_key: string;
+  button_label: string;
+  button_url: string;
+}
 
 interface DailyQuestCardProps {
   questData: QuestData;
   onNavigateToVideos: () => void;
   onNavigateToSetup: () => void;
   onRequestVerification?: () => void;
+  isEarlyAccess?: boolean;
+  expiresAt?: string | null;
+  eaSettings?: EASetting[];
 }
 
 const FX_REPLAY_LOGIN_URL = "https://app.fxreplay.com/en-US/login";
@@ -35,6 +48,9 @@ export const DailyQuestCard = ({
   onNavigateToVideos,
   onNavigateToSetup,
   onRequestVerification,
+  isEarlyAccess = false,
+  expiresAt,
+  eaSettings = [],
 }: DailyQuestCardProps) => {
   const [showCalendar, setShowCalendar] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -125,7 +141,7 @@ export const DailyQuestCard = ({
       </div>
 
       {/* Onboarding Quests */}
-      {!onboardingComplete && (
+      {!onboardingComplete && !isEarlyAccess && (
         <div className="space-y-3">
           {/* Quest 1: Videos */}
           <QuestItem
@@ -139,12 +155,12 @@ export const DailyQuestCard = ({
             showAction={!allVideosWatched}
           />
 
-          {/* Quest 2: Analyze 15 trades (checkboxes) */}
+          {/* Quest 2: Harvest first 15 data */}
           <QuestItem
             completed={ebaucheComplete}
             active={onboardingStep === 2}
-            title="Analyser en détail les 15 premières datas"
-            subtitle={`${ebaucheTradesAnalyzed}/${ebaucheTradesRequired} datas analysées et comprises`}
+            title="Récolter les 15 premières data"
+            subtitle={`${ebaucheTradesAnalyzed}/${ebaucheTradesRequired} data récoltées, analysées et comprises`}
             actionLabel="Accéder aux 15 premières datas"
             actionIcon={<Database className="w-3 h-3" />}
             onAction={onNavigateToSetup}
@@ -171,8 +187,60 @@ export const DailyQuestCard = ({
         </div>
       )}
 
-      {/* First Execution Quest (FX Replay setup) */}
-      {isFirstExecutionQuest && (
+      {/* Early Access Quest Steps */}
+      {isEarlyAccess && (
+        <div className="space-y-3">
+          {/* Step 1: Appel confidentiel - always completed */}
+          <QuestItem
+            completed={true}
+            active={false}
+            title="Appel confidentiel avec l'équipe Mercure"
+            subtitle="Candidature sur le point d'être validée"
+          />
+
+          {/* Step 2: Prendre en main la plateforme */}
+          <QuestItem
+            completed={false}
+            active={true}
+            title="Prendre en main la plateforme"
+            subtitle="Explorez les onglets, le simulateur de performance et consultez les 50 premières data accessibles"
+          />
+
+          {/* Step 3: Accéder à Oracle with timer + button */}
+          <div className={cn(
+            "flex items-start gap-3 p-3 rounded-md border transition-all",
+            "border-border bg-card/50 opacity-80"
+          )}>
+            <div className="mt-0.5">
+              <Circle className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0 space-y-2">
+              <p className="text-sm font-medium text-foreground">Accéder à Oracle</p>
+              <p className="text-[10px] text-muted-foreground">Procéder au règlement</p>
+              {expiresAt && (
+                <div className="mt-1">
+                  <EarlyAccessTimer expiresAt={expiresAt} />
+                </div>
+              )}
+              {(() => {
+                const oracleSetting = eaSettings.find(s => s.button_key === "acceder_a_oracle");
+                const oracleUrl = oracleSetting?.button_url || "#";
+                return (
+                  <a href={oracleUrl} target="_blank" rel="noopener noreferrer">
+                    <Button variant="default" size="sm" className="mt-1 text-xs h-7 gap-1.5">
+                      <Zap className="w-3 h-3" />
+                      Accéder à Oracle
+                    </Button>
+                  </a>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* First Execution Quest (FX Replay setup) - member only */}
+      {isFirstExecutionQuest && !isEarlyAccess && (
         <div className="space-y-3">
           <QuestItem
             completed={false}

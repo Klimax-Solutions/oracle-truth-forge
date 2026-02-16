@@ -104,7 +104,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
   const [expandedCycle, setExpandedCycle] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
-  const { isEarlyAccess } = useEarlyAccess();
+  const { isEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
 
   // Fetch cycles, user cycles, and user executions
@@ -484,6 +484,9 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                     questData={questData}
                     onNavigateToVideos={() => onNavigateToVideos?.()}
                     onNavigateToSetup={() => onNavigateToSetup?.()}
+                    isEarlyAccess={isEarlyAccess}
+                    expiresAt={expiresAt}
+                    eaSettings={eaSettings}
                   />
                 )}
               </div>
