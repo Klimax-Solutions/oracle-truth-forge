@@ -1016,13 +1016,15 @@ export const AdminVerification = () => {
                                       <TableHead className="h-8 text-[10px] font-mono">TF</TableHead>
                                       <TableHead className="h-8 text-[10px] font-mono text-right">RR</TableHead>
                                       <TableHead className="h-8 text-[10px] font-mono">Notes</TableHead>
-                                      <TableHead className="h-8 text-[10px] font-mono">M15</TableHead>
-                                      <TableHead className="h-8 text-[10px] font-mono">M5</TableHead>
+                                      <TableHead className="h-8 text-[10px] font-mono">Screens</TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
                                     {user.executions.map((exec) => (
-                                      <TableRow key={exec.id} className="hover:bg-muted/30">
+                                      <TableRow key={exec.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => {
+                                        const idx = user.executions.findIndex(e => e.id === exec.id);
+                                        openGallery(user.executions, idx >= 0 ? idx : 0, exec.screenshot_url ? "m15" : "m5");
+                                      }}>
                                         <TableCell className="py-1.5 text-xs font-mono font-bold">
                                           {exec.trade_number}
                                         </TableCell>
@@ -1084,26 +1086,17 @@ export const AdminVerification = () => {
                                           {exec.notes || "—"}
                                         </TableCell>
                                         <TableCell className="py-1.5">
-                                          <button
-                                            onClick={() => {
-                                              const idx = user.executions.findIndex(e => e.id === exec.id);
-                                              openGallery(user.executions, idx >= 0 ? idx : 0, "m15");
-                                            }}
-                                            className={cn("inline-flex items-center gap-1 text-primary hover:text-primary/80 cursor-pointer", !exec.screenshot_url && "opacity-30 pointer-events-none")}
-                                          >
-                                            <ImageIcon className="w-3.5 h-3.5" />
-                                          </button>
-                                        </TableCell>
-                                        <TableCell className="py-1.5">
-                                          <button
-                                            onClick={() => {
-                                              const idx = user.executions.findIndex(e => e.id === exec.id);
-                                              openGallery(user.executions, idx >= 0 ? idx : 0, "m5");
-                                            }}
-                                            className={cn("inline-flex items-center gap-1 text-primary hover:text-primary/80 cursor-pointer", !exec.screenshot_entry_url && "opacity-30 pointer-events-none")}
-                                          >
-                                            <ImageIcon className="w-3.5 h-3.5" />
-                                          </button>
+                                          <div className="inline-flex items-center gap-1.5">
+                                            {exec.screenshot_url && (
+                                              <span className="text-[9px] font-mono text-primary">M15</span>
+                                            )}
+                                            {exec.screenshot_entry_url && (
+                                              <span className="text-[9px] font-mono text-primary">M5</span>
+                                            )}
+                                            {!exec.screenshot_url && !exec.screenshot_entry_url && (
+                                              <span className="text-[9px] font-mono text-muted-foreground">—</span>
+                                            )}
+                                          </div>
                                         </TableCell>
                                       </TableRow>
                                     ))}
@@ -1468,18 +1461,20 @@ export const AdminVerification = () => {
                                 const oracle = comp.oracleTrade;
                                 
                                 return (
-                                  <div 
+                                   <div 
                                     key={exec.id} 
                                     className={cn(
                                       "p-2.5 rounded-md border",
-                                      comp.status === 'match' && "bg-emerald-500/10 border-emerald-500/50",
-                                      comp.status === 'warning' && "bg-orange-500/10 border-orange-500/50",
-                                      comp.status === 'error' && "bg-red-500/10 border-red-500/50",
-                                      comp.status === 'no-match' && "bg-red-500/10 border-red-500/50"
+                                      exec.trade_number <= 15 && comp.status === 'match' && "bg-emerald-500/10 border-emerald-500/50",
+                                      exec.trade_number <= 15 && comp.status === 'warning' && "bg-orange-500/10 border-orange-500/50",
+                                      exec.trade_number <= 15 && comp.status === 'error' && "bg-red-500/10 border-red-500/50",
+                                      exec.trade_number <= 15 && comp.status === 'no-match' && "bg-red-500/10 border-red-500/50",
+                                      exec.trade_number > 15 && "border-border"
                                     )}
                                   >
                                     <div className="flex items-center justify-between mb-1.5">
                                       <div className="flex items-center gap-2">
+                                       {exec.trade_number <= 15 ? (
                                         <div className={cn(
                                           "w-4 h-4 rounded-full flex items-center justify-center",
                                           comp.status === 'match' && "bg-emerald-500",
@@ -1495,6 +1490,9 @@ export const AdminVerification = () => {
                                             <XCircle className="w-2.5 h-2.5 text-white" />
                                           )}
                                         </div>
+                                       ) : (
+                                        <div className="w-4 h-4" />
+                                       )}
                                         <span className="text-xs font-mono font-bold">#{exec.trade_number}</span>
                                         <div className={cn(
                                           "w-4 h-4 rounded flex items-center justify-center",
@@ -1599,8 +1597,7 @@ export const AdminVerification = () => {
                                     <TableHead className="h-8 text-[10px] font-mono">Modèle</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono">Timing</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono text-right">RR</TableHead>
-                                    <TableHead className="h-8 text-[10px] font-mono">M15</TableHead>
-                                    <TableHead className="h-8 text-[10px] font-mono">M5</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Screens</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono w-8">Valid</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono min-w-[180px]">Note Admin</TableHead>
                                   </TableRow>
@@ -1616,39 +1613,50 @@ export const AdminVerification = () => {
                                       <TableRow 
                                         key={exec.id} 
                                         className={cn(
-                                          "hover:bg-muted/30",
-                                          comp.status === 'match' && "bg-emerald-500/10 border-l-2 border-l-emerald-500",
-                                          comp.status === 'warning' && "bg-orange-500/10 border-l-2 border-l-orange-500",
-                                          comp.status === 'error' && "bg-red-500/10 border-l-2 border-l-red-500",
-                                          comp.status === 'no-match' && "bg-red-500/10 border-l-2 border-l-red-500"
+                                          "hover:bg-muted/30 cursor-pointer",
+                                          exec.trade_number <= 15 && comp.status === 'match' && "bg-emerald-500/10 border-l-2 border-l-emerald-500",
+                                          exec.trade_number <= 15 && comp.status === 'warning' && "bg-orange-500/10 border-l-2 border-l-orange-500",
+                                          exec.trade_number <= 15 && comp.status === 'error' && "bg-red-500/10 border-l-2 border-l-red-500",
+                                          exec.trade_number <= 15 && comp.status === 'no-match' && "bg-red-500/10 border-l-2 border-l-red-500"
                                         )}
+                                        onClick={() => {
+                                          const execs = request.executions;
+                                          const idx = execs.findIndex(e => e.id === exec.id);
+                                          openGallery(execs, idx >= 0 ? idx : 0, exec.screenshot_url ? "m15" : "m5");
+                                        }}
                                       >
                                         <TableCell className="py-1.5">
-                                          <Tooltip>
-                                            <TooltipTrigger>
-                                              <div className={cn(
-                                                "w-5 h-5 rounded-full flex items-center justify-center",
-                                                comp.status === 'match' && "bg-emerald-500",
-                                                comp.status === 'warning' && "bg-orange-500",
-                                                comp.status === 'error' && "bg-red-500",
-                                                comp.status === 'no-match' && "bg-red-500"
-                                              )}>
-                                                {comp.status === 'match' ? (
-                                                  <CheckCircle className="w-3 h-3 text-white" />
-                                                ) : comp.status === 'warning' ? (
-                                                  <AlertTriangle className="w-3 h-3 text-white" />
-                                                ) : (
-                                                  <XCircle className="w-3 h-3 text-white" />
-                                                )}
-                                              </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              {comp.status === 'match' && "Correspondance parfaite (≤5h)"}
-                                              {comp.status === 'warning' && `Décalage de ${comp.timeDiffHours?.toFixed(1)}h`}
-                                              {comp.status === 'error' && `Écart important: ${comp.timeDiffHours?.toFixed(0)}h`}
-                                              {comp.status === 'no-match' && "Trade Oracle non trouvé"}
-                                            </TooltipContent>
-                                          </Tooltip>
+                                          {exec.trade_number <= 15 ? (
+                                            <Tooltip>
+                                              <TooltipTrigger>
+                                                <div className={cn(
+                                                  "w-5 h-5 rounded-full flex items-center justify-center",
+                                                  comp.status === 'match' && "bg-emerald-500",
+                                                  comp.status === 'warning' && "bg-orange-500",
+                                                  comp.status === 'error' && "bg-red-500",
+                                                  comp.status === 'no-match' && "bg-red-500"
+                                                )}>
+                                                  {comp.status === 'match' ? (
+                                                    <CheckCircle className="w-3 h-3 text-white" />
+                                                  ) : comp.status === 'warning' ? (
+                                                    <AlertTriangle className="w-3 h-3 text-white" />
+                                                  ) : (
+                                                    <XCircle className="w-3 h-3 text-white" />
+                                                  )}
+                                                </div>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                {comp.status === 'match' && "Correspondance parfaite (≤5h)"}
+                                                {comp.status === 'warning' && `Décalage de ${comp.timeDiffHours?.toFixed(1)}h`}
+                                                {comp.status === 'error' && `Écart important: ${comp.timeDiffHours?.toFixed(0)}h`}
+                                                {comp.status === 'no-match' && "Trade Oracle non trouvé"}
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          ) : (
+                                            <div className="w-5 h-5 rounded-full flex items-center justify-center bg-muted">
+                                              <span className="text-[8px] font-mono text-muted-foreground">—</span>
+                                            </div>
+                                          )}
                                         </TableCell>
                                         <TableCell className="py-1.5 text-xs font-mono font-bold">
                                           {exec.trade_number}
@@ -1704,28 +1712,17 @@ export const AdminVerification = () => {
                                           </span>
                                         </TableCell>
                                         <TableCell className="py-1.5">
-                                          <button
-                                            onClick={() => {
-                                              const execs = request.executions;
-                                              const idx = execs.findIndex(e => e.id === exec.id);
-                                              openGallery(execs, idx >= 0 ? idx : 0, "m15");
-                                            }}
-                                            className={cn("inline-flex items-center gap-1 text-primary hover:text-primary/80 cursor-pointer", !exec.screenshot_url && "opacity-30 pointer-events-none")}
-                                          >
-                                            <ImageIcon className="w-3.5 h-3.5" />
-                                          </button>
-                                        </TableCell>
-                                        <TableCell className="py-1.5">
-                                          <button
-                                            onClick={() => {
-                                              const execs = request.executions;
-                                              const idx = execs.findIndex(e => e.id === exec.id);
-                                              openGallery(execs, idx >= 0 ? idx : 0, "m5");
-                                            }}
-                                            className={cn("inline-flex items-center gap-1 text-primary hover:text-primary/80 cursor-pointer", !exec.screenshot_entry_url && "opacity-30 pointer-events-none")}
-                                          >
-                                            <ImageIcon className="w-3.5 h-3.5" />
-                                          </button>
+                                          <div className="inline-flex items-center gap-1.5">
+                                            {exec.screenshot_url && (
+                                              <span className="text-[9px] font-mono text-primary">M15</span>
+                                            )}
+                                            {exec.screenshot_entry_url && (
+                                              <span className="text-[9px] font-mono text-primary">M5</span>
+                                            )}
+                                            {!exec.screenshot_url && !exec.screenshot_entry_url && (
+                                              <span className="text-[9px] font-mono text-muted-foreground">—</span>
+                                            )}
+                                          </div>
                                         </TableCell>
                                         <TableCell className="py-1.5">
                                           <Button
