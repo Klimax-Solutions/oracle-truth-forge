@@ -98,6 +98,36 @@ export type Database = {
         }
         Relationships: []
       }
+      early_access_settings: {
+        Row: {
+          button_key: string
+          button_label: string
+          button_url: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          button_key: string
+          button_label?: string
+          button_url?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          button_key?: string
+          button_label?: string
+          button_url?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

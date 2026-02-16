@@ -1093,10 +1093,28 @@ export const AdminVerification = () => {
                                         <TableCell className="py-1.5">
                                           <div className="inline-flex items-center gap-1.5">
                                             {exec.screenshot_url && (
-                                              <span className="text-[9px] font-mono text-primary">M15</span>
+                                              <button
+                                                className="text-[9px] font-mono text-primary hover:text-primary/80 hover:underline"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const idx = user.executions.findIndex(ex => ex.id === exec.id);
+                                                  openGallery(user.executions, idx >= 0 ? idx : 0, "m15");
+                                                }}
+                                              >
+                                                M15
+                                              </button>
                                             )}
                                             {exec.screenshot_entry_url && (
-                                              <span className="text-[9px] font-mono text-primary">M5</span>
+                                              <button
+                                                className="text-[9px] font-mono text-primary hover:text-primary/80 hover:underline"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const idx = user.executions.findIndex(ex => ex.id === exec.id);
+                                                  openGallery(user.executions, idx >= 0 ? idx : 0, "m5");
+                                                }}
+                                              >
+                                                M5
+                                              </button>
                                             )}
                                             {!exec.screenshot_url && !exec.screenshot_entry_url && (
                                               <span className="text-[9px] font-mono text-muted-foreground">—</span>
@@ -1527,21 +1545,34 @@ export const AdminVerification = () => {
                                         Oracle: {oracle ? `${new Date(oracle.trade_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })} ${oracle.entry_time || "—"}` : "—"}
                                       </span>
                                     </div>
-                                    {exec.screenshot_url && (
-                                      <div className="mt-1.5">
+                                    <div className="mt-1.5 flex items-center gap-2">
+                                      {exec.screenshot_url && (
                                         <button
                                           onClick={() => {
-                                             const execs = request.executions;
+                                            const execs = request.executions;
                                             const idx = execs.findIndex(e => e.id === exec.id);
                                             openGallery(execs, idx >= 0 ? idx : 0, "m15", request.id);
                                           }}
                                           className="inline-flex items-center gap-1 text-primary hover:text-primary/80 cursor-pointer text-[10px] font-mono"
                                         >
                                           <ImageIcon className="w-3.5 h-3.5" />
-                                          <span>Screenshot</span>
+                                          <span>Contexte</span>
                                         </button>
-                                      </div>
-                                    )}
+                                      )}
+                                      {exec.screenshot_entry_url && (
+                                        <button
+                                          onClick={() => {
+                                            const execs = request.executions;
+                                            const idx = execs.findIndex(e => e.id === exec.id);
+                                            openGallery(execs, idx >= 0 ? idx : 0, "m5", request.id);
+                                          }}
+                                          className="inline-flex items-center gap-1 text-primary hover:text-primary/80 cursor-pointer text-[10px] font-mono"
+                                        >
+                                          <ImageIcon className="w-3.5 h-3.5" />
+                                          <span>Entrée</span>
+                                        </button>
+                                      )}
+                                    </div>
                                     {/* Per-trade note + validation - Mobile */}
                                     <div className="mt-2 space-y-1.5">
                                       <div className="flex items-center gap-2">
@@ -1719,10 +1750,30 @@ export const AdminVerification = () => {
                                         <TableCell className="py-1.5">
                                           <div className="inline-flex items-center gap-1.5">
                                             {exec.screenshot_url && (
-                                              <span className="text-[9px] font-mono text-primary">M15</span>
+                                              <button
+                                                className="text-[9px] font-mono text-primary hover:text-primary/80 hover:underline"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const execs = request.executions;
+                                                  const idx = execs.findIndex(ex => ex.id === exec.id);
+                                                  openGallery(execs, idx >= 0 ? idx : 0, "m15", request.id);
+                                                }}
+                                              >
+                                                M15
+                                              </button>
                                             )}
                                             {exec.screenshot_entry_url && (
-                                              <span className="text-[9px] font-mono text-primary">M5</span>
+                                              <button
+                                                className="text-[9px] font-mono text-primary hover:text-primary/80 hover:underline"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const execs = request.executions;
+                                                  const idx = execs.findIndex(ex => ex.id === exec.id);
+                                                  openGallery(execs, idx >= 0 ? idx : 0, "m5", request.id);
+                                                }}
+                                              >
+                                                M5
+                                              </button>
                                             )}
                                             {!exec.screenshot_url && !exec.screenshot_entry_url && (
                                               <span className="text-[9px] font-mono text-muted-foreground">—</span>

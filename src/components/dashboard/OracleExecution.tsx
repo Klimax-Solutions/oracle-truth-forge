@@ -28,6 +28,7 @@ import { CumulativeEvolution } from "./CumulativeEvolution";
 import { ResultsPage } from "./ResultsPage";
 import { ImageLightbox } from "./ImageLightbox";
 import { SignedImageCard } from "./SignedImageCard";
+import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
 
 interface Trade {
   id: string;
@@ -104,6 +105,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
   const { isEarlyAccess } = useEarlyAccess();
+  const { settings: eaSettings } = useEarlyAccessSettings();
 
   // Fetch cycles, user cycles, and user executions
   useEffect(() => {
@@ -441,6 +443,63 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
         {/* Early Access: Key Stats + Cumulative Evolution + Results */}
         {isEarlyAccess && (
           <>
+            {/* Side-by-side: Last data preview (left) + Custom Actions (right) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Left: Last Data Preview with stats */}
+              <LastDataPreviewCard
+                lastExecution={trades.length > 0 ? {
+                  id: trades[trades.length - 1].id,
+                  trade_number: trades[trades.length - 1].trade_number,
+                  rr: trades[trades.length - 1].rr,
+                  trade_date: trades[trades.length - 1].trade_date,
+                  direction: trades[trades.length - 1].direction,
+                  entry_time: trades[trades.length - 1].entry_time,
+                } as UserExecution : undefined}
+                totalUserTrades={trades.length}
+                currentCycleName="Early Access"
+                totalUserRR={trades.reduce((s, t) => s + (t.rr || 0), 0)}
+                averageUserRR={trades.length > 0 ? trades.reduce((s, t) => s + (t.rr || 0), 0) / trades.length : 0}
+                completedCycles={0}
+                onContinueHarvest={() => {
+                  // Use custom EA URL if available
+                  const harvestBtn = eaSettings.find(s => s.button_key === "continuer_ma_recolte" || s.button_key === "continue_harvest");
+                  const url = harvestBtn?.button_url || "https://app.fxreplay.com/en-US/auth/testing/dashboard";
+                  window.open(url, "_blank");
+                }}
+                customButtons={eaSettings.filter(s => s.button_url).map(s => ({
+                  label: s.button_label,
+                  url: s.button_url,
+                }))}
+              />
+
+              {/* Right: Early Access Actions / Quest */}
+              <div className="border border-border rounded-md bg-card p-4 space-y-4">
+                <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
+                  Prochaines Étapes
+                </h3>
+                <div className="space-y-3">
+                  {eaSettings.filter(s => s.button_url).length > 0 ? (
+                    eaSettings.filter(s => s.button_url).map((s) => (
+                      <a
+                        key={s.button_key}
+                        href={s.button_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-3 border border-border rounded-md hover:bg-accent/20 transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium text-foreground">{s.button_label}</span>
+                      </a>
+                    ))
+                  ) : (
+                    <div className="text-sm text-muted-foreground text-center py-6">
+                      Vos actions personnalisées seront disponibles ici.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Données Clés */}
             <EarlyAccessKeyStats trades={trades} />
 
@@ -960,13 +1019,14 @@ const EarlyAccessResultsPreview = () => {
 
 // ─── Last Data Preview Card ───
 interface LastDataPreviewCardProps {
-  lastExecution: UserExecution;
+  lastExecution?: UserExecution;
   totalUserTrades: number;
   currentCycleName: string;
   totalUserRR: number;
   averageUserRR: number;
   completedCycles: number;
   onContinueHarvest: () => void;
+  customButtons?: { label: string; url: string }[];
 }
 
 const LastDataPreviewCard = ({
@@ -977,8 +1037,17 @@ const LastDataPreviewCard = ({
   averageUserRR,
   completedCycles,
   onContinueHarvest,
+  customButtons,
 }: LastDataPreviewCardProps) => {
   const [activeScreen, setActiveScreen] = useState<"m15" | "m5">("m15");
+
+  if (!lastExecution) {
+    return (
+      <div className="border border-border rounded-md bg-card p-4 flex items-center justify-center text-sm text-muted-foreground">
+        Aucune data récoltée pour le moment.
+      </div>
+    );
+  }
 
   return (
     <div className="border border-border rounded-md bg-card p-4 space-y-4">
@@ -1067,6 +1136,26 @@ const LastDataPreviewCard = ({
         <ExternalLink className="w-3.5 h-3.5" />
         Continuer ma récolte
       </Button>
+
+      {/* Custom buttons */}
+      {customButtons && customButtons.length > 0 && (
+        <div className="space-y-2">
+          {customButtons.map((btn, i) => (
+            <a
+              key={i}
+              href={btn.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 w-full"
+            >
+              <Button variant="outline" size="sm" className="w-full gap-2">
+                <ExternalLink className="w-3.5 h-3.5" />
+                {btn.label}
+              </Button>
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

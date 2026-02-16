@@ -26,6 +26,7 @@ import { QuestFloatingBubble } from "@/components/dashboard/QuestFloatingBubble"
 import { ResultsPage } from "@/components/dashboard/ResultsPage";
 import { ResultsManager } from "@/components/dashboard/ResultsManager";
 import { AdminVerificationPopup } from "@/components/dashboard/AdminVerificationPopup";
+import { EarlyAccessManagement } from "@/components/dashboard/EarlyAccessManagement";
 interface Trade {
   id: string;
   trade_number: number;
@@ -280,6 +281,8 @@ const Dashboard = () => {
         return <ResultsManager />;
       case "roles":
         return <RoleManagement />;
+      case "early-access-mgmt":
+        return <EarlyAccessManagement />;
       default:
         return <OracleExecution trades={trades} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} />;
     }

@@ -25,10 +25,13 @@ const adminTabs = [
   { id: "batch-import", label: "Import Batch", icon: FileUp },
   { id: "admin", label: "Vérifications Admin", icon: ShieldCheck },
 ];
+import { Users as UsersIcon } from "lucide-react";
+
 const superAdminTabs = [
   { id: "roles", label: "Gestion des Rôles", icon: Crown },
   { id: "video-manager", label: "Gestion Vidéos", icon: Film },
   { id: "results-manager", label: "Gestion Résultats", icon: Award },
+  { id: "early-access-mgmt", label: "Early Access", icon: UsersIcon },
 ];
 
 export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarProps) => {
