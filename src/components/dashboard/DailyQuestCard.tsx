@@ -36,7 +36,7 @@ export const DailyQuestCard = ({
   onNavigateToSetup,
   onRequestVerification,
 }: DailyQuestCardProps) => {
-  const [showCalendar, setShowCalendar] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -118,7 +118,7 @@ export const DailyQuestCard = ({
             onClick={() => { setShowCalendar(!showCalendar); setSelectedDay(null); }}
           >
             <CalendarIcon className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Historique</span>
+            <span className="hidden sm:inline">Historique de récolte</span>
             {showCalendar ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </Button>
         )}
@@ -276,7 +276,7 @@ export const DailyQuestCard = ({
           {showCalendar && (
             <div className="border border-border rounded-md p-3 bg-card/50">
               <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-3">
-                Historique des 30 derniers jours
+                Historique de récolte — 30 derniers jours
               </p>
               <div className="grid grid-cols-10 gap-1">
                 {calendarDays.map((day) => {
@@ -290,7 +290,7 @@ export const DailyQuestCard = ({
                       key={day.key}
                       onClick={() => hasData ? setSelectedDay(isSelected ? null : day.key) : null}
                       className={cn(
-                        "aspect-square rounded-sm flex items-center justify-center text-[8px] font-mono relative transition-all",
+                        "aspect-square rounded-sm flex flex-col items-center justify-center text-[8px] font-mono relative transition-all",
                         metGoal
                           ? "bg-emerald-500/30 text-emerald-400"
                           : hasData
@@ -302,7 +302,10 @@ export const DailyQuestCard = ({
                       )}
                       title={`${day.date.toLocaleDateString("fr-FR")} — ${day.data?.count || 0} trades, ${day.data?.wins || 0} wins`}
                     >
-                      {day.date.getDate()}
+                      <span className="leading-none">{day.date.getDate()}</span>
+                      {hasData && (
+                        <span className="text-[7px] font-bold leading-none mt-0.5">{day.data!.count}</span>
+                      )}
                     </div>
                   );
                 })}
