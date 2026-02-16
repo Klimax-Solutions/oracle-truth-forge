@@ -16,7 +16,8 @@ import {
   ExternalLink,
   Award,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  XCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -684,63 +685,107 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                 const displayProgress = isEbauche 
                   ? Math.min((ebaucheAnalyzed / cycle.total_trades) * 100, 100)
                   : cycle.progress;
+                const hasFeedback = cycle.userCycle?.admin_feedback && 
+                  (cycle.userCycle?.status === 'validated' || cycle.userCycle?.status === 'rejected');
+                const isExpanded = expandedCycle === cycle.cycle_number;
 
                 return (
-                  <div 
-                    key={cycle.id}
-                    className="flex items-center gap-4 py-2 border-b border-border last:border-0"
-                  >
-                    <div className={cn(
-                      "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                      cycle.userCycle?.status === 'validated'
-                        ? "bg-emerald-500/20 text-emerald-400" 
-                        : cycle.userCycle?.status === 'in_progress'
-                        ? "bg-blue-500/20 text-blue-400"
-                        : cycle.userCycle?.status === 'pending_review'
-                        ? "bg-orange-500/20 text-orange-400"
-                        : cycle.userCycle?.status === 'rejected'
-                        ? "bg-red-500/20 text-red-400"
-                        : "bg-muted text-muted-foreground"
-                    )}>
-                      {isEbauche ? "É" : cycle.cycle_number}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-foreground">{cycle.name}</span>
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(cycle.userCycle?.status)}
-                          <span className="text-xs text-muted-foreground">
-                            {displayCount}/{cycle.total_trades} {displayLabel}
-                          </span>
+                  <div key={cycle.id}>
+                    <div 
+                      className={cn(
+                        "flex items-center gap-4 py-2 border-b border-border last:border-0",
+                        hasFeedback && "cursor-pointer hover:bg-muted/30 rounded-md px-2 -mx-2 transition-colors"
+                      )}
+                      onClick={() => hasFeedback && setExpandedCycle(isExpanded ? null : cycle.cycle_number)}
+                    >
+                      <div className={cn(
+                        "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                        cycle.userCycle?.status === 'validated'
+                          ? "bg-emerald-500/20 text-emerald-400" 
+                          : cycle.userCycle?.status === 'in_progress'
+                          ? "bg-blue-500/20 text-blue-400"
+                          : cycle.userCycle?.status === 'pending_review'
+                          ? "bg-orange-500/20 text-orange-400"
+                          : cycle.userCycle?.status === 'rejected'
+                          ? "bg-red-500/20 text-red-400"
+                          : "bg-muted text-muted-foreground"
+                      )}>
+                        {isEbauche ? "É" : cycle.cycle_number}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-foreground">{cycle.name}</span>
+                            {hasFeedback && (
+                              <ChevronDown className={cn(
+                                "w-3.5 h-3.5 text-muted-foreground transition-transform",
+                                isExpanded && "rotate-180"
+                              )} />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(cycle.userCycle?.status)}
+                            <span className="text-xs text-muted-foreground">
+                              {displayCount}/{cycle.total_trades} {displayLabel}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="h-1 bg-muted rounded-full overflow-hidden mt-1">
+                          <div 
+                            className={cn(
+                              "h-full rounded-full",
+                              cycle.userCycle?.status === 'validated' ? "bg-emerald-500" 
+                              : cycle.userCycle?.status === 'in_progress' ? "bg-blue-500"
+                              : cycle.userCycle?.status === 'pending_review' ? "bg-orange-500"
+                              : cycle.userCycle?.status === 'rejected' ? "bg-red-500"
+                              : "bg-foreground/30"
+                            )}
+                            style={{ width: `${displayProgress}%` }}
+                          />
                         </div>
                       </div>
-                      <div className="h-1 bg-muted rounded-full overflow-hidden mt-1">
-                        <div 
-                          className={cn(
-                            "h-full rounded-full",
-                            cycle.userCycle?.status === 'validated' ? "bg-emerald-500" 
-                            : cycle.userCycle?.status === 'in_progress' ? "bg-blue-500"
-                            : cycle.userCycle?.status === 'pending_review' ? "bg-orange-500"
-                            : cycle.userCycle?.status === 'rejected' ? "bg-red-500"
-                            : "bg-foreground/30"
-                          )}
-                          style={{ width: `${displayProgress}%` }}
-                        />
-                      </div>
+                      {isEbauche ? (
+                        <span className="text-sm font-mono w-20 text-right text-foreground">
+                          {ebaucheAnalyzed}/{cycle.total_trades}
+                        </span>
+                      ) : (
+                        <span className={cn(
+                          "text-sm font-mono w-20 text-right",
+                          cycle.userRR > 0 ? "text-emerald-400" 
+                          : cycle.userRR < 0 ? "text-red-400"
+                          : "text-muted-foreground"
+                        )}>
+                          {cycle.userRR >= 0 ? "+" : ""}{cycle.userRR.toFixed(1)} RR
+                        </span>
+                      )}
                     </div>
-                    {isEbauche ? (
-                      <span className="text-sm font-mono w-20 text-right text-foreground">
-                        {ebaucheAnalyzed}/{cycle.total_trades}
-                      </span>
-                    ) : (
-                      <span className={cn(
-                        "text-sm font-mono w-20 text-right",
-                        cycle.userRR > 0 ? "text-emerald-400" 
-                        : cycle.userRR < 0 ? "text-red-400"
-                        : "text-muted-foreground"
+                    
+                    {/* Expandable report */}
+                    {isExpanded && hasFeedback && (
+                      <div className={cn(
+                        "ml-10 mt-1 mb-3 p-3 rounded-md border text-sm space-y-1",
+                        cycle.userCycle?.status === 'validated' 
+                          ? "bg-emerald-500/5 border-emerald-500/30" 
+                          : "bg-red-500/5 border-red-500/30"
                       )}>
-                        {cycle.userRR >= 0 ? "+" : ""}{cycle.userRR.toFixed(1)} RR
-                      </span>
+                        <p className="text-[10px] font-mono uppercase text-muted-foreground mb-2">
+                          Rapport de vérification
+                        </p>
+                        {cycle.userCycle?.admin_feedback?.split("\n").filter(Boolean).map((line, i) => {
+                          if (line.startsWith("•")) {
+                            return (
+                              <div key={i} className="flex items-start gap-1.5 pl-1">
+                                <XCircle className="w-3 h-3 text-red-400 mt-0.5 flex-shrink-0" />
+                                <span className="text-xs text-foreground">{line.replace("• ", "")}</span>
+                              </div>
+                            );
+                          }
+                          if (line.startsWith("Commentaire")) {
+                            return <p key={i} className="text-xs text-muted-foreground mt-1 italic">{line}</p>;
+                          }
+                          return <p key={i} className="text-xs text-foreground">{line}</p>;
+                        })}
+                      </div>
                     )}
                   </div>
                 );
@@ -888,9 +933,36 @@ const CycleCard = ({
           )}
           
           {cycle.userCycle?.status === 'rejected' && cycle.userCycle.admin_feedback && (
-            <div className="p-2 bg-red-500/10 border border-red-500/30 rounded">
-              <p className="text-xs font-mono uppercase text-red-400 mb-1">Feedback</p>
-              <p className="text-xs text-foreground">{cycle.userCycle.admin_feedback}</p>
+            <div className="p-2 bg-red-500/10 border border-red-500/30 rounded space-y-1">
+              <p className="text-xs font-mono uppercase text-red-400 mb-1">Rapport</p>
+              {cycle.userCycle.admin_feedback.split("\n").filter(Boolean).map((line, i) => {
+                if (line.startsWith("•")) {
+                  return (
+                    <div key={i} className="flex items-start gap-1.5 pl-1">
+                      <XCircle className="w-3 h-3 text-red-400 mt-0.5 flex-shrink-0" />
+                      <span className="text-[10px] text-foreground">{line.replace("• ", "")}</span>
+                    </div>
+                  );
+                }
+                return <p key={i} className="text-[10px] text-foreground">{line}</p>;
+              })}
+            </div>
+          )}
+          
+          {cycle.userCycle?.status === 'validated' && cycle.userCycle.admin_feedback && (
+            <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded space-y-1">
+              <p className="text-xs font-mono uppercase text-emerald-400 mb-1">Rapport</p>
+              {cycle.userCycle.admin_feedback.split("\n").filter(Boolean).map((line, i) => {
+                if (line.startsWith("•")) {
+                  return (
+                    <div key={i} className="flex items-start gap-1.5 pl-1">
+                      <XCircle className="w-3 h-3 text-red-400 mt-0.5 flex-shrink-0" />
+                      <span className="text-[10px] text-foreground">{line.replace("• ", "")}</span>
+                    </div>
+                  );
+                }
+                return <p key={i} className="text-[10px] text-foreground">{line}</p>;
+              })}
             </div>
           )}
         </div>

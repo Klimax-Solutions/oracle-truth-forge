@@ -533,6 +533,33 @@ export const AdminVerification = () => {
     const feedbackText = feedback[request.id] || "";
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
+      // Gather per-trade notes for the report
+      const tradeReport = request.executions.map(exec => {
+        const key = `${request.id}_${exec.id}`;
+        const isValid = tradeValidity[key] !== false;
+        const note = tradeNotes[key] || "";
+        return { trade_number: exec.trade_number, is_valid: isValid, note };
+      });
+
+      const rejectedTrades = tradeReport.filter(t => !t.is_valid);
+      const validatedTrades = tradeReport.filter(t => t.is_valid);
+
+      // Build report message
+      let reportMessage = `✅ ${request.cycle.name} validé !\n`;
+      reportMessage += `${validatedTrades.length} trade(s) validé(s), ${rejectedTrades.length} trade(s) refusé(s).\n`;
+      if (rejectedTrades.length > 0) {
+        reportMessage += "\nTrades refusés :\n";
+        rejectedTrades.forEach(t => {
+          reportMessage += `• Trade #${t.trade_number}${t.note ? ` — ${t.note}` : ""}\n`;
+        });
+      }
+      if (feedbackText) {
+        reportMessage += `\nCommentaire : ${feedbackText}`;
+      }
+
       // Update verification request
       const { error: requestError } = await supabase
         .from("verification_requests")
@@ -551,7 +578,7 @@ export const AdminVerification = () => {
         .update({
           status: "validated",
           verified_at: new Date().toISOString(),
-          admin_feedback: feedbackText,
+          admin_feedback: reportMessage,
         })
         .eq("id", request.userCycle.id);
 
@@ -563,12 +590,19 @@ export const AdminVerification = () => {
         p_current_cycle_number: request.cycle.cycle_number,
       });
 
+      // Send notification to user
+      await supabase.from("user_notifications").insert({
+        user_id: request.user_id,
+        sender_id: user.id,
+        type: "cycle_validated",
+        message: reportMessage,
+      });
+
       toast({
         title: "Cycle validé !",
         description: `Le ${request.cycle.name} a été validé avec succès. Le cycle suivant est maintenant débloqué.`,
       });
 
-      // Refresh data
       fetchRequests();
       fetchUsers();
     } catch (error) {
@@ -599,6 +633,31 @@ export const AdminVerification = () => {
     setProcessing(request.id);
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
+      // Gather per-trade notes for the report
+      const tradeReport = request.executions.map(exec => {
+        const key = `${request.id}_${exec.id}`;
+        const isValid = tradeValidity[key] !== false;
+        const note = tradeNotes[key] || "";
+        return { trade_number: exec.trade_number, is_valid: isValid, note };
+      });
+
+      const rejectedTrades = tradeReport.filter(t => !t.is_valid);
+      const validatedTrades = tradeReport.filter(t => t.is_valid);
+
+      // Build report message
+      let reportMessage = `❌ ${request.cycle.name} refusé.\n`;
+      reportMessage += `${validatedTrades.length} trade(s) validé(s), ${rejectedTrades.length} trade(s) refusé(s).\n`;
+      if (rejectedTrades.length > 0) {
+        reportMessage += "\nTrades refusés :\n";
+        rejectedTrades.forEach(t => {
+          reportMessage += `• Trade #${t.trade_number}${t.note ? ` — ${t.note}` : ""}\n`;
+        });
+      }
+      reportMessage += `\nCommentaire : ${feedbackText}`;
+
       // Update verification request
       const { error: requestError } = await supabase
         .from("verification_requests")
@@ -611,23 +670,30 @@ export const AdminVerification = () => {
 
       if (requestError) throw requestError;
 
-      // Update user cycle
+      // Update user cycle - set to rejected so user can re-harvest
       const { error: cycleError } = await supabase
         .from("user_cycles")
         .update({
           status: "rejected",
-          admin_feedback: feedbackText,
+          admin_feedback: reportMessage,
         })
         .eq("id", request.userCycle.id);
 
       if (cycleError) throw cycleError;
+
+      // Send notification to user
+      await supabase.from("user_notifications").insert({
+        user_id: request.user_id,
+        sender_id: user.id,
+        type: "cycle_rejected",
+        message: reportMessage,
+      });
 
       toast({
         title: "Cycle refusé",
         description: `Le ${request.cycle.name} a été refusé. L'utilisateur a été notifié.`,
       });
 
-      // Refresh data
       fetchRequests();
       fetchUsers();
     } catch (error) {
