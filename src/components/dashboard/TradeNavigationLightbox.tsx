@@ -6,15 +6,13 @@ import { extractStoragePath } from "@/hooks/useSignedUrl";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export interface TradeScreenshotItem {
   tradeNumber: number;
@@ -535,22 +533,22 @@ export const TradeNavigationLightbox = ({
       )}
 
       {/* Refusal justification dialog */}
-      <AlertDialog open={showRefusalDialog} onOpenChange={setShowRefusalDialog}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Refuser le trade #{currentItem?.tradeNumber}</AlertDialogTitle>
-            <AlertDialogDescription>
+      <Dialog open={showRefusalDialog} onOpenChange={setShowRefusalDialog}>
+        <DialogContent onClick={(e) => e.stopPropagation()} className="z-[300]">
+          <DialogHeader>
+            <DialogTitle>Refuser le trade #{currentItem?.tradeNumber}</DialogTitle>
+            <DialogDescription>
               Veuillez justifier la raison pour laquelle ce trade est incorrect.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+            </DialogDescription>
+          </DialogHeader>
           <Textarea
             value={refusalNote}
             onChange={(e) => setRefusalNote(e.target.value)}
             placeholder="Raison du refus..."
             className="min-h-[80px]"
           />
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRefusalDialog(false)}>Annuler</Button>
             <Button
               variant="destructive"
               disabled={!refusalNote.trim()}
@@ -563,9 +561,9 @@ export const TradeNavigationLightbox = ({
             >
               Confirmer le refus
             </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
