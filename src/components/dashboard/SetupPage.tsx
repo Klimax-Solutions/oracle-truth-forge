@@ -12,6 +12,7 @@ import { useDataGenerale } from "@/hooks/useDataGenerale";
 import { useSidebarRoles } from "./DashboardSidebar";
 import { useCustomSetups, CustomSetup } from "@/hooks/useCustomSetups";
 import { CreateSetupDialog } from "./CreateSetupDialog";
+import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 
 interface Trade {
   id: string;
@@ -74,8 +75,10 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
   );
   const { trades: personalTrades } = usePersonalTrades();
   const { isAdmin, isSuperAdmin } = useSidebarRoles();
+  const { isEarlyAccess } = useEarlyAccess();
   const showDataGenerale = isAdmin || isSuperAdmin;
-  const { dataGenerale, stats: dgStats, loading: dgLoading } = useDataGenerale(trades, showDataGenerale);
+  const needsDataGenerale = showDataGenerale || isEarlyAccess;
+  const { dataGenerale, stats: dgStats, loading: dgLoading } = useDataGenerale(trades, needsDataGenerale);
   const { setups: customSetups, loading: setupsLoading, refetch: refetchSetups } = useCustomSetups();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [renamingSetupId, setRenamingSetupId] = useState<string | null>(null);
@@ -200,16 +203,18 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
   }
 
   if (activeView === "data-generale") {
+    const isEAOnly = isEarlyAccess && !isAdmin && !isSuperAdmin;
+    const viewTrades = isEAOnly ? dataGenerale.slice(0, 50) : dataGenerale;
     return (
       <div className="h-full flex flex-col">
         <SubViewHeader
           icon={<Globe className="w-4 h-4 text-primary" />}
-          label="Data Générale — Setup Indices US"
+          label={isEAOnly ? "Oracle — Data Générale, Setup Indices US" : "Data Générale — Setup Indices US"}
           onBack={() => setActiveView("overview")}
         />
         <div className="flex-1 overflow-auto">
           <OracleDatabase
-            trades={dataGenerale}
+            trades={viewTrades}
             isDataGenerale={true}
             isAdmin={isAdmin || isSuperAdmin}
             onTradeUpdated={() => {
@@ -254,6 +259,51 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
         </div>
       );
     }
+  }
+
+  // ──────────────── EA OVERVIEW ────────────────
+  if (isEarlyAccess && !isAdmin && !isSuperAdmin) {
+    return (
+      <div className="h-full overflow-auto p-4 md:p-6">
+        <div className="max-w-3xl mx-auto space-y-6 md:space-y-8">
+          <div className="text-center">
+            <h1 className="text-xl md:text-2xl font-bold text-foreground mb-1">Setup</h1>
+            <p className="text-xs md:text-sm text-muted-foreground">Explorez les données de trading</p>
+          </div>
+
+          {/* Data Générale — Full width for EA */}
+          <SetupCard
+            icon={<Globe className="w-5 h-5 text-primary" />}
+            title="Oracle — Data Générale, Setup Indices US"
+            subtitle="Oracle + trades complémentaires"
+            accentColor="primary"
+            stats={{
+              trades: dgStats.total,
+              totalRR: dgStats.totalRR,
+              winRate: dgStats.winRate,
+              avgRR: dgStats.avgRR,
+            }}
+            lastTrade={lastDGTrade ? {
+              date: lastDGTrade.trade_date,
+              direction: lastDGTrade.direction,
+              rr: lastDGTrade.rr,
+              setup: lastDGTrade.setup_type,
+            } : null}
+            badge={
+              <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
+                <span className="px-1.5 py-0.5 bg-primary/10 rounded text-primary">{dgStats.oracleCount} Oracle</span>
+                <span>+</span>
+                <span className="px-1.5 py-0.5 bg-emerald-500/10 rounded text-emerald-500">{dgStats.complementCount} complémentaires</span>
+              </div>
+            }
+            onClick={() => setActiveView("data-generale")}
+            actionLabel="Explorer la data"
+            actionIcon={<Eye className="w-3.5 h-3.5" />}
+            loading={dgLoading}
+          />
+        </div>
+      </div>
+    );
   }
 
   // ──────────────── OVERVIEW ────────────────
