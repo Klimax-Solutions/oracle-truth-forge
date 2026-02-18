@@ -17,6 +17,7 @@ const SuccessNotification = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { fireConfetti } = useSuccessConfetti();
   const initialLoadDone = useRef(false);
@@ -29,7 +30,13 @@ const SuccessNotification = () => {
 
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) setUserId(user.id);
+      if (user) {
+        setUserId(user.id);
+        // Check if user has EA, admin, or super_admin role
+        const { data: isEA } = await supabase.rpc("is_early_access");
+        const { data: isAdminResult } = await supabase.rpc("is_admin");
+        setHasAccess(!!isEA || !!isAdminResult);
+      }
     };
     getUser();
   }, []);
@@ -141,6 +148,9 @@ const SuccessNotification = () => {
 
   const markAllRead = () => { setNotifications((prev) => prev.map((n) => ({ ...n, read: true }))); };
   const handleToggle = () => { if (!isOpen) markAllRead(); setIsOpen(!isOpen); };
+
+  // Hide notifications for plain members (only show for EA, admin, super_admin)
+  if (hasAccess === false) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">

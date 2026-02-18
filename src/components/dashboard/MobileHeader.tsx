@@ -55,11 +55,14 @@ export const MobileHeader = ({
   const { settings: eaSettings } = useEarlyAccessSettings();
   const oracleBtn = eaSettings.find(s => s.button_key === "acceder_a_oracle");
   const oracleUrl = oracleBtn?.button_url;
+  const { isAdmin: isMobileAdmin, isSuperAdmin: isMobileSuperAdmin } = (() => {
+    return { isAdmin, isSuperAdmin };
+  })();
   let allTabs = isEarlyAccess 
     ? tabs.filter(t => t.id !== "successes") 
     : [...tabs];
   
-  if (isEarlyAccess) {
+  if (isEarlyAccess || isAdmin || isSuperAdmin) {
     allTabs = [...allTabs, ...earlyAccessTabs];
   }
   if (isAdmin) {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Calendar, BarChart3, ChevronUp } from "lucide-react";
+import { Calendar, BarChart3, ChevronUp, Lock } from "lucide-react";
 import { TradingJournal } from "./TradingJournal";
 import { RRDistributionChart } from "./RRDistributionChart";
 import { AnalogClock } from "./AnalogClock";
@@ -29,16 +29,28 @@ interface Trade {
   news_label: string;
   screenshot_m15_m5: string | null;
   screenshot_m1: string | null;
+  contributor?: string;
 }
 
 interface DataAnalysisPageProps {
   trades: Trade[];
   onNavigateToDatabase?: (filters: any) => void;
+  isEarlyAccess?: boolean;
+  isExpired?: boolean;
 }
 
 type ExpandedView = "journal" | "distribution" | null;
 
-export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisPageProps) => {
+const ExpiredOverlay = () => (
+  <div className="absolute inset-0 bg-background/80 backdrop-blur-md z-10 flex items-center justify-center rounded-md">
+    <div className="text-center space-y-2">
+      <Lock className="w-6 h-6 text-muted-foreground mx-auto" />
+      <p className="text-sm font-mono text-muted-foreground">Accès expiré</p>
+    </div>
+  </div>
+);
+
+export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess = false, isExpired = false }: DataAnalysisPageProps) => {
   const [isEntering, setIsEntering] = useState(true);
   const [expandedView, setExpandedView] = useState<ExpandedView>(null);
 
@@ -47,12 +59,32 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
     return () => clearTimeout(timer);
   }, []);
 
-  const totalRR = trades.reduce((sum, t) => sum + (t.rr || 0), 0);
-  const winRate = trades.length > 0 ? ((trades.filter(t => (t.rr || 0) > 0).length / trades.length) * 100).toFixed(1) : "0";
+  // For EA: strip screenshots, hide contributor info
+  const displayTrades = useMemo(() => {
+    if (!isEarlyAccess) return trades;
+    return trades.map(t => ({
+      ...t,
+      screenshot_m15_m5: null,
+      screenshot_m1: null,
+      contributor: undefined,
+    }));
+  }, [trades, isEarlyAccess]);
 
-  const handleTimingSelect = (key: string, selectedTrades: Trade[]) => {
-    // Could navigate to database with filter
-  };
+  // For EA: limit journal/distribution to first 50 trades
+  const limitedTrades = useMemo(() => {
+    if (!isEarlyAccess) return displayTrades;
+    return displayTrades.slice(0, 50);
+  }, [displayTrades, isEarlyAccess]);
+
+  const totalRR = displayTrades.reduce((sum, t) => sum + (t.rr || 0), 0);
+  const winRate = displayTrades.length > 0 ? ((displayTrades.filter(t => (t.rr || 0) > 0).length / displayTrades.length) * 100).toFixed(1) : "0";
+
+  const handleTimingSelect = (key: string, selectedTrades: Trade[]) => {};
+
+  const quickSections = [
+    { id: "journal" as const, label: "Journal", icon: Calendar },
+    { id: "distribution" as const, label: "Distribution RR", icon: BarChart3 },
+  ];
 
   // Expanded views
   if (expandedView === "journal") {
@@ -66,7 +98,7 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
           <span className="font-mono uppercase tracking-wider">Retour à Data Analysis</span>
         </button>
         <div className="flex-1 overflow-hidden">
-          <TradingJournal trades={trades} />
+          <TradingJournal trades={limitedTrades} />
         </div>
       </div>
     );
@@ -83,17 +115,11 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
           <span className="font-mono uppercase tracking-wider">Retour à Data Analysis</span>
         </button>
         <div className="flex-1 overflow-hidden">
-          <RRDistributionChart trades={trades} />
+          <RRDistributionChart trades={displayTrades} />
         </div>
       </div>
     );
   }
-
-  // Quick access sections
-  const quickSections = [
-    { id: "journal" as const, label: "Journal", icon: Calendar },
-    { id: "distribution" as const, label: "Distribution RR", icon: BarChart3 },
-  ];
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -101,9 +127,11 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
       <div className="p-4 md:p-6 border-b border-border flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">Data Analysis</h2>
+            <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">
+              {isEarlyAccess ? "Data Analysis — Indices US" : "Data Analysis"}
+            </h2>
             <p className="text-xs text-muted-foreground font-mono">
-              {trades.length} trades • {totalRR >= 0 ? "+" : ""}{totalRR.toFixed(1)} RR • WR {winRate}%
+              {displayTrades.length} trades • {totalRR >= 0 ? "+" : ""}{totalRR.toFixed(1)} RR • WR {winRate}%
             </p>
           </div>
         </div>
@@ -116,51 +144,61 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
             className={cn("space-y-4", isEntering && "opacity-0")}
             style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms forwards" }}
           >
-            <DonneesClés trades={trades} />
+            <div className="relative">
+              {isExpired && <ExpiredOverlay />}
+              <DonneesClés trades={displayTrades} />
+            </div>
 
             {/* Data Rankings */}
-            <DataRankings trades={trades} />
-
-            {/* Quick access buttons */}
-            <div className="grid grid-cols-2 gap-3">
-              {quickSections.map((section) => (
-                <button
-                  key={section.id}
-                  onClick={() => setExpandedView(section.id)}
-                  className={cn(
-                    "data-analysis-card border border-border rounded-md p-3 md:p-4 text-left transition-all group",
-                    "hover:border-foreground/30 bg-card"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-md border border-border flex items-center justify-center group-hover:border-foreground/30 transition-colors flex-shrink-0">
-                      <section.icon className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-sm font-medium text-foreground">{section.label}</h3>
-                      <p className="text-[9px] text-muted-foreground font-mono uppercase">Ouvrir</p>
-                    </div>
-                  </div>
-                </button>
-              ))}
+            <div className="relative">
+              {isExpired && <ExpiredOverlay />}
+              <DataRankings trades={displayTrades} blurTop={isEarlyAccess} />
             </div>
-          </div>
 
-          {/* Row 2: Analog Clock */}
-          <div
-            className={cn(
-              "py-4 md:py-8",
-              isEntering && "opacity-0"
+            {/* Quick access buttons — hidden when expired */}
+            {!isExpired && (
+              <div className="grid grid-cols-2 gap-3">
+                {quickSections.map((section) => (
+                  <button
+                    key={section.id}
+                    onClick={() => setExpandedView(section.id)}
+                    className={cn(
+                      "data-analysis-card border border-border rounded-md p-3 md:p-4 text-left transition-all group",
+                      "hover:border-foreground/30 bg-card"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-md border border-border flex items-center justify-center group-hover:border-foreground/30 transition-colors flex-shrink-0">
+                        <section.icon className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-medium text-foreground">{section.label}</h3>
+                        <p className="text-[9px] text-muted-foreground font-mono uppercase">Ouvrir</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
             )}
-            style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 160ms forwards" }}
-          >
-            <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-6 text-center tracking-widest">
-              Horloge des Timings
-            </p>
-            <AnalogClock trades={trades} onSelectTiming={handleTimingSelect} />
           </div>
 
-          {/* Row 3: Cumulative Evolution */}
+          {/* Row 2: Analog Clock — hidden when expired */}
+          {!isExpired && (
+            <div
+              className={cn(
+                "py-4 md:py-8",
+                isEntering && "opacity-0"
+              )}
+              style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 160ms forwards" }}
+            >
+              <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase mb-6 text-center tracking-widest">
+                Horloge des Timings
+              </p>
+              <AnalogClock trades={displayTrades} onSelectTiming={handleTimingSelect} />
+            </div>
+          )}
+
+          {/* Row 3: Cumulative Evolution — always visible */}
           <div
             className={cn(
               "border border-border p-4 md:p-5 bg-card rounded-md chart-glow-container",
@@ -168,7 +206,7 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase }: DataAnalysisP
             )}
             style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 320ms forwards" }}
           >
-            <CumulativeEvolution trades={trades} />
+            <CumulativeEvolution trades={displayTrades} />
           </div>
         </div>
       </div>
