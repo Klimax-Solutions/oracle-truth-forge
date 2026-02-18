@@ -820,6 +820,21 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                       )}
                     </div>
                     
+                    {/* Verification request button */}
+                    {!isEbauche && (cycle.userCycle?.status === 'in_progress' || cycle.userCycle?.status === 'rejected') && cycle.userExecutions.length >= cycle.total_trades && (
+                      <div className="ml-10 mt-2 mb-1">
+                        <Button
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); handleRequestVerification(cycle); }}
+                          disabled={submitting}
+                          className="gap-1.5"
+                        >
+                          {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                          Demander ma vérification
+                        </Button>
+                      </div>
+                    )}
+
                     {/* Expandable report */}
                     {isExpanded && hasFeedback && (
                       <div className={cn(
