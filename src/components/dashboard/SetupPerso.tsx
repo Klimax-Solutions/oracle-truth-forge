@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { 
@@ -65,7 +66,7 @@ const DAYS_MAP: Record<number, string> = {
   6: "Samedi",
 };
 
-const TARGET_TRADES = 300;
+const DEFAULT_TARGET_TRADES = 300;
 
 export const SetupPerso = () => {
   const [trades, setTrades] = useState<PersonalTrade[]>([]);
@@ -76,6 +77,11 @@ export const SetupPerso = () => {
   const [isVariablesDialogOpen, setIsVariablesDialogOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<PersonalTrade | null>(null);
   const [suggestedVariables, setSuggestedVariables] = useState<{ type: string; values: string[] }[]>([]);
+  const [targetTrades, setTargetTrades] = useState(DEFAULT_TARGET_TRADES);
+  const [showTargetInput, setShowTargetInput] = useState(false);
+  const [assets, setAssets] = useState<string[]>([]);
+  const [showAssetDialog, setShowAssetDialog] = useState(false);
+  const [newAsset, setNewAsset] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -386,7 +392,7 @@ export const SetupPerso = () => {
 
   const totalRR = trades.reduce((sum, t) => sum + (t.rr || 0), 0);
   const avgRR = trades.length > 0 ? totalRR / trades.length : 0;
-  const progressPercent = Math.min((trades.length / TARGET_TRADES) * 100, 100);
+  const progressPercent = targetTrades > 0 ? Math.min((trades.length / targetTrades) * 100, 100) : 0;
 
   if (loading) {
     return (
@@ -419,6 +425,17 @@ export const SetupPerso = () => {
             >
               <Settings2 className="w-4 h-4" />
               <span className="hidden sm:inline">Variables</span>
+            </Button>
+
+            {/* Asset Button */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowAssetDialog(true)}
+              className="gap-1.5 flex-shrink-0"
+            >
+              <Target className="w-4 h-4" />
+              <span className="hidden sm:inline">Actifs</span>
             </Button>
             
             {/* New Trade Button */}
@@ -494,17 +511,38 @@ export const SetupPerso = () => {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Target className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">Objectif: {TARGET_TRADES} trades</span>
+              {showTargetInput ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-foreground">Objectif:</span>
+                  <Input
+                    type="number"
+                    value={targetTrades}
+                    onChange={(e) => setTargetTrades(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-24 h-7 text-sm"
+                    min={0}
+                  />
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setShowTargetInput(false)}>OK</Button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setShowTargetInput(true)}
+                  className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+                >
+                  Objectif: {targetTrades > 0 ? `${targetTrades} trades` : "Aucun"}
+                </button>
+              )}
             </div>
             <span className="text-sm font-mono text-muted-foreground">
-              {trades.length}/{TARGET_TRADES}
+              {trades.length}{targetTrades > 0 ? `/${targetTrades}` : " trades"}
             </span>
           </div>
-          <Progress value={progressPercent} className="h-2" />
+          {targetTrades > 0 && <Progress value={progressPercent} className="h-2" />}
           <p className="text-xs text-muted-foreground mt-2">
-            {trades.length >= TARGET_TRADES 
-              ? "🎉 Objectif atteint ! Vous avez assez de données pour une analyse significative."
-              : `${TARGET_TRADES - trades.length} trades restants pour obtenir un feedback statistiquement pertinent.`
+            {targetTrades > 0 && trades.length >= targetTrades 
+              ? "🎉 Objectif atteint ! Continuez à récolter de la data."
+              : targetTrades > 0 
+                ? `${targetTrades - trades.length} trades restants pour atteindre votre objectif.`
+                : "Aucun objectif défini. Récoltez autant de data que nécessaire."
             }
           </p>
         </div>
@@ -667,6 +705,65 @@ export const SetupPerso = () => {
         suggestedVariables={suggestedVariables}
         onSuggestionsProcessed={handleVariablesSuggestionsProcessed}
       />
+
+      {/* Asset Management Dialog */}
+      {showAssetDialog && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center" onClick={() => setShowAssetDialog(false)}>
+          <div className="bg-card border border-border rounded-lg p-6 max-w-md w-full mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-foreground">Gestion des Actifs</h3>
+            <p className="text-xs text-muted-foreground">Ajoutez les actifs (EUR/USD, NAS100, etc.) pour associer vos trades.</p>
+            
+            <div className="flex gap-2">
+              <Input
+                placeholder="Nouvel actif (ex: NAS100)"
+                value={newAsset}
+                onChange={(e) => setNewAsset(e.target.value)}
+                className="flex-1 h-9 text-sm"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newAsset.trim()) {
+                    setAssets(prev => [...prev, newAsset.trim()]);
+                    setNewAsset("");
+                  }
+                }}
+              />
+              <Button
+                size="sm"
+                className="h-9"
+                disabled={!newAsset.trim()}
+                onClick={() => {
+                  setAssets(prev => [...prev, newAsset.trim()]);
+                  setNewAsset("");
+                }}
+              >
+                Ajouter
+              </Button>
+            </div>
+
+            {assets.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {assets.map((asset, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 bg-muted text-sm text-foreground rounded-md"
+                  >
+                    {asset}
+                    <button
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => setAssets(prev => prev.filter((_, j) => j !== i))}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => setShowAssetDialog(false)}>Fermer</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

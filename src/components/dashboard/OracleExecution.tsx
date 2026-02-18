@@ -104,6 +104,8 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
   const [loading, setLoading] = useState(true);
   const [expandedCycle, setExpandedCycle] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [globalStats, setGlobalStats] = useState<{ totalData: number; totalRR: number; avgRR: number; totalUsers: number } | null>(null);
   const { toast } = useToast();
   const { isEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
@@ -149,6 +151,34 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
       }
 
       setLoading(false);
+
+      // Check admin status and fetch global stats
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      
+      const hasAdmin = roles?.some(r => r.role === "admin" || r.role === "super_admin");
+      setIsAdmin(!!hasAdmin);
+
+      if (hasAdmin) {
+        // Fetch all user_executions across all users for global overview
+        const { data: allExecs } = await supabase
+          .from("user_executions")
+          .select("user_id, rr");
+        
+        if (allExecs) {
+          const uniqueUsers = new Set(allExecs.map(e => e.user_id));
+          const totalData = allExecs.length + trades.length; // user executions + oracle trades
+          const totalRR = allExecs.reduce((s, e) => s + (e.rr || 0), 0) + trades.reduce((s, t) => s + (t.rr || 0), 0);
+          setGlobalStats({
+            totalData,
+            totalRR,
+            avgRR: totalData > 0 ? totalRR / totalData : 0,
+            totalUsers: uniqueUsers.size,
+          });
+        }
+      }
     };
 
     fetchData();
@@ -447,6 +477,36 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
       </div>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto space-y-6 md:space-y-8">
+      {/* Admin Global Overview */}
+      {isAdmin && globalStats && (
+        <div className="border border-primary/30 rounded-md p-4 md:p-5 bg-primary/5">
+          <p className="text-[10px] md:text-xs text-primary font-mono uppercase mb-3 flex items-center gap-2">
+            <Award className="w-4 h-4" />
+            Overview Globale — Setup Indices US
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+            <div className="text-center p-3 border border-primary/20 rounded-md bg-card">
+              <p className="text-[8px] text-muted-foreground font-mono uppercase">Data totale récoltée</p>
+              <p className="text-xl font-bold text-foreground">{globalStats.totalData}</p>
+            </div>
+            <div className="text-center p-3 border border-primary/20 rounded-md bg-card">
+              <p className="text-[8px] text-muted-foreground font-mono uppercase">Membres actifs</p>
+              <p className="text-xl font-bold text-foreground">{globalStats.totalUsers}</p>
+            </div>
+            <div className="text-center p-3 border border-emerald-500/30 rounded-md bg-emerald-500/5">
+              <p className="text-[8px] text-muted-foreground font-mono uppercase">RR Total Global</p>
+              <p className={cn("text-xl font-bold", globalStats.totalRR >= 0 ? "text-emerald-400" : "text-red-400")}>
+                {globalStats.totalRR >= 0 ? "+" : ""}{globalStats.totalRR.toFixed(1)}
+              </p>
+            </div>
+            <div className="text-center p-3 border border-border rounded-md bg-card">
+              <p className="text-[8px] text-muted-foreground font-mono uppercase">RR Moyen Global</p>
+              <p className="text-xl font-bold text-foreground">{globalStats.avgRR.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Early Access: Key Stats + Cumulative Evolution + Results */}
         {isEarlyAccess && (
           <>

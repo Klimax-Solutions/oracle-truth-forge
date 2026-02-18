@@ -199,6 +199,13 @@ export const AdminVerification = () => {
   const [galleryScreen, setGalleryScreen] = useState<"m15" | "m5">("m15");
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryRequestId, setGalleryRequestId] = useState<string | null>(null);
+  // Search states
+  const [userSearch, setUserSearch] = useState("");
+  const [verificationSearch, setVerificationSearch] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
+  // Assignment states
+  const [assigningRequest, setAssigningRequest] = useState<string | null>(null);
+  const [adminProfiles, setAdminProfiles] = useState<Profile[]>([]);
   const { toast } = useToast();
 
   const openGallery = (executions: UserExecution[], execIndex: number, screen: "m15" | "m5", requestId?: string) => {
@@ -515,6 +522,39 @@ export const AdminVerification = () => {
     setLoadingUsers(false);
   };
 
+  // Fetch admin/super_admin profiles for assignment
+  const fetchAdminProfiles = async () => {
+    const { data: adminRoles } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .in("role", ["admin", "super_admin"]);
+    
+    if (adminRoles) {
+      const adminIds = [...new Set(adminRoles.map(r => r.user_id))];
+      const { data: adminProfilesData } = await supabase
+        .from("profiles")
+        .select("*")
+        .in("user_id", adminIds);
+      if (adminProfilesData) setAdminProfiles(adminProfilesData as Profile[]);
+    }
+  };
+
+  // Assign admin to verification request
+  const handleAssignAdmin = async (requestId: string, adminUserId: string) => {
+    const { error } = await supabase
+      .from("verification_requests")
+      .update({ assigned_to: adminUserId })
+      .eq("id", requestId);
+
+    if (error) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Assigné", description: "L'administrateur a été assigné à cette vérification." });
+      setAssigningRequest(null);
+      fetchRequests();
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
       await fetchCycles();
@@ -522,6 +562,7 @@ export const AdminVerification = () => {
       await fetchUsers();
       await fetchPendingAccounts();
       await fetchSecurityAlerts();
+      await fetchAdminProfiles();
     };
     init();
   }, []);
@@ -560,12 +601,13 @@ export const AdminVerification = () => {
         reportMessage += `\nCommentaire : ${feedbackText}`;
       }
 
-      // Update verification request
+      // Update verification request with reviewer info
       const { error: requestError } = await supabase
         .from("verification_requests")
         .update({
           status: "approved",
           reviewed_at: new Date().toISOString(),
+          reviewed_by: user.id,
           admin_comments: feedbackText,
         })
         .eq("id", request.id);
@@ -658,12 +700,13 @@ export const AdminVerification = () => {
       }
       reportMessage += `\nCommentaire : ${feedbackText}`;
 
-      // Update verification request
+      // Update verification request with reviewer info
       const { error: requestError } = await supabase
         .from("verification_requests")
         .update({
           status: "rejected",
           reviewed_at: new Date().toISOString(),
+          reviewed_by: user.id,
           admin_comments: feedbackText,
         })
         .eq("id", request.id);
@@ -920,8 +963,16 @@ export const AdminVerification = () => {
                   </div>
                 </div>
 
+                {/* Search bar */}
+                <Input
+                  placeholder="Rechercher un utilisateur..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="max-w-sm h-9 text-sm"
+                />
+
                 {/* Users List */}
-                {users.map((user) => {
+                {users.filter(u => !userSearch || u.displayName.toLowerCase().includes(userSearch.toLowerCase())).map((user) => {
                   const isExpanded = expandedUser === user.id;
                   const progress = getUserProgressPercentage(user);
 
@@ -1338,17 +1389,26 @@ export const AdminVerification = () => {
               </div>
             ) : (
               <div className="space-y-3 md:space-y-4">
-                <div className="flex items-center gap-2 mb-4 md:mb-6">
-                  <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-orange-400" />
-                  <span className="text-xs md:text-sm font-mono uppercase tracking-wider text-muted-foreground">
-                    {requests.length} demande{requests.length > 1 ? "s" : ""} en attente
-                  </span>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 md:mb-6">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-orange-400" />
+                    <span className="text-xs md:text-sm font-mono uppercase tracking-wider text-muted-foreground">
+                      {requests.length} demande{requests.length > 1 ? "s" : ""} en attente
+                    </span>
+                  </div>
+                  <Input
+                    placeholder="Rechercher..."
+                    value={verificationSearch}
+                    onChange={(e) => setVerificationSearch(e.target.value)}
+                    className="max-w-xs h-8 text-sm"
+                  />
                 </div>
 
-                {requests.map((request) => {
+                {requests.filter(r => !verificationSearch || r.userName.toLowerCase().includes(verificationSearch.toLowerCase())).map((request) => {
                   const stats = calculateStats(request.executions);
                   const isExpanded = expandedRequest === request.id;
                   const isProcessing = processing === request.id;
+                  const assignedAdmin = adminProfiles.find(p => p.user_id === (request as any).assigned_to);
 
                   return (
                     <div
@@ -1434,8 +1494,39 @@ export const AdminVerification = () => {
                                   minute: "2-digit",
                                 })}
                               </p>
+                              {/* Assigned admin */}
+                              {assignedAdmin ? (
+                                <p className="text-[10px] text-primary font-mono mt-0.5">
+                                  Assigné à: {assignedAdmin.display_name || "Admin"}
+                                </p>
+                              ) : (
+                                <button
+                                  className="text-[10px] text-muted-foreground hover:text-primary font-mono mt-0.5 underline"
+                                  onClick={(e) => { e.stopPropagation(); setAssigningRequest(assigningRequest === request.id ? null : request.id); }}
+                                >
+                                  + Assigner un vérificateur
+                                </button>
+                              )}
                             </div>
                           </div>
+
+                          {/* Assignment dropdown */}
+                          {assigningRequest === request.id && (
+                            <div className="mt-2 flex flex-wrap gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              {adminProfiles.map(admin => (
+                                <Button
+                                  key={admin.user_id}
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-[10px] gap-1"
+                                  onClick={() => handleAssignAdmin(request.id, admin.user_id)}
+                                >
+                                  <User className="w-3 h-3" />
+                                  {admin.display_name || "Admin"}
+                                </Button>
+                              ))}
+                            </div>
+                          )}
 
                           <div className="flex items-center gap-4">
                             <div className="text-right">
