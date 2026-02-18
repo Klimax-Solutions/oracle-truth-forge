@@ -204,7 +204,7 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
 
   if (activeView === "data-generale") {
     const isEAOnly = isEarlyAccess && !isAdmin && !isSuperAdmin;
-    const viewTrades = isEAOnly ? dataGenerale.slice(0, 50) : dataGenerale;
+    const viewTrades = dataGenerale;
     return (
       <div className="h-full flex flex-col">
         <SubViewHeader

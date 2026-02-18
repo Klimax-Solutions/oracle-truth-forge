@@ -43,6 +43,7 @@ interface Trade {
 
 interface OracleExecutionProps {
   trades: Trade[];
+  dataGeneraleTrades?: Trade[];
   onNavigateToVideos?: () => void;
   onNavigateToSetup?: () => void;
   questData?: QuestData;
@@ -98,7 +99,7 @@ interface CycleWithProgress extends Cycle {
   progress: number;
 }
 
-export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup, questData }: OracleExecutionProps) => {
+export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos, onNavigateToSetup, questData }: OracleExecutionProps) => {
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [userCycles, setUserCycles] = useState<UserCycle[]>([]);
   const [userExecutions, setUserExecutions] = useState<UserExecution[]>([]);
@@ -556,12 +557,12 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
               </div>
             </div>
 
-            {/* Données Clés */}
-            <EarlyAccessKeyStats trades={trades} />
+            {/* Données Clés — Data Générale */}
+            <EarlyAccessKeyStats trades={dataGeneraleTrades || trades} />
 
-            {/* Cumulative Evolution with Simulator */}
+            {/* Cumulative Evolution — Data Générale */}
             <div className="border border-border rounded-md p-4 md:p-5 bg-card">
-              <CumulativeEvolution trades={trades} />
+              <CumulativeEvolution trades={dataGeneraleTrades || trades} />
             </div>
           </>
         )}
