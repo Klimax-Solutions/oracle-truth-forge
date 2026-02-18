@@ -131,6 +131,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ea_featured_trade: {
+        Row: {
+          content_type: string
+          created_at: string
+          created_by: string | null
+          direction: string | null
+          entry_time: string | null
+          id: string
+          image_path: string | null
+          rr: number | null
+          trade_date: string | null
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          direction?: string | null
+          entry_time?: string | null
+          id?: string
+          image_path?: string | null
+          rr?: number | null
+          trade_date?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          direction?: string | null
+          entry_time?: string | null
+          id?: string
+          image_path?: string | null
+          rr?: number | null
+          trade_date?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       early_access_settings: {
         Row: {
           button_key: string
