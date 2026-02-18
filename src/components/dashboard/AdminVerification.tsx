@@ -632,15 +632,8 @@ export const AdminVerification = () => {
         p_current_cycle_number: request.cycle.cycle_number,
       });
 
-      // Auto-add complementary trades to Data Générale
-      const { data: insertedCount } = await supabase.rpc("add_complementary_trades_from_cycle", {
-        p_member_user_id: request.user_id,
-        p_cycle_id: request.cycle.id,
-      });
-
-      const addedMsg = insertedCount && Number(insertedCount) > 0
-        ? ` ${insertedCount} trade(s) complémentaire(s) ajouté(s) à la Data Générale.`
-        : "";
+      // Complementary trades are computed virtually by useDataGenerale
+      const addedMsg = "";
 
       // Send notification to user
       await supabase.from("user_notifications").insert({
