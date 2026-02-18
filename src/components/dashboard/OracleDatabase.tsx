@@ -483,8 +483,12 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                           ? "border-primary/30 bg-primary/10 text-primary"
                           : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
                       )}>
-                        {trade.contributor || "—"}
-                      </span>
+                      {isEarlyAccess ? (
+                        <span className="blur-sm select-none">{trade.contributor || "—"}</span>
+                      ) : (
+                        trade.contributor || "—"
+                      )}
+                    </span>
                     ) : (
                       <span className="text-lg font-bold text-muted-foreground/50 w-10">
                         {String(trade.trade_number).padStart(3, "0")}
