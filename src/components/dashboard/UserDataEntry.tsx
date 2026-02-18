@@ -145,6 +145,28 @@ const ENTRY_TIMEFRAME_FIXED_OPTIONS = ["15s", "30s", "M1", "M3", "M5", "M15"];
 const MIN_ENTRY_TIME = "00:00";
 const MAX_TIME = "23:59";
 
+// ── Duration calculator ──
+function calculateDuration(entryDate: string, entryTime: string, exitDate: string, exitTime: string): string {
+  if (!entryDate || !entryTime || !exitDate || !exitTime) return "";
+  try {
+    const entry = new Date(`${entryDate}T${entryTime}:00`);
+    const exit = new Date(`${exitDate}T${exitTime}:00`);
+    const diffMs = exit.getTime() - entry.getTime();
+    if (diffMs < 0) return "";
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    const minutes = totalMinutes % 60;
+    const parts: string[] = [];
+    if (days > 0) parts.push(`${days}j`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0 || parts.length === 0) parts.push(`${minutes}min`);
+    return parts.join(" ");
+  } catch {
+    return "";
+  }
+}
+
 // Cycle thresholds - comparison status only revealed after completing each cycle
 const CYCLE_THRESHOLDS = [
   { max: 15, name: "Ébauche" },      // Trades 1-15
@@ -516,6 +538,11 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     ]);
     setUploading(false);
 
+    const tradeDuration = calculateDuration(
+      formData.trade_date, formData.entry_time,
+      formData.exit_date, formData.exit_time
+    );
+
     const executionData = {
       user_id: user.id,
       trade_number: tradeNum,
@@ -544,6 +571,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       stop_loss_size: formData.stop_loss_size || null,
       news_day: formData.news_day,
       news_label: formData.news_day ? (formData.news_label || null) : null,
+      trade_duration: tradeDuration || null,
     };
 
     try {
