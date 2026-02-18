@@ -8,20 +8,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Database, ChevronDown } from "lucide-react";
 
-export type DataSource = "all" | "perso" | "oracle";
+export type DataSource = "all" | "perso" | "oracle" | "data-generale";
 
 interface DataSourceSelectorProps {
   value: DataSource;
   onChange: (value: DataSource) => void;
+  showDataGenerale?: boolean;
 }
 
 const LABELS: Record<DataSource, string> = {
   all: "Oracle + Perso",
   perso: "Setup Perso",
   oracle: "Oracle",
+  "data-generale": "Data Générale",
 };
 
-export const DataSourceSelector = ({ value, onChange }: DataSourceSelectorProps) => {
+export const DataSourceSelector = ({ value, onChange, showDataGenerale = false }: DataSourceSelectorProps) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -42,6 +44,11 @@ export const DataSourceSelector = ({ value, onChange }: DataSourceSelectorProps)
           <DropdownMenuRadioItem value="oracle" className="cursor-pointer">
             Oracle uniquement
           </DropdownMenuRadioItem>
+          {showDataGenerale && (
+            <DropdownMenuRadioItem value="data-generale" className="cursor-pointer">
+              Data Générale — Indices US
+            </DropdownMenuRadioItem>
+          )}
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
