@@ -23,6 +23,11 @@ interface Trade {
   news_label: string;
   screenshot_m15_m5: string | null;
   screenshot_m1: string | null;
+  contributor?: string;
+  sl_placement?: string | null;
+  tp_placement?: string | null;
+  context_timeframe?: string | null;
+  entry_timeframe?: string | null;
 }
 
 interface UserExecution {
@@ -50,6 +55,7 @@ interface UserExecution {
  */
 export const useDataGenerale = (oracleTrades: Trade[], isAdmin: boolean) => {
   const [allUserExecutions, setAllUserExecutions] = useState<UserExecution[]>([]);
+  const [userProfiles, setUserProfiles] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -64,6 +70,23 @@ export const useDataGenerale = (oracleTrades: Trade[], isAdmin: boolean) => {
 
       if (data) {
         setAllUserExecutions(data as UserExecution[]);
+        
+        // Fetch display names for all contributing users
+        const userIds = [...new Set(data.map((d: any) => d.user_id))];
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("user_id, display_name, first_name")
+            .in("user_id", userIds);
+          
+          if (profiles) {
+            const map = new Map<string, string>();
+            for (const p of profiles) {
+              map.set(p.user_id, p.display_name || p.first_name || "Membre");
+            }
+            setUserProfiles(map);
+          }
+        }
       }
       setLoading(false);
     };
@@ -116,6 +139,7 @@ export const useDataGenerale = (oracleTrades: Trade[], isAdmin: boolean) => {
 
       if (isComplement) {
         const dayOfWeek = getDayOfWeek(ue.trade_date);
+        const contributorName = userProfiles.get(ue.user_id) || "Membre";
         complementaryTrades.push({
           id: ue.id,
           trade_number: syntheticNumber++,
@@ -138,17 +162,24 @@ export const useDataGenerale = (oracleTrades: Trade[], isAdmin: boolean) => {
           news_label: "",
           screenshot_m15_m5: ue.screenshot_url || null,
           screenshot_m1: ue.screenshot_entry_url || null,
+          contributor: contributorName,
         });
       }
     }
 
-    // Combine: Oracle trades + complementary user trades, sorted by date
-    const combined = [...oracleTrades, ...complementaryTrades].sort(
+    // Add contributor label to Oracle trades
+    const oracleWithContributor = oracleTrades.map(t => ({
+      ...t,
+      contributor: "John",
+    }));
+
+    // Combine: Oracle trades + complementary user trades, sorted by date (chronological)
+    const combined = [...oracleWithContributor, ...complementaryTrades].sort(
       (a, b) => a.trade_date.localeCompare(b.trade_date)
     );
 
     return combined;
-  }, [oracleTrades, allUserExecutions, isAdmin]);
+  }, [oracleTrades, allUserExecutions, isAdmin, userProfiles]);
 
   const stats = useMemo(() => {
     const total = dataGenerale.length;

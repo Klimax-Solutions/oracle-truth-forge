@@ -52,6 +52,8 @@ const SETUP_TYPE_FIXED_OPTIONS = ["A", "B", "C"];
 const TIMING_FIXED_OPTIONS = ["US Open 15:30", "London Close (16h)"];
 
 const ENTRY_TIMEFRAME_FIXED_OPTIONS = ["15s", "30s", "M1", "M3", "M5", "M15"];
+const CONTEXT_TIMEFRAME_OPTIONS = ["H4", "H1", "M15"];
+const ENTRY_TF_SCREENSHOT_OPTIONS = ["M15", "M5", "M3", "M1", "30s", "15s", "5s"];
 
 // ── Types ──
 interface PersonalTrade {
@@ -119,6 +121,10 @@ interface FormData {
   news_day: boolean;
   news_label: string;
   chart_link: string;
+  sl_placement: string;
+  tp_placement: string;
+  context_timeframe: string;
+  screenshot_entry_timeframe: string;
 }
 
 const initialFormData: FormData = {
@@ -143,6 +149,10 @@ const initialFormData: FormData = {
   news_day: false,
   news_label: "",
   chart_link: "",
+  sl_placement: "",
+  tp_placement: "",
+  context_timeframe: "",
+  screenshot_entry_timeframe: "",
 };
 
 // ── Duration calculator ──
@@ -300,6 +310,10 @@ export const PersonalTradeDialog = ({
           news_day: editingTrade.news_day || false,
           news_label: editingTrade.news_label || "",
           chart_link: editingTrade.chart_link || "",
+          sl_placement: (editingTrade as any).sl_placement || "",
+          tp_placement: (editingTrade as any).tp_placement || "",
+          context_timeframe: (editingTrade as any).context_timeframe || "",
+          screenshot_entry_timeframe: "",
         });
         // Handle existing screenshots - prioritize new fields, fallback to old screenshot_url
         setExistingContextUrl(editingTrade.screenshot_context_url || editingTrade.screenshot_url || null);
@@ -419,6 +433,9 @@ export const PersonalTradeDialog = ({
       screenshot_entry_url: entryUrl,
       screenshot_url: contextUrl, // backward compat
       chart_link: formData.chart_link || null,
+      sl_placement: formData.sl_placement || null,
+      tp_placement: formData.tp_placement || null,
+      context_timeframe: formData.context_timeframe || null,
     } as any;
 
     try {
@@ -634,6 +651,32 @@ export const PersonalTradeDialog = ({
             </div>
           </div>
 
+          {/* Placement SL / TP */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Placement du SL</Label>
+              <CustomizableMultiSelect
+                value={formData.sl_placement}
+                onChange={(value) => setFormData({ ...formData, sl_placement: value })}
+                customOptions={variables.sl_placement || []}
+                variableType="sl_placement"
+                placeholder="Sélectionner..."
+                onOptionsChanged={refetchVariables}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Placement du TP</Label>
+              <CustomizableMultiSelect
+                value={formData.tp_placement}
+                onChange={(value) => setFormData({ ...formData, tp_placement: value })}
+                customOptions={variables.tp_placement || []}
+                variableType="tp_placement"
+                placeholder="Sélectionner..."
+                onOptionsChanged={refetchVariables}
+              />
+            </div>
+          </div>
+
           {/* News section */}
           <div className="border-t border-border my-2" />
           <p className="text-xs text-muted-foreground font-mono uppercase">News & Contexte</p>
@@ -730,24 +773,40 @@ export const PersonalTradeDialog = ({
           <p className="text-xs text-muted-foreground font-mono uppercase">Screenshots & Graphique</p>
 
           <div className="grid grid-cols-2 gap-4">
-            <ScreenshotUploadField
-              label="Screenshot Contexte (M15)"
-              file={contextFile}
-              preview={contextPreview}
-              existingUrl={existingContextUrl}
-              uploading={uploading}
-              onFileSelect={(e) => handleFileSelect(e, setContextFile, setContextPreview)}
-              onClear={() => { setContextFile(null); setContextPreview(null); setExistingContextUrl(null); }}
-            />
-            <ScreenshotUploadField
-              label="Screenshot Entrée (M5)"
-              file={entryFile}
-              preview={entryPreview}
-              existingUrl={existingEntryUrl}
-              uploading={uploading}
-              onFileSelect={(e) => handleFileSelect(e, setEntryFile, setEntryPreview)}
-              onClear={() => { setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }}
-            />
+            <div className="space-y-2">
+              <ScreenshotUploadField
+                label="Screenshot Contexte"
+                file={contextFile}
+                preview={contextPreview}
+                existingUrl={existingContextUrl}
+                uploading={uploading}
+                onFileSelect={(e) => handleFileSelect(e, setContextFile, setContextPreview)}
+                onClear={() => { setContextFile(null); setContextPreview(null); setExistingContextUrl(null); }}
+              />
+              <Select value={formData.context_timeframe} onValueChange={(v) => setFormData({ ...formData, context_timeframe: v })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Time frame contexte" /></SelectTrigger>
+                <SelectContent>
+                  {CONTEXT_TIMEFRAME_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <ScreenshotUploadField
+                label="Screenshot Entrée"
+                file={entryFile}
+                preview={entryPreview}
+                existingUrl={existingEntryUrl}
+                uploading={uploading}
+                onFileSelect={(e) => handleFileSelect(e, setEntryFile, setEntryPreview)}
+                onClear={() => { setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }}
+              />
+              <Select value={formData.screenshot_entry_timeframe} onValueChange={(v) => setFormData({ ...formData, screenshot_entry_timeframe: v })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Time frame entrée" /></SelectTrigger>
+                <SelectContent>
+                  {ENTRY_TF_SCREENSHOT_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* TradingView / FX Replay link */}

@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X, CheckSquare, Lock } from "lucide-react";
+import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X, CheckSquare, Lock, Pencil } from "lucide-react";
 import { SignedImageCard } from "./SignedImageCard";
 import { cn } from "@/lib/utils";
 import { useState, useMemo, useEffect } from "react";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useChartColors } from "@/hooks/useChartColors";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
+import { OracleTradeEditDialog } from "./OracleTradeEditDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +37,12 @@ interface Trade {
   news_label: string;
   screenshot_m1: string | null;
   screenshot_m15_m5: string | null;
+  contributor?: string;
+  sl_placement?: string | null;
+  tp_placement?: string | null;
+  context_timeframe?: string | null;
+  entry_timeframe?: string | null;
+  comment?: string | null;
 }
 
 interface OracleDatabaseProps {
@@ -43,6 +50,9 @@ interface OracleDatabaseProps {
   initialFilters?: Filters;
   analyzedTradeNumbers?: number[];
   onAnalysisToggle?: (tradeNumber: number, checked: boolean) => void;
+  isDataGenerale?: boolean;
+  isAdmin?: boolean;
+  onTradeUpdated?: () => void;
 }
 
 interface Filters {
@@ -60,10 +70,11 @@ interface Filters {
   hasScreenshots?: boolean;
 }
 
-export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [], onAnalysisToggle }: OracleDatabaseProps) => {
+export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [], onAnalysisToggle, isDataGenerale, isAdmin, onTradeUpdated }: OracleDatabaseProps) => {
   const chartColors = useChartColors();
   const { isEarlyAccess } = useEarlyAccess();
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [filters, setFilters] = useState<Filters>(initialFilters || {
     direction: [],
     direction_structure: [],
@@ -405,8 +416,18 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                   className="px-3 md:px-5 py-3 flex items-center justify-between cursor-pointer"
                 >
                   <div className="flex items-center gap-3 md:gap-5">
-                    {/* Checkbox for trades 1-15 */}
-                    {trade.trade_number >= 1 && trade.trade_number <= 15 && (
+                    {/* Edit pencil for Data Générale admin mode */}
+                    {isDataGenerale && isAdmin && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditingTrade(trade); }}
+                        className="flex items-center justify-center w-7 h-7 rounded-md border border-border hover:bg-accent transition-colors"
+                        title="Modifier ce trade"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                    )}
+                    {/* Checkbox for trades 1-15 (non Data Générale) */}
+                    {!isDataGenerale && trade.trade_number >= 1 && trade.trade_number <= 15 && (
                       <div
                         onClick={(e) => e.stopPropagation()}
                         className="flex items-center"
@@ -419,9 +440,21 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                         />
                       </div>
                     )}
-                    <span className="text-lg font-bold text-muted-foreground/50 w-10">
-                      {String(trade.trade_number).padStart(3, "0")}
-                    </span>
+                    {/* Trade number or contributor label */}
+                    {isDataGenerale ? (
+                      <span className={cn(
+                        "text-[10px] font-mono px-2 py-0.5 rounded-md border",
+                        trade.contributor === "John"
+                          ? "border-primary/30 bg-primary/10 text-primary"
+                          : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                      )}>
+                        {trade.contributor || "—"}
+                      </span>
+                    ) : (
+                      <span className="text-lg font-bold text-muted-foreground/50 w-10">
+                        {String(trade.trade_number).padStart(3, "0")}
+                      </span>
+                    )}
 
                     <div
                       className={cn(
@@ -708,6 +741,16 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
           </div>
         )}
       </div>
+
+      {/* Edit Dialog for Data Générale */}
+      {editingTrade && (
+        <OracleTradeEditDialog
+          isOpen={!!editingTrade}
+          onClose={() => setEditingTrade(null)}
+          onSaved={() => { setEditingTrade(null); onTradeUpdated?.(); }}
+          trade={editingTrade}
+        />
+      )}
     </div>
   );
 };

@@ -242,12 +242,14 @@ export type Database = {
       trades: {
         Row: {
           comment: string | null
+          context_timeframe: string | null
           created_at: string
           day_of_week: string
           direction: string
           direction_structure: string | null
           entry_model: string | null
           entry_time: string | null
+          entry_timeframe: string | null
           entry_timing: string | null
           exit_time: string | null
           id: string
@@ -257,11 +259,13 @@ export type Database = {
           screenshot_m1: string | null
           screenshot_m15_m5: string | null
           setup_type: string | null
+          sl_placement: string | null
           speculation_hl_valid: boolean | null
           stop_loss_points: string | null
           stop_loss_size: string | null
           target_hl_valid: boolean | null
           target_timing: string | null
+          tp_placement: string | null
           trade_date: string
           trade_duration: string | null
           trade_number: number
@@ -269,12 +273,14 @@ export type Database = {
         }
         Insert: {
           comment?: string | null
+          context_timeframe?: string | null
           created_at?: string
           day_of_week: string
           direction: string
           direction_structure?: string | null
           entry_model?: string | null
           entry_time?: string | null
+          entry_timeframe?: string | null
           entry_timing?: string | null
           exit_time?: string | null
           id?: string
@@ -284,11 +290,13 @@ export type Database = {
           screenshot_m1?: string | null
           screenshot_m15_m5?: string | null
           setup_type?: string | null
+          sl_placement?: string | null
           speculation_hl_valid?: boolean | null
           stop_loss_points?: string | null
           stop_loss_size?: string | null
           target_hl_valid?: boolean | null
           target_timing?: string | null
+          tp_placement?: string | null
           trade_date: string
           trade_duration?: string | null
           trade_number: number
@@ -296,12 +304,14 @@ export type Database = {
         }
         Update: {
           comment?: string | null
+          context_timeframe?: string | null
           created_at?: string
           day_of_week?: string
           direction?: string
           direction_structure?: string | null
           entry_model?: string | null
           entry_time?: string | null
+          entry_timeframe?: string | null
           entry_timing?: string | null
           exit_time?: string | null
           id?: string
@@ -311,11 +321,13 @@ export type Database = {
           screenshot_m1?: string | null
           screenshot_m15_m5?: string | null
           setup_type?: string | null
+          sl_placement?: string | null
           speculation_hl_valid?: boolean | null
           stop_loss_points?: string | null
           stop_loss_size?: string | null
           target_hl_valid?: boolean | null
           target_timing?: string | null
+          tp_placement?: string | null
           trade_date?: string
           trade_duration?: string | null
           trade_number?: number
@@ -405,6 +417,7 @@ export type Database = {
       }
       user_executions: {
         Row: {
+          context_timeframe: string | null
           created_at: string
           direction: string
           direction_structure: string | null
@@ -423,14 +436,17 @@ export type Database = {
           screenshot_entry_url: string | null
           screenshot_url: string | null
           setup_type: string | null
+          sl_placement: string | null
           stop_loss: number | null
           take_profit: number | null
+          tp_placement: string | null
           trade_date: string
           trade_number: number
           updated_at: string
           user_id: string
         }
         Insert: {
+          context_timeframe?: string | null
           created_at?: string
           direction: string
           direction_structure?: string | null
@@ -449,14 +465,17 @@ export type Database = {
           screenshot_entry_url?: string | null
           screenshot_url?: string | null
           setup_type?: string | null
+          sl_placement?: string | null
           stop_loss?: number | null
           take_profit?: number | null
+          tp_placement?: string | null
           trade_date: string
           trade_number: number
           updated_at?: string
           user_id: string
         }
         Update: {
+          context_timeframe?: string | null
           created_at?: string
           direction?: string
           direction_structure?: string | null
@@ -475,8 +494,10 @@ export type Database = {
           screenshot_entry_url?: string | null
           screenshot_url?: string | null
           setup_type?: string | null
+          sl_placement?: string | null
           stop_loss?: number | null
           take_profit?: number | null
+          tp_placement?: string | null
           trade_date?: string
           trade_number?: number
           updated_at?: string
@@ -564,6 +585,7 @@ export type Database = {
           asset: string | null
           chart_link: string | null
           comment: string | null
+          context_timeframe: string | null
           created_at: string
           day_of_week: string
           direction: string
@@ -585,12 +607,14 @@ export type Database = {
           screenshot_entry_url: string | null
           screenshot_url: string | null
           setup_type: string | null
+          sl_placement: string | null
           speculation_hl_valid: boolean | null
           stop_loss: number | null
           stop_loss_size: string | null
           take_profit: number | null
           target_hl_valid: boolean | null
           target_timing: string | null
+          tp_placement: string | null
           trade_date: string
           trade_duration: string | null
           trade_number: number
@@ -601,6 +625,7 @@ export type Database = {
           asset?: string | null
           chart_link?: string | null
           comment?: string | null
+          context_timeframe?: string | null
           created_at?: string
           day_of_week: string
           direction: string
@@ -622,12 +647,14 @@ export type Database = {
           screenshot_entry_url?: string | null
           screenshot_url?: string | null
           setup_type?: string | null
+          sl_placement?: string | null
           speculation_hl_valid?: boolean | null
           stop_loss?: number | null
           stop_loss_size?: string | null
           take_profit?: number | null
           target_hl_valid?: boolean | null
           target_timing?: string | null
+          tp_placement?: string | null
           trade_date: string
           trade_duration?: string | null
           trade_number: number
@@ -638,6 +665,7 @@ export type Database = {
           asset?: string | null
           chart_link?: string | null
           comment?: string | null
+          context_timeframe?: string | null
           created_at?: string
           day_of_week?: string
           direction?: string
@@ -659,12 +687,14 @@ export type Database = {
           screenshot_entry_url?: string | null
           screenshot_url?: string | null
           setup_type?: string | null
+          sl_placement?: string | null
           speculation_hl_valid?: boolean | null
           stop_loss?: number | null
           stop_loss_size?: string | null
           take_profit?: number | null
           target_hl_valid?: boolean | null
           target_timing?: string | null
+          tp_placement?: string | null
           trade_date?: string
           trade_duration?: string | null
           trade_number?: number

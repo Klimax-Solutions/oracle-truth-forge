@@ -175,7 +175,15 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
           onBack={() => setActiveView("overview")}
         />
         <div className="flex-1 overflow-auto">
-          <OracleDatabase trades={dataGenerale} />
+          <OracleDatabase
+            trades={dataGenerale}
+            isDataGenerale={true}
+            isAdmin={isAdmin || isSuperAdmin}
+            onTradeUpdated={() => {
+              // Force re-fetch by toggling a state or reloading trades
+              window.location.reload();
+            }}
+          />
         </div>
       </div>
     );
