@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Database, User, ArrowRight, TrendingUp, BarChart3, Clock, Target, AlertTriangle, CheckSquare } from "lucide-react";
+import { Database, User, ArrowRight, TrendingUp, BarChart3, Clock, Target, AlertTriangle, CheckSquare, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { OraclePage } from "./OraclePage";
 import { SetupPerso } from "./SetupPerso";
 import { usePersonalTrades } from "@/hooks/usePersonalTrades";
+import { useDataGenerale } from "@/hooks/useDataGenerale";
+import { useSidebarRoles } from "./DashboardSidebar";
 
 interface Trade {
   id: string;
@@ -49,6 +51,9 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
       : "overview"
   );
   const { trades: personalTrades } = usePersonalTrades();
+  const { isAdmin, isSuperAdmin } = useSidebarRoles();
+  const showDataGenerale = isAdmin || isSuperAdmin;
+  const { dataGenerale, stats: dgStats, loading: dgLoading } = useDataGenerale(trades, showDataGenerale);
 
   // Update view when initialFilters change (e.g., from Timing Analysis navigation)
   useEffect(() => {
@@ -312,6 +317,69 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
               </div>
             </div>
           </div>
+
+          {/* Data Générale Card — Admin/Super Admin only */}
+          {showDataGenerale && (
+            <div className="border border-primary/30 rounded-lg bg-primary/5 p-4 md:p-6">
+              <div className="flex items-start justify-between mb-3 md:mb-4">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <div className="p-2 md:p-3 rounded-lg bg-primary/10">
+                    <Globe className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-base md:text-lg font-semibold text-foreground">Data Générale — Setup Indices US</h2>
+                    <p className="text-xs md:text-sm text-muted-foreground">
+                      Oracle 314 trades + trades complémentaires récoltés par les membres
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {dgLoading ? (
+                <p className="text-xs text-muted-foreground">Chargement...</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mt-3 md:mt-4">
+                    <div className="text-center p-2 md:p-3 bg-card rounded-md border border-primary/20">
+                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                        <BarChart3 className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                        <span className="text-[10px] md:text-xs font-mono uppercase">Total Data</span>
+                      </div>
+                      <p className="text-lg md:text-xl font-bold text-foreground">{dgStats.total}</p>
+                    </div>
+                    <div className="text-center p-2 md:p-3 bg-card rounded-md border border-primary/20">
+                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                        <TrendingUp className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                        <span className="text-[10px] md:text-xs font-mono uppercase">RR Total</span>
+                      </div>
+                      <p className={cn("text-lg md:text-xl font-bold", dgStats.totalRR >= 0 ? "text-emerald-500" : "text-red-500")}>
+                        {dgStats.totalRR >= 0 ? "+" : ""}{dgStats.totalRR.toFixed(1)}
+                      </p>
+                    </div>
+                    <div className="text-center p-2 md:p-3 bg-card rounded-md border border-primary/20">
+                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                        <Target className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                        <span className="text-[10px] md:text-xs font-mono uppercase">Win Rate</span>
+                      </div>
+                      <p className="text-lg md:text-xl font-bold text-foreground">{dgStats.winRate.toFixed(0)}%</p>
+                    </div>
+                    <div className="text-center p-2 md:p-3 bg-card rounded-md border border-primary/20">
+                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                        <Clock className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                        <span className="text-[10px] md:text-xs font-mono uppercase">RR Moyen</span>
+                      </div>
+                      <p className="text-lg md:text-xl font-bold text-foreground">{dgStats.avgRR.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground font-mono">
+                    <span className="px-2 py-0.5 bg-primary/10 rounded text-primary">{dgStats.oracleCount} Oracle</span>
+                    <span>+</span>
+                    <span className="px-2 py-0.5 bg-emerald-500/10 rounded text-emerald-500">{dgStats.complementCount} complémentaires</span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Setup Perso Card */}
           <div 

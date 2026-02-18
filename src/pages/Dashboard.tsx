@@ -7,6 +7,7 @@ import { DashboardSidebar, useSidebarRoles } from "@/components/dashboard/Dashbo
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DataSourceSelector, DataSource } from "@/components/dashboard/DataSourceSelector";
+import { useDataGenerale } from "@/hooks/useDataGenerale";
 import { usePersonalTrades } from "@/hooks/usePersonalTrades";
 import { useQuestData } from "@/hooks/useQuestData";
 import { ProfileSettingsDialog } from "@/components/dashboard/ProfileSettingsDialog";
@@ -75,6 +76,7 @@ const Dashboard = () => {
   const { isEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
   const navigate = useNavigate();
+  const showDataGenerale = isAdmin || isSuperAdmin;
 
   useEffect(() => {
     const checkUserAccess = async (uid: string) => {
@@ -223,7 +225,13 @@ const Dashboard = () => {
     );
   }
 
+  const { dataGenerale } = useDataGenerale(trades, showDataGenerale);
+
   const getDisplayTrades = () => {
+    if (dataSource === "data-generale" && showDataGenerale) {
+      return dataGenerale;
+    }
+
     const personalTradesFormatted = personalTrades.map(pt => ({
       id: pt.id,
       trade_number: pt.trade_number + 1000,
@@ -303,7 +311,7 @@ const Dashboard = () => {
         isAdmin={isAdmin}
         isSuperAdmin={isSuperAdmin}
         dataSourceSelector={showDataSourceSelector ? (
-          <DataSourceSelector value={dataSource} onChange={setDataSource} />
+          <DataSourceSelector value={dataSource} onChange={setDataSource} showDataGenerale={showDataGenerale} />
         ) : undefined}
         earlyAccessTimer={isEarlyAccess && expiresAt ? <EarlyAccessTimer expiresAt={expiresAt} /> : undefined}
       />
@@ -339,7 +347,7 @@ const Dashboard = () => {
             )}
             <div className="flex items-center gap-3">
               {showDataSourceSelector && (
-                <DataSourceSelector value={dataSource} onChange={setDataSource} />
+                <DataSourceSelector value={dataSource} onChange={setDataSource} showDataGenerale={showDataGenerale} />
               )}
               <ProfileSettingsDialog onDisplayNameChange={setDisplayName} />
               <ThemeToggle />
