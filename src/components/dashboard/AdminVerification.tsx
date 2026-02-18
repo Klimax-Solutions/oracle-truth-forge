@@ -632,6 +632,16 @@ export const AdminVerification = () => {
         p_current_cycle_number: request.cycle.cycle_number,
       });
 
+      // Auto-add complementary trades to Data Générale
+      const { data: insertedCount } = await supabase.rpc("add_complementary_trades_from_cycle", {
+        p_member_user_id: request.user_id,
+        p_cycle_id: request.cycle.id,
+      });
+
+      const addedMsg = insertedCount && Number(insertedCount) > 0
+        ? ` ${insertedCount} trade(s) complémentaire(s) ajouté(s) à la Data Générale.`
+        : "";
+
       // Send notification to user
       await supabase.from("user_notifications").insert({
         user_id: request.user_id,
@@ -642,7 +652,7 @@ export const AdminVerification = () => {
 
       toast({
         title: "Cycle validé !",
-        description: `Le ${request.cycle.name} a été validé avec succès. Le cycle suivant est maintenant débloqué.`,
+        description: `Le ${request.cycle.name} a été validé avec succès. Le cycle suivant est maintenant débloqué.${addedMsg}`,
       });
 
       fetchRequests();
