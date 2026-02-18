@@ -77,6 +77,7 @@ const Dashboard = () => {
   const { settings: eaSettings } = useEarlyAccessSettings();
   const navigate = useNavigate();
   const showDataGenerale = isAdmin || isSuperAdmin;
+  const { dataGenerale } = useDataGenerale(trades, showDataGenerale);
 
   useEffect(() => {
     const checkUserAccess = async (uid: string) => {
@@ -225,7 +226,7 @@ const Dashboard = () => {
     );
   }
 
-  const { dataGenerale } = useDataGenerale(trades, showDataGenerale);
+
 
   const getDisplayTrades = () => {
     if (dataSource === "data-generale" && showDataGenerale) {
