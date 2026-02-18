@@ -180,38 +180,85 @@ export const SetupPerso = ({ customSetupId, customSetupName }: SetupPersoProps =
         'timing': 'entry_timing',
         'trade_duration': 'trade_duration',
         'duree': 'trade_duration',
+        'entry_timeframe': 'entry_timeframe',
+        'context_timeframe': 'context_timeframe',
+        'result': 'result',
+        'resultat': 'result',
+        'comment': 'comment',
+        'commentaire': 'comment',
+        'news_day': 'news_day',
+        'news_label': 'news_label',
+        'sl_placement': 'sl_placement',
+        'tp_placement': 'tp_placement',
+        'entry_price': 'entry_price',
+        'exit_price': 'exit_price',
+        'stop_loss': 'stop_loss',
+        'take_profit': 'take_profit',
+        'chart_link': 'chart_link',
+        'asset': 'asset',
+        'actif': 'asset',
       };
 
-      // Map header indices
+      // Map header indices & track unmapped columns
       const headerIndices: Record<string, number> = {};
+      const unmappedColumns: { name: string; index: number }[] = [];
+      
       header.forEach((col, idx) => {
         const mappedCol = columnMap[col];
         if (mappedCol) {
           headerIndices[mappedCol] = idx;
+        } else if (col) {
+          unmappedColumns.push({ name: col, index: idx });
         }
       });
 
-      // Check required columns
-      if (!('trade_number' in headerIndices) || !('trade_date' in headerIndices) || !('direction' in headerIndices)) {
-        throw new Error("Colonnes requises manquantes: trade_number, trade_date, direction");
-      }
+      // Track missing important columns (info only, never blocks)
+      const missingWarnings: string[] = [];
+      if (!('trade_number' in headerIndices)) missingWarnings.push('trade_number (auto-incrémenté)');
+      if (!('trade_date' in headerIndices)) missingWarnings.push('trade_date (date du jour par défaut)');
+      if (!('direction' in headerIndices)) missingWarnings.push('direction (défaut: Long)');
+
+      // Get current max trade number for auto-increment
+      let autoTradeNumber = getNextTradeNumber();
 
       let successCount = 0;
       let errorCount = 0;
       const tradesToInsert: any[] = [];
+
+      // Collect unmapped column values for auto-creating custom variables
+      const unmappedColumnValues: Record<string, Set<string>> = {};
+      unmappedColumns.forEach(col => {
+        unmappedColumnValues[col.name] = new Set();
+      });
 
       // Parse data rows
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim());
         
         try {
-          const tradeNumber = parseInt(values[headerIndices['trade_number']]);
-          const tradeDate = values[headerIndices['trade_date']];
-          const direction = values[headerIndices['direction']];
+          // Trade number: use from CSV or auto-increment
+          let tradeNumber: number;
+          if ('trade_number' in headerIndices) {
+            const parsed = parseInt(values[headerIndices['trade_number']]);
+            tradeNumber = isNaN(parsed) ? autoTradeNumber++ : parsed;
+          } else {
+            tradeNumber = autoTradeNumber++;
+          }
 
-          if (isNaN(tradeNumber) || !tradeDate || !direction) {
-            errorCount++;
-            continue;
+          // Trade date: use from CSV or default to today
+          let tradeDate: string;
+          if ('trade_date' in headerIndices && values[headerIndices['trade_date']]) {
+            tradeDate = values[headerIndices['trade_date']];
+          } else {
+            tradeDate = new Date().toISOString().split('T')[0];
+          }
+
+          // Direction: use from CSV or default
+          let direction: string;
+          if ('direction' in headerIndices && values[headerIndices['direction']]) {
+            direction = values[headerIndices['direction']];
+          } else {
+            direction = 'Long';
           }
 
           const date = new Date(tradeDate);
@@ -226,35 +273,41 @@ export const SetupPerso = ({ customSetupId, customSetupName }: SetupPersoProps =
             custom_setup_id: customSetupId || null,
           };
 
-          // Optional fields
-          if (headerIndices['rr'] !== undefined) {
-            const rr = parseFloat(values[headerIndices['rr']]);
-            if (!isNaN(rr)) trade.rr = rr;
+          // All optional known fields
+          const optionalStringFields = [
+            'entry_time', 'exit_time', 'setup_type', 'entry_model',
+            'direction_structure', 'stop_loss_size', 'entry_timing',
+            'trade_duration', 'entry_timeframe', 'context_timeframe',
+            'result', 'comment', 'news_label', 'sl_placement',
+            'tp_placement', 'chart_link', 'asset',
+          ];
+          optionalStringFields.forEach(field => {
+            if (headerIndices[field] !== undefined) {
+              trade[field] = values[headerIndices[field]] || null;
+            }
+          });
+
+          // Numeric fields
+          ['rr', 'entry_price', 'exit_price', 'stop_loss', 'take_profit'].forEach(field => {
+            if (headerIndices[field] !== undefined) {
+              const num = parseFloat(values[headerIndices[field]]);
+              if (!isNaN(num)) trade[field] = num;
+            }
+          });
+
+          // Boolean fields
+          if (headerIndices['news_day'] !== undefined) {
+            const v = values[headerIndices['news_day']]?.toLowerCase();
+            trade.news_day = v === 'true' || v === 'oui' || v === '1';
           }
-          if (headerIndices['entry_time'] !== undefined) {
-            trade.entry_time = values[headerIndices['entry_time']] || null;
-          }
-          if (headerIndices['exit_time'] !== undefined) {
-            trade.exit_time = values[headerIndices['exit_time']] || null;
-          }
-          if (headerIndices['setup_type'] !== undefined) {
-            trade.setup_type = values[headerIndices['setup_type']] || null;
-          }
-          if (headerIndices['entry_model'] !== undefined) {
-            trade.entry_model = values[headerIndices['entry_model']] || null;
-          }
-          if (headerIndices['direction_structure'] !== undefined) {
-            trade.direction_structure = values[headerIndices['direction_structure']] || null;
-          }
-          if (headerIndices['stop_loss_size'] !== undefined) {
-            trade.stop_loss_size = values[headerIndices['stop_loss_size']] || null;
-          }
-          if (headerIndices['entry_timing'] !== undefined) {
-            trade.entry_timing = values[headerIndices['entry_timing']] || null;
-          }
-          if (headerIndices['trade_duration'] !== undefined) {
-            trade.trade_duration = values[headerIndices['trade_duration']] || null;
-          }
+
+          // Collect unmapped column values per row
+          unmappedColumns.forEach(col => {
+            const val = values[col.index];
+            if (val && val.trim()) {
+              unmappedColumnValues[col.name].add(val.trim());
+            }
+          });
 
           tradesToInsert.push(trade);
           successCount++;
@@ -272,15 +325,27 @@ export const SetupPerso = ({ customSetupId, customSetupName }: SetupPersoProps =
         if (insertError) throw insertError;
       }
 
-      // Extract unique values for variable suggestions
-      const extractedVariables: { type: string; values: string[] }[] = [];
-      
+      // ── Auto-create custom variables ──
+      // 1) Auto-create values for known variable columns
       const variableColumns = [
         { key: 'direction_structure', type: 'direction_structure' },
         { key: 'setup_type', type: 'setup_type' },
         { key: 'entry_model', type: 'entry_model' },
         { key: 'entry_timing', type: 'entry_timing' },
+        { key: 'entry_timeframe', type: 'entry_timeframe' },
       ];
+
+      // Fetch existing custom variables to avoid duplicates
+      const { data: existingVars } = await supabase
+        .from("user_custom_variables")
+        .select("variable_type, variable_value")
+        .eq("user_id", user.id);
+
+      const existingSet = new Set(
+        (existingVars || []).map(v => `${v.variable_type}::${v.variable_value}`)
+      );
+
+      const variablesToCreate: { user_id: string; variable_type: string; variable_value: string }[] = [];
 
       variableColumns.forEach(({ key, type }) => {
         const uniqueValues = [...new Set(
@@ -289,28 +354,77 @@ export const SetupPerso = ({ customSetupId, customSetupName }: SetupPersoProps =
             .filter((v): v is string => !!v && v.trim() !== '')
         )];
         
-        if (uniqueValues.length > 0) {
-          extractedVariables.push({ type, values: uniqueValues });
-        }
+        uniqueValues.forEach(val => {
+          if (!existingSet.has(`${type}::${val}`)) {
+            variablesToCreate.push({ user_id: user.id, variable_type: type, variable_value: val });
+            existingSet.add(`${type}::${val}`);
+          }
+        });
       });
 
-      // If we found variables, store them and prompt user
-      if (extractedVariables.length > 0) {
-        setSuggestedVariables(extractedVariables);
-        // Auto-open variables dialog with suggestions
-        setIsVariablesDialogOpen(true);
-        toast({
-          title: "Variables détectées",
-          description: `${extractedVariables.reduce((sum, v) => sum + v.values.length, 0)} valeurs uniques détectées. Cliquez pour les ajouter à vos variables.`,
+      // 2) Auto-create custom variable types + values for unmapped columns
+      const { data: existingTypes } = await supabase
+        .from("user_variable_types")
+        .select("type_key")
+        .eq("user_id", user.id);
+
+      const existingTypeKeys = new Set((existingTypes || []).map(t => t.type_key));
+      const newTypesToCreate: { user_id: string; type_key: string; type_label: string }[] = [];
+
+      for (const col of unmappedColumns) {
+        const values = unmappedColumnValues[col.name];
+        if (values.size === 0) continue;
+
+        const typeKey = col.name.replace(/\s+/g, '_').toLowerCase();
+        
+        // Create the type if it doesn't exist
+        if (!existingTypeKeys.has(typeKey)) {
+          newTypesToCreate.push({ user_id: user.id, type_key: typeKey, type_label: col.name });
+          existingTypeKeys.add(typeKey);
+        }
+
+        // Create the values
+        values.forEach(val => {
+          if (!existingSet.has(`${typeKey}::${val}`)) {
+            variablesToCreate.push({ user_id: user.id, variable_type: typeKey, variable_value: val });
+            existingSet.add(`${typeKey}::${val}`);
+          }
         });
+      }
+
+      // Insert new custom variable types
+      if (newTypesToCreate.length > 0) {
+        await supabase.from("user_variable_types").insert(newTypesToCreate);
+      }
+
+      // Insert new custom variable values
+      if (variablesToCreate.length > 0) {
+        await supabase.from("user_custom_variables").insert(variablesToCreate);
       }
 
       setImportResult({ success: successCount, errors: errorCount });
       await fetchTrades();
 
+      // Build final toast message
+      const infoParts: string[] = [`${successCount} trades importés`];
+      if (errorCount > 0) infoParts.push(`${errorCount} lignes ignorées`);
+      if (variablesToCreate.length > 0) infoParts.push(`${variablesToCreate.length} variables créées`);
+      if (newTypesToCreate.length > 0) infoParts.push(`${newTypesToCreate.length} catégories créées`);
+      
+      let description = infoParts.join(', ') + '.';
+      if (missingWarnings.length > 0) {
+        description += ` Colonnes absentes : ${missingWarnings.join(', ')}.`;
+      }
+      if (unmappedColumns.length > 0) {
+        const unmappedWithValues = unmappedColumns.filter(c => unmappedColumnValues[c.name].size > 0);
+        if (unmappedWithValues.length > 0) {
+          description += ` Colonnes non-standard ajoutées comme variables : ${unmappedWithValues.map(c => c.name).join(', ')}.`;
+        }
+      }
+
       toast({
         title: "Import terminé",
-        description: `${successCount} trades importés, ${errorCount} erreurs.`,
+        description,
       });
     } catch (error: any) {
       console.error("Import error:", error);
