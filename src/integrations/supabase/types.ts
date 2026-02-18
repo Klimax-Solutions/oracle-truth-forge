@@ -22,6 +22,7 @@ export type Database = {
           id: string
           is_valid: boolean | null
           note: string | null
+          supplementary_note: string | null
           updated_at: string
           verification_request_id: string
         }
@@ -32,6 +33,7 @@ export type Database = {
           id?: string
           is_valid?: boolean | null
           note?: string | null
+          supplementary_note?: string | null
           updated_at?: string
           verification_request_id: string
         }
@@ -42,6 +44,7 @@ export type Database = {
           id?: string
           is_valid?: boolean | null
           note?: string | null
+          supplementary_note?: string | null
           updated_at?: string
           verification_request_id?: string
         }

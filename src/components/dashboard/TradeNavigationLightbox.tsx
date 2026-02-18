@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { X, ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight, CheckCircle, XCircle, Loader2, GitCompare } from "lucide-react";
+import { X, ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight, CheckCircle, XCircle, Loader2, GitCompare, MessageSquarePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { extractStoragePath } from "@/hooks/useSignedUrl";
@@ -49,7 +49,8 @@ interface TradeNavigationLightboxProps {
   open: boolean;
   onClose: () => void;
   onValidate?: (executionId: string, isValid: boolean, note: string) => void;
-  validationState?: Record<string, { isValid: boolean; note: string }>;
+  onSupplementaryNote?: (executionId: string, note: string) => void;
+  validationState?: Record<string, { isValid: boolean; note: string; supplementaryNote?: string }>;
   savingValidation?: string | null;
   oracleTrades?: OracleMatch[];
 }
@@ -61,6 +62,7 @@ export const TradeNavigationLightbox = ({
   open,
   onClose,
   onValidate,
+  onSupplementaryNote,
   validationState,
   savingValidation,
   oracleTrades,
@@ -74,6 +76,10 @@ export const TradeNavigationLightbox = ({
   const [oracleSignedUrls, setOracleSignedUrls] = useState<Record<string, string>>({});
   const [showRefusalDialog, setShowRefusalDialog] = useState(false);
   const [refusalNote, setRefusalNote] = useState("");
+  const [showValidationDialog, setShowValidationDialog] = useState(false);
+  const [validationNote, setValidationNote] = useState("");
+  const [showSupplementaryDialog, setShowSupplementaryDialog] = useState(false);
+  const [supplementaryNote, setSupplementaryNote] = useState("");
 
   const currentItem = items[currentIndex];
 
@@ -206,7 +212,6 @@ export const TradeNavigationLightbox = ({
   const currentValidation = currentItem.executionId && validationState
     ? validationState[currentItem.executionId]
     : null;
-  const isValid = currentValidation?.isValid !== false;
 
   const oracleCacheKey = matchingOracle ? `oracle_${matchingOracle.tradeNumber}_${activeScreen}` : "";
   const oracleImageUrl = oracleCacheKey ? oracleSignedUrls[oracleCacheKey] : null;
@@ -288,7 +293,6 @@ export const TradeNavigationLightbox = ({
 
         {/* Right controls */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Contexte/Entrée toggle - always enabled */}
           <div className="flex items-center gap-1 bg-muted rounded-md p-0.5">
             <button
               onClick={() => { setActiveScreen("m15"); setZoom(1); }}
@@ -314,7 +318,6 @@ export const TradeNavigationLightbox = ({
             </button>
           </div>
 
-          {/* Oracle comparison button */}
           {matchingOracle && (
             <button
               onClick={() => setShowOracleComparison(!showOracleComparison)}
@@ -330,7 +333,6 @@ export const TradeNavigationLightbox = ({
             </button>
           )}
 
-          {/* Zoom controls */}
           <button onClick={() => setZoom((z) => Math.max(z - 0.25, 0.25))} className="p-1.5 rounded-full bg-card/80 border border-border text-foreground hover:bg-card transition-colors">
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
@@ -356,7 +358,6 @@ export const TradeNavigationLightbox = ({
 
       {/* Image area with navigation arrows */}
       <div className="flex-1 flex items-center justify-center relative min-h-0">
-        {/* Left arrow */}
         <button
           onClick={(e) => { e.stopPropagation(); goToPrev(); }}
           disabled={currentIndex === 0}
@@ -368,12 +369,10 @@ export const TradeNavigationLightbox = ({
           <ChevronLeft className="w-6 h-6" />
         </button>
 
-        {/* Image(s) */}
         <div
           className={cn("flex gap-4", showOracleComparison && matchingOracle ? "max-w-[90vw]" : "")}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* User screenshot */}
           <div
             className={cn(
               "overflow-auto cursor-grab active:cursor-grabbing",
@@ -419,7 +418,6 @@ export const TradeNavigationLightbox = ({
             )}
           </div>
 
-          {/* Oracle screenshot (comparison mode) */}
           {showOracleComparison && matchingOracle && (
             <div
               className="overflow-auto max-w-[42vw] max-h-[calc(100vh-180px)] cursor-grab active:cursor-grabbing border-l border-border/50 pl-4"
@@ -458,7 +456,6 @@ export const TradeNavigationLightbox = ({
           )}
         </div>
 
-        {/* Right arrow */}
         <button
           onClick={(e) => { e.stopPropagation(); goToNext(); }}
           disabled={currentIndex === items.length - 1}
@@ -482,7 +479,8 @@ export const TradeNavigationLightbox = ({
               size="sm"
               className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => {
-                onValidate(currentItem.executionId!, true, "");
+                setValidationNote("");
+                setShowValidationDialog(true);
               }}
               disabled={savingValidation === currentItem.executionId}
             >
@@ -493,6 +491,21 @@ export const TradeNavigationLightbox = ({
               )}
               Valider le trade
             </Button>
+
+            {/* Supplementary note button */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={() => {
+                setSupplementaryNote(currentValidation?.supplementaryNote || "");
+                setShowSupplementaryDialog(true);
+              }}
+            >
+              <MessageSquarePlus className="w-4 h-4" />
+              Note complémentaire
+            </Button>
+
             <Button
               variant="destructive"
               size="sm"
@@ -511,15 +524,19 @@ export const TradeNavigationLightbox = ({
             {currentValidation && (
               <span className={cn(
                 "text-[10px] font-mono px-2 py-0.5 rounded",
-                isValid ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
+                currentValidation.isValid ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
               )}>
-                {isValid ? "✓ Validé" : "✗ Refusé"}
+                {currentValidation.isValid ? "✓ Validé" : "✗ Refusé"}
                 {currentValidation.note && ` — ${currentValidation.note}`}
+              </span>
+            )}
+            {currentValidation?.supplementaryNote && (
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                📝 Note: {currentValidation.supplementaryNote}
               </span>
             )}
           </div>
 
-          {/* Oracle match info */}
           {matchingOracle && !showOracleComparison && (
             <button
               onClick={() => setShowOracleComparison(true)}
@@ -531,6 +548,39 @@ export const TradeNavigationLightbox = ({
           )}
         </div>
       )}
+
+      {/* Validation justification dialog */}
+      <Dialog open={showValidationDialog} onOpenChange={setShowValidationDialog}>
+        <DialogContent onClick={(e) => e.stopPropagation()} className="z-[300]">
+          <DialogHeader>
+            <DialogTitle>Valider le trade #{currentItem?.tradeNumber}</DialogTitle>
+            <DialogDescription>
+              Justifiez pourquoi ce trade est validé.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={validationNote}
+            onChange={(e) => setValidationNote(e.target.value)}
+            placeholder="Justification de la validation..."
+            className="min-h-[80px]"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowValidationDialog(false)}>Annuler</Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              disabled={!validationNote.trim()}
+              onClick={() => {
+                if (currentItem.executionId && onValidate) {
+                  onValidate(currentItem.executionId, true, validationNote.trim());
+                }
+                setShowValidationDialog(false);
+              }}
+            >
+              Confirmer la validation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Refusal justification dialog */}
       <Dialog open={showRefusalDialog} onOpenChange={setShowRefusalDialog}>
@@ -560,6 +610,37 @@ export const TradeNavigationLightbox = ({
               }}
             >
               Confirmer le refus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Supplementary note dialog */}
+      <Dialog open={showSupplementaryDialog} onOpenChange={setShowSupplementaryDialog}>
+        <DialogContent onClick={(e) => e.stopPropagation()} className="z-[300]">
+          <DialogHeader>
+            <DialogTitle>Note complémentaire — Trade #{currentItem?.tradeNumber}</DialogTitle>
+            <DialogDescription>
+              Ajoutez des observations ou remarques supplémentaires sur ce trade.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={supplementaryNote}
+            onChange={(e) => setSupplementaryNote(e.target.value)}
+            placeholder="Note complémentaire..."
+            className="min-h-[100px]"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSupplementaryDialog(false)}>Annuler</Button>
+            <Button
+              onClick={() => {
+                if (currentItem.executionId && onSupplementaryNote) {
+                  onSupplementaryNote(currentItem.executionId, supplementaryNote.trim());
+                }
+                setShowSupplementaryDialog(false);
+              }}
+            >
+              Enregistrer la note
             </Button>
           </DialogFooter>
         </DialogContent>

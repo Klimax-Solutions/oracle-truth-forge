@@ -47,6 +47,7 @@ import {
 import { UserFollowupTab } from "./admin/UserFollowupTab";
 import { UserHistoryTab } from "./admin/UserHistoryTab";
 import { AdminUserDataViewer } from "./admin/AdminUserDataViewer";
+import { AdminTradeNotesViewer } from "./admin/AdminTradeNotesViewer";
 import { RoleManagement } from "./admin/RoleManagement";
 import { ScreenshotLink } from "./ScreenshotLink";
 import { TradeNavigationLightbox, type TradeScreenshotItem, type OracleMatch } from "./TradeNavigationLightbox";
@@ -206,6 +207,8 @@ export const AdminVerification = () => {
   // Assignment states
   const [assigningRequest, setAssigningRequest] = useState<string | null>(null);
   const [adminProfiles, setAdminProfiles] = useState<Profile[]>([]);
+  const [notesViewerRequestId, setNotesViewerRequestId] = useState<string | null>(null);
+  const [notesViewerExecs, setNotesViewerExecs] = useState<{ id: string; trade_number: number; direction: string; trade_date: string }[]>([]);
   const { toast } = useToast();
 
   const openGallery = (executions: UserExecution[], execIndex: number, screen: "m15" | "m5", requestId?: string) => {
@@ -784,7 +787,7 @@ export const AdminVerification = () => {
   };
 
   // Save a per-trade note
-  const saveTradeNote = async (requestId: string, executionId: string, note: string, isValid: boolean) => {
+  const saveTradeNote = async (requestId: string, executionId: string, note: string, isValid: boolean, supplementaryNote?: string) => {
     const key = `${requestId}_${executionId}`;
     setSavingNote(key);
 
@@ -792,15 +795,20 @@ export const AdminVerification = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const upsertData: any = {
+        verification_request_id: requestId,
+        execution_id: executionId,
+        admin_id: user.id,
+        note,
+        is_valid: isValid,
+      };
+      if (supplementaryNote !== undefined) {
+        upsertData.supplementary_note = supplementaryNote;
+      }
+
       const { error } = await supabase
         .from("admin_trade_notes")
-        .upsert({
-          verification_request_id: requestId,
-          execution_id: executionId,
-          admin_id: user.id,
-          note,
-          is_valid: isValid,
-        }, { onConflict: "verification_request_id,execution_id" });
+        .upsert(upsertData, { onConflict: "verification_request_id,execution_id" });
 
       if (error) throw error;
     } catch (error) {
@@ -1617,22 +1625,32 @@ export const AdminVerification = () => {
                                     </span>
                                   )}
                                 </div>
+                                <div className="w-px h-4 bg-border" />
                                 <div className="flex items-center gap-1.5">
                                   <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-emerald-500" />
                                   <span className="text-[10px] md:text-xs font-mono">
-                                    {request.comparisons.filter(c => c.status === 'match').length} OK
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-orange-500" />
-                                  <span className="text-[10px] md:text-xs font-mono">
-                                    {request.comparisons.filter(c => c.status === 'warning').length} &gt;5h
+                                    {request.comparisons.filter(c => {
+                                      const key = `${request.id}_${c.execution.id}`;
+                                      return tradeValidity[key] === true;
+                                    }).length} Validés
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-red-500" />
                                   <span className="text-[10px] md:text-xs font-mono">
-                                    {request.comparisons.filter(c => c.status === 'error' || c.status === 'no-match').length} Err
+                                    {request.comparisons.filter(c => {
+                                      const key = `${request.id}_${c.execution.id}`;
+                                      return tradeValidity[key] === false;
+                                    }).length} Refusés
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-muted-foreground/30" />
+                                  <span className="text-[10px] md:text-xs font-mono">
+                                    {request.comparisons.filter(c => {
+                                      const key = `${request.id}_${c.execution.id}`;
+                                      return tradeValidity[key] === undefined;
+                                    }).length} Non corrigés
                                   </span>
                                 </div>
                               </div>
@@ -1800,8 +1818,8 @@ export const AdminVerification = () => {
                                     <TableHead className="h-8 text-[10px] font-mono">Timing</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono text-right">RR</TableHead>
                                     <TableHead className="h-8 text-[10px] font-mono">Screens</TableHead>
-                                    <TableHead className="h-8 text-[10px] font-mono w-8">Valid</TableHead>
-                                    <TableHead className="h-8 text-[10px] font-mono min-w-[180px]">Note Admin</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono w-8">Validé</TableHead>
+                                    <TableHead className="h-8 text-[10px] font-mono">Notes Admin</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -1810,16 +1828,20 @@ export const AdminVerification = () => {
                                     const oracle = comp.oracleTrade;
                                     const noteKey = `${request.id}_${exec.id}`;
                                     const isValid = tradeValidity[noteKey] !== false;
+                                    const hasBeenReviewed = tradeValidity[noteKey] !== undefined;
                                     
                                     return (
                                       <TableRow 
                                         key={exec.id} 
                                         className={cn(
                                           "hover:bg-muted/30 cursor-pointer",
-                                          exec.trade_number <= 15 && comp.status === 'match' && "bg-emerald-500/10 border-l-2 border-l-emerald-500",
-                                          exec.trade_number <= 15 && comp.status === 'warning' && "bg-orange-500/10 border-l-2 border-l-orange-500",
-                                          exec.trade_number <= 15 && comp.status === 'error' && "bg-red-500/10 border-l-2 border-l-red-500",
-                                          exec.trade_number <= 15 && comp.status === 'no-match' && "bg-red-500/10 border-l-2 border-l-red-500"
+                                          // Validation-based row coloring (takes priority)
+                                          hasBeenReviewed && isValid && "bg-emerald-500/10 border-l-2 border-l-emerald-500",
+                                          hasBeenReviewed && !isValid && "bg-red-500/10 border-l-2 border-l-red-500",
+                                          // Oracle match coloring (only for trades ≤15 when not yet reviewed)
+                                          !hasBeenReviewed && exec.trade_number <= 15 && comp.status === 'match' && "bg-emerald-500/5 border-l-2 border-l-emerald-500/40",
+                                          !hasBeenReviewed && exec.trade_number <= 15 && comp.status === 'warning' && "bg-orange-500/5 border-l-2 border-l-orange-500/40",
+                                          !hasBeenReviewed && exec.trade_number <= 15 && (comp.status === 'error' || comp.status === 'no-match') && "bg-red-500/5 border-l-2 border-l-red-500/40"
                                         )}
                                         onClick={() => {
                                           const execs = request.executions;
@@ -1946,37 +1968,36 @@ export const AdminVerification = () => {
                                             )}
                                           </div>
                                         </TableCell>
+                                        <TableCell className="py-1.5 text-center">
+                                          {hasBeenReviewed ? (
+                                            isValid ? (
+                                              <CheckCircle className="w-4 h-4 text-emerald-400 mx-auto" />
+                                            ) : (
+                                              <XCircle className="w-4 h-4 text-red-400 mx-auto" />
+                                            )
+                                          ) : (
+                                            <span className="text-[9px] font-mono text-muted-foreground">—</span>
+                                          )}
+                                        </TableCell>
                                         <TableCell className="py-1.5">
                                           <Button
                                             variant="ghost"
                                             size="sm"
-                                            className={cn(
-                                              "h-6 w-6 p-0 rounded-full",
-                                              isValid ? "text-emerald-400 hover:text-emerald-300" : "text-red-400 hover:text-red-300"
-                                            )}
-                                            onClick={() => toggleTradeValidity(request.id, exec.id)}
+                                            className="h-6 text-[9px] font-mono gap-1 px-2"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setNotesViewerRequestId(request.id);
+                                              setNotesViewerExecs(request.executions.map(ex => ({
+                                                id: ex.id,
+                                                trade_number: ex.trade_number,
+                                                direction: ex.direction,
+                                                trade_date: ex.trade_date,
+                                              })));
+                                            }}
                                           >
-                                            {isValid ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                                            <MessageSquare className="w-3 h-3" />
+                                            {tradeNotes[noteKey] ? "Voir notes" : "—"}
                                           </Button>
-                                        </TableCell>
-                                        <TableCell className="py-1.5">
-                                          <div className="flex items-center gap-1">
-                                            <Input
-                                              value={tradeNotes[noteKey] || ""}
-                                              onChange={(e) => setTradeNotes(prev => ({ ...prev, [noteKey]: e.target.value }))}
-                                              placeholder="Note..."
-                                              className="h-6 text-[10px] bg-card min-w-[140px]"
-                                            />
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-6 w-6 p-0 flex-shrink-0"
-                                              disabled={savingNote === noteKey}
-                                              onClick={() => saveTradeNote(request.id, exec.id, tradeNotes[noteKey] || "", isValid)}
-                                            >
-                                              {savingNote === noteKey ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                                            </Button>
-                                          </div>
                                         </TableCell>
                                       </TableRow>
                                     );
@@ -2003,21 +2024,67 @@ export const AdminVerification = () => {
                             </Button>
                           </div>
 
-                          {/* Feedback */}
-                          <div>
-                            <label className="text-[10px] md:text-xs font-mono uppercase text-muted-foreground mb-1.5 md:mb-2 block">
-                              Feedback (optionnel pour validation, requis pour refus)
-                            </label>
-                            <Textarea
-                              value={feedback[request.id] || ""}
-                              onChange={(e) => setFeedback(prev => ({
-                                ...prev,
-                                [request.id]: e.target.value,
-                              }))}
-                              placeholder="Laissez un commentaire..."
-                              className="resize-none bg-card border-border/40 text-sm"
-                              rows={2}
-                            />
+                          {/* Correction Report + Feedback */}
+                          <div className="space-y-3">
+                            {/* Bilan de correction button */}
+                            {(() => {
+                              const allReviewed = request.comparisons.every(c => {
+                                const key = `${request.id}_${c.execution.id}`;
+                                return tradeValidity[key] !== undefined;
+                              });
+                              const validatedCount = request.comparisons.filter(c => tradeValidity[`${request.id}_${c.execution.id}`] === true).length;
+                              const rejectedCount = request.comparisons.filter(c => tradeValidity[`${request.id}_${c.execution.id}`] === false).length;
+                              
+                              return allReviewed ? (
+                                <div className="p-3 bg-primary/5 border border-primary/20 rounded-md">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-xs font-mono font-semibold text-foreground">
+                                        ✅ Tous les trades ont été corrigés
+                                      </p>
+                                      <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                                        {validatedCount} validé(s) · {rejectedCount} refusé(s)
+                                      </p>
+                                    </div>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="gap-1.5 text-xs"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setNotesViewerRequestId(request.id);
+                                        setNotesViewerExecs(request.executions.map(ex => ({
+                                          id: ex.id,
+                                          trade_number: ex.trade_number,
+                                          direction: ex.direction,
+                                          trade_date: ex.trade_date,
+                                        })));
+                                      }}
+                                    >
+                                      <ClipboardList className="w-3.5 h-3.5" />
+                                      Bilan de correction
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : null;
+                            })()}
+
+                            {/* Feedback */}
+                            <div>
+                              <label className="text-[10px] md:text-xs font-mono uppercase text-muted-foreground mb-1.5 md:mb-2 block">
+                                Feedback (requis pour validation et refus)
+                              </label>
+                              <Textarea
+                                value={feedback[request.id] || ""}
+                                onChange={(e) => setFeedback(prev => ({
+                                  ...prev,
+                                  [request.id]: e.target.value,
+                                }))}
+                                placeholder="Laissez un commentaire..."
+                                className="resize-none bg-card border-border/40 text-sm"
+                                rows={2}
+                              />
+                            </div>
                           </div>
 
                           {/* Actions */}
@@ -2175,6 +2242,9 @@ export const AdminVerification = () => {
           setTradeNotes(prev => ({ ...prev, [key]: note }));
           saveTradeNote(galleryRequestId!, executionId, note, isValid);
         } : undefined}
+        onSupplementaryNote={galleryRequestId ? (executionId, note) => {
+          saveTradeNote(galleryRequestId!, executionId, tradeNotes[`${galleryRequestId}_${executionId}`] || "", tradeValidity[`${galleryRequestId}_${executionId}`] !== false, note);
+        } : undefined}
         validationState={galleryRequestId ? Object.fromEntries(
           Object.entries(tradeValidity)
             .filter(([k]) => k.startsWith(`${galleryRequestId}_`))
@@ -2184,6 +2254,17 @@ export const AdminVerification = () => {
             })
         ) : undefined}
         savingValidation={savingNote ? savingNote.replace(`${galleryRequestId}_`, "") : null}
+      />
+
+      {/* Admin Trade Notes Viewer */}
+      <AdminTradeNotesViewer
+        open={!!notesViewerRequestId}
+        onOpenChange={(open) => { if (!open) setNotesViewerRequestId(null); }}
+        requestId={notesViewerRequestId || ""}
+        executions={notesViewerExecs}
+        onNotesUpdated={() => {
+          if (notesViewerRequestId) loadTradeNotes(notesViewerRequestId);
+        }}
       />
     </div>
   );
