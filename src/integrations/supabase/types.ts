@@ -430,6 +430,8 @@ export type Database = {
           exit_price: number | null
           exit_time: string | null
           id: string
+          news_day: boolean | null
+          news_label: string | null
           notes: string | null
           result: string | null
           rr: number | null
@@ -438,6 +440,7 @@ export type Database = {
           setup_type: string | null
           sl_placement: string | null
           stop_loss: number | null
+          stop_loss_size: string | null
           take_profit: number | null
           tp_placement: string | null
           trade_date: string
@@ -459,6 +462,8 @@ export type Database = {
           exit_price?: number | null
           exit_time?: string | null
           id?: string
+          news_day?: boolean | null
+          news_label?: string | null
           notes?: string | null
           result?: string | null
           rr?: number | null
@@ -467,6 +472,7 @@ export type Database = {
           setup_type?: string | null
           sl_placement?: string | null
           stop_loss?: number | null
+          stop_loss_size?: string | null
           take_profit?: number | null
           tp_placement?: string | null
           trade_date: string
@@ -488,6 +494,8 @@ export type Database = {
           exit_price?: number | null
           exit_time?: string | null
           id?: string
+          news_day?: boolean | null
+          news_label?: string | null
           notes?: string | null
           result?: string | null
           rr?: number | null
@@ -496,6 +504,7 @@ export type Database = {
           setup_type?: string | null
           sl_placement?: string | null
           stop_loss?: number | null
+          stop_loss_size?: string | null
           take_profit?: number | null
           tp_placement?: string | null
           trade_date?: string

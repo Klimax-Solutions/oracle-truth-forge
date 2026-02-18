@@ -309,7 +309,7 @@ export const OracleTradeEditDialog = ({ isOpen, onClose, onSaved, trade }: Oracl
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Taille du SL</Label>
-              <Input value={formData.stop_loss_size} onChange={(e) => setFormData({ ...formData, stop_loss_size: e.target.value })} placeholder="Ex: Serré, Normal..." />
+              <Input value={formData.stop_loss_size} onChange={(e) => setFormData({ ...formData, stop_loss_size: e.target.value })} placeholder="Taille du stop loss en points/pips" />
             </div>
             <div className="space-y-2">
               <Label>Durée du trade</Label>

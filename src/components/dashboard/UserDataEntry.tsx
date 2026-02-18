@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { TimePicker } from "@/components/ui/time-picker";
 import { DatePicker } from "@/components/ui/date-picker";
 // CustomizableSelect removed - using CustomizableMultiSelect for all fields
@@ -116,6 +117,12 @@ interface FormData {
   entry_timing: string;
   entry_timeframe: string;
   notes: string;
+  sl_placement: string;
+  tp_placement: string;
+  context_timeframe: string;
+  stop_loss_size: string;
+  news_day: boolean;
+  news_label: string;
 }
 
 // Fixed options (non-deletable)
@@ -199,6 +206,12 @@ const initialFormData: FormData = {
   entry_timing: "",
   entry_timeframe: "",
   notes: "",
+  sl_placement: "",
+  tp_placement: "",
+  context_timeframe: "",
+  stop_loss_size: "",
+  news_day: false,
+  news_label: "",
 };
 
 export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: UserDataEntryProps) => {
@@ -442,6 +455,12 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       entry_timing: execution.entry_timing || "",
       entry_timeframe: (execution as any).entry_timeframe || "",
       notes: execution.notes || "",
+      sl_placement: (execution as any).sl_placement || "",
+      tp_placement: (execution as any).tp_placement || "",
+      context_timeframe: (execution as any).context_timeframe || "",
+      stop_loss_size: (execution as any).stop_loss_size || "",
+      news_day: (execution as any).news_day || false,
+      news_label: (execution as any).news_label || "",
     });
     setEditingId(execution.id);
     setContextFile(null);
@@ -519,6 +538,12 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       notes: formData.notes || null,
       screenshot_url: contextUrl,
       screenshot_entry_url: entryUrl,
+      sl_placement: formData.sl_placement || null,
+      tp_placement: formData.tp_placement || null,
+      context_timeframe: formData.context_timeframe || null,
+      stop_loss_size: formData.stop_loss_size || null,
+      news_day: formData.news_day,
+      news_label: formData.news_day ? (formData.news_label || null) : null,
     };
 
     try {
@@ -824,6 +849,32 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         />
                       </div>
                     </div>
+
+                    {/* SL/TP Placement */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mt-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Placement du SL</Label>
+                        <CustomizableMultiSelect
+                          value={formData.sl_placement}
+                          onChange={(v) => setFormData({ ...formData, sl_placement: v })}
+                          customOptions={variables.sl_placement || []}
+                          variableType="sl_placement"
+                          placeholder="Sélectionner..."
+                          onOptionsChanged={refetchVariables}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Placement du TP</Label>
+                        <CustomizableMultiSelect
+                          value={formData.tp_placement}
+                          onChange={(v) => setFormData({ ...formData, tp_placement: v })}
+                          customOptions={variables.tp_placement || []}
+                          variableType="tp_placement"
+                          placeholder="Sélectionner..."
+                          onOptionsChanged={refetchVariables}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   {/* Section 3: Temps & Résultat */}
@@ -866,6 +917,39 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         />
                       </div>
                     </div>
+                  </div>
+
+                  {/* Taille du SL + News */}
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Complément</p>
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Taille du SL</Label>
+                        <Input
+                          value={formData.stop_loss_size}
+                          onChange={(e) => setFormData({ ...formData, stop_loss_size: e.target.value })}
+                          placeholder="Taille du stop loss en points/pips"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 mt-3">
+                      <Checkbox
+                        id="news_day_exec"
+                        checked={formData.news_day}
+                        onCheckedChange={(checked) => setFormData({ ...formData, news_day: !!checked, news_label: !!checked ? formData.news_label : "" })}
+                      />
+                      <Label htmlFor="news_day_exec" className="cursor-pointer text-xs">Jour de news</Label>
+                    </div>
+                    {formData.news_day && (
+                      <div className="mt-2 ml-7 space-y-1.5">
+                        <Label className="text-xs">Label de la news</Label>
+                        <Input
+                          value={formData.news_label}
+                          onChange={(e) => setFormData({ ...formData, news_label: e.target.value })}
+                          placeholder="Ex: NFP, CPI, FOMC..."
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Section 4: Prix manuels */}
