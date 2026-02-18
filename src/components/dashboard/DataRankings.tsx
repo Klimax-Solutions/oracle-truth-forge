@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Trophy, Clock, Crosshair, Timer } from "lucide-react";
+import { Trophy, Clock, Crosshair, Timer, Lock } from "lucide-react";
 
 interface Trade {
   rr: number;
@@ -14,6 +14,7 @@ interface Trade {
 
 interface DataRankingsProps {
   trades: Trade[];
+  blurTop?: boolean;
 }
 
 // Normalize entry model names: group all "Englobante" variants together
@@ -51,7 +52,7 @@ const formatMinutes = (min: number): string => {
   return `${Math.round(min)}min`;
 };
 
-export const DataRankings = ({ trades }: DataRankingsProps) => {
+export const DataRankings = ({ trades, blurTop = false }: DataRankingsProps) => {
   const rankings = useMemo(() => {
     // ─── Entry Model Ranking ───
     const modelMap: Record<string, { count: number; totalRR: number }> = {};
@@ -137,10 +138,19 @@ export const DataRankings = ({ trades }: DataRankingsProps) => {
               <Crosshair className="w-3 h-3 text-amber-500" />
               <p className="text-[8px] text-muted-foreground font-mono uppercase">Modèle #1</p>
             </div>
-            <p className="text-sm font-bold text-foreground truncate">{topModel.name}</p>
-            <p className="text-[9px] text-muted-foreground font-mono">
-              {topModel.count}t · {topModel.avgRR >= 0 ? "+" : ""}{topModel.avgRR.toFixed(1)} moy
-            </p>
+            {blurTop ? (
+              <div className="flex items-center gap-1">
+                <Lock className="w-3 h-3 text-muted-foreground" />
+                <p className="text-sm font-bold text-muted-foreground italic">Confidentiel</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-bold text-foreground truncate">{topModel.name}</p>
+                <p className="text-[9px] text-muted-foreground font-mono">
+                  {topModel.count}t · {topModel.avgRR >= 0 ? "+" : ""}{topModel.avgRR.toFixed(1)} moy
+                </p>
+              </>
+            )}
           </div>
         )}
 
@@ -151,10 +161,19 @@ export const DataRankings = ({ trades }: DataRankingsProps) => {
               <Clock className="w-3 h-3 text-emerald-500" />
               <p className="text-[8px] text-muted-foreground font-mono uppercase">Timing #1</p>
             </div>
-            <p className="text-sm font-bold text-foreground">{topTiming.slot}</p>
-            <p className="text-[9px] text-muted-foreground font-mono">
-              {topTiming.count}t · {topTiming.avgRR >= 0 ? "+" : ""}{topTiming.avgRR.toFixed(1)} moy
-            </p>
+            {blurTop ? (
+              <div className="flex items-center gap-1">
+                <Lock className="w-3 h-3 text-muted-foreground" />
+                <p className="text-sm font-bold text-muted-foreground italic">Confidentiel</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-bold text-foreground">{topTiming.slot}</p>
+                <p className="text-[9px] text-muted-foreground font-mono">
+                  {topTiming.count}t · {topTiming.avgRR >= 0 ? "+" : ""}{topTiming.avgRR.toFixed(1)} moy
+                </p>
+              </>
+            )}
           </div>
         )}
 
@@ -164,10 +183,19 @@ export const DataRankings = ({ trades }: DataRankingsProps) => {
             <div className="flex items-center gap-1 mb-1">
               <p className="text-[8px] text-muted-foreground font-mono uppercase">Structure #1</p>
             </div>
-            <p className="text-sm font-bold text-foreground truncate">{topStruct.name}</p>
-            <p className="text-[9px] text-muted-foreground font-mono">
-              {topStruct.count}t · {topStruct.avgRR >= 0 ? "+" : ""}{topStruct.avgRR.toFixed(1)} moy
-            </p>
+            {blurTop ? (
+              <div className="flex items-center gap-1">
+                <Lock className="w-3 h-3 text-muted-foreground" />
+                <p className="text-sm font-bold text-muted-foreground italic">Confidentiel</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-bold text-foreground truncate">{topStruct.name}</p>
+                <p className="text-[9px] text-muted-foreground font-mono">
+                  {topStruct.count}t · {topStruct.avgRR >= 0 ? "+" : ""}{topStruct.avgRR.toFixed(1)} moy
+                </p>
+              </>
+            )}
           </div>
         )}
 

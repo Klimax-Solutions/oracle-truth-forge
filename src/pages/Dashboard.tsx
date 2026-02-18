@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -78,6 +78,10 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const showDataGenerale = isAdmin || isSuperAdmin;
   const { dataGenerale } = useDataGenerale(trades, showDataGenerale);
+  const isEarlyAccessExpired = useMemo(() => {
+    if (!isEarlyAccess || !expiresAt) return false;
+    return new Date(expiresAt).getTime() <= Date.now();
+  }, [isEarlyAccess, expiresAt]);
 
   useEffect(() => {
     const checkUserAccess = async (uid: string) => {
@@ -267,7 +271,7 @@ const Dashboard = () => {
   };
 
   const displayTrades = getDisplayTrades();
-  const showDataSourceSelector = ["data-analysis"].includes(activeTab);
+  const showDataSourceSelector = ["data-analysis"].includes(activeTab) && !isEarlyAccess;
 
   const renderContent = () => {
     switch (activeTab) {
@@ -276,7 +280,7 @@ const Dashboard = () => {
       case "setup":
         return <SetupPage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} />;
       case "data-analysis":
-        return <DataAnalysisPage trades={displayTrades} onNavigateToDatabase={handleNavigateToDatabase} />;
+        return <DataAnalysisPage trades={displayTrades} onNavigateToDatabase={handleNavigateToDatabase} isEarlyAccess={isEarlyAccess} isExpired={isEarlyAccessExpired} />;
       case "videos":
         return <VideoSetup />;
       case "successes":

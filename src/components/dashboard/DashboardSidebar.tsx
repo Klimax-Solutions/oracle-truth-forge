@@ -68,8 +68,8 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
     ? tabs.filter(t => t.id !== "successes") 
     : [...tabs];
   
-  // Add Results tab for early access users
-  if (isEarlyAccess) {
+  // Add Results tab for early access, admin, and super admin
+  if (isEarlyAccess || isAdmin || isSuperAdmin) {
     allTabs = [...allTabs, ...earlyAccessTabs];
   }
   
