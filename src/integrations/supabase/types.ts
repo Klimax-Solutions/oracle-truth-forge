@@ -444,6 +444,7 @@ export type Database = {
           take_profit: number | null
           tp_placement: string | null
           trade_date: string
+          trade_duration: string | null
           trade_number: number
           updated_at: string
           user_id: string
@@ -476,6 +477,7 @@ export type Database = {
           take_profit?: number | null
           tp_placement?: string | null
           trade_date: string
+          trade_duration?: string | null
           trade_number: number
           updated_at?: string
           user_id: string
@@ -508,6 +510,7 @@ export type Database = {
           take_profit?: number | null
           tp_placement?: string | null
           trade_date?: string
+          trade_duration?: string | null
           trade_number?: number
           updated_at?: string
           user_id?: string
