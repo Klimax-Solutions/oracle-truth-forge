@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Database, User, ArrowRight, TrendingUp, BarChart3, Clock, Target, AlertTriangle, CheckSquare, Globe, Play, Eye } from "lucide-react";
+import { Database, User, ArrowRight, TrendingUp, BarChart3, Clock, Target, AlertTriangle, CheckSquare, Globe, Play, Eye, Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { OraclePage } from "./OraclePage";
 import { OracleDatabase } from "./OracleDatabase";
@@ -9,6 +10,8 @@ import { SetupPerso } from "./SetupPerso";
 import { usePersonalTrades } from "@/hooks/usePersonalTrades";
 import { useDataGenerale } from "@/hooks/useDataGenerale";
 import { useSidebarRoles } from "./DashboardSidebar";
+import { useCustomSetups, CustomSetup } from "@/hooks/useCustomSetups";
+import { CreateSetupDialog } from "./CreateSetupDialog";
 
 interface Trade {
   id: string;
@@ -42,7 +45,7 @@ interface SetupPageProps {
   ebaucheComplete?: boolean;
 }
 
-type ActiveView = "overview" | "oracle" | "perso" | "data-generale";
+type ActiveView = "overview" | "oracle" | "perso" | "data-generale" | `custom-${string}`;
 
 // Asset class configuration
 const ASSET_CLASSES: Record<string, string[]> = {
@@ -73,6 +76,10 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
   const { isAdmin, isSuperAdmin } = useSidebarRoles();
   const showDataGenerale = isAdmin || isSuperAdmin;
   const { dataGenerale, stats: dgStats, loading: dgLoading } = useDataGenerale(trades, showDataGenerale);
+  const { setups: customSetups, loading: setupsLoading, refetch: refetchSetups } = useCustomSetups();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [renamingSetupId, setRenamingSetupId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   useEffect(() => {
     if (initialFilters && Object.values(initialFilters).some((arr: any) => arr?.length > 0)) {
@@ -117,29 +124,55 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
     fetchExecutionStats();
   }, []);
 
-  // Perso stats
+  // Perso stats (exclude custom setup trades)
+  const defaultPersoTrades = personalTrades.filter(t => !t.custom_setup_id);
   const persoStats = {
-    totalTrades: personalTrades.length,
-    totalRR: personalTrades.reduce((sum, t) => sum + (t.rr || 0), 0),
-    winRate: personalTrades.length > 0 
-      ? (personalTrades.filter(t => (t.rr || 0) > 0).length / personalTrades.length * 100) 
+    totalTrades: defaultPersoTrades.length,
+    totalRR: defaultPersoTrades.reduce((sum, t) => sum + (t.rr || 0), 0),
+    winRate: defaultPersoTrades.length > 0 
+      ? (defaultPersoTrades.filter(t => (t.rr || 0) > 0).length / defaultPersoTrades.length * 100) 
       : 0,
-    avgRR: personalTrades.length > 0 
-      ? personalTrades.reduce((sum, t) => sum + (t.rr || 0), 0) / personalTrades.length 
+    avgRR: defaultPersoTrades.length > 0 
+      ? defaultPersoTrades.reduce((sum, t) => sum + (t.rr || 0), 0) / defaultPersoTrades.length 
       : 0,
   };
 
   // Last Oracle trade
   const lastOracleTrade = trades.length > 0 ? trades[trades.length - 1] : null;
-  // Last personal trade
-  const lastPersoTrade = personalTrades.length > 0 ? personalTrades[personalTrades.length - 1] : null;
+  // Last personal trade (exclude custom setup trades)
+  const lastPersoTrade = defaultPersoTrades.length > 0 ? defaultPersoTrades[defaultPersoTrades.length - 1] : null;
   // Last Data Générale trade
   const lastDGTrade = dataGenerale.length > 0 ? dataGenerale[dataGenerale.length - 1] : null;
+
+  // Rename handler
+  const handleRename = async (setupId: string) => {
+    if (!renameValue.trim()) return;
+    const { error } = await supabase.from("custom_setups").update({ name: renameValue.trim() } as any).eq("id", setupId);
+    if (!error) {
+      refetchSetups();
+      setRenamingSetupId(null);
+    }
+  };
+
+  // Custom setup trades count
+  const customSetupStats = useMemo(() => {
+    const stats: Record<string, { count: number; totalRR: number }> = {};
+    for (const t of personalTrades) {
+      const sid = (t as any).custom_setup_id;
+      if (sid) {
+        if (!stats[sid]) stats[sid] = { count: 0, totalRR: 0 };
+        stats[sid].count++;
+        stats[sid].totalRR += t.rr || 0;
+      }
+    }
+    return stats;
+  }, [personalTrades]);
 
   // Group personal trades by asset class
   const persoByAssetClass = useMemo(() => {
     const groups: Record<string, typeof personalTrades> = {};
     for (const t of personalTrades) {
+      if ((t as any).custom_setup_id) continue;
       const cls = getAssetClass((t as any).asset);
       if (!groups[cls]) groups[cls] = [];
       groups[cls].push(t);
@@ -180,7 +213,6 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
             isDataGenerale={true}
             isAdmin={isAdmin || isSuperAdmin}
             onTradeUpdated={() => {
-              // Force re-fetch by toggling a state or reloading trades
               window.location.reload();
             }}
           />
@@ -202,6 +234,26 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
         </div>
       </div>
     );
+  }
+
+  // Custom setup view
+  if (activeView.startsWith("custom-")) {
+    const setupId = activeView.replace("custom-", "");
+    const setup = customSetups.find(s => s.id === setupId);
+    if (setup) {
+      return (
+        <div className="h-full flex flex-col">
+          <SubViewHeader
+            icon={<Database className="w-4 h-4 text-primary" />}
+            label={setup.name}
+            onBack={() => setActiveView("overview")}
+          />
+          <div className="flex-1 overflow-auto">
+            <SetupPerso customSetupId={setup.id} customSetupName={setup.name} />
+          </div>
+        </div>
+      );
+    }
   }
 
   // ──────────────── OVERVIEW ────────────────
@@ -303,7 +355,86 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
             onClick={() => setActiveView("perso")}
             actionLabel="Continuer ma récolte"
           />
+
+          {/* Custom Setup Cards */}
+          {customSetups.map((setup) => {
+            const st = customSetupStats[setup.id] || { count: 0, totalRR: 0 };
+            return (
+              <div key={setup.id} className="relative group">
+                {/* Rename overlay */}
+                {renamingSetupId === setup.id ? (
+                  <div className="border border-primary/50 rounded-xl bg-card p-4 space-y-3">
+                    <Input
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      placeholder="Nouveau nom"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleRename(setup.id);
+                        if (e.key === "Escape") setRenamingSetupId(null);
+                      }}
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => handleRename(setup.id)}>Renommer</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setRenamingSetupId(null)}>Annuler</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRenamingSetupId(setup.id);
+                        setRenameValue(setup.name);
+                      }}
+                    >
+                      <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                    <SetupCard
+                      icon={<Database className="w-5 h-5 text-primary" />}
+                      title={setup.name}
+                      subtitle={setup.asset ? `Actif: ${setup.asset}` : "Setup personnalisé"}
+                      accentColor="primary"
+                      stats={{
+                        trades: st.count,
+                        totalRR: st.totalRR,
+                        winRate: st.count > 0 ? ((st.totalRR > 0 ? 1 : 0) / st.count * 100) : 0,
+                        avgRR: st.count > 0 ? st.totalRR / st.count : 0,
+                      }}
+                      lastTrade={null}
+                      onClick={() => setActiveView(`custom-${setup.id}`)}
+                      actionLabel="Ouvrir le setup"
+                    />
+                  </>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Create Setup Button (Admin only) */}
+          {(isAdmin || isSuperAdmin) && (
+            <div
+              onClick={() => setIsCreateDialogOpen(true)}
+              className="border-2 border-dashed border-border rounded-xl bg-card/50 hover:border-primary/40 hover:bg-card transition-all cursor-pointer flex flex-col items-center justify-center min-h-[200px] gap-3"
+            >
+              <div className="p-3 rounded-full bg-primary/10">
+                <Plus className="w-6 h-6 text-primary" />
+              </div>
+              <span className="text-sm font-semibold text-muted-foreground">Créer un setup</span>
+            </div>
+          )}
         </div>
+
+        {/* Create Setup Dialog */}
+        <CreateSetupDialog
+          isOpen={isCreateDialogOpen}
+          onClose={() => setIsCreateDialogOpen(false)}
+          onCreated={() => {
+            setIsCreateDialogOpen(false);
+            refetchSetups();
+          }}
+        />
 
         {/* ─── Asset Class Sections (Personal Trades grouped) ─── */}
         {Object.keys(persoByAssetClass).length > 0 && (

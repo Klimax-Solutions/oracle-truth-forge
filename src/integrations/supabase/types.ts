@@ -62,6 +62,36 @@ export type Database = {
           },
         ]
       }
+      custom_setups: {
+        Row: {
+          asset: string | null
+          assigned_to: string | null
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          asset?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          asset?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cycles: {
         Row: {
           created_at: string
@@ -599,6 +629,7 @@ export type Database = {
           comment: string | null
           context_timeframe: string | null
           created_at: string
+          custom_setup_id: string | null
           day_of_week: string
           direction: string
           direction_structure: string | null
@@ -639,6 +670,7 @@ export type Database = {
           comment?: string | null
           context_timeframe?: string | null
           created_at?: string
+          custom_setup_id?: string | null
           day_of_week: string
           direction: string
           direction_structure?: string | null
@@ -679,6 +711,7 @@ export type Database = {
           comment?: string | null
           context_timeframe?: string | null
           created_at?: string
+          custom_setup_id?: string | null
           day_of_week?: string
           direction?: string
           direction_structure?: string | null
@@ -713,7 +746,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_personal_trades_custom_setup_id_fkey"
+            columns: ["custom_setup_id"]
+            isOneToOne: false
+            referencedRelation: "custom_setups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_quest_flags: {
         Row: {
