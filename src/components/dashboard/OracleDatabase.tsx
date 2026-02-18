@@ -67,6 +67,7 @@ interface Filters {
   day_of_week: string[];
   quarter: string[];
   year: string[];
+  contributor: string[];
   hasScreenshots?: boolean;
 }
 
@@ -75,7 +76,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
   const { isEarlyAccess } = useEarlyAccess();
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
-  const [filters, setFilters] = useState<Filters>(initialFilters || {
+  const [filters, setFilters] = useState<Filters>(initialFilters ? { ...initialFilters, contributor: (initialFilters as any).contributor || [] } : {
     direction: [],
     direction_structure: [],
     setup_type: [],
@@ -87,6 +88,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
     day_of_week: [],
     quarter: [],
     year: [],
+    contributor: [],
     hasScreenshots: false,
   });
 
@@ -107,6 +109,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
     setup_type: [...new Set(trades.map(t => t.setup_type).filter(Boolean))],
     entry_model: [...new Set(trades.flatMap(t => t.entry_model?.split(", ") || []).filter(Boolean))],
     entry_timing: [...new Set(trades.map(t => t.entry_timing).filter(Boolean))],
+    contributor: [...new Set(trades.map(t => t.contributor).filter(Boolean))],
   }), [trades]);
 
   // Apply filters
@@ -132,6 +135,8 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
       }
       // Filter by screenshots
       if (filters.hasScreenshots && !trade.screenshot_m15_m5 && !trade.screenshot_m1) return false;
+      // Filter by contributor
+      if (filters.contributor.length > 0 && (!trade.contributor || !filters.contributor.includes(trade.contributor))) return false;
       return true;
     });
   }, [trades, filters]);
@@ -169,6 +174,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
       day_of_week: [],
       quarter: [],
       year: [],
+      contributor: [],
       hasScreenshots: false,
     });
   };
@@ -369,6 +375,35 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Contributor filter - only show in Data Générale */}
+            {isDataGenerale && filterOptions.contributor.length > 1 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className={cn(
+                    "px-2 md:px-3 py-1 md:py-1.5 text-[9px] md:text-[10px] font-medium rounded-md transition-all flex items-center gap-1 flex-shrink-0",
+                    filters.contributor.length > 0
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  )}>
+                    Contrib
+                    <ChevronDown className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[120px] p-1 max-h-64 overflow-y-auto scrollbar-hide">
+                  {filterOptions.contributor.map(option => (
+                    <DropdownMenuCheckboxItem
+                      key={option}
+                      checked={filters.contributor.includes(option)}
+                      onCheckedChange={() => toggleFilter("contributor", option)}
+                      className="text-foreground text-[10px] md:text-xs rounded-md px-2 md:px-3 py-1.5 md:py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
+                    >
+                      {option}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
 
           </div>
         </div>

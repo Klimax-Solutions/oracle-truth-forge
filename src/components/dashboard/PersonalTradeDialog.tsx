@@ -125,6 +125,7 @@ interface FormData {
   tp_placement: string;
   context_timeframe: string;
   screenshot_entry_timeframe: string;
+  stop_loss_size: string;
 }
 
 const initialFormData: FormData = {
@@ -153,6 +154,7 @@ const initialFormData: FormData = {
   tp_placement: "",
   context_timeframe: "",
   screenshot_entry_timeframe: "",
+  stop_loss_size: "",
 };
 
 // ── Duration calculator ──
@@ -314,6 +316,7 @@ export const PersonalTradeDialog = ({
           tp_placement: (editingTrade as any).tp_placement || "",
           context_timeframe: (editingTrade as any).context_timeframe || "",
           screenshot_entry_timeframe: "",
+          stop_loss_size: editingTrade.stop_loss_size || "",
         });
         // Handle existing screenshots - prioritize new fields, fallback to old screenshot_url
         setExistingContextUrl(editingTrade.screenshot_context_url || editingTrade.screenshot_url || null);
@@ -436,6 +439,7 @@ export const PersonalTradeDialog = ({
       sl_placement: formData.sl_placement || null,
       tp_placement: formData.tp_placement || null,
       context_timeframe: formData.context_timeframe || null,
+      stop_loss_size: formData.stop_loss_size || null,
     } as any;
 
     try {
@@ -673,6 +677,18 @@ export const PersonalTradeDialog = ({
                 variableType="tp_placement"
                 placeholder="Sélectionner..."
                 onOptionsChanged={refetchVariables}
+              />
+            </div>
+           </div>
+
+          {/* Taille du SL */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Taille du SL</Label>
+              <Input
+                value={formData.stop_loss_size}
+                onChange={(e) => setFormData({ ...formData, stop_loss_size: e.target.value })}
+                placeholder="Taille du stop loss en points/pips"
               />
             </div>
           </div>
