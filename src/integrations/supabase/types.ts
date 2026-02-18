@@ -561,6 +561,7 @@ export type Database = {
       }
       user_personal_trades: {
         Row: {
+          asset: string | null
           chart_link: string | null
           comment: string | null
           created_at: string
@@ -597,6 +598,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          asset?: string | null
           chart_link?: string | null
           comment?: string | null
           created_at?: string
@@ -633,6 +635,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          asset?: string | null
           chart_link?: string | null
           comment?: string | null
           created_at?: string
@@ -863,6 +866,7 @@ export type Database = {
       verification_requests: {
         Row: {
           admin_comments: string | null
+          assigned_to: string | null
           created_at: string
           cycle_id: string
           id: string
@@ -875,6 +879,7 @@ export type Database = {
         }
         Insert: {
           admin_comments?: string | null
+          assigned_to?: string | null
           created_at?: string
           cycle_id: string
           id?: string
@@ -887,6 +892,7 @@ export type Database = {
         }
         Update: {
           admin_comments?: string | null
+          assigned_to?: string | null
           created_at?: string
           cycle_id?: string
           id?: string

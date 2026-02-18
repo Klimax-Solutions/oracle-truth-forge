@@ -134,9 +134,9 @@ const TIMING_FIXED_OPTIONS = ["US Open 15:30", "London Close (16h)"];
 
 const ENTRY_TIMEFRAME_FIXED_OPTIONS = ["15s", "30s", "M1", "M3", "M5", "M15"];
 
-// Time constraints
-const MIN_ENTRY_TIME = "15:20";
-const MAX_TIME = "22:00";
+// Time constraints removed — all hours are now selectable
+const MIN_ENTRY_TIME = "00:00";
+const MAX_TIME = "23:59";
 
 // Cycle thresholds - comparison status only revealed after completing each cycle
 const CYCLE_THRESHOLDS = [
@@ -831,33 +831,18 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Exécution</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">
-                          Heure Entrée <span className="text-muted-foreground">(min {MIN_ENTRY_TIME})</span>
-                        </Label>
+                        <Label className="text-xs">Heure Entrée</Label>
                         <TimePicker
                           value={formData.entry_time}
                           onChange={(value) => setFormData({ ...formData, entry_time: value })}
-                          minTime={MIN_ENTRY_TIME}
-                          maxTime={MAX_TIME}
-                          error={formData.entry_time !== "" && !validateEntryTime(formData.entry_time)}
                         />
-                        {formData.entry_time && !validateEntryTime(formData.entry_time) && (
-                          <p className="text-[10px] text-destructive">Minimum {MIN_ENTRY_TIME}</p>
-                        )}
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">
-                          Heure Sortie <span className="text-muted-foreground">(max {MAX_TIME})</span>
-                        </Label>
+                        <Label className="text-xs">Heure Sortie</Label>
                         <TimePicker
                           value={formData.exit_time}
                           onChange={(value) => setFormData({ ...formData, exit_time: value })}
-                          maxTime={MAX_TIME}
-                          error={formData.exit_time !== "" && !validateExitTime(formData.exit_time)}
                         />
-                        {formData.exit_time && !validateExitTime(formData.exit_time) && (
-                          <p className="text-[10px] text-destructive">Maximum {MAX_TIME}</p>
-                        )}
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs">Résultat</Label>

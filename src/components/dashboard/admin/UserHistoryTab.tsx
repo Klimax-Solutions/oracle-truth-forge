@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import {
   User,
   Loader2,
@@ -37,6 +38,7 @@ export const UserHistoryTab = () => {
   const [users, setUsers] = useState<UserHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -109,6 +111,14 @@ export const UserHistoryTab = () => {
 
   return (
     <div className="space-y-3">
+      {/* Search bar */}
+      <Input
+        placeholder="Rechercher un utilisateur..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="max-w-sm h-9 text-sm mb-3"
+      />
+
       {/* Summary stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-4">
         <div className="p-3 bg-card border border-border rounded-md">
@@ -136,7 +146,7 @@ export const UserHistoryTab = () => {
       </div>
 
       {/* User list */}
-      {users.map((user) => {
+      {users.filter(u => !search || u.displayName.toLowerCase().includes(search.toLowerCase())).map((user) => {
         const isExpanded = expandedUser === user.userId;
 
         return (
