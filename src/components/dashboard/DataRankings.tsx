@@ -218,24 +218,33 @@ export const DataRankings = ({ trades, blurTop = false }: DataRankingsProps) => 
           <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">Modèles d'entrée</p>
           {rankings.modelRanking.slice(0, 4).map((m, i) => (
             <div key={m.name} className="flex items-center justify-between p-1.5 rounded border border-border/50">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className={cn(
-                  "text-[9px] font-mono font-bold w-4 text-center",
-                  i === 0 ? "text-amber-500" : "text-muted-foreground"
-                )}>
-                  {i + 1}
-                </span>
-                <span className="text-xs text-foreground truncate">{m.name}</span>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="text-[9px] text-muted-foreground font-mono">{m.count}t</span>
-                <span className={cn(
-                  "text-[10px] font-mono font-bold",
-                  m.avgRR >= 0 ? "text-emerald-500" : "text-red-500"
-                )}>
-                  {m.avgRR >= 0 ? "+" : ""}{m.avgRR.toFixed(1)}
-                </span>
-              </div>
+              {blurTop && i === 0 ? (
+                <div className="flex items-center gap-1 w-full">
+                  <Lock className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground italic">Confidentiel</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={cn(
+                      "text-[9px] font-mono font-bold w-4 text-center",
+                      i === 0 ? "text-amber-500" : "text-muted-foreground"
+                    )}>
+                      {i + 1}
+                    </span>
+                    <span className="text-xs text-foreground truncate">{m.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-[9px] text-muted-foreground font-mono">{m.count}t</span>
+                    <span className={cn(
+                      "text-[10px] font-mono font-bold",
+                      m.avgRR >= 0 ? "text-emerald-500" : "text-red-500"
+                    )}>
+                      {m.avgRR >= 0 ? "+" : ""}{m.avgRR.toFixed(1)}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -245,26 +254,35 @@ export const DataRankings = ({ trades, blurTop = false }: DataRankingsProps) => 
           <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">Timings d'entrée</p>
           {rankings.timingRanking.slice(0, 4).map((t, i) => (
             <div key={t.slot} className="flex items-center justify-between p-1.5 rounded border border-border/50">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className={cn(
-                  "text-[9px] font-mono font-bold w-4 text-center",
-                  i === 0 ? "text-emerald-500" : "text-muted-foreground"
-                )}>
-                  {i + 1}
-                </span>
-                <span className="text-xs text-foreground font-mono">{t.label}</span>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="text-[9px] text-muted-foreground font-mono">
-                  {t.count}t{t.avgDuration ? ` · ${formatMinutes(t.avgDuration)}` : ""}
-                </span>
-                <span className={cn(
-                  "text-[10px] font-mono font-bold",
-                  t.avgRR >= 0 ? "text-emerald-500" : "text-red-500"
-                )}>
-                  {t.avgRR >= 0 ? "+" : ""}{t.avgRR.toFixed(1)}
-                </span>
-              </div>
+              {blurTop && i < 2 ? (
+                <div className="flex items-center gap-1 w-full">
+                  <Lock className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground italic">Confidentiel</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={cn(
+                      "text-[9px] font-mono font-bold w-4 text-center",
+                      i === 0 ? "text-emerald-500" : "text-muted-foreground"
+                    )}>
+                      {i + 1}
+                    </span>
+                    <span className="text-xs text-foreground font-mono">{t.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-[9px] text-muted-foreground font-mono">
+                      {t.count}t{t.avgDuration ? ` · ${formatMinutes(t.avgDuration)}` : ""}
+                    </span>
+                    <span className={cn(
+                      "text-[10px] font-mono font-bold",
+                      t.avgRR >= 0 ? "text-emerald-500" : "text-red-500"
+                    )}>
+                      {t.avgRR >= 0 ? "+" : ""}{t.avgRR.toFixed(1)}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>

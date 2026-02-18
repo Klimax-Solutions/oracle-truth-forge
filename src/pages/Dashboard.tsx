@@ -77,7 +77,8 @@ const Dashboard = () => {
   const { settings: eaSettings } = useEarlyAccessSettings();
   const navigate = useNavigate();
   const showDataGenerale = isAdmin || isSuperAdmin;
-  const { dataGenerale } = useDataGenerale(trades, showDataGenerale);
+  const needsDataGenerale = showDataGenerale || isEarlyAccess;
+  const { dataGenerale } = useDataGenerale(trades, needsDataGenerale);
   const isEarlyAccessExpired = useMemo(() => {
     if (!isEarlyAccess || !expiresAt) return false;
     return new Date(expiresAt).getTime() <= Date.now();
@@ -280,7 +281,7 @@ const Dashboard = () => {
       case "setup":
         return <SetupPage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} />;
       case "data-analysis":
-        return <DataAnalysisPage trades={displayTrades} onNavigateToDatabase={handleNavigateToDatabase} isEarlyAccess={isEarlyAccess} isExpired={isEarlyAccessExpired} />;
+        return <DataAnalysisPage trades={isEarlyAccess ? dataGenerale : displayTrades} onNavigateToDatabase={handleNavigateToDatabase} isEarlyAccess={isEarlyAccess} isExpired={isEarlyAccessExpired} />;
       case "videos":
         return <VideoSetup />;
       case "successes":
