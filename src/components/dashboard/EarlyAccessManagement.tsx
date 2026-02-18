@@ -1,14 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useEaFeaturedTrade } from "@/hooks/useEaFeaturedTrade";
 import {
   Loader2,
   Save,
   User,
   Clock,
+  Upload,
+  Video,
+  Image as ImageIcon,
+  Trash2,
 } from "lucide-react";
 
 interface EAUser {
@@ -156,6 +161,19 @@ export const EarlyAccessManagement = () => {
     setSaving(null);
   };
 
+  // ─── Featured Trade Config ───
+  const { featured, loading: featuredLoading, refetch: refetchFeatured } = useEaFeaturedTrade();
+  const [ftContentType, setFtContentType] = useState<"screenshot" | "video">("screenshot");
+  const [ftDirection, setFtDirection] = useState("");
+  const [ftDate, setFtDate] = useState("");
+  const [ftRR, setFtRR] = useState("");
+  const [ftEntryTime, setFtEntryTime] = useState("");
+  const [ftVideoUrl, setFtVideoUrl] = useState("");
+  const [ftSaving, setFtSaving] = useState(false);
+  const [ftFile, setFtFile] = useState<File | null>(null);
+  const [ftPreview, setFtPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Local URL state for editing
   const [urlEdits, setUrlEdits] = useState<Record<string, string>>({});
 
@@ -169,13 +187,90 @@ export const EarlyAccessManagement = () => {
     setUrlEdits((prev) => ({ ...prev, [`${userId}_${buttonKey}`]: value }));
   };
 
-  if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (featured) {
+      setFtContentType(featured.content_type as "screenshot" | "video");
+      setFtDirection(featured.direction || "");
+      setFtDate(featured.trade_date || "");
+      setFtRR(featured.rr?.toString() || "");
+      setFtEntryTime(featured.entry_time || "");
+      setFtVideoUrl(featured.video_url || "");
+    }
+  }, [featured]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFtFile(file);
+      setFtPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const saveFeaturedTrade = async () => {
+    setFtSaving(true);
+    let imagePath = featured?.image_path || null;
+
+    if (ftContentType === "screenshot" && ftFile) {
+      const ext = ftFile.name.split(".").pop();
+      const path = `ea-featured/featured-trade.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("trade-screenshots")
+        .upload(path, ftFile, { upsert: true });
+      if (uploadErr) {
+        toast({ title: "Erreur upload", description: uploadErr.message, variant: "destructive" });
+        setFtSaving(false);
+        return;
+      }
+      imagePath = path;
+    }
+
+    const payload = {
+      content_type: ftContentType,
+      image_path: ftContentType === "screenshot" ? imagePath : null,
+      video_url: ftContentType === "video" ? ftVideoUrl : null,
+      direction: ftDirection || null,
+      trade_date: ftDate || null,
+      rr: ftRR ? parseFloat(ftRR) : null,
+      entry_time: ftEntryTime || null,
+    };
+
+    if (featured?.id) {
+      const { error } = await supabase
+        .from("ea_featured_trade")
+        .update(payload)
+        .eq("id", featured.id);
+      if (error) {
+        toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Contenu mis à jour" });
+        refetchFeatured();
+      }
+    } else {
+      const { error } = await supabase
+        .from("ea_featured_trade")
+        .insert(payload);
+      if (error) {
+        toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Contenu créé" });
+        refetchFeatured();
+      }
+    }
+    setFtFile(null);
+    setFtPreview(null);
+    setFtSaving(false);
+  };
+
+  const deleteFeaturedTrade = async () => {
+    if (!featured?.id) return;
+    setFtSaving(true);
+    await supabase.from("ea_featured_trade").delete().eq("id", featured.id);
+    toast({ title: "Contenu supprimé" });
+    refetchFeatured();
+    setFtDirection(""); setFtDate(""); setFtRR(""); setFtEntryTime(""); setFtVideoUrl("");
+    setFtFile(null); setFtPreview(null);
+    setFtSaving(false);
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -184,11 +279,119 @@ export const EarlyAccessManagement = () => {
           Gestion Early Access
         </h2>
         <p className="text-xs md:text-sm text-muted-foreground font-mono">
-          Configuration des URLs personnalisées par membre Early Access
+          Configuration des URLs personnalisées et contenu mis en avant
         </p>
       </div>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto space-y-6">
+        {/* ─── Featured Trade Config ─── */}
+        <div className="border border-border rounded-md bg-card overflow-hidden">
+          <div className="p-4 border-b border-border bg-muted/30">
+            <h4 className="font-semibold text-foreground text-sm">Dernière data récoltée (contenu mis en avant)</h4>
+            <p className="text-[10px] text-muted-foreground font-mono mt-1">
+              Screenshot ou vidéo affiché dans l'espace Early Access
+            </p>
+          </div>
+          <div className="p-4 space-y-4">
+            {/* Content type toggle */}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={ftContentType === "screenshot" ? "default" : "outline"}
+                className="gap-1.5 text-xs"
+                onClick={() => setFtContentType("screenshot")}
+              >
+                <ImageIcon className="w-3.5 h-3.5" /> Screenshot
+              </Button>
+              <Button
+                size="sm"
+                variant={ftContentType === "video" ? "default" : "outline"}
+                className="gap-1.5 text-xs"
+                onClick={() => setFtContentType("video")}
+              >
+                <Video className="w-3.5 h-3.5" /> Vidéo
+              </Button>
+            </div>
+
+            {/* Trade details */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div>
+                <label className="text-[10px] font-mono uppercase text-muted-foreground">Direction</label>
+                <select
+                  value={ftDirection}
+                  onChange={(e) => setFtDirection(e.target.value)}
+                  className="w-full h-7 text-xs rounded-md border border-input bg-background px-2"
+                >
+                  <option value="">—</option>
+                  <option value="Long">Long</option>
+                  <option value="Short">Short</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-mono uppercase text-muted-foreground">Date</label>
+                <Input type="date" value={ftDate} onChange={(e) => setFtDate(e.target.value)} className="h-7 text-xs" />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono uppercase text-muted-foreground">RR</label>
+                <Input type="number" step="0.1" value={ftRR} onChange={(e) => setFtRR(e.target.value)} className="h-7 text-xs" placeholder="ex: 2.5" />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono uppercase text-muted-foreground">Heure d'entrée</label>
+                <Input type="time" value={ftEntryTime} onChange={(e) => setFtEntryTime(e.target.value)} className="h-7 text-xs" />
+              </div>
+            </div>
+
+            {/* Screenshot upload or Video URL */}
+            {ftContentType === "screenshot" ? (
+              <div className="space-y-2">
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="w-3.5 h-3.5" /> Uploader un screenshot
+                </Button>
+                {(ftPreview || featured?.image_path) && (
+                  <div className="rounded-md overflow-hidden border border-border max-w-sm">
+                    <img
+                      src={ftPreview || ""}
+                      alt="Preview"
+                      className="w-full h-auto"
+                      onError={async (e) => {
+                        if (!ftPreview && featured?.image_path) {
+                          const { data } = await supabase.storage.from("trade-screenshots").createSignedUrl(featured.image_path, 3600);
+                          if (data) (e.target as HTMLImageElement).src = data.signedUrl;
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <label className="text-[10px] font-mono uppercase text-muted-foreground">URL Google Drive (embed)</label>
+                <Input
+                  value={ftVideoUrl}
+                  onChange={(e) => setFtVideoUrl(e.target.value)}
+                  placeholder="https://drive.google.com/file/d/.../preview"
+                  className="h-7 text-xs"
+                />
+              </div>
+            )}
+
+            {/* Save / Delete */}
+            <div className="flex gap-2">
+              <Button size="sm" className="gap-1.5" onClick={saveFeaturedTrade} disabled={ftSaving}>
+                {ftSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                Sauvegarder
+              </Button>
+              {featured?.id && (
+                <Button size="sm" variant="destructive" className="gap-1.5" onClick={deleteFeaturedTrade} disabled={ftSaving}>
+                  <Trash2 className="w-3.5 h-3.5" /> Supprimer
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Per-user EA Settings ─── */}
         {users.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <User className="w-12 h-12 text-muted-foreground mb-4" />

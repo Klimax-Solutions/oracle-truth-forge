@@ -30,6 +30,7 @@ import { ResultsPage } from "./ResultsPage";
 import { ImageLightbox } from "./ImageLightbox";
 import { SignedImageCard } from "./SignedImageCard";
 import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
+import { useEaFeaturedTrade, type EaFeaturedTrade } from "@/hooks/useEaFeaturedTrade";
 
 interface Trade {
   id: string;
@@ -109,6 +110,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
   const { toast } = useToast();
   const { isEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
+  const { featured: eaFeaturedTrade } = useEaFeaturedTrade();
 
   // Fetch cycles, user cycles, and user executions
   useEffect(() => {
@@ -533,6 +535,7 @@ export const OracleExecution = ({ trades, onNavigateToVideos, onNavigateToSetup,
                   window.open(url, "_blank");
                 }}
                 eaSettings={eaSettings}
+                featuredTrade={eaFeaturedTrade}
               />
 
               {/* Right: Quests / Next Steps */}
@@ -1201,6 +1204,7 @@ interface LastDataPreviewCardProps {
   completedCycles: number;
   onContinueHarvest: () => void;
   eaSettings?: EASetting[];
+  featuredTrade?: EaFeaturedTrade | null;
 }
 
 const LastDataPreviewCard = ({
@@ -1212,14 +1216,34 @@ const LastDataPreviewCard = ({
   completedCycles,
   onContinueHarvest,
   eaSettings,
+  featuredTrade,
 }: LastDataPreviewCardProps) => {
   const [activeScreen, setActiveScreen] = useState<"m15" | "m5">("m15");
+  const [ftSignedUrl, setFtSignedUrl] = useState<string | null>(null);
 
   // Get the URL for "Vidéo bonus Mercure Institut" from EA settings
   const videoBonusBtn = eaSettings?.find(s => s.button_key === "video_bonus_mercure_institut");
   const videoBonusUrl = videoBonusBtn?.button_url || "https://mercurefx.webflow.io/utility/connexion";
 
-  if (!lastExecution) {
+  // Load signed URL for featured trade screenshot
+  useEffect(() => {
+    const loadFtUrl = async () => {
+      if (featuredTrade?.content_type === "screenshot" && featuredTrade?.image_path) {
+        const { data } = await supabase.storage.from("trade-screenshots").createSignedUrl(featuredTrade.image_path, 3600);
+        if (data) setFtSignedUrl(data.signedUrl);
+      }
+    };
+    loadFtUrl();
+  }, [featuredTrade]);
+
+  // Use featured trade data if available, fallback to lastExecution
+  const displayDirection = featuredTrade?.direction || lastExecution?.direction;
+  const displayDate = featuredTrade?.trade_date || lastExecution?.trade_date;
+  const displayRR = featuredTrade?.rr ?? lastExecution?.rr;
+  const displayEntryTime = featuredTrade?.entry_time || lastExecution?.entry_time;
+  const hasFeatured = !!featuredTrade;
+
+  if (!lastExecution && !featuredTrade) {
     return (
       <div className="border border-border rounded-md bg-card p-4 flex items-center justify-center text-sm text-muted-foreground">
         Aucune data récoltée pour le moment.
@@ -1233,58 +1257,61 @@ const LastDataPreviewCard = ({
         <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
           Dernière data récoltée
         </h3>
-        <span className="text-xs font-mono text-muted-foreground">
-          #{lastExecution.trade_number}
-        </span>
       </div>
 
-      {/* Trade-specific metadata ABOVE the screenshot — bigger style */}
+      {/* Trade-specific metadata */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        <div className="flex items-center gap-2 p-2 border border-border rounded-md">
-          <div className={cn(
-            "inline-flex items-center gap-1 px-2 py-1 rounded text-sm font-mono font-bold",
-            lastExecution.direction === "Long" ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
-          )}>
-            {lastExecution.direction === "Long" ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-            {lastExecution.direction}
+        {displayDirection && (
+          <div className="flex items-center gap-2 p-2 border border-border rounded-md">
+            <div className={cn(
+              "inline-flex items-center gap-1 px-2 py-1 rounded text-sm font-mono font-bold",
+              displayDirection === "Long" ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
+            )}>
+              {displayDirection === "Long" ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+              {displayDirection}
+            </div>
           </div>
-        </div>
-        <div className="p-2 border border-border rounded-md">
-          <p className="text-[8px] text-muted-foreground font-mono uppercase">Date</p>
-          <p className="text-sm font-mono font-semibold text-foreground">
-            {lastExecution.trade_date ? new Date(lastExecution.trade_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
-          </p>
-        </div>
-        {lastExecution.rr !== null && lastExecution.rr !== undefined && (
+        )}
+        {displayDate && (
           <div className="p-2 border border-border rounded-md">
-            <p className="text-[8px] text-muted-foreground font-mono uppercase">RR</p>
-            <p className={cn("text-lg font-mono font-bold", (lastExecution.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400")}>
-              {(lastExecution.rr || 0) >= 0 ? "+" : ""}{(lastExecution.rr || 0).toFixed(1)}
+            <p className="text-[8px] text-muted-foreground font-mono uppercase">Date</p>
+            <p className="text-sm font-mono font-semibold text-foreground">
+              {new Date(displayDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
             </p>
           </div>
         )}
-        {lastExecution.entry_time && (
+        {displayRR !== null && displayRR !== undefined && (
+          <div className="p-2 border border-border rounded-md">
+            <p className="text-[8px] text-muted-foreground font-mono uppercase">RR</p>
+            <p className={cn("text-lg font-mono font-bold", (displayRR || 0) >= 0 ? "text-emerald-400" : "text-red-400")}>
+              {(displayRR || 0) >= 0 ? "+" : ""}{(displayRR || 0).toFixed(1)}
+            </p>
+          </div>
+        )}
+        {displayEntryTime && (
           <div className="p-2 border border-border rounded-md">
             <p className="text-[8px] text-muted-foreground font-mono uppercase">Entrée</p>
-            <p className="text-sm font-mono font-semibold text-foreground">{lastExecution.entry_time}</p>
-          </div>
-        )}
-        {lastExecution.setup_type && (
-          <div className="p-2 border border-border rounded-md">
-            <p className="text-[8px] text-muted-foreground font-mono uppercase">Setup</p>
-            <p className="text-sm font-mono font-semibold text-primary">{lastExecution.setup_type}</p>
-          </div>
-        )}
-        {lastExecution.entry_model && (
-          <div className="p-2 border border-border rounded-md">
-            <p className="text-[8px] text-muted-foreground font-mono uppercase">Modèle</p>
-            <p className="text-sm font-mono font-semibold text-foreground">{lastExecution.entry_model}</p>
+            <p className="text-sm font-mono font-semibold text-foreground">{displayEntryTime}</p>
           </div>
         )}
       </div>
 
-      {/* Screenshot preview - image fills the container */}
-      {(lastExecution.screenshot_url || lastExecution.screenshot_entry_url) && (
+      {/* Featured content: screenshot or video */}
+      {hasFeatured && featuredTrade?.content_type === "video" && featuredTrade?.video_url ? (
+        <div className="rounded-md overflow-hidden border border-border aspect-video">
+          <iframe
+            src={featuredTrade.video_url}
+            className="w-full h-full"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            title="Vidéo de trade"
+          />
+        </div>
+      ) : hasFeatured && featuredTrade?.content_type === "screenshot" && ftSignedUrl ? (
+        <div className="rounded-md overflow-hidden border border-border">
+          <img src={ftSignedUrl} alt="Trade screenshot" className="w-full h-auto" />
+        </div>
+      ) : !hasFeatured && (lastExecution?.screenshot_url || lastExecution?.screenshot_entry_url) ? (
         <div>
           <div className="flex items-center gap-1 mb-2">
             <button
@@ -1303,15 +1330,15 @@ const LastDataPreviewCard = ({
           <div className="rounded-md overflow-hidden border border-border">
             <SignedImageCard
               storagePath={activeScreen === "m15" ? lastExecution.screenshot_url || null : lastExecution.screenshot_entry_url || null}
-              alt={`Trade #${lastExecution.trade_number} ${activeScreen === "m15" ? "Contexte" : "Entrée"}`}
+              alt={`Trade ${activeScreen === "m15" ? "Contexte" : "Entrée"}`}
               label={activeScreen === "m15" ? "Contexte" : "Entrée"}
               fillContainer
             />
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Continue button - uses EA custom URL if available */}
+      {/* Continue button */}
       <Button size="sm" className="w-full gap-2" onClick={onContinueHarvest}>
         <ExternalLink className="w-3.5 h-3.5" />
         Continuer ma récolte
