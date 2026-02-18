@@ -39,6 +39,8 @@ interface UserExecution {
   entry_timing: string | null;
   result: string | null;
   user_id: string;
+  screenshot_url: string | null;
+  screenshot_entry_url: string | null;
 }
 
 /**
@@ -55,10 +57,9 @@ export const useDataGenerale = (oracleTrades: Trade[], isAdmin: boolean) => {
 
     const fetchAllExecutions = async () => {
       setLoading(true);
-      // Admin RLS lets us see all user_executions
       const { data, error } = await supabase
         .from("user_executions")
-        .select("id, trade_number, trade_date, direction, direction_structure, entry_time, exit_time, rr, setup_type, entry_model, entry_timing, result, user_id")
+        .select("id, trade_number, trade_date, direction, direction_structure, entry_time, exit_time, rr, setup_type, entry_model, entry_timing, result, user_id, screenshot_url, screenshot_entry_url")
         .order("trade_date", { ascending: true });
 
       if (data) {
@@ -88,7 +89,6 @@ export const useDataGenerale = (oracleTrades: Trade[], isAdmin: boolean) => {
     const userTradesByDateDir = new Map<string, UserExecution>();
     for (const ue of winningUserTrades) {
       const key = `${ue.trade_date}|${ue.direction}`;
-      // Keep the one with highest RR
       const existing = userTradesByDateDir.get(key);
       if (!existing || (ue.rr || 0) > (existing.rr || 0)) {
         userTradesByDateDir.set(key, ue);
@@ -104,21 +104,17 @@ export const useDataGenerale = (oracleTrades: Trade[], isAdmin: boolean) => {
 
       let isComplement = false;
       if (!oracleOnDate) {
-        // No Oracle trade on this date at all → complement
         isComplement = true;
       } else {
-        // Oracle has trades on this date; check if same direction exists
         const sameDirectionExists = oracleOnDate.some(
           ot => ot.direction.toLowerCase() === ue.direction.toLowerCase()
         );
         if (!sameDirectionExists) {
-          // Different direction → complement
           isComplement = true;
         }
       }
 
       if (isComplement) {
-        // Convert user execution to Trade format for unified analysis
         const dayOfWeek = getDayOfWeek(ue.trade_date);
         complementaryTrades.push({
           id: ue.id,
@@ -140,8 +136,8 @@ export const useDataGenerale = (oracleTrades: Trade[], isAdmin: boolean) => {
           target_hl_valid: false,
           news_day: false,
           news_label: "",
-          screenshot_m15_m5: null,
-          screenshot_m1: null,
+          screenshot_m15_m5: ue.screenshot_url || null,
+          screenshot_m1: ue.screenshot_entry_url || null,
         });
       }
     }
