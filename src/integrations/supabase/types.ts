@@ -961,6 +961,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_complementary_trades_from_cycle: {
+        Args: { p_cycle_id: string; p_member_user_id: string }
+        Returns: number
+      }
       can_user_access: { Args: never; Returns: boolean }
       check_cycle_accuracy_and_auto_validate: {
         Args: { p_cycle_id: string; p_user_cycle_id: string; p_user_id: string }
