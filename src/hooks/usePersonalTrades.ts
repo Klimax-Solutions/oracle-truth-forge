@@ -30,6 +30,8 @@ export interface PersonalTrade {
   exit_date: string | null;
   news_day: boolean | null;
   news_label: string | null;
+  custom_setup_id: string | null;
+  asset: string | null;
 }
 
 export const usePersonalTrades = () => {

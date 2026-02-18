@@ -68,7 +68,12 @@ const DAYS_MAP: Record<number, string> = {
 
 const DEFAULT_TARGET_TRADES = 300;
 
-export const SetupPerso = () => {
+interface SetupPersoProps {
+  customSetupId?: string;
+  customSetupName?: string;
+}
+
+export const SetupPerso = ({ customSetupId, customSetupName }: SetupPersoProps = {}) => {
   const [trades, setTrades] = useState<PersonalTrade[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -94,11 +99,19 @@ export const SetupPerso = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("user_personal_trades")
       .select("*")
       .eq("user_id", user.id)
       .order("trade_number", { ascending: true });
+
+    if (customSetupId) {
+      query = query.eq("custom_setup_id", customSetupId);
+    } else {
+      query = query.is("custom_setup_id", null);
+    }
+
+    const { data, error } = await query;
 
     if (data) {
       setTrades(data as PersonalTrade[]);
@@ -210,6 +223,7 @@ export const SetupPerso = () => {
             trade_date: tradeDate,
             day_of_week: dayOfWeek,
             direction: direction,
+            custom_setup_id: customSetupId || null,
           };
 
           // Optional fields
@@ -408,9 +422,11 @@ export const SetupPerso = () => {
       <div className="p-3 md:p-6 border-b border-border">
         <div className="flex flex-col gap-3 md:gap-4 md:flex-row md:items-center md:justify-between mb-3 md:mb-4">
           <div>
-            <h2 className="text-base md:text-xl font-semibold text-foreground mb-0.5 md:mb-1">Setup Perso</h2>
+            <h2 className="text-base md:text-xl font-semibold text-foreground mb-0.5 md:mb-1">
+              {customSetupName || "Setup Perso"}
+            </h2>
             <p className="text-[10px] md:text-sm text-muted-foreground font-mono">
-              Gérez vos trades personnels
+              Gérez vos trades {customSetupName ? `— ${customSetupName}` : "personnels"}
             </p>
           </div>
           
@@ -696,6 +712,7 @@ export const SetupPerso = () => {
         onSaved={handleTradeSaved}
         editingTrade={editingTrade}
         nextTradeNumber={getNextTradeNumber()}
+        customSetupId={customSetupId}
       />
 
       {/* Custom Variables Dialog */}

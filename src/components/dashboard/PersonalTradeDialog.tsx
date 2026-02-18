@@ -92,6 +92,7 @@ interface PersonalTradeDialogProps {
   onSaved: () => void;
   editingTrade: PersonalTrade | null;
   nextTradeNumber: number;
+  customSetupId?: string;
 }
 
 const DAYS_MAP: Record<number, string> = {
@@ -262,6 +263,7 @@ export const PersonalTradeDialog = ({
   onSaved,
   editingTrade,
   nextTradeNumber,
+  customSetupId,
 }: PersonalTradeDialogProps) => {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [saving, setSaving] = useState(false);
@@ -440,6 +442,7 @@ export const PersonalTradeDialog = ({
       tp_placement: formData.tp_placement || null,
       context_timeframe: formData.context_timeframe || null,
       stop_loss_size: formData.stop_loss_size || null,
+      custom_setup_id: customSetupId || null,
     } as any;
 
     try {
