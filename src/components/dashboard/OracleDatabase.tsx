@@ -421,7 +421,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
         ) : (
           <div className="space-y-2">
             {filteredTrades.map((trade, tradeIdx) => {
-              const isBlurred = isEarlyAccess && trade.trade_number > 50;
+              const isBlurred = isEarlyAccess && tradeIdx >= 50;
               return (
               <div
                 key={trade.id}
