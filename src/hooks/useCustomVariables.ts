@@ -35,6 +35,8 @@ export const useCustomVariables = () => {
     entry_model: [],
     entry_timing: [],
     entry_timeframe: [],
+    sl_placement: [],
+    tp_placement: [],
   });
   const [customTypes, setCustomTypes] = useState<CustomVariableTypes[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,12 +69,14 @@ export const useCustomVariables = () => {
       .eq("user_id", user.id);
 
     if (data) {
-      const grouped: CustomVariables = {
+    const grouped: CustomVariables = {
         direction_structure: [],
         setup_type: [],
         entry_model: [],
         entry_timing: [],
         entry_timeframe: [],
+        sl_placement: [],
+        tp_placement: [],
       };
 
       // Initialize custom types in grouped
