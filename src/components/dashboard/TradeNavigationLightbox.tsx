@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { extractStoragePath } from "@/hooks/useSignedUrl";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -53,6 +55,7 @@ interface TradeNavigationLightboxProps {
   validationState?: Record<string, { isValid: boolean; note: string; supplementaryNote?: string }>;
   savingValidation?: string | null;
   oracleTrades?: OracleMatch[];
+  isSuperAdmin?: boolean;
 }
 
 export const TradeNavigationLightbox = ({
@@ -66,6 +69,7 @@ export const TradeNavigationLightbox = ({
   validationState,
   savingValidation,
   oracleTrades,
+  isSuperAdmin = false,
 }: TradeNavigationLightboxProps) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [activeScreen, setActiveScreen] = useState<"m15" | "m5">(initialScreenshot);
@@ -78,6 +82,7 @@ export const TradeNavigationLightbox = ({
   const [refusalNote, setRefusalNote] = useState("");
   const [showValidationDialog, setShowValidationDialog] = useState(false);
   const [validationNote, setValidationNote] = useState("");
+  const [skipValidationNote, setSkipValidationNote] = useState(false);
   const [showSupplementaryDialog, setShowSupplementaryDialog] = useState(false);
   const [supplementaryNote, setSupplementaryNote] = useState("");
 
@@ -555,25 +560,45 @@ export const TradeNavigationLightbox = ({
           <DialogHeader>
             <DialogTitle>Valider le trade #{currentItem?.tradeNumber}</DialogTitle>
             <DialogDescription>
-              Justifiez pourquoi ce trade est validé.
+              {isSuperAdmin && skipValidationNote
+                ? "Validation sans justification (mode super admin)."
+                : "Justifiez pourquoi ce trade est validé."}
             </DialogDescription>
           </DialogHeader>
-          <Textarea
-            value={validationNote}
-            onChange={(e) => setValidationNote(e.target.value)}
-            placeholder="Justification de la validation..."
-            className="min-h-[80px]"
-          />
+          {(!isSuperAdmin || !skipValidationNote) && (
+            <Textarea
+              value={validationNote}
+              onChange={(e) => setValidationNote(e.target.value)}
+              placeholder="Justification de la validation..."
+              className="min-h-[80px]"
+            />
+          )}
+          {isSuperAdmin && (
+            <div className="flex items-center gap-2 pt-1">
+              <Checkbox
+                id="skip-validation-note"
+                checked={skipValidationNote}
+                onCheckedChange={(checked) => {
+                  setSkipValidationNote(!!checked);
+                  if (checked) setValidationNote("");
+                }}
+              />
+              <Label htmlFor="skip-validation-note" className="text-xs text-muted-foreground cursor-pointer">
+                Valider sans justification obligatoire
+              </Label>
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowValidationDialog(false)}>Annuler</Button>
             <Button
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              disabled={!validationNote.trim()}
+              disabled={!isSuperAdmin || !skipValidationNote ? !validationNote.trim() : false}
               onClick={() => {
                 if (currentItem.executionId && onValidate) {
                   onValidate(currentItem.executionId, true, validationNote.trim());
                 }
                 setShowValidationDialog(false);
+                setSkipValidationNote(false);
               }}
             >
               Confirmer la validation

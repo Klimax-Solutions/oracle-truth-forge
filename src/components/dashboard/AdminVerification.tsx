@@ -51,6 +51,7 @@ import { AdminTradeNotesViewer } from "./admin/AdminTradeNotesViewer";
 import { RoleManagement } from "./admin/RoleManagement";
 import { ScreenshotLink } from "./ScreenshotLink";
 import { TradeNavigationLightbox, type TradeScreenshotItem, type OracleMatch } from "./TradeNavigationLightbox";
+import { useSidebarRoles } from "./DashboardSidebar";
 
 
 // Oracle trade from the master database
@@ -174,6 +175,7 @@ interface PendingAccount {
 }
 
 export const AdminVerification = () => {
+  const { isSuperAdmin } = useSidebarRoles();
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -2236,6 +2238,7 @@ export const AdminVerification = () => {
           screenshotM15: o.screenshot_m15_m5 || null,
           screenshotM5: o.screenshot_m1 || null,
         }))}
+        isSuperAdmin={isSuperAdmin}
         onValidate={galleryRequestId ? (executionId, isValid, note) => {
           const key = `${galleryRequestId}_${executionId}`;
           setTradeValidity(prev => ({ ...prev, [key]: isValid }));
