@@ -484,8 +484,15 @@ export const TradeNavigationLightbox = ({
               size="sm"
               className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => {
-                setValidationNote("");
-                setShowValidationDialog(true);
+                if (isSuperAdmin && skipValidationNote) {
+                  // Validate directly without dialog
+                  if (currentItem.executionId && onValidate) {
+                    onValidate(currentItem.executionId, true, "");
+                  }
+                } else {
+                  setValidationNote("");
+                  setShowValidationDialog(true);
+                }
               }}
               disabled={savingValidation === currentItem.executionId}
             >
@@ -496,6 +503,23 @@ export const TradeNavigationLightbox = ({
               )}
               Valider le trade
             </Button>
+
+            {/* Super admin: skip justification toggle */}
+            {isSuperAdmin && (
+              <div className="flex items-center gap-1.5 border border-border/50 rounded px-2 py-1 bg-muted/30">
+                <Checkbox
+                  id="skip-validation-note-bar"
+                  checked={skipValidationNote}
+                  onCheckedChange={(checked) => {
+                    setSkipValidationNote(!!checked);
+                    if (checked) setValidationNote("");
+                  }}
+                />
+                <Label htmlFor="skip-validation-note-bar" className="text-[10px] text-muted-foreground cursor-pointer whitespace-nowrap font-mono">
+                  Sans justification
+                </Label>
+              </div>
+            )}
 
             {/* Supplementary note button */}
             <Button
@@ -559,46 +583,24 @@ export const TradeNavigationLightbox = ({
         <DialogContent onClick={(e) => e.stopPropagation()} className="z-[300]">
           <DialogHeader>
             <DialogTitle>Valider le trade #{currentItem?.tradeNumber}</DialogTitle>
-            <DialogDescription>
-              {isSuperAdmin && skipValidationNote
-                ? "Validation sans justification (mode super admin)."
-                : "Justifiez pourquoi ce trade est validé."}
-            </DialogDescription>
+            <DialogDescription>Justifiez pourquoi ce trade est validé.</DialogDescription>
           </DialogHeader>
-          {(!isSuperAdmin || !skipValidationNote) && (
-            <Textarea
-              value={validationNote}
-              onChange={(e) => setValidationNote(e.target.value)}
-              placeholder="Justification de la validation..."
-              className="min-h-[80px]"
-            />
-          )}
-          {isSuperAdmin && (
-            <div className="flex items-center gap-2 pt-1">
-              <Checkbox
-                id="skip-validation-note"
-                checked={skipValidationNote}
-                onCheckedChange={(checked) => {
-                  setSkipValidationNote(!!checked);
-                  if (checked) setValidationNote("");
-                }}
-              />
-              <Label htmlFor="skip-validation-note" className="text-xs text-muted-foreground cursor-pointer">
-                Valider sans justification obligatoire
-              </Label>
-            </div>
-          )}
+          <Textarea
+            value={validationNote}
+            onChange={(e) => setValidationNote(e.target.value)}
+            placeholder="Justification de la validation..."
+            className="min-h-[80px]"
+          />
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowValidationDialog(false)}>Annuler</Button>
             <Button
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              disabled={!isSuperAdmin || !skipValidationNote ? !validationNote.trim() : false}
+              disabled={!validationNote.trim()}
               onClick={() => {
                 if (currentItem.executionId && onValidate) {
                   onValidate(currentItem.executionId, true, validationNote.trim());
                 }
                 setShowValidationDialog(false);
-                setSkipValidationNote(false);
               }}
             >
               Confirmer la validation
