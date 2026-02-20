@@ -231,7 +231,7 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
       <div className="h-full flex flex-col">
         <SubViewHeader
           icon={<User className="w-4 h-4 text-emerald-500" />}
-          label="Setup Perso"
+          label="Data Personnelle"
           onBack={() => setActiveView("overview")}
         />
         <div className="flex-1 overflow-auto">
@@ -383,11 +383,11 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
             />
           )}
 
-          {/* Setup Perso Card */}
+          {/* Data Personnelle Card */}
           <SetupCard
             icon={<User className="w-5 h-5 text-emerald-500" />}
-            title="Setup Perso"
-            subtitle="Vos trades personnels"
+            title="Data Personnelle"
+            subtitle="Vos trades de live trading"
             accentColor="emerald"
             stats={{
               trades: persoStats.totalTrades,
@@ -405,6 +405,7 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
             onClick={() => setActiveView("perso")}
             actionLabel="Continuer ma récolte"
           />
+
 
           {/* Custom Setup Cards */}
           {customSetups.map((setup) => {
@@ -471,9 +472,24 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
               <div className="p-3 rounded-full bg-primary/10">
                 <Plus className="w-6 h-6 text-primary" />
               </div>
-              <span className="text-sm font-semibold text-muted-foreground">Créer un setup</span>
+              <span className="text-sm font-semibold text-muted-foreground">Créer un setup (Admin)</span>
             </div>
           )}
+
+          {/* Data Live Trading button — for all members */}
+          <div
+            onClick={() => setActiveView("perso")}
+            className="border-2 border-dashed border-border rounded-xl bg-card/50 hover:border-emerald-500/40 hover:bg-card transition-all cursor-pointer flex flex-col items-center justify-center min-h-[200px] gap-3"
+          >
+            <div className="p-3 rounded-full bg-emerald-500/10">
+              <TrendingUp className="w-6 h-6 text-emerald-500" />
+            </div>
+            <div className="text-center">
+              <span className="text-sm font-semibold text-muted-foreground block">Data Live Trading</span>
+              <span className="text-xs text-muted-foreground/60">Récolter ma data personnelle</span>
+            </div>
+          </div>
+
         </div>
 
         {/* Create Setup Dialog */}
