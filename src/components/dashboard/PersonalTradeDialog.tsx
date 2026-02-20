@@ -127,6 +127,7 @@ interface FormData {
   context_timeframe: string;
   screenshot_entry_timeframe: string;
   stop_loss_size: string;
+  asset: string;
 }
 
 const initialFormData: FormData = {
@@ -156,6 +157,7 @@ const initialFormData: FormData = {
   context_timeframe: "",
   screenshot_entry_timeframe: "",
   stop_loss_size: "",
+  asset: "",
 };
 
 // ── Duration calculator ──
@@ -319,6 +321,7 @@ export const PersonalTradeDialog = ({
           context_timeframe: (editingTrade as any).context_timeframe || "",
           screenshot_entry_timeframe: "",
           stop_loss_size: editingTrade.stop_loss_size || "",
+          asset: (editingTrade as any).asset || "",
         });
         // Handle existing screenshots - prioritize new fields, fallback to old screenshot_url
         setExistingContextUrl(editingTrade.screenshot_context_url || editingTrade.screenshot_url || null);
@@ -442,6 +445,7 @@ export const PersonalTradeDialog = ({
       tp_placement: formData.tp_placement || null,
       context_timeframe: formData.context_timeframe || null,
       stop_loss_size: formData.stop_loss_size || null,
+      asset: formData.asset || null,
       custom_setup_id: customSetupId || null,
     } as any;
 
@@ -495,7 +499,7 @@ export const PersonalTradeDialog = ({
 
         <div className="grid gap-4 py-4">
           {/* Row 1: Trade Number & Date d'entrée */}
-          <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="trade_number">Numéro du Trade *</Label>
               <Input
@@ -514,6 +518,17 @@ export const PersonalTradeDialog = ({
               />
             </div>
           </div>
+
+          {/* Actif */}
+          <div className="space-y-2">
+            <Label>Actif concerné *</Label>
+            <Input
+              value={formData.asset}
+              onChange={(e) => setFormData({ ...formData, asset: e.target.value })}
+              placeholder="Ex: NAS100, EUR/USD, GOLD, BTC..."
+            />
+          </div>
+
 
           {/* Row 2: Direction & Result */}
           <div className="grid grid-cols-2 gap-4">
