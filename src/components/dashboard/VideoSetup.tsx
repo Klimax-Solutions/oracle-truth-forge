@@ -21,6 +21,7 @@ export const VideoSetup = () => {
   const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null);
   const [viewedIds, setViewedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
   const { isEarlyAccess } = useEarlyAccess();
 
   useEffect(() => {
@@ -28,62 +29,40 @@ export const VideoSetup = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [videosRes, viewsRes] = await Promise.all([
+      const [videosRes, viewsRes, rolesRes] = await Promise.all([
         supabase.from("videos").select("*").order("sort_order", { ascending: true }),
         supabase.from("user_video_views").select("video_id").eq("user_id", user.id),
+        supabase.from("user_roles").select("role").eq("user_id", user.id),
       ]);
 
       if (videosRes.data) {
         setVideos(videosRes.data);
-        if (videosRes.data.length > 0) {
-          setSelectedVideo(videosRes.data[0]);
-        }
+        if (videosRes.data.length > 0) setSelectedVideo(videosRes.data[0]);
       }
-
-      if (viewsRes.data) {
-        setViewedIds(new Set(viewsRes.data.map((v: any) => v.video_id)));
-      }
+      if (viewsRes.data) setViewedIds(new Set(viewsRes.data.map((v: any) => v.video_id)));
+      if (rolesRes.data) setUserRoles(rolesRes.data.map((r: any) => r.role));
 
       setLoading(false);
     };
-
     fetchData();
   }, []);
 
   const markAsViewed = async (videoId: string) => {
     if (viewedIds.has(videoId)) return;
-
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
-    await supabase.from("user_video_views").insert({
-      user_id: user.id,
-      video_id: videoId,
-    });
-
+    await supabase.from("user_video_views").insert({ user_id: user.id, video_id: videoId });
     setViewedIds((prev) => new Set([...prev, videoId]));
   };
 
   const toggleViewed = async (videoId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
     if (viewedIds.has(videoId)) {
-      await supabase
-        .from("user_video_views")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("video_id", videoId);
-      setViewedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(videoId);
-        return next;
-      });
+      await supabase.from("user_video_views").delete().eq("user_id", user.id).eq("video_id", videoId);
+      setViewedIds((prev) => { const next = new Set(prev); next.delete(videoId); return next; });
     } else {
-      await supabase.from("user_video_views").insert({
-        user_id: user.id,
-        video_id: videoId,
-      });
+      await supabase.from("user_video_views").insert({ user_id: user.id, video_id: videoId });
       setViewedIds((prev) => new Set([...prev, videoId]));
     }
   };
@@ -104,51 +83,32 @@ export const VideoSetup = () => {
     );
   }
 
-  // EA users get tabbed interface
-  if (isEarlyAccess) {
-    return (
-      <div className="h-full flex flex-col">
-        <Tabs defaultValue="oracle" className="h-full flex flex-col">
-          <div className="p-4 md:p-6 border-b border-border">
-            <TabsList className="w-full grid grid-cols-2">
-              <TabsTrigger value="oracle" className="text-xs">Vidéo du Setup Oracle</TabsTrigger>
-              <TabsTrigger value="bonus" className="text-xs">Vidéos Bonus — Mercure Institut</TabsTrigger>
-            </TabsList>
-          </div>
-          <TabsContent value="oracle" className="flex-1 overflow-hidden flex flex-col m-0">
-            <VideoOracleContent
-              videos={videos}
-              selectedVideo={selectedVideo}
-              viewedIds={viewedIds}
-              totalCount={totalCount}
-              viewedCount={viewedCount}
-              isEarlyAccess={true}
-              onSelectVideo={handleSelectVideo}
-              onToggleViewed={toggleViewed}
-            />
-          </TabsContent>
-          <TabsContent value="bonus" className="flex-1 overflow-hidden m-0">
-            <BonusVideoViewer />
-          </TabsContent>
-        </Tabs>
-      </div>
-    );
-  }
-
-  // Non-EA users: original layout
+  // All roles get tabbed interface now
   return (
     <div className="h-full flex flex-col">
-      <VideoOracleContent
-        videos={videos}
-        selectedVideo={selectedVideo}
-        viewedIds={viewedIds}
-        totalCount={totalCount}
-        viewedCount={viewedCount}
-        isEarlyAccess={false}
-        onSelectVideo={handleSelectVideo}
-        onToggleViewed={toggleViewed}
-        showHeader
-      />
+      <Tabs defaultValue="oracle" className="h-full flex flex-col">
+        <div className="p-4 md:p-6 border-b border-border">
+          <TabsList className="w-full grid grid-cols-2">
+            <TabsTrigger value="oracle" className="text-xs">Vidéo du Setup Oracle</TabsTrigger>
+            <TabsTrigger value="bonus" className="text-xs">Vidéos Bonus — Mercure Institut</TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="oracle" className="flex-1 overflow-hidden flex flex-col m-0">
+          <VideoOracleContent
+            videos={videos}
+            selectedVideo={selectedVideo}
+            viewedIds={viewedIds}
+            totalCount={totalCount}
+            viewedCount={viewedCount}
+            isEarlyAccess={isEarlyAccess}
+            onSelectVideo={handleSelectVideo}
+            onToggleViewed={toggleViewed}
+          />
+        </TabsContent>
+        <TabsContent value="bonus" className="flex-1 overflow-hidden m-0">
+          <BonusVideoViewer userRoles={userRoles} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
@@ -163,72 +123,29 @@ interface VideoOracleContentProps {
   isEarlyAccess: boolean;
   onSelectVideo: (video: VideoData) => void;
   onToggleViewed: (videoId: string) => void;
-  showHeader?: boolean;
 }
 
 const VideoOracleContent = ({
   videos, selectedVideo, viewedIds, totalCount, viewedCount,
-  isEarlyAccess, onSelectVideo, onToggleViewed, showHeader = false,
+  isEarlyAccess, onSelectVideo, onToggleViewed,
 }: VideoOracleContentProps) => (
   <>
-    {/* Header */}
-    {showHeader && (
-      <div className="p-4 md:p-6 border-b border-border">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg md:text-xl font-semibold text-foreground">
-              Vidéo du Setup Oracle
-            </h2>
-            <Badge variant="secondary" className="font-mono text-[10px] md:text-xs">
-              {totalCount} vidéos
-            </Badge>
-          </div>
-          <div className="flex items-center gap-3">
-            <a
-              href="https://mercurefx.webflow.io/utility/connexion"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-md text-[10px] md:text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all bg-card"
-            >
-              <ExternalLink className="w-3 h-3" />
-              <span className="hidden sm:inline">Accéder aux vidéos bonus du Mercure Institut</span>
-              <span className="sm:hidden">Vidéos bonus</span>
-            </a>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground">
-                <Eye className="w-3.5 h-3.5" />
-                <span>{viewedCount}/{totalCount} vues</span>
-              </div>
-              <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full transition-all duration-500"
-                  style={{ width: `${totalCount > 0 ? (viewedCount / totalCount) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-          </div>
+    {/* Progress bar */}
+    <div className="px-4 md:px-6 py-3 border-b border-border flex items-center justify-between">
+      <Badge variant="secondary" className="font-mono text-[10px]">{totalCount} vidéos</Badge>
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground">
+          <Eye className="w-3.5 h-3.5" />
+          <span>{viewedCount}/{totalCount} vues</span>
+        </div>
+        <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary rounded-full transition-all duration-500"
+            style={{ width: `${totalCount > 0 ? (viewedCount / totalCount) * 100 : 0}%` }}
+          />
         </div>
       </div>
-    )}
-
-    {/* Progress bar for EA tabbed view */}
-    {!showHeader && (
-      <div className="px-4 md:px-6 py-3 border-b border-border flex items-center justify-between">
-        <Badge variant="secondary" className="font-mono text-[10px]">{totalCount} vidéos</Badge>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground">
-            <Eye className="w-3.5 h-3.5" />
-            <span>{viewedCount}/{totalCount} vues</span>
-          </div>
-          <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-500"
-              style={{ width: `${totalCount > 0 ? (viewedCount / totalCount) * 100 : 0}%` }}
-            />
-          </div>
-        </div>
-      </div>
-    )}
+    </div>
 
     {/* Split layout: Player + Playlist */}
     <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
