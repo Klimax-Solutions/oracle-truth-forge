@@ -83,39 +83,6 @@ export const EarlyAccessRequestsTab = () => {
     setProcessing(null);
   };
 
-  const handleResetPassword = async (request: EARequest) => {
-    setProcessing(request.id);
-    try {
-      // Find the user by email
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("user_id")
-        .eq("display_name", request.first_name)
-        .maybeSingle();
-
-      if (!profile) {
-        // Try finding by matching the email from auth - we need the edge function
-        const { data, error } = await supabase.functions.invoke("approve-early-access", {
-          body: { action: "reset_password", userId: null, email: request.email },
-        });
-        if (error) throw error;
-        toast({ title: "Mot de passe réinitialisé" });
-      } else {
-        const { data, error } = await supabase.functions.invoke("approve-early-access", {
-          body: { action: "reset_password", userId: profile.user_id },
-        });
-        if (error) throw error;
-        toast({ title: "Mot de passe réinitialisé", description: `Le mot de passe de ${request.first_name} a été réinitialisé (= prénom en minuscules).` });
-      }
-    } catch (err: any) {
-      toast({
-        title: "Erreur",
-        description: err.message || "Impossible de réinitialiser le mot de passe.",
-        variant: "destructive",
-      });
-    }
-    setProcessing(null);
-  };
 
   const pendingRequests = requests.filter((r) => r.status === "en_attente");
   const processedRequests = requests.filter((r) => r.status !== "en_attente");
@@ -225,17 +192,6 @@ export const EarlyAccessRequestsTab = () => {
                     <span className="text-muted-foreground">{req.email}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {req.status === "approuvée" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-[10px] gap-1"
-                        onClick={() => handleResetPassword(req)}
-                        disabled={processing === req.id}
-                      >
-                        {processing === req.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Reset MDP"}
-                      </Button>
-                    )}
                     <span
                       className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded-full ${
                         req.status === "approuvée"
