@@ -167,7 +167,7 @@ export const VideoManager = () => {
           </TabsList>
         </div>
 
-        <TabsContent value="oracle" className="flex-1 overflow-hidden flex flex-col m-0">
+        <TabsContent value="oracle" className="flex-1 overflow-hidden flex flex-col m-0 data-[state=inactive]:hidden">
           {/* Oracle sub-header */}
           <div className="px-4 md:px-6 py-3 border-b border-border flex items-center justify-between">
             <Badge variant="secondary" className="font-mono text-[10px] md:text-xs">
@@ -217,7 +217,7 @@ export const VideoManager = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="bonus" className="flex-1 overflow-auto m-0">
+        <TabsContent value="bonus" className="flex-1 overflow-hidden flex flex-col m-0 data-[state=inactive]:hidden">
           <BonusVideoManager />
         </TabsContent>
       </Tabs>
