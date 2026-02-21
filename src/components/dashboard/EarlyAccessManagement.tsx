@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 import { useEaFeaturedTrade } from "@/hooks/useEaFeaturedTrade";
 import {
   Loader2,
@@ -16,11 +15,14 @@ import {
   Trash2,
 } from "lucide-react";
 
+// ── Types ──
+
 interface EAUser {
   user_id: string;
   display_name: string | null;
   expires_at: string | null;
   role_id: string;
+  early_access_type: string | null;
 }
 
 interface EASetting {
@@ -31,7 +33,19 @@ interface EASetting {
   button_url: string;
 }
 
-const DEFAULT_BUTTONS = [
+interface GlobalSetting {
+  id: string;
+  setting_key: string;
+  setting_value: string;
+}
+
+const PRECALL_BUTTONS = [
+  { key: "continuer_ma_recolte", label: "Continuer ma récolte vidéo", globalKey: "precall_continuer_ma_recolte" },
+  { key: "video_bonus_mercure_institut", label: "Bonus Mercure Institut", globalKey: "precall_video_bonus_mercure_institut" },
+  { key: "acceder_a_oracle", label: "Accéder à Oracle", globalKey: "precall_acceder_a_oracle" },
+];
+
+const POSTCALL_BUTTONS = [
   { key: "continuer_ma_recolte", label: "Continuer ma récolte" },
   { key: "video_bonus_mercure_institut", label: "Vidéo bonus Mercure Institut" },
   { key: "acceder_a_oracle", label: "Accéder à Oracle" },
@@ -40,128 +54,13 @@ const DEFAULT_BUTTONS = [
 export const EarlyAccessManagement = () => {
   const [users, setUsers] = useState<EAUser[]>([]);
   const [settings, setSettings] = useState<EASetting[]>([]);
+  const [globalSettings, setGlobalSettings] = useState<GlobalSetting[]>([]);
+  const [globalEdits, setGlobalEdits] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchData = async () => {
-    setLoading(true);
-
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("id, user_id, expires_at")
-      .eq("role", "early_access");
-
-    if (!roles || roles.length === 0) {
-      setUsers([]);
-      setSettings([]);
-      setLoading(false);
-      return;
-    }
-
-    const userIds = roles.map((r) => r.user_id);
-
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, display_name")
-      .in("user_id", userIds);
-
-    const { data: settingsData } = await supabase
-      .from("early_access_settings")
-      .select("*")
-      .in("user_id", userIds);
-
-    const eaUsers: EAUser[] = roles.map((r) => {
-      const profile = profiles?.find((p) => p.user_id === r.user_id);
-      return {
-        user_id: r.user_id,
-        display_name: profile?.display_name || `User ${r.user_id.slice(0, 8)}`,
-        expires_at: r.expires_at,
-        role_id: r.id,
-      };
-    });
-
-    setUsers(eaUsers);
-    setSettings((settingsData || []) as EASetting[]);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  // Get user's URL for a specific button key
-  const getButtonUrl = (userId: string, buttonKey: string) => {
-    const setting = settings.find(
-      (s) => s.user_id === userId && s.button_key === buttonKey
-    );
-    return setting?.button_url || "";
-  };
-
-  // Save/update URL for a button
-  const saveButtonUrl = async (userId: string, buttonKey: string, buttonLabel: string, url: string) => {
-    const saveKey = `${userId}_${buttonKey}`;
-    setSaving(saveKey);
-
-    const existing = settings.find(
-      (s) => s.user_id === userId && s.button_key === buttonKey
-    );
-
-    if (existing) {
-      const { error } = await supabase
-        .from("early_access_settings")
-        .update({ button_url: url })
-        .eq("id", existing.id);
-
-      if (error) {
-        toast({ title: "Erreur", description: error.message, variant: "destructive" });
-      } else {
-        setSettings((prev) =>
-          prev.map((s) => (s.id === existing.id ? { ...s, button_url: url } : s))
-        );
-        toast({ title: "URL sauvegardée" });
-      }
-    } else {
-      const { data, error } = await supabase
-        .from("early_access_settings")
-        .insert({
-          user_id: userId,
-          button_key: buttonKey,
-          button_label: buttonLabel,
-          button_url: url,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        toast({ title: "Erreur", description: error.message, variant: "destructive" });
-      } else if (data) {
-        setSettings((prev) => [...prev, data as EASetting]);
-        toast({ title: "URL sauvegardée" });
-      }
-    }
-    setSaving(null);
-  };
-
-  const updateExpiration = async (roleId: string, expiresAt: string) => {
-    setSaving(`exp_${roleId}`);
-    const { error } = await supabase
-      .from("user_roles")
-      .update({ expires_at: expiresAt || null })
-      .eq("id", roleId);
-
-    if (error) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
-    } else {
-      setUsers((prev) =>
-        prev.map((u) => (u.role_id === roleId ? { ...u, expires_at: expiresAt || null } : u))
-      );
-      toast({ title: "Expiration mise à jour" });
-    }
-    setSaving(null);
-  };
-
-  // ─── Featured Trade Config ───
+  // ── Featured Trade ──
   const { featured, loading: featuredLoading, refetch: refetchFeatured } = useEaFeaturedTrade();
   const [ftContentType, setFtContentType] = useState<"screenshot" | "video">("screenshot");
   const [ftDirection, setFtDirection] = useState("");
@@ -174,18 +73,56 @@ export const EarlyAccessManagement = () => {
   const [ftPreview, setFtPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Local URL state for editing
+  // Local URL state for postcall per-user editing
   const [urlEdits, setUrlEdits] = useState<Record<string, string>>({});
 
-  const getEditUrl = (userId: string, buttonKey: string) => {
-    const editKey = `${userId}_${buttonKey}`;
-    if (editKey in urlEdits) return urlEdits[editKey];
-    return getButtonUrl(userId, buttonKey);
+  // ── Fetch data ──
+
+  const fetchData = async () => {
+    setLoading(true);
+
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("id, user_id, expires_at, early_access_type" as any)
+      .eq("role", "early_access");
+
+    if (!roles || roles.length === 0) {
+      setUsers([]);
+      setSettings([]);
+      setLoading(false);
+      return;
+    }
+
+    const userIds = roles.map((r: any) => r.user_id);
+
+    const [profilesRes, settingsRes, globalRes] = await Promise.all([
+      supabase.from("profiles").select("user_id, display_name").in("user_id", userIds),
+      supabase.from("early_access_settings").select("*").in("user_id", userIds),
+      supabase.from("ea_global_settings" as any).select("*"),
+    ]);
+
+    setGlobalSettings((globalRes.data || []) as unknown as GlobalSetting[]);
+
+    const eaUsers: EAUser[] = (roles as any[]).map((r: any) => {
+      const profile = profilesRes.data?.find((p: any) => p.user_id === r.user_id);
+      return {
+        user_id: r.user_id,
+        display_name: profile?.display_name || `User ${r.user_id.slice(0, 8)}`,
+        expires_at: r.expires_at,
+        role_id: r.id,
+        early_access_type: r.early_access_type || "postcall",
+      };
+    });
+
+    setUsers(eaUsers);
+    setSettings((settingsRes.data || []) as EASetting[]);
+    setGlobalSettings((globalRes.data || []) as unknown as GlobalSetting[]);
+    setLoading(false);
   };
 
-  const setEditUrl = (userId: string, buttonKey: string, value: string) => {
-    setUrlEdits((prev) => ({ ...prev, [`${userId}_${buttonKey}`]: value }));
-  };
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   useEffect(() => {
     if (featured) {
@@ -197,6 +134,102 @@ export const EarlyAccessManagement = () => {
       setFtVideoUrl(featured.video_url || "");
     }
   }, [featured]);
+
+  // ── Global settings helpers ──
+
+  const getGlobalUrl = (key: string) => {
+    if (key in globalEdits) return globalEdits[key];
+    const gs = globalSettings.find((s) => s.setting_key === key);
+    return gs?.setting_value || "";
+  };
+
+  const saveGlobalUrl = async (key: string) => {
+    const saveId = `global_${key}`;
+    setSaving(saveId);
+    const value = getGlobalUrl(key);
+
+    const existing = globalSettings.find((s) => s.setting_key === key);
+    if (existing) {
+      await supabase
+        .from("ea_global_settings" as any)
+        .update({ setting_value: value, updated_at: new Date().toISOString() } as any)
+        .eq("id", existing.id);
+      setGlobalSettings((prev) =>
+        prev.map((s) => (s.id === existing.id ? { ...s, setting_value: value } : s))
+      );
+    } else {
+      const { data } = await supabase
+        .from("ea_global_settings" as any)
+        .insert({ setting_key: key, setting_value: value } as any)
+        .select()
+        .single();
+      if (data) setGlobalSettings((prev) => [...prev, data as any]);
+    }
+    toast({ title: "URL sauvegardée" });
+    setSaving(null);
+  };
+
+  // ── Per-user (postcall) URL helpers ──
+
+  const getEditUrl = (userId: string, buttonKey: string) => {
+    const editKey = `${userId}_${buttonKey}`;
+    if (editKey in urlEdits) return urlEdits[editKey];
+    const setting = settings.find((s) => s.user_id === userId && s.button_key === buttonKey);
+    return setting?.button_url || "";
+  };
+
+  const setEditUrl = (userId: string, buttonKey: string, value: string) => {
+    setUrlEdits((prev) => ({ ...prev, [`${userId}_${buttonKey}`]: value }));
+  };
+
+  const saveButtonUrl = async (userId: string, buttonKey: string, buttonLabel: string, url: string) => {
+    const saveKey = `${userId}_${buttonKey}`;
+    setSaving(saveKey);
+
+    const existing = settings.find((s) => s.user_id === userId && s.button_key === buttonKey);
+
+    if (existing) {
+      const { error } = await supabase
+        .from("early_access_settings")
+        .update({ button_url: url })
+        .eq("id", existing.id);
+      if (!error) {
+        setSettings((prev) => prev.map((s) => (s.id === existing.id ? { ...s, button_url: url } : s)));
+        toast({ title: "URL sauvegardée" });
+      }
+    } else {
+      const { data, error } = await supabase
+        .from("early_access_settings")
+        .insert({ user_id: userId, button_key: buttonKey, button_label: buttonLabel, button_url: url })
+        .select()
+        .single();
+      if (!error && data) {
+        setSettings((prev) => [...prev, data as EASetting]);
+        toast({ title: "URL sauvegardée" });
+      }
+    }
+    setSaving(null);
+  };
+
+  // ── Expiration ──
+
+  const updateExpiration = async (roleId: string, expiresAt: string) => {
+    setSaving(`exp_${roleId}`);
+    const { error } = await supabase
+      .from("user_roles")
+      .update({ expires_at: expiresAt || null })
+      .eq("id", roleId);
+
+    if (!error) {
+      setUsers((prev) =>
+        prev.map((u) => (u.role_id === roleId ? { ...u, expires_at: expiresAt || null } : u))
+      );
+      toast({ title: "Expiration mise à jour" });
+    }
+    setSaving(null);
+  };
+
+  // ── Featured Trade ──
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -235,26 +268,11 @@ export const EarlyAccessManagement = () => {
     };
 
     if (featured?.id) {
-      const { error } = await supabase
-        .from("ea_featured_trade")
-        .update(payload)
-        .eq("id", featured.id);
-      if (error) {
-        toast({ title: "Erreur", description: error.message, variant: "destructive" });
-      } else {
-        toast({ title: "Contenu mis à jour" });
-        refetchFeatured();
-      }
+      const { error } = await supabase.from("ea_featured_trade").update(payload).eq("id", featured.id);
+      if (!error) { toast({ title: "Contenu mis à jour" }); refetchFeatured(); }
     } else {
-      const { error } = await supabase
-        .from("ea_featured_trade")
-        .insert(payload);
-      if (error) {
-        toast({ title: "Erreur", description: error.message, variant: "destructive" });
-      } else {
-        toast({ title: "Contenu créé" });
-        refetchFeatured();
-      }
+      const { error } = await supabase.from("ea_featured_trade").insert(payload);
+      if (!error) { toast({ title: "Contenu créé" }); refetchFeatured(); }
     }
     setFtFile(null);
     setFtPreview(null);
@@ -272,6 +290,13 @@ export const EarlyAccessManagement = () => {
     setFtSaving(false);
   };
 
+  // ── Derived lists ──
+
+  const precallUsers = users.filter((u) => u.early_access_type === "precall");
+  const postcallUsers = users.filter((u) => u.early_access_type !== "precall");
+
+  // ── Render ──
+
   return (
     <div className="h-full flex flex-col">
       <div className="p-4 md:p-6 border-b border-border">
@@ -279,12 +304,13 @@ export const EarlyAccessManagement = () => {
           Gestion Early Access
         </h2>
         <p className="text-xs md:text-sm text-muted-foreground font-mono">
-          Configuration des URLs personnalisées et contenu mis en avant
+          Configuration des sous-rôles Pré-call et Post-call
         </p>
       </div>
 
-      <div className="flex-1 p-4 md:p-6 overflow-auto space-y-6">
-        {/* ─── Featured Trade Config ─── */}
+      <div className="flex-1 p-4 md:p-6 overflow-auto space-y-8">
+
+        {/* ═══ Featured Trade Config ═══ */}
         <div className="border border-border rounded-md bg-card overflow-hidden">
           <div className="p-4 border-b border-border bg-muted/30">
             <h4 className="font-semibold text-foreground text-sm">Dernière data récoltée (contenu mis en avant)</h4>
@@ -293,35 +319,18 @@ export const EarlyAccessManagement = () => {
             </p>
           </div>
           <div className="p-4 space-y-4">
-            {/* Content type toggle */}
             <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={ftContentType === "screenshot" ? "default" : "outline"}
-                className="gap-1.5 text-xs"
-                onClick={() => setFtContentType("screenshot")}
-              >
+              <Button size="sm" variant={ftContentType === "screenshot" ? "default" : "outline"} className="gap-1.5 text-xs" onClick={() => setFtContentType("screenshot")}>
                 <ImageIcon className="w-3.5 h-3.5" /> Screenshot
               </Button>
-              <Button
-                size="sm"
-                variant={ftContentType === "video" ? "default" : "outline"}
-                className="gap-1.5 text-xs"
-                onClick={() => setFtContentType("video")}
-              >
+              <Button size="sm" variant={ftContentType === "video" ? "default" : "outline"} className="gap-1.5 text-xs" onClick={() => setFtContentType("video")}>
                 <Video className="w-3.5 h-3.5" /> Vidéo
               </Button>
             </div>
-
-            {/* Trade details */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               <div>
                 <label className="text-[10px] font-mono uppercase text-muted-foreground">Direction</label>
-                <select
-                  value={ftDirection}
-                  onChange={(e) => setFtDirection(e.target.value)}
-                  className="w-full h-7 text-xs rounded-md border border-input bg-background px-2"
-                >
+                <select value={ftDirection} onChange={(e) => setFtDirection(e.target.value)} className="w-full h-7 text-xs rounded-md border border-input bg-background px-2">
                   <option value="">—</option>
                   <option value="Long">Long</option>
                   <option value="Short">Short</option>
@@ -340,8 +349,6 @@ export const EarlyAccessManagement = () => {
                 <Input type="time" value={ftEntryTime} onChange={(e) => setFtEntryTime(e.target.value)} className="h-7 text-xs" />
               </div>
             </div>
-
-            {/* Screenshot upload or Video URL */}
             {ftContentType === "screenshot" ? (
               <div className="space-y-2">
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
@@ -367,16 +374,9 @@ export const EarlyAccessManagement = () => {
             ) : (
               <div>
                 <label className="text-[10px] font-mono uppercase text-muted-foreground">URL Google Drive (embed)</label>
-                <Input
-                  value={ftVideoUrl}
-                  onChange={(e) => setFtVideoUrl(e.target.value)}
-                  placeholder="https://drive.google.com/file/d/.../preview"
-                  className="h-7 text-xs"
-                />
+                <Input value={ftVideoUrl} onChange={(e) => setFtVideoUrl(e.target.value)} placeholder="https://drive.google.com/file/d/.../preview" className="h-7 text-xs" />
               </div>
             )}
-
-            {/* Save / Delete */}
             <div className="flex gap-2">
               <Button size="sm" className="gap-1.5" onClick={saveFeaturedTrade} disabled={ftSaving}>
                 {ftSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
@@ -391,105 +391,149 @@ export const EarlyAccessManagement = () => {
           </div>
         </div>
 
-        {/* ─── Per-user EA Settings ─── */}
-        {users.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-center">
-            <User className="w-12 h-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              Aucun membre Early Access
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Assignez le rôle Early Access à un membre via la gestion des rôles.
-            </p>
+        {/* ═══ SECTION PRÉ-CALL (AMBER) ═══ */}
+        <div className="border-2 border-amber-500/40 rounded-md overflow-hidden">
+          <div className="p-4 bg-amber-500/10 border-b border-amber-500/30 flex items-center gap-3">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-500 border border-amber-500/30">
+              PRÉ-CALL
+            </span>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Early Access Pré-call</h3>
+              <p className="text-[10px] text-muted-foreground font-mono">URLs universelles — appliquées à tous les membres pré-call</p>
+            </div>
           </div>
-        ) : (
-          users.map((user) => (
-            <div
-              key={user.user_id}
-              className="border border-border rounded-md bg-card overflow-hidden"
-            >
-              {/* User header */}
-              <div className="p-4 border-b border-border bg-muted/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                      <User className="w-4 h-4 text-primary" />
+
+          <div className="p-4 space-y-4">
+            {/* Global URL configuration */}
+            <div className="space-y-3">
+              <p className="text-[10px] font-mono uppercase text-amber-500/80">Configuration des URLs globales</p>
+              {PRECALL_BUTTONS.map((btn) => {
+                const saveId = `global_${btn.globalKey}`;
+                return (
+                  <div key={btn.globalKey} className="flex items-center gap-2 p-2 border border-amber-500/20 rounded-md bg-amber-500/5">
+                    <span className="text-xs font-mono text-foreground min-w-[180px] flex-shrink-0">{btn.label}</span>
+                    <Input
+                      value={getGlobalUrl(btn.globalKey)}
+                      onChange={(e) => setGlobalEdits((prev) => ({ ...prev, [btn.globalKey]: e.target.value }))}
+                      placeholder="URL universelle (https://...)"
+                      className="h-7 text-xs flex-1"
+                    />
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => saveGlobalUrl(btn.globalKey)} disabled={saving === saveId}>
+                      {saving === saveId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Precall members list */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-mono uppercase text-amber-500/80">Membres pré-call ({precallUsers.length})</p>
+              {precallUsers.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">Aucun membre pré-call</p>
+              ) : (
+                <div className="border border-border rounded-md overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-muted/30 border-b border-border">
+                        <th className="text-left p-2 font-mono uppercase text-muted-foreground">Nom</th>
+                        <th className="text-left p-2 font-mono uppercase text-muted-foreground">Expiration</th>
+                        <th className="text-left p-2 font-mono uppercase text-muted-foreground">Type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {precallUsers.map((u) => (
+                        <tr key={u.user_id} className="border-b border-border/50">
+                          <td className="p-2 flex items-center gap-2">
+                            <User className="w-3.5 h-3.5 text-amber-500" />
+                            {u.display_name}
+                          </td>
+                          <td className="p-2">
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-muted-foreground" />
+                              <Input
+                                type="datetime-local"
+                                value={u.expires_at ? new Date(u.expires_at).toISOString().slice(0, 16) : ""}
+                                onChange={(e) => updateExpiration(u.role_id, e.target.value ? new Date(e.target.value).toISOString() : "")}
+                                className="h-6 text-[10px] w-44"
+                              />
+                            </div>
+                          </td>
+                          <td className="p-2">
+                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-500">pré-call</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ SECTION POST-CALL (EMERALD) ═══ */}
+        <div className="border-2 border-emerald-500/40 rounded-md overflow-hidden">
+          <div className="p-4 bg-emerald-500/10 border-b border-emerald-500/30 flex items-center gap-3">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-500 border border-emerald-500/30">
+              POST-CALL
+            </span>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Early Access Post-call</h3>
+              <p className="text-[10px] text-muted-foreground font-mono">URLs personnalisées par membre</p>
+            </div>
+          </div>
+
+          <div className="p-4 space-y-4">
+            {postcallUsers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <User className="w-10 h-10 text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">Aucun membre post-call</p>
+              </div>
+            ) : (
+              postcallUsers.map((user) => (
+                <div key={user.user_id} className="border border-emerald-500/20 rounded-md bg-emerald-500/5 overflow-hidden">
+                  <div className="p-3 border-b border-emerald-500/20 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <User className="w-3.5 h-3.5 text-emerald-500" />
+                      <span className="text-sm font-semibold text-foreground">{user.display_name}</span>
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-500">post-call</span>
                     </div>
-                    <div>
-                      <h4 className="font-semibold text-foreground text-sm">
-                        {user.display_name}
-                      </h4>
-                      <p className="text-[10px] text-muted-foreground font-mono">
-                        {user.user_id.slice(0, 12)}...
-                      </p>
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-muted-foreground" />
+                      <Input
+                        type="datetime-local"
+                        value={user.expires_at ? new Date(user.expires_at).toISOString().slice(0, 16) : ""}
+                        onChange={(e) => updateExpiration(user.role_id, e.target.value ? new Date(e.target.value).toISOString() : "")}
+                        className="h-6 text-[10px] w-44"
+                      />
                     </div>
                   </div>
-
-                  {/* Expiration */}
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                    <Input
-                      type="datetime-local"
-                      value={user.expires_at ? new Date(user.expires_at).toISOString().slice(0, 16) : ""}
-                      onChange={(e) => updateExpiration(user.role_id, e.target.value ? new Date(e.target.value).toISOString() : "")}
-                      className="h-7 text-xs w-52"
-                    />
-                    {saving === `exp_${user.role_id}` && (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-                    )}
+                  <div className="p-3 space-y-2">
+                    {POSTCALL_BUTTONS.map((btn) => {
+                      const saveKey = `${user.user_id}_${btn.key}`;
+                      return (
+                        <div key={btn.key} className="flex items-center gap-2">
+                          <span className="text-xs font-mono text-foreground min-w-[180px] flex-shrink-0">{btn.label}</span>
+                          <Input
+                            value={getEditUrl(user.user_id, btn.key)}
+                            onChange={(e) => setEditUrl(user.user_id, btn.key, e.target.value)}
+                            placeholder="URL personnalisée (https://...)"
+                            className="h-7 text-xs flex-1"
+                          />
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => saveButtonUrl(user.user_id, btn.key, btn.label, getEditUrl(user.user_id, btn.key))} disabled={saving === saveKey}>
+                            {saving === saveKey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
+              ))
+            )}
+          </div>
+        </div>
 
-              {/* Predefined buttons with URL configuration */}
-              <div className="p-4 space-y-3">
-                <p className="text-[10px] font-mono uppercase text-muted-foreground">
-                  URLs personnalisées par bouton
-                </p>
-
-                {DEFAULT_BUTTONS.map((btn) => {
-                  const saveKey = `${user.user_id}_${btn.key}`;
-                  return (
-                    <div
-                      key={btn.key}
-                      className="flex items-center gap-2 p-2 border border-border/50 rounded-md"
-                    >
-                      <span className="text-xs font-mono text-foreground min-w-[180px] flex-shrink-0">
-                        {btn.label}
-                      </span>
-                      <Input
-                        value={getEditUrl(user.user_id, btn.key)}
-                        onChange={(e) => setEditUrl(user.user_id, btn.key, e.target.value)}
-                        placeholder="URL (https://...)"
-                        className="h-7 text-xs flex-1"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        onClick={() =>
-                          saveButtonUrl(
-                            user.user_id,
-                            btn.key,
-                            btn.label,
-                            getEditUrl(user.user_id, btn.key)
-                          )
-                        }
-                        disabled={saving === saveKey}
-                      >
-                        {saving === saveKey ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Save className="w-3.5 h-3.5" />
-                        )}
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))
-        )}
       </div>
     </div>
   );

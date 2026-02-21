@@ -49,6 +49,7 @@ import { UserHistoryTab } from "./admin/UserHistoryTab";
 import { AdminUserDataViewer } from "./admin/AdminUserDataViewer";
 import { AdminTradeNotesViewer } from "./admin/AdminTradeNotesViewer";
 import { RoleManagement } from "./admin/RoleManagement";
+import { EarlyAccessRequestsTab } from "./admin/EarlyAccessRequestsTab";
 import { ScreenshotLink } from "./ScreenshotLink";
 import { TradeNavigationLightbox, type TradeScreenshotItem, type OracleMatch } from "./TradeNavigationLightbox";
 import { useSidebarRoles } from "./DashboardSidebar";
@@ -906,6 +907,10 @@ export const AdminVerification = () => {
               <Shield className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Approbations</span>
             </TabsTrigger>
+            <TabsTrigger value="ea-requests" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-amber-500" />
+              <span className="hidden sm:inline">Demandes EA</span>
+            </TabsTrigger>
             <TabsTrigger value="verifications" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
               <Clock className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Vérifications</span> ({requests.length})
@@ -1382,6 +1387,11 @@ export const AdminVerification = () => {
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* EA Requests Tab */}
+          <TabsContent value="ea-requests" className="flex-1 overflow-auto mt-0">
+            <EarlyAccessRequestsTab />
           </TabsContent>
 
           {/* Verifications Tab */}

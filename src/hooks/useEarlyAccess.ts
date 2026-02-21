@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const useEarlyAccess = () => {
   const [isEarlyAccess, setIsEarlyAccess] = useState(false);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [earlyAccessType, setEarlyAccessType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -12,17 +13,18 @@ export const useEarlyAccess = () => {
       setIsEarlyAccess(!!data);
 
       if (data) {
-        // Fetch the expires_at for this user's early_access role
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data: roleData } = await supabase
             .from("user_roles")
-            .select("expires_at")
+            .select("expires_at, early_access_type" as any)
             .eq("user_id", user.id)
             .eq("role", "early_access")
             .maybeSingle();
-          if (roleData?.expires_at) {
-            setExpiresAt(roleData.expires_at);
+          if (roleData) {
+            const rd = roleData as any;
+            if (rd.expires_at) setExpiresAt(rd.expires_at);
+            setEarlyAccessType(rd.early_access_type || null);
           }
         }
       }
@@ -31,5 +33,5 @@ export const useEarlyAccess = () => {
     check();
   }, []);
 
-  return { isEarlyAccess, expiresAt, loading };
+  return { isEarlyAccess, expiresAt, earlyAccessType, loading };
 };
