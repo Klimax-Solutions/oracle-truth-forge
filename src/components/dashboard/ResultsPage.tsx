@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { ImageLightbox } from "./ImageLightbox";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ResultsManager } from "./ResultsManager";
 
 interface ResultItem {
   id: string;
@@ -27,12 +29,13 @@ const formatLiteralDate = (dateStr: string) => {
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 };
 
-export const ResultsPage = () => {
+export const ResultsPage = ({ isAdmin = false }: { isAdmin?: boolean }) => {
   const [results, setResults] = useState<ResultItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("view");
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -76,6 +79,20 @@ export const ResultsPage = () => {
 
   return (
     <div className="h-full flex flex-col">
+      {isAdmin && (
+        <div className="p-4 md:p-6 border-b border-border">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full grid grid-cols-2">
+              <TabsTrigger value="view" className="text-xs">Résultats</TabsTrigger>
+              <TabsTrigger value="manage" className="text-xs">Gestion des résultats</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      )}
+      {activeTab === "manage" && isAdmin ? (
+        <ResultsManager />
+      ) : (
+      <>
       <div className="p-4 md:p-6 border-b border-border">
         <h2 className="text-lg md:text-xl font-semibold text-foreground">Résultats les plus récents</h2>
         <p className="text-xs text-muted-foreground font-mono mt-1">{filteredResults.length} résultat{filteredResults.length > 1 ? "s" : ""}</p>
@@ -143,6 +160,8 @@ export const ResultsPage = () => {
 
       {lightboxUrl && (
         <ImageLightbox src={lightboxUrl} alt="Résultat" open={!!lightboxUrl} onClose={() => setLightboxUrl(null)} />
+      )}
+      </>
       )}
     </div>
   );

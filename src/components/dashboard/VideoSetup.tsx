@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 import { BonusVideoViewer } from "./BonusVideoViewer";
+import { VideoManager } from "./VideoManager";
 
 interface VideoData {
   id: string;
@@ -22,6 +23,7 @@ export const VideoSetup = () => {
   const [viewedIds, setViewedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { isEarlyAccess } = useEarlyAccess();
 
   useEffect(() => {
@@ -40,7 +42,11 @@ export const VideoSetup = () => {
         if (videosRes.data.length > 0) setSelectedVideo(videosRes.data[0]);
       }
       if (viewsRes.data) setViewedIds(new Set(viewsRes.data.map((v: any) => v.video_id)));
-      if (rolesRes.data) setUserRoles(rolesRes.data.map((r: any) => r.role));
+      if (rolesRes.data) {
+        const roles = rolesRes.data.map((r: any) => r.role);
+        setUserRoles(roles);
+        setIsAdmin(roles.includes("admin") || roles.includes("super_admin"));
+      }
 
       setLoading(false);
     };
@@ -88,9 +94,10 @@ export const VideoSetup = () => {
     <div className="h-full flex flex-col">
       <Tabs defaultValue="oracle" className="h-full flex flex-col">
         <div className="p-4 md:p-6 border-b border-border">
-          <TabsList className="w-full grid grid-cols-2">
+          <TabsList className={cn("w-full grid", isAdmin ? "grid-cols-3" : "grid-cols-2")}>
             <TabsTrigger value="oracle" className="text-xs">Vidéo du Setup Oracle</TabsTrigger>
             <TabsTrigger value="bonus" className="text-xs">Vidéos Bonus — Mercure Institut</TabsTrigger>
+            {isAdmin && <TabsTrigger value="management" className="text-xs">Gestion des vidéos</TabsTrigger>}
           </TabsList>
         </div>
         <TabsContent value="oracle" className="flex-1 overflow-hidden flex flex-col m-0 data-[state=inactive]:hidden">
@@ -108,6 +115,11 @@ export const VideoSetup = () => {
         <TabsContent value="bonus" className="flex-1 overflow-hidden flex flex-col m-0 data-[state=inactive]:hidden">
           <BonusVideoViewer userRoles={userRoles} />
         </TabsContent>
+        {isAdmin && (
+          <TabsContent value="management" className="flex-1 overflow-hidden flex flex-col m-0 data-[state=inactive]:hidden">
+            <VideoManager embedded />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

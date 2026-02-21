@@ -19,14 +19,12 @@ import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
 import { SetupPage } from "@/components/dashboard/SetupPage";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
-import { VideoManager } from "@/components/dashboard/VideoManager";
 import { AdminVerification } from "@/components/dashboard/AdminVerification";
 // RoleManagement is now embedded in AdminVerification
 import { BatchImportPage } from "@/components/dashboard/BatchImportPage";
 import { SuccessPage } from "@/components/dashboard/SuccessPage";
 import { QuestFloatingBubble } from "@/components/dashboard/QuestFloatingBubble";
 import { ResultsPage } from "@/components/dashboard/ResultsPage";
-import { ResultsManager } from "@/components/dashboard/ResultsManager";
 import { AdminVerificationPopup } from "@/components/dashboard/AdminVerificationPopup";
 import { EarlyAccessManagement } from "@/components/dashboard/EarlyAccessManagement";
 import { CycleReportPopup } from "@/components/dashboard/CycleReportPopup";
@@ -287,15 +285,11 @@ const Dashboard = () => {
       case "successes":
         return <SuccessPage />;
       case "results":
-        return <ResultsPage />;
+        return <ResultsPage isAdmin={isAdmin || isSuperAdmin} />;
       case "batch-import":
         return <BatchImportPage />;
       case "admin":
         return <AdminVerification />;
-      case "video-manager":
-        return <VideoManager />;
-      case "results-manager":
-        return <ResultsManager />;
       case "roles":
         return <AdminVerification />;
       case "early-access-mgmt":
