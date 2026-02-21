@@ -376,8 +376,8 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Contributor filter - only show in Data Générale */}
-            {isDataGenerale && filterOptions.contributor.length > 1 && (
+            {/* Contributor filter - only show in Data Générale, hidden for EA */}
+            {isDataGenerale && !isEarlyAccess && filterOptions.contributor.length > 1 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className={cn(
@@ -735,20 +735,36 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                           {/* Screenshots - vertical stack on mobile */}
                           {(trade.screenshot_m1 || trade.screenshot_m15_m5) ? (
                             isEarlyAccess ? (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                                <div className="relative border border-border rounded-md overflow-hidden aspect-video bg-muted/50">
-                                  <div className="absolute inset-0 backdrop-blur-xl bg-background/30 flex flex-col items-center justify-center z-10">
-                                    <Lock className="w-5 h-5 text-muted-foreground mb-1" />
-                                    <span className="text-[10px] font-mono text-muted-foreground">M15 / Contexte</span>
+                              // EA: show screenshots every other trade (odd index = 0, 2, 4...)
+                              tradeIdx % 2 === 0 && tradeIdx < 50 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                                  <SignedImageCard
+                                    storagePath={trade.screenshot_m15_m5}
+                                    alt={`Trade ${trade.trade_number} M15`}
+                                    label="M15 / Contexte"
+                                  />
+                                  <SignedImageCard
+                                    storagePath={trade.screenshot_m1}
+                                    alt={`Trade ${trade.trade_number} M5`}
+                                    label="M5 / Entrée"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                                  <div className="relative border border-border rounded-md overflow-hidden aspect-video bg-muted/50">
+                                    <div className="absolute inset-0 backdrop-blur-xl bg-background/30 flex flex-col items-center justify-center z-10">
+                                      <Lock className="w-5 h-5 text-muted-foreground mb-1" />
+                                      <span className="text-[10px] font-mono text-muted-foreground">M15 / Contexte</span>
+                                    </div>
+                                  </div>
+                                  <div className="relative border border-border rounded-md overflow-hidden aspect-video bg-muted/50">
+                                    <div className="absolute inset-0 backdrop-blur-xl bg-background/30 flex flex-col items-center justify-center z-10">
+                                      <Lock className="w-5 h-5 text-muted-foreground mb-1" />
+                                      <span className="text-[10px] font-mono text-muted-foreground">M5 / Entrée</span>
+                                    </div>
                                   </div>
                                 </div>
-                                <div className="relative border border-border rounded-md overflow-hidden aspect-video bg-muted/50">
-                                  <div className="absolute inset-0 backdrop-blur-xl bg-background/30 flex flex-col items-center justify-center z-10">
-                                    <Lock className="w-5 h-5 text-muted-foreground mb-1" />
-                                    <span className="text-[10px] font-mono text-muted-foreground">M5 / Entrée</span>
-                                  </div>
-                                </div>
-                              </div>
+                              )
                             ) : (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                                 <SignedImageCard
