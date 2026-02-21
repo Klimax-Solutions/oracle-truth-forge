@@ -27,7 +27,40 @@ Deno.serve(async (req) => {
     const { data: isSA } = await callerClient.rpc("is_super_admin");
     if (!isSA) throw new Error("Accès refusé — super admin requis");
 
-    const { requestId } = await req.json();
+    const body = await req.json();
+    const { requestId, action } = body;
+
+    // ── Action: reset password for existing EA user ──
+    if (action === "reset_password") {
+      const { userId } = body;
+      if (!userId) throw new Error("userId manquant");
+
+      // Get profile to find first name
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("first_name, display_name")
+        .eq("user_id", userId)
+        .single();
+
+      if (!profile) throw new Error("Profil introuvable");
+
+      const firstName = profile.first_name || profile.display_name || "";
+      const basePwd = firstName.trim().toLowerCase();
+      const password = basePwd.length >= 6 ? basePwd : basePwd.padEnd(6, basePwd);
+
+      const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password,
+      });
+
+      if (updateErr) throw new Error(`Erreur reset: ${updateErr.message}`);
+
+      return new Response(
+        JSON.stringify({ success: true, message: `Mot de passe réinitialisé pour ${firstName}` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── Default action: approve request ──
     if (!requestId) throw new Error("requestId manquant");
 
     // Fetch the request
@@ -41,7 +74,6 @@ Deno.serve(async (req) => {
     if (eaReq.status !== "en_attente") throw new Error("Demande déjà traitée");
 
     // Password = first name in lowercase (used for EA simplified login)
-    // Pad to meet minimum length requirement
     const basePwd = eaReq.first_name.trim().toLowerCase();
     const tempPassword = basePwd.length >= 6 ? basePwd : basePwd.padEnd(6, basePwd);
 
@@ -87,12 +119,12 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Compte créé pour ${eaReq.first_name} (${eaReq.email}). Un email de récupération sera envoyé.`,
-        tempPassword,
+        message: `Compte créé pour ${eaReq.first_name} (${eaReq.email}).`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
+    console.error("approve-early-access error:", err.message);
     return new Response(
       JSON.stringify({ error: err.message }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
