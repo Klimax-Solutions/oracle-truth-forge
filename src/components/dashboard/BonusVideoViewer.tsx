@@ -5,6 +5,21 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
+/** Strip fixed width/height from embed codes to make them fully responsive */
+const makeEmbedResponsive = (code: string): string => {
+  return code
+    .replace(/\s*width\s*=\s*["']\d+["']/gi, '')
+    .replace(/\s*height\s*=\s*["']\d+["']/gi, '')
+    .replace(/width:\s*\d+px\s*;?/gi, 'width:100%;')
+    .replace(/height:\s*\d+px\s*;?/gi, 'height:100%;')
+    .replace(/max-width:\s*\d+px\s*;?/gi, '')
+    .replace(/style\s*=\s*["'][^"']*["']/gi, (match) => {
+      return match
+        .replace(/width:\s*\d+px/gi, 'width:100%')
+        .replace(/height:\s*\d+px/gi, 'height:100%');
+    });
+};
+
 interface BonusVideo {
   id: string;
   title: string;
@@ -105,7 +120,7 @@ export const BonusVideoViewer = ({ userRoles = [] }: BonusVideoViewerProps) => {
                   <div
                     className="absolute inset-0 [&_iframe]:!w-full [&_iframe]:!h-full [&_iframe]:!absolute [&_iframe]:!inset-0 [&_iframe]:!border-0 [&_iframe]:rounded-md [&_div]:!w-full [&_div]:!h-full [&_div]:!position-relative"
                     style={{ position: 'absolute', inset: 0 }}
-                    dangerouslySetInnerHTML={{ __html: selectedVideo.embed_code }}
+                    dangerouslySetInnerHTML={{ __html: makeEmbedResponsive(selectedVideo.embed_code) }}
                   />
                 </div>
               </div>

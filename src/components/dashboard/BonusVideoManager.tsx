@@ -82,10 +82,18 @@ export const BonusVideoManager = () => {
       return;
     }
 
+    // Auto-strip dimensions for responsive embedding
+    const cleanedEmbed = embedCode.trim()
+      .replace(/\s*width\s*=\s*["']\d+["']/gi, '')
+      .replace(/\s*height\s*=\s*["']\d+["']/gi, '')
+      .replace(/width:\s*\d+px\s*;?/gi, 'width:100%;')
+      .replace(/height:\s*\d+px\s*;?/gi, 'height:100%;')
+      .replace(/max-width:\s*\d+px\s*;?/gi, '');
+
     const payload = {
       title: title.trim(),
       description: description.trim() || null,
-      embed_code: embedCode.trim(),
+      embed_code: cleanedEmbed,
       category,
       accessible_roles: selectedRoles,
     };

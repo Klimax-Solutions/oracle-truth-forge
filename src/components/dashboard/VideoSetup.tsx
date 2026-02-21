@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
-import { ExternalLink, Check, Eye, EyeOff, Lock } from "lucide-react";
+import { ExternalLink, Check, Eye, EyeOff, Lock, Unlock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
+import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
 import { BonusVideoViewer } from "./BonusVideoViewer";
 import { VideoManager } from "./VideoManager";
+import { Button } from "@/components/ui/button";
 
 interface VideoData {
   id: string;
@@ -25,6 +27,7 @@ export const VideoSetup = () => {
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const { isEarlyAccess } = useEarlyAccess();
+  const { settings: eaSettings } = useEarlyAccessSettings();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -108,6 +111,7 @@ export const VideoSetup = () => {
             totalCount={totalCount}
             viewedCount={viewedCount}
             isEarlyAccess={isEarlyAccess}
+            eaSettings={eaSettings}
             onSelectVideo={handleSelectVideo}
             onToggleViewed={toggleViewed}
           />
@@ -133,14 +137,18 @@ interface VideoOracleContentProps {
   totalCount: number;
   viewedCount: number;
   isEarlyAccess: boolean;
+  eaSettings: { button_key: string; button_url: string }[];
   onSelectVideo: (video: VideoData) => void;
   onToggleViewed: (videoId: string) => void;
 }
 
 const VideoOracleContent = ({
   videos, selectedVideo, viewedIds, totalCount, viewedCount,
-  isEarlyAccess, onSelectVideo, onToggleViewed,
-}: VideoOracleContentProps) => (
+  isEarlyAccess, eaSettings, onSelectVideo, onToggleViewed,
+}: VideoOracleContentProps) => {
+  const unlockBtn = eaSettings.find(s => s.button_key === "acceder_a_oracle");
+  const unlockUrl = unlockBtn?.button_url;
+  return (
   <>
     {/* Progress bar */}
     <div className="px-4 md:px-6 py-3 border-b border-border flex items-center justify-between">
@@ -171,10 +179,18 @@ const VideoOracleContent = ({
             <div className="relative rounded-lg overflow-hidden video-glow-border">
               <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
                 {isEarlyAccess ? (
-                  <div className="absolute inset-0 bg-muted/80 backdrop-blur-xl flex flex-col items-center justify-center rounded-md">
-                    <Lock className="w-8 h-8 text-muted-foreground mb-3" />
-                    <p className="text-sm font-semibold text-foreground mb-1">Contenu réservé</p>
-                    <p className="text-xs text-muted-foreground">Accès Early Access — vidéos bientôt disponibles</p>
+                  <div className="absolute inset-0 bg-muted/80 backdrop-blur-xl flex flex-col items-center justify-center rounded-md gap-3">
+                    <Lock className="w-8 h-8 text-muted-foreground" />
+                    <p className="text-sm font-semibold text-foreground">Contenu réservé</p>
+                    <p className="text-xs text-muted-foreground text-center px-4">Accès Early Access — vidéos bientôt disponibles</p>
+                    {unlockUrl && (
+                      <a href={unlockUrl} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" className="gap-1.5 mt-1">
+                          <Unlock className="w-3.5 h-3.5" />
+                          Débloquer mon accès
+                        </Button>
+                      </a>
+                    )}
                   </div>
                 ) : (
                   <iframe
@@ -286,4 +302,5 @@ const VideoOracleContent = ({
       </div>
     </div>
   </>
-);
+  );
+};

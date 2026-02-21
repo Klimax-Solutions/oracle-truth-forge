@@ -461,21 +461,6 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
               Progression des 8 cycles vers les 314 trades
             </p>
           </div>
-          {(() => {
-            const videoBonusSetting = eaSettings.find(s => s.button_key === "video_bonus_mercure_institut");
-            const videoBonusHref = videoBonusSetting?.button_url || "https://mercurefx.webflow.io/utility/connexion";
-            return (
-              <a
-                href={videoBonusHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-primary/50 rounded-md text-xs font-semibold text-primary hover:bg-primary/10 transition-all"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Vidéos bonus — Mercure Institut
-              </a>
-            );
-          })()}
         </div>
       </div>
 
@@ -1222,9 +1207,7 @@ const LastDataPreviewCard = ({
   const [activeScreen, setActiveScreen] = useState<"m15" | "m5">("m15");
   const [ftSignedUrl, setFtSignedUrl] = useState<string | null>(null);
 
-  // Get the URL for "Vidéo bonus Mercure Institut" from EA settings
-  const videoBonusBtn = eaSettings?.find(s => s.button_key === "video_bonus_mercure_institut");
-  const videoBonusUrl = videoBonusBtn?.button_url || "https://mercurefx.webflow.io/utility/connexion";
+  // Video bonus button removed - content is now integrated in VideoSetup
 
   // Load signed URL for featured trade screenshot
   useEffect(() => {
