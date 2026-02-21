@@ -263,6 +263,10 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
 
   // ──────────────── EA OVERVIEW ────────────────
   if (isEarlyAccess && !isAdmin && !isSuperAdmin) {
+    const eaPersonalCount = personalTrades.length;
+    const EA_LIMIT = 25;
+    const eaLimitReached = eaPersonalCount >= EA_LIMIT;
+
     return (
       <div className="h-full overflow-auto p-4 md:p-6">
         <div className="max-w-3xl mx-auto space-y-6 md:space-y-8">
@@ -310,7 +314,66 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
             actionIcon={<Eye className="w-3.5 h-3.5" />}
             loading={dgLoading}
           />
+
+          {/* EA Data Collection Card */}
+          <div className="border border-border rounded-xl bg-card p-5 space-y-4">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">Commencez votre récolte de data</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                En accès anticipé, vous pouvez récolter jusqu'à 25 données personnelles.
+              </p>
+            </div>
+
+            {/* Counter */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min((eaPersonalCount / EA_LIMIT) * 100, 100)}%` }}
+                />
+              </div>
+              <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+                {eaPersonalCount} / {EA_LIMIT} data récoltées
+              </span>
+            </div>
+
+            {eaLimitReached ? (
+              <div className="flex items-start gap-2 p-3 border border-amber-500/30 rounded-md bg-amber-500/5">
+                <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground">
+                  Vous avez atteint la limite de 25 data en accès anticipé.
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setActiveView("perso")}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Data Live Trading
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => setIsCreateDialogOpen(true)}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Créer un Setup
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Create Setup Dialog reuse */}
+        <CreateSetupDialog
+          isOpen={isCreateDialogOpen}
+          onClose={() => setIsCreateDialogOpen(false)}
+          onCreated={refetchSetups}
+        />
       </div>
     );
   }

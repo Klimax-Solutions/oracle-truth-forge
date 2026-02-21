@@ -5,10 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { BonusVideoManager } from "./BonusVideoManager";
 
 interface VideoData {
   id: string;
@@ -152,90 +154,73 @@ export const VideoManager = () => {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-4 md:p-6 border-b border-border">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg md:text-xl font-semibold text-foreground">
-              Gestion des Vidéos
-            </h2>
+        <h2 className="text-lg md:text-xl font-semibold text-foreground">
+          Gestion des Vidéos
+        </h2>
+      </div>
+
+      <Tabs defaultValue="oracle" className="flex-1 flex flex-col overflow-hidden">
+        <div className="px-4 md:px-6 pt-3">
+          <TabsList className="w-full grid grid-cols-2">
+            <TabsTrigger value="oracle" className="text-xs">Vidéos Oracle</TabsTrigger>
+            <TabsTrigger value="bonus" className="text-xs">Vidéos Bonus — Mercure Institut</TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="oracle" className="flex-1 overflow-hidden flex flex-col m-0">
+          {/* Oracle sub-header */}
+          <div className="px-4 md:px-6 py-3 border-b border-border flex items-center justify-between">
             <Badge variant="secondary" className="font-mono text-[10px] md:text-xs">
               {videos.length} vidéos
             </Badge>
+            <Button size="sm" onClick={openCreateDialog} className="gap-1.5">
+              <Plus className="w-4 h-4" />
+              Ajouter
+            </Button>
           </div>
-          <Button size="sm" onClick={openCreateDialog} className="gap-1.5">
-            <Plus className="w-4 h-4" />
-            Ajouter
-          </Button>
-        </div>
-      </div>
 
-      {/* Video list */}
-      <div className="flex-1 overflow-auto scrollbar-hide p-4 md:p-6">
-        <div className="max-w-3xl mx-auto space-y-2">
-          {videos.map((video, index) => (
-            <div
-              key={video.id}
-              className="flex items-center gap-3 p-3 md:p-4 border border-border bg-card rounded-lg"
-            >
-              {/* Order controls */}
-              <div className="flex flex-col gap-0.5 flex-shrink-0">
-                <button
-                  onClick={() => moveVideo(index, "up")}
-                  disabled={index === 0}
-                  className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"
+          {/* Video list */}
+          <div className="flex-1 overflow-auto scrollbar-hide p-4 md:p-6">
+            <div className="max-w-3xl mx-auto space-y-2">
+              {videos.map((video, index) => (
+                <div
+                  key={video.id}
+                  className="flex items-center gap-3 p-3 md:p-4 border border-border bg-card rounded-lg"
                 >
-                  ▲
-                </button>
-                <button
-                  onClick={() => moveVideo(index, "down")}
-                  disabled={index === videos.length - 1}
-                  className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"
-                >
-                  ▼
-                </button>
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{video.title}</p>
-                <p className="text-[10px] text-muted-foreground truncate mt-0.5">
-                  {video.embed_url}
-                </p>
-                {video.description && (
-                  <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">
-                    {video.description}
-                  </p>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-8 h-8"
-                  onClick={() => openEditDialog(video)}
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-8 h-8 text-destructive hover:text-destructive"
-                  onClick={() => handleDelete(video.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
+                  <div className="flex flex-col gap-0.5 flex-shrink-0">
+                    <button onClick={() => moveVideo(index, "up")} disabled={index === 0} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">▲</button>
+                    <button onClick={() => moveVideo(index, "down")} disabled={index === videos.length - 1} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">▼</button>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{video.title}</p>
+                    <p className="text-[10px] text-muted-foreground truncate mt-0.5">{video.embed_url}</p>
+                    {video.description && (
+                      <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">{video.description}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => openEditDialog(video)}>
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="w-8 h-8 text-destructive hover:text-destructive" onClick={() => handleDelete(video.id)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {videos.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground text-sm">
+                  Aucune vidéo. Cliquez sur "Ajouter" pour commencer.
+                </div>
+              )}
             </div>
-          ))}
+          </div>
+        </TabsContent>
 
-          {videos.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground text-sm">
-              Aucune vidéo. Cliquez sur "Ajouter" pour commencer.
-            </div>
-          )}
-        </div>
-      </div>
+        <TabsContent value="bonus" className="flex-1 overflow-auto m-0">
+          <BonusVideoManager />
+        </TabsContent>
+      </Tabs>
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
@@ -246,44 +231,23 @@ export const VideoManager = () => {
           <div className="space-y-4 mt-2">
             <div className="space-y-2">
               <Label>Titre *</Label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ex: Vidéo 1 – Introduction"
-              />
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Vidéo 1 – Introduction" />
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Description de la vidéo…"
-                rows={3}
-              />
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description de la vidéo…" rows={3} />
             </div>
             <div className="space-y-2">
               <Label>Lien Embed *</Label>
-              <Input
-                value={embedUrl}
-                onChange={(e) => setEmbedUrl(e.target.value)}
-                placeholder="https://drive.google.com/file/d/.../preview"
-              />
-              <p className="text-[10px] text-muted-foreground">
-                Lien Google Drive /preview, YouTube embed, ou tout lien iframe compatible
-              </p>
+              <Input value={embedUrl} onChange={(e) => setEmbedUrl(e.target.value)} placeholder="https://drive.google.com/file/d/.../preview" />
+              <p className="text-[10px] text-muted-foreground">Lien Google Drive /preview, YouTube embed, ou tout lien iframe compatible</p>
             </div>
             <div className="space-y-2">
               <Label>Lien d'ouverture (optionnel)</Label>
-              <Input
-                value={openUrl}
-                onChange={(e) => setOpenUrl(e.target.value)}
-                placeholder="https://drive.google.com/file/d/.../view"
-              />
+              <Input value={openUrl} onChange={(e) => setOpenUrl(e.target.value)} placeholder="https://drive.google.com/file/d/.../view" />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>
-                Annuler
-              </Button>
+              <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Annuler</Button>
               <Button onClick={handleSave} className="gap-1.5">
                 <Save className="w-4 h-4" />
                 {editing ? "Enregistrer" : "Ajouter"}
