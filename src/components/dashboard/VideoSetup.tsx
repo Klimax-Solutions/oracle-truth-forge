@@ -93,7 +93,7 @@ export const VideoSetup = () => {
             <TabsTrigger value="bonus" className="text-xs">Vidéos Bonus — Mercure Institut</TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value="oracle" className="flex-1 overflow-hidden flex flex-col m-0">
+        <TabsContent value="oracle" className="flex-1 overflow-hidden flex flex-col m-0 data-[state=inactive]:hidden">
           <VideoOracleContent
             videos={videos}
             selectedVideo={selectedVideo}
@@ -105,7 +105,7 @@ export const VideoSetup = () => {
             onToggleViewed={toggleViewed}
           />
         </TabsContent>
-        <TabsContent value="bonus" className="flex-1 overflow-hidden m-0">
+        <TabsContent value="bonus" className="flex-1 overflow-hidden flex flex-col m-0 data-[state=inactive]:hidden">
           <BonusVideoViewer userRoles={userRoles} />
         </TabsContent>
       </Tabs>
