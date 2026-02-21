@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     if (!isSA) throw new Error("Accès refusé — super admin requis");
 
     const body = await req.json();
-    const { requestId, action } = body;
+    const { requestId, action, expiresAt } = body;
 
     // ── Action: reset password for existing EA user ──
     if (action === "reset_password") {
@@ -96,11 +96,12 @@ Deno.serve(async (req) => {
       .update({ status: "active" })
       .eq("user_id", userId);
 
-    // Add early_access role with type precall
+    // Add early_access role with type precall + expiration
     await supabaseAdmin.from("user_roles").insert({
       user_id: userId,
       role: "early_access",
       early_access_type: "precall",
+      expires_at: expiresAt || null,
     });
 
     // Update the request status

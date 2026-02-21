@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Database, User, ArrowRight, TrendingUp, BarChart3, Clock, Target, AlertTriangle, CheckSquare, Globe, Play, Eye, Plus, Pencil } from "lucide-react";
+import { Database, User, ArrowRight, TrendingUp, BarChart3, Clock, Target, AlertTriangle, CheckSquare, Globe, Play, Eye, Plus, Pencil, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -269,6 +269,15 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
           <div className="text-center">
             <h1 className="text-xl md:text-2xl font-bold text-foreground mb-1">Setup</h1>
             <p className="text-xs md:text-sm text-muted-foreground">Explorez les données de trading</p>
+          </div>
+
+          {/* Warning banner for EA */}
+          <div className="flex items-start gap-3 p-3 border border-amber-500/30 rounded-md bg-amber-500/5">
+            <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Pour bâtir un système qui fonctionne, la data a été récoltée exclusivement sur des trades gagnants.{" "}
+              <span className="text-foreground/70">(Sachez qu'une récolte sur les trades perdants est en cours et que la win rate réelle et objective se situe entre 69% et 80%.)</span>
+            </p>
           </div>
 
           {/* Data Générale — Full width for EA */}

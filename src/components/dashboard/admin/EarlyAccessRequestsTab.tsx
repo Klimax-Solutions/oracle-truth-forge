@@ -21,10 +21,13 @@ interface EARequest {
   created_at: string;
 }
 
+const DEFAULT_DURATION_HOURS = 48;
+
 export const EarlyAccessRequestsTab = () => {
   const [requests, setRequests] = useState<EARequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [durations, setDurations] = useState<Record<string, number>>({});
   const { toast } = useToast();
 
   const fetchRequests = async () => {
@@ -45,9 +48,12 @@ export const EarlyAccessRequestsTab = () => {
   const handleApprove = async (request: EARequest) => {
     setProcessing(request.id);
     try {
+      const durationHours = durations[request.id] || DEFAULT_DURATION_HOURS;
+      const expiresAt = new Date(Date.now() + durationHours * 60 * 60 * 1000).toISOString();
+      
       // Call edge function to create the user account
       const { data, error } = await supabase.functions.invoke("approve-early-access", {
-        body: { requestId: request.id },
+        body: { requestId: request.id, expiresAt },
       });
 
       if (error) throw error;
@@ -140,6 +146,25 @@ export const EarlyAccessRequestsTab = () => {
                       Soumis le {new Date(req.created_at).toLocaleDateString("fr-FR")} à{" "}
                       {new Date(req.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                     </p>
+                    {/* Timer duration selector */}
+                    <div className="flex items-center gap-2 mt-2">
+                      <Clock className="w-3 h-3 text-amber-500" />
+                      <span className="text-[9px] font-mono text-muted-foreground uppercase">Minuteur :</span>
+                      <select
+                        value={durations[req.id] || DEFAULT_DURATION_HOURS}
+                        onChange={(e) => setDurations(prev => ({ ...prev, [req.id]: Number(e.target.value) }))}
+                        className="h-6 text-[10px] rounded border border-input bg-background px-1.5 font-mono"
+                      >
+                        <option value={24}>24h</option>
+                        <option value={48}>48h</option>
+                        <option value={72}>72h</option>
+                        <option value={96}>96h</option>
+                        <option value={120}>5 jours</option>
+                        <option value={168}>7 jours</option>
+                        <option value={336}>14 jours</option>
+                        <option value={720}>30 jours</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="flex gap-2 flex-shrink-0">

@@ -218,7 +218,7 @@ export const DataRankings = ({ trades, blurTop = false }: DataRankingsProps) => 
           <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">Modèles d'entrée</p>
           {rankings.modelRanking.slice(0, 4).map((m, i) => (
             <div key={m.name} className="flex items-center justify-between p-1.5 rounded border border-border/50">
-              {blurTop && i === 0 ? (
+              {blurTop && i <= 1 ? (
                 <div className="flex items-center gap-1 w-full">
                   <Lock className="w-3 h-3 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground italic">Confidentiel</span>

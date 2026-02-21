@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Calendar, BarChart3, ChevronUp, Lock } from "lucide-react";
+import { Calendar, BarChart3, ChevronUp, Lock, Info } from "lucide-react";
 import { TradingJournal } from "./TradingJournal";
 import { RRDistributionChart } from "./RRDistributionChart";
 import { AnalogClock } from "./AnalogClock";
@@ -139,6 +139,16 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
         <div className="p-4 md:p-6 space-y-6 max-w-full">
+          {/* Warning banner for EA */}
+          {isEarlyAccess && (
+            <div className="flex items-start gap-3 p-3 border border-amber-500/30 rounded-md bg-amber-500/5">
+              <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Pour bâtir un système qui fonctionne, la data a été récoltée exclusivement sur des trades gagnants.{" "}
+                <span className="text-foreground/70">(Sachez qu'une récolte sur les trades perdants est en cours et que la win rate réelle et objective se situe entre 69% et 80%.)</span>
+              </p>
+            </div>
+          )}
           {/* Row 1: Données clés + quick access */}
           <div
             className={cn("space-y-4", isEntering && "opacity-0")}
