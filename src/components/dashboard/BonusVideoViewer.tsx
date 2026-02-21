@@ -99,10 +99,15 @@ export const BonusVideoViewer = ({ userRoles = [] }: BonusVideoViewerProps) => {
               </h3>
               <div className="relative rounded-lg overflow-hidden video-glow-border">
                 <div
-                  className="relative w-full [&>iframe]:!w-full [&>iframe]:!h-full [&>iframe]:absolute [&>iframe]:inset-0 [&>iframe]:rounded-md"
+                  className="relative w-full"
                   style={{ paddingBottom: "56.25%" }}
-                  dangerouslySetInnerHTML={{ __html: selectedVideo.embed_code }}
-                />
+                >
+                  <div
+                    className="absolute inset-0 [&_iframe]:!w-full [&_iframe]:!h-full [&_iframe]:!absolute [&_iframe]:!inset-0 [&_iframe]:!border-0 [&_iframe]:rounded-md [&_div]:!w-full [&_div]:!h-full [&_div]:!position-relative"
+                    style={{ position: 'absolute', inset: 0 }}
+                    dangerouslySetInnerHTML={{ __html: selectedVideo.embed_code }}
+                  />
+                </div>
               </div>
               {selectedVideo.description && (
                 <p className="mt-4 text-sm text-muted-foreground leading-relaxed">

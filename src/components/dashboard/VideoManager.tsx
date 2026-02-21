@@ -21,7 +21,11 @@ interface VideoData {
   sort_order: number;
 }
 
-export const VideoManager = () => {
+interface VideoManagerProps {
+  embedded?: boolean;
+}
+
+export const VideoManager = ({ embedded = false }: VideoManagerProps) => {
   const [videos, setVideos] = useState<VideoData[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -152,20 +156,24 @@ export const VideoManager = () => {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-4 md:p-6 border-b border-border">
-        <h2 className="text-lg md:text-xl font-semibold text-foreground">
-          Gestion des Vidéos
-        </h2>
-      </div>
+      {/* Header - only when standalone */}
+      {!embedded && (
+        <div className="p-4 md:p-6 border-b border-border">
+          <h2 className="text-lg md:text-xl font-semibold text-foreground">
+            Gestion des Vidéos
+          </h2>
+        </div>
+      )}
 
       <Tabs defaultValue="oracle" className="flex-1 flex flex-col overflow-hidden">
-        <div className="px-4 md:px-6 pt-3">
-          <TabsList className="w-full grid grid-cols-2">
-            <TabsTrigger value="oracle" className="text-xs">Vidéos Oracle</TabsTrigger>
-            <TabsTrigger value="bonus" className="text-xs">Vidéos Bonus — Mercure Institut</TabsTrigger>
-          </TabsList>
-        </div>
+        {!embedded && (
+          <div className="px-4 md:px-6 pt-3">
+            <TabsList className="w-full grid grid-cols-2">
+              <TabsTrigger value="oracle" className="text-xs">Vidéos Oracle</TabsTrigger>
+              <TabsTrigger value="bonus" className="text-xs">Vidéos Bonus — Mercure Institut</TabsTrigger>
+            </TabsList>
+          </div>
+        )}
 
         <TabsContent value="oracle" className="flex-1 overflow-hidden flex flex-col m-0 data-[state=inactive]:hidden">
           {/* Oracle sub-header */}
@@ -217,9 +225,23 @@ export const VideoManager = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="bonus" className="flex-1 overflow-hidden flex flex-col m-0 data-[state=inactive]:hidden">
-          <BonusVideoManager />
-        </TabsContent>
+        {!embedded && (
+          <TabsContent value="bonus" className="flex-1 overflow-hidden flex flex-col m-0 data-[state=inactive]:hidden">
+            <BonusVideoManager />
+          </TabsContent>
+        )}
+
+        {embedded && (
+          <>
+            {/* When embedded, show both Oracle + Bonus management inline */}
+            <div className="border-t border-border mt-4">
+              <div className="px-4 md:px-6 py-3 border-b border-border">
+                <h3 className="text-sm font-semibold text-foreground">Vidéos Bonus — Mercure Institut</h3>
+              </div>
+              <BonusVideoManager />
+            </div>
+          </>
+        )}
       </Tabs>
 
       {/* Add/Edit Dialog */}

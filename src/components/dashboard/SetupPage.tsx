@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Database, User, ArrowRight, TrendingUp, BarChart3, Clock, Target, AlertTriangle, CheckSquare, Globe, Play, Eye, Plus, Pencil, Info } from "lucide-react";
+import { Database, User, ArrowRight, TrendingUp, BarChart3, Clock, Target, AlertTriangle, CheckSquare, Globe, Play, Eye, Plus, Pencil, Info, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -154,6 +154,18 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
     if (!error) {
       refetchSetups();
       setRenamingSetupId(null);
+    }
+  };
+
+  const handleDeleteSetup = async (setupId: string) => {
+    if (!confirm("Supprimer ce setup et toutes ses données ?")) return;
+    // Delete trades linked to this setup first
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) return;
+    await supabase.from("user_personal_trades").delete().eq("custom_setup_id", setupId).eq("user_id", currentUser.id);
+    const { error } = await supabase.from("custom_setups").delete().eq("id", setupId);
+    if (!error) {
+      refetchSetups();
     }
   };
 
@@ -504,16 +516,27 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
                   </div>
                 ) : (
                   <>
-                    <button
-                      className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRenamingSetupId(setup.id);
-                        setRenameValue(setup.name);
-                      }}
-                    >
-                      <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                    </button>
+                    <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                      <button
+                        className="p-1 rounded hover:bg-muted"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRenamingSetupId(setup.id);
+                          setRenameValue(setup.name);
+                        }}
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                      <button
+                        className="p-1 rounded hover:bg-destructive/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSetup(setup.id);
+                        }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </button>
+                    </div>
                     <SetupCard
                       icon={<Database className="w-5 h-5 text-primary" />}
                       title={setup.name}
