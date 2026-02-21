@@ -67,8 +67,11 @@ export type Database = {
       }
       bonus_videos: {
         Row: {
+          accessible_roles: string[]
+          category: string
           created_at: string
           created_by: string | null
+          description: string | null
           embed_code: string
           id: string
           sort_order: number
@@ -76,8 +79,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accessible_roles?: string[]
+          category?: string
           created_at?: string
           created_by?: string | null
+          description?: string | null
           embed_code: string
           id?: string
           sort_order?: number
@@ -85,8 +91,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accessible_roles?: string[]
+          category?: string
           created_at?: string
           created_by?: string | null
+          description?: string | null
           embed_code?: string
           id?: string
           sort_order?: number
