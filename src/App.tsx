@@ -11,6 +11,7 @@ import SetupDetail from "./pages/SetupDetail";
 import OracleM from "./pages/OracleM";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import EarlyAccess from "./pages/EarlyAccess";
 import { SuccessNotification } from "./components/dashboard/SuccessNotification";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/setup/:setupId" element={<SetupDetail />} />
           <Route path="/oracle-m" element={<OracleM />} />
+          <Route path="/early-access" element={<EarlyAccess />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

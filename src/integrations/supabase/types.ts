@@ -173,6 +173,63 @@ export type Database = {
         }
         Relationships: []
       }
+      ea_global_settings: {
+        Row: {
+          id: string
+          setting_key: string
+          setting_value: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          setting_key: string
+          setting_value?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          setting_key?: string
+          setting_value?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      early_access_requests: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          phone: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          phone: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          phone?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       early_access_settings: {
         Row: {
           button_key: string
@@ -826,6 +883,7 @@ export type Database = {
         Row: {
           assigned_by: string | null
           created_at: string
+          early_access_type: string | null
           expires_at: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
@@ -834,6 +892,7 @@ export type Database = {
         Insert: {
           assigned_by?: string | null
           created_at?: string
+          early_access_type?: string | null
           expires_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
@@ -842,6 +901,7 @@ export type Database = {
         Update: {
           assigned_by?: string | null
           created_at?: string
+          early_access_type?: string | null
           expires_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
