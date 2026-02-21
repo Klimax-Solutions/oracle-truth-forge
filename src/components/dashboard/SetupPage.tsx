@@ -515,28 +515,7 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
                     </div>
                   </div>
                 ) : (
-                  <>
-                    <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                      <button
-                        className="p-1 rounded hover:bg-muted"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRenamingSetupId(setup.id);
-                          setRenameValue(setup.name);
-                        }}
-                      >
-                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                      </button>
-                      <button
-                        className="p-1 rounded hover:bg-destructive/10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteSetup(setup.id);
-                        }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                      </button>
-                    </div>
+                  <div className="relative">
                     <SetupCard
                       icon={<Database className="w-5 h-5 text-primary" />}
                       title={setup.name}
@@ -552,7 +531,30 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
                       onClick={() => setActiveView(`custom-${setup.id}`)}
                       actionLabel="Ouvrir le setup"
                     />
-                  </>
+                    <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-card/80 backdrop-blur-sm rounded-md p-0.5 border border-border/50">
+                      <button
+                        className="p-1.5 rounded hover:bg-muted transition-colors"
+                        title="Renommer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRenamingSetupId(setup.id);
+                          setRenameValue(setup.name);
+                        }}
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                      <button
+                        className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                        title="Supprimer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSetup(setup.id);
+                        }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             );

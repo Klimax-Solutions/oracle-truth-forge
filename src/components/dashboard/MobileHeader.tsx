@@ -31,15 +31,10 @@ const earlyAccessTabs = [
 ];
 
 const adminTabs = [
-  { id: "batch-import", label: "Import Batch", icon: FileUp },
   { id: "admin", label: "Vérifications Admin", icon: ShieldCheck },
 ];
 
-const superAdminTabs = [
-  { id: "roles", label: "Gestion des Rôles", icon: Crown },
-  { id: "video-manager", label: "Gestion Vidéos", icon: Film },
-  { id: "results-manager", label: "Gestion Résultats", icon: Award },
-];
+const superAdminTabs: { id: string; label: string; icon: any }[] = [];
 
 export const MobileHeader = ({
   userEmail,

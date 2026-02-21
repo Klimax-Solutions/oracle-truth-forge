@@ -28,6 +28,7 @@ import { ResultsPage } from "@/components/dashboard/ResultsPage";
 import { AdminVerificationPopup } from "@/components/dashboard/AdminVerificationPopup";
 import { EarlyAccessManagement } from "@/components/dashboard/EarlyAccessManagement";
 import { CycleReportPopup } from "@/components/dashboard/CycleReportPopup";
+import { EarlyAccessLoginPopup } from "@/components/dashboard/EarlyAccessLoginPopup";
 interface Trade {
   id: string;
   trade_number: number;
@@ -386,6 +387,9 @@ const Dashboard = () => {
       
       {/* Cycle Report Popup for members */}
       <CycleReportPopup />
+      
+      {/* Early Access Login Popup */}
+      <EarlyAccessLoginPopup />
     </div>
     </div>
   );
