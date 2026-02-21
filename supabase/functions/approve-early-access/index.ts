@@ -40,8 +40,10 @@ Deno.serve(async (req) => {
     if (fetchErr || !eaReq) throw new Error("Demande introuvable");
     if (eaReq.status !== "en_attente") throw new Error("Demande déjà traitée");
 
-    // Generate a random password
-    const tempPassword = crypto.randomUUID().slice(0, 16) + "A1!";
+    // Password = first name in lowercase (used for EA simplified login)
+    // Pad to meet minimum length requirement
+    const basePwd = eaReq.first_name.trim().toLowerCase();
+    const tempPassword = basePwd.length >= 6 ? basePwd : basePwd.padEnd(6, basePwd);
 
     // Create the user via admin API
     const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
@@ -80,11 +82,7 @@ Deno.serve(async (req) => {
       })
       .eq("id", requestId);
 
-    // Send password reset email so user can set their own password
-    await supabaseAdmin.auth.admin.generateLink({
-      type: "recovery",
-      email: eaReq.email,
-    });
+    // No recovery email needed — EA users login with first name + email
 
     return new Response(
       JSON.stringify({

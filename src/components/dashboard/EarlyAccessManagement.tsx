@@ -211,6 +211,24 @@ export const EarlyAccessManagement = () => {
     setSaving(null);
   };
 
+  // ── Switch EA type ──
+
+  const switchEaType = async (userId: string, roleId: string, newType: "precall" | "postcall") => {
+    setSaving(`type_${userId}`);
+    const { error } = await supabase
+      .from("user_roles")
+      .update({ early_access_type: newType } as any)
+      .eq("id", roleId);
+
+    if (!error) {
+      setUsers((prev) =>
+        prev.map((u) => (u.role_id === roleId ? { ...u, early_access_type: newType } : u))
+      );
+      toast({ title: `Passé en ${newType === "precall" ? "pré-call" : "post-call"}` });
+    }
+    setSaving(null);
+  };
+
   // ── Expiration ──
 
   const updateExpiration = async (roleId: string, expiresAt: string) => {
@@ -429,17 +447,18 @@ export const EarlyAccessManagement = () => {
             {/* Precall members list */}
             <div className="space-y-2">
               <p className="text-[10px] font-mono uppercase text-amber-500/80">Membres pré-call ({precallUsers.length})</p>
-              {precallUsers.length === 0 ? (
+             {precallUsers.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-4 text-center">Aucun membre pré-call</p>
-              ) : (
+              ) : loading ? null : (
                 <div className="border border-border rounded-md overflow-hidden">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="bg-muted/30 border-b border-border">
-                        <th className="text-left p-2 font-mono uppercase text-muted-foreground">Nom</th>
-                        <th className="text-left p-2 font-mono uppercase text-muted-foreground">Expiration</th>
-                        <th className="text-left p-2 font-mono uppercase text-muted-foreground">Type</th>
-                      </tr>
+                       <tr className="bg-muted/30 border-b border-border">
+                         <th className="text-left p-2 font-mono uppercase text-muted-foreground">Nom</th>
+                         <th className="text-left p-2 font-mono uppercase text-muted-foreground">Expiration</th>
+                         <th className="text-left p-2 font-mono uppercase text-muted-foreground">Type</th>
+                         <th className="text-left p-2 font-mono uppercase text-muted-foreground">Action</th>
+                       </tr>
                     </thead>
                     <tbody>
                       {precallUsers.map((u) => (
@@ -459,9 +478,20 @@ export const EarlyAccessManagement = () => {
                               />
                             </div>
                           </td>
-                          <td className="p-2">
-                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-500">pré-call</span>
-                          </td>
+                           <td className="p-2">
+                             <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-500">pré-call</span>
+                           </td>
+                           <td className="p-2">
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               className="h-6 text-[10px] gap-1 border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10"
+                               onClick={() => switchEaType(u.user_id, u.role_id, "postcall")}
+                               disabled={saving === `type_${u.user_id}`}
+                             >
+                               {saving === `type_${u.user_id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : "→ Post-call"}
+                             </Button>
+                           </td>
                         </tr>
                       ))}
                     </tbody>
@@ -498,6 +528,15 @@ export const EarlyAccessManagement = () => {
                       <User className="w-3.5 h-3.5 text-emerald-500" />
                       <span className="text-sm font-semibold text-foreground">{user.display_name}</span>
                       <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-500">post-call</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 text-[10px] gap-1 border-amber-500/30 text-amber-500 hover:bg-amber-500/10 ml-2"
+                        onClick={() => switchEaType(user.user_id, user.role_id, "precall")}
+                        disabled={saving === `type_${user.user_id}`}
+                      >
+                        {saving === `type_${user.user_id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : "→ Pré-call"}
+                      </Button>
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="w-3 h-3 text-muted-foreground" />

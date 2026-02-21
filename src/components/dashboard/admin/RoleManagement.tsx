@@ -93,6 +93,7 @@ export const RoleManagement = () => {
   const [roleChangeUserId, setRoleChangeUserId] = useState<string | null>(null);
   const [roleChangeSelectedRoles, setRoleChangeSelectedRoles] = useState<string[]>([]);
   const [roleChangeExpiry, setRoleChangeExpiry] = useState<string>("");
+  const [roleChangeEaType, setRoleChangeEaType] = useState<string>("precall");
   const [roleChangeProcessing, setRoleChangeProcessing] = useState(false);
 
   useEffect(() => {
@@ -287,11 +288,20 @@ export const RoleManagement = () => {
           role: role as any,
           assigned_by: currentUser?.id,
         };
-        if (role === "early_access" && roleChangeExpiry) {
-          insertData.expires_at = new Date(roleChangeExpiry).toISOString();
+        if (role === "early_access") {
+          if (roleChangeExpiry) insertData.expires_at = new Date(roleChangeExpiry).toISOString();
+          insertData.early_access_type = roleChangeEaType;
         }
         const { error } = await supabase.from("user_roles").insert(insertData);
         if (error && error.code !== '23505') throw error;
+      }
+
+      // If early_access already existed but we're just updating the type
+      if (desiredRoles.includes("early_access") && currentRoles.includes("early_access")) {
+        await supabase.from("user_roles")
+          .update({ early_access_type: roleChangeEaType } as any)
+          .eq("user_id", roleChangeUserId)
+          .eq("role", "early_access" as any);
       }
 
       toast.success("Rôles mis à jour avec succès");
@@ -307,13 +317,25 @@ export const RoleManagement = () => {
     }
   };
 
-  const openRoleChangeDialog = (userId: string) => {
+  const openRoleChangeDialog = async (userId: string) => {
     const user = users.find(u => u.user_id === userId);
     if (!user) return;
     setQuickActionsOpen(false);
     setRoleChangeUserId(userId);
     setRoleChangeSelectedRoles([...user.roles]);
     setRoleChangeExpiry("");
+    // Load current EA type
+    if (user.roles.includes("early_access")) {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("early_access_type" as any)
+        .eq("user_id", userId)
+        .eq("role", "early_access")
+        .maybeSingle();
+      setRoleChangeEaType((data as any)?.early_access_type || "precall");
+    } else {
+      setRoleChangeEaType("precall");
+    }
     setRoleChangeDialogOpen(true);
   };
 
@@ -1027,16 +1049,47 @@ export const RoleManagement = () => {
                   </div>
 
                   {roleChangeSelectedRoles.includes("early_access") && (
-                    <div className="space-y-2">
-                      <Label>Date d'expiration du minuteur</Label>
-                      <Input
-                        type="datetime-local"
-                        value={roleChangeExpiry}
-                        onChange={(e) => setRoleChangeExpiry(e.target.value)}
-                      />
-                      <p className="text-[10px] text-muted-foreground">
-                        Le minuteur s'affichera en rouge dans le header
-                      </p>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label>Sous-type Early Access</Label>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setRoleChangeEaType("precall")}
+                            className={cn(
+                              "flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md border text-xs font-semibold transition-all",
+                              roleChangeEaType === "precall"
+                                ? "border-amber-500 bg-amber-500/10 text-amber-500"
+                                : "border-border bg-card text-muted-foreground hover:bg-accent/50"
+                            )}
+                          >
+                            Pré-call
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRoleChangeEaType("postcall")}
+                            className={cn(
+                              "flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md border text-xs font-semibold transition-all",
+                              roleChangeEaType === "postcall"
+                                ? "border-emerald-500 bg-emerald-500/10 text-emerald-500"
+                                : "border-border bg-card text-muted-foreground hover:bg-accent/50"
+                            )}
+                          >
+                            Post-call
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Date d'expiration du minuteur</Label>
+                        <Input
+                          type="datetime-local"
+                          value={roleChangeExpiry}
+                          onChange={(e) => setRoleChangeExpiry(e.target.value)}
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          Le minuteur s'affichera en rouge dans le header
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
