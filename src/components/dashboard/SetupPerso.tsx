@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +76,7 @@ interface SetupPersoProps {
 
 export const SetupPerso = ({ customSetupId, customSetupName }: SetupPersoProps = {}) => {
   const [trades, setTrades] = useState<PersonalTrade[]>([]);
+  const [allTradesCount, setAllTradesCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; errors: number } | null>(null);
@@ -89,6 +91,7 @@ export const SetupPerso = ({ customSetupId, customSetupName }: SetupPersoProps =
   const [newAsset, setNewAsset] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { isEarlyAccess } = useEarlyAccess();
 
   // Fetch personal trades
   useEffect(() => {
@@ -117,6 +120,15 @@ export const SetupPerso = ({ customSetupId, customSetupName }: SetupPersoProps =
       setTrades(data as PersonalTrade[]);
     }
     setLoading(false);
+
+    // Also fetch total count (all setups) for EA limit
+    if (isEarlyAccess) {
+      const { count } = await supabase
+        .from("user_personal_trades")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      setAllTradesCount(count || 0);
+    }
   };
 
   // Get next trade number
@@ -499,6 +511,14 @@ export const SetupPerso = ({ customSetupId, customSetupName }: SetupPersoProps =
   };
 
   const handleNewTrade = () => {
+    if (isEarlyAccess && allTradesCount >= 25) {
+      toast({
+        title: "Limite atteinte",
+        description: "Vous avez atteint la limite de 25 data en accès anticipé.",
+        variant: "destructive",
+      });
+      return;
+    }
     setEditingTrade(null);
     setIsDialogOpen(true);
   };
