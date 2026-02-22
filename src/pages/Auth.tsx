@@ -162,35 +162,6 @@ const Auth = () => {
 
         setIsLoading(false);
         setIsProgressActive(true);
-      } else if (mode === "signup") {
-        const trimmedName = firstName.trim();
-        if (!trimmedName) {
-          toast({
-            title: "Prénom requis",
-            description: "Veuillez entrer votre prénom.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: window.location.origin,
-            data: {
-              display_name: trimmedName,
-            },
-          },
-        });
-        if (error) throw error;
-        toast({
-          title: "Compte créé — En attente d'approbation",
-          description: "Un administrateur doit approuver votre compte avant que vous puissiez vous connecter.",
-        });
-        setMode("login");
-        setIsLoading(false);
       }
     } catch (error: any) {
       toast({
