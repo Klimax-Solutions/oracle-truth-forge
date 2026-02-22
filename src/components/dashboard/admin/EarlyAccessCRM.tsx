@@ -13,6 +13,7 @@ import {
   CalendarDays,
   Hash,
   KeyRound,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -171,6 +172,8 @@ export const EarlyAccessCRM = () => {
     fetchCrmData();
   }, []);
 
+  const [resending, setResending] = useState<string | null>(null);
+
   const handleResetPassword = async (member: EACrmMember) => {
     setResetting(member.user_id);
     try {
@@ -183,6 +186,26 @@ export const EarlyAccessCRM = () => {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     }
     setResetting(null);
+  };
+
+  const handleResendLink = async (member: EACrmMember) => {
+    setResending(member.user_id);
+    try {
+      const { data, error } = await supabase.functions.invoke("approve-early-access", {
+        body: { action: "resend_magic_link", email: member.email },
+      });
+      if (error) throw error;
+      if (data?.magic_link) {
+        // Copy link to clipboard if email failed
+        await navigator.clipboard.writeText(data.magic_link);
+        toast({ title: "Lien copié", description: "Le lien de connexion a été copié dans le presse-papier (email rate-limité)." });
+      } else {
+        toast({ title: "Email envoyé", description: data?.message });
+      }
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+    setResending(null);
   };
 
   const formatDate = (iso: string | null) => {
@@ -346,20 +369,36 @@ export const EarlyAccessCRM = () => {
               >
                 {member.execution_count > 0 ? "✓ A récolté de la data" : "✗ Pas de data"}
               </span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-5 text-[10px] gap-1 ml-auto"
-                onClick={() => handleResetPassword(member)}
-                disabled={resetting === member.user_id}
-              >
-                {resetting === member.user_id ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <KeyRound className="w-3 h-3" />
-                )}
-                Reset MDP
-              </Button>
+              <div className="flex items-center gap-1.5 ml-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-5 text-[10px] gap-1"
+                  onClick={() => handleResendLink(member)}
+                  disabled={resending === member.user_id}
+                >
+                  {resending === member.user_id ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Send className="w-3 h-3" />
+                  )}
+                  Renvoyer le lien
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-5 text-[10px] gap-1"
+                  onClick={() => handleResetPassword(member)}
+                  disabled={resetting === member.user_id}
+                >
+                  {resetting === member.user_id ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <KeyRound className="w-3 h-3" />
+                  )}
+                  Reset MDP
+                </Button>
+              </div>
             </div>
           </div>
         ))}
