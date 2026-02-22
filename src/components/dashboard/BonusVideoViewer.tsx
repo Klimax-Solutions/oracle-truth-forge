@@ -1,9 +1,25 @@
-import { useState, useEffect } from "react";
-import { Eye, EyeOff, Check } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+
+/** Detect if embed_code is a Google Drive link */
+const isGoogleDriveLink = (code: string): boolean => {
+  return /drive\.google\.com\/file\/d\//i.test(code.trim());
+};
+
+/** Convert Google Drive share/view link to embeddable preview */
+const getGoogleDriveEmbedUrl = (url: string): string => {
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (match) return `https://drive.google.com/file/d/${match[1]}/preview`;
+  return url;
+};
+
+/** Detect if embed_code contains a <script> tag */
+const isScriptEmbed = (code: string): boolean => {
+  return /<script[\s>]/i.test(code.trim());
+};
 
 /** Strip fixed width/height from embed codes to make them fully responsive */
 const makeEmbedResponsive = (code: string): string => {
@@ -18,6 +34,56 @@ const makeEmbedResponsive = (code: string): string => {
         .replace(/width:\s*\d+px/gi, 'width:100%')
         .replace(/height:\s*\d+px/gi, 'height:100%');
     });
+};
+
+/** Component that executes script-based embeds (VDO Cipher etc.) */
+const ScriptEmbedPlayer = ({ embedCode, videoId }: { embedCode: string; videoId: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Clear previous content
+    container.innerHTML = '';
+
+    // Parse HTML from embed code, extract scripts, and inject
+    const temp = document.createElement('div');
+    temp.innerHTML = embedCode;
+
+    // Append non-script elements first
+    const nonScriptNodes = Array.from(temp.childNodes).filter(
+      node => !(node instanceof HTMLScriptElement)
+    );
+    nonScriptNodes.forEach(node => container.appendChild(node.cloneNode(true)));
+
+    // Execute script tags
+    const scripts = temp.querySelectorAll('script');
+    scripts.forEach(origScript => {
+      const newScript = document.createElement('script');
+      // Copy attributes
+      Array.from(origScript.attributes).forEach(attr => {
+        newScript.setAttribute(attr.name, attr.value);
+      });
+      // Copy inline content
+      if (origScript.textContent) {
+        newScript.textContent = origScript.textContent;
+      }
+      container.appendChild(newScript);
+    });
+
+    return () => {
+      if (container) container.innerHTML = '';
+    };
+  }, [embedCode, videoId]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="absolute inset-0 [&_div]:!w-full [&_div]:!h-full [&_video]:!w-full [&_video]:!h-full"
+      style={{ position: 'absolute', inset: 0 }}
+    />
+  );
 };
 
 interface BonusVideo {
@@ -47,7 +113,6 @@ export const BonusVideoViewer = ({ userRoles = [] }: BonusVideoViewerProps) => {
         .select("*")
         .order("sort_order", { ascending: true });
       if (data) {
-        // Filter by user roles
         const accessible = (data as any[]).filter((v: BonusVideo) => {
           const roles = v.accessible_roles || [];
           return userRoles.some(r => roles.includes(r));
@@ -59,10 +124,8 @@ export const BonusVideoViewer = ({ userRoles = [] }: BonusVideoViewerProps) => {
     fetchVideos();
   }, [userRoles]);
 
-  // Filter by category
   const videos = allVideos.filter(v => (v.category || "formation") === activeCategory);
 
-  // Auto-select first video when category changes
   useEffect(() => {
     if (videos.length > 0 && (!selectedVideo || !videos.find(v => v.id === selectedVideo.id))) {
       setSelectedVideo(videos[0]);
@@ -90,6 +153,45 @@ export const BonusVideoViewer = ({ userRoles = [] }: BonusVideoViewerProps) => {
     );
   }
 
+  const renderPlayer = (video: BonusVideo) => {
+    const code = video.embed_code;
+
+    // Google Drive link
+    if (isGoogleDriveLink(code)) {
+      const embedUrl = getGoogleDriveEmbedUrl(code);
+      return (
+        <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: "56.25%" }}>
+          <iframe
+            src={embedUrl}
+            className="absolute inset-0 w-full h-full border-0 rounded-md"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+          />
+        </div>
+      );
+    }
+
+    // Script embed (VDO Cipher etc.)
+    if (isScriptEmbed(code)) {
+      return (
+        <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: "56.25%" }}>
+          <ScriptEmbedPlayer embedCode={code} videoId={video.id} />
+        </div>
+      );
+    }
+
+    // Standard iframe embed
+    return (
+      <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: "56.25%" }}>
+        <div
+          className="absolute inset-0 [&_iframe]:!w-full [&_iframe]:!h-full [&_iframe]:!absolute [&_iframe]:!inset-0 [&_iframe]:!border-0 [&_iframe]:rounded-md [&_div]:!w-full [&_div]:!h-full"
+          style={{ position: 'absolute', inset: 0 }}
+          dangerouslySetInnerHTML={{ __html: makeEmbedResponsive(code) }}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Category tabs + count */}
@@ -112,18 +214,7 @@ export const BonusVideoViewer = ({ userRoles = [] }: BonusVideoViewerProps) => {
               <h3 className="text-base md:text-lg font-semibold text-foreground mb-3">
                 {selectedVideo.title}
               </h3>
-              <div className="relative rounded-lg overflow-hidden video-glow-border">
-                <div
-                  className="relative w-full"
-                  style={{ paddingBottom: "56.25%" }}
-                >
-                  <div
-                    className="absolute inset-0 [&_iframe]:!w-full [&_iframe]:!h-full [&_iframe]:!absolute [&_iframe]:!inset-0 [&_iframe]:!border-0 [&_iframe]:rounded-md [&_div]:!w-full [&_div]:!h-full [&_div]:!position-relative"
-                    style={{ position: 'absolute', inset: 0 }}
-                    dangerouslySetInnerHTML={{ __html: makeEmbedResponsive(selectedVideo.embed_code) }}
-                  />
-                </div>
-              </div>
+              {renderPlayer(selectedVideo)}
               {selectedVideo.description && (
                 <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
                   {selectedVideo.description}

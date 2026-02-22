@@ -232,15 +232,17 @@ export const BonusVideoManager = () => {
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description de la vidéo…" rows={2} />
             </div>
             <div className="space-y-2">
-              <Label>Code Embed / iFrame *</Label>
+              <Label>Code Embed (iFrame / Script) ou Lien Google Drive *</Label>
               <Textarea
                 value={embedCode}
                 onChange={(e) => setEmbedCode(e.target.value)}
-                placeholder='<iframe src="https://..." ...></iframe>'
-                rows={4}
+                placeholder={'<iframe src="https://..." ...></iframe>\nou\n<script src="https://player.vdocipher.com/..." ...></script>\nou\nhttps://drive.google.com/file/d/.../view'}
+                rows={5}
                 className="font-mono text-xs"
               />
-              <p className="text-[10px] text-muted-foreground">Compatible VDO Cipher, YouTube, ou tout code embed iFrame</p>
+              <p className="text-[10px] text-muted-foreground">
+                Compatible : code embed iFrame, code Script (VDO Cipher), ou lien Google Drive (preview automatique)
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Catégorie</Label>
