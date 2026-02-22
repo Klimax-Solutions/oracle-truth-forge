@@ -9,7 +9,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import VortexTransition from "@/components/auth/VortexTransition";
 import LoginProgressBar from "@/components/auth/LoginProgressBar";
 
-type AuthMode = "login" | "signup" | "forgot-password" | "magic-link";
+type AuthMode = "login" | "forgot-password" | "magic-link";
 
 const ORACLE_LETTERS = ["O", "R", "A", "C", "L", "E"];
 
