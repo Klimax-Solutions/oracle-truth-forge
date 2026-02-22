@@ -73,9 +73,8 @@ Deno.serve(async (req) => {
     if (fetchErr || !eaReq) throw new Error("Demande introuvable");
     if (eaReq.status !== "en_attente") throw new Error("Demande déjà traitée");
 
-    // Password = first name in lowercase (used for EA simplified login)
-    const basePwd = eaReq.first_name.trim().toLowerCase();
-    const tempPassword = basePwd.length >= 6 ? basePwd : basePwd.padEnd(6, basePwd);
+    // Generate a secure random password (user will login via magic link, never needs this)
+    const tempPassword = crypto.randomUUID();
 
     // Create the user via admin API
     const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
