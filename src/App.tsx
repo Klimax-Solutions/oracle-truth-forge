@@ -12,6 +12,7 @@ import OracleM from "./pages/OracleM";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import EarlyAccess from "./pages/EarlyAccess";
+import SetupPasswordPage from "./pages/SetupPasswordPage";
 import { SuccessNotification } from "./components/dashboard/SuccessNotification";
 
 const queryClient = new QueryClient();
