@@ -297,7 +297,6 @@ const Auth = () => {
                   isLoading={isLoading}
                   showingAnimation={showingAnimation}
                   onSubmit={handleAuth}
-                  onSwitchMode={() => setMode(mode === "login" ? "signup" : "login")}
                   onForgotPassword={() => setMode("forgot-password")}
                   onMagicLink={() => setMode("magic-link")}
                 />
