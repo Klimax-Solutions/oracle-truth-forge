@@ -303,6 +303,15 @@ const Auth = () => {
                   onSubmit={handleForgotPassword}
                   onBack={() => { setMode("login"); setResetEmailSent(false); }}
                 />
+              ) : mode === "magic-link" ? (
+                <MagicLinkForm
+                  email={email}
+                  setEmail={setEmail}
+                  isLoading={isLoading}
+                  linkSent={magicLinkSent}
+                  onSubmit={handleMagicLink}
+                  onBack={() => { setMode("login"); setMagicLinkSent(false); }}
+                />
               ) : (
                 <AuthForm
                   mode={mode}
@@ -319,6 +328,7 @@ const Auth = () => {
                   onSubmit={handleAuth}
                   onSwitchMode={() => setMode(mode === "login" ? "signup" : "login")}
                   onForgotPassword={() => setMode("forgot-password")}
+                  onMagicLink={() => setMode("magic-link")}
                 />
               )}
             </div>
