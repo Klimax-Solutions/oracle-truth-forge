@@ -29,9 +29,10 @@ interface CreateSetupDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: () => void;
+  isAdmin?: boolean;
 }
 
-export const CreateSetupDialog = ({ isOpen, onClose, onCreated }: CreateSetupDialogProps) => {
+export const CreateSetupDialog = ({ isOpen, onClose, onCreated, isAdmin = false }: CreateSetupDialogProps) => {
   const [name, setName] = useState("");
   const [asset, setAsset] = useState("");
   const [assignedTo, setAssignedTo] = useState<string>("");
@@ -108,22 +109,24 @@ export const CreateSetupDialog = ({ isOpen, onClose, onCreated }: CreateSetupDia
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Assigner à un membre (optionnel)</Label>
-            <Select value={assignedTo} onValueChange={setAssignedTo}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un membre" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Aucun</SelectItem>
-                {members.map((m) => (
-                  <SelectItem key={m.user_id} value={m.user_id}>
-                    {m.display_name || m.first_name || "Anonyme"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {isAdmin && (
+            <div className="space-y-2">
+              <Label>Assigner à un membre (optionnel)</Label>
+              <Select value={assignedTo} onValueChange={setAssignedTo}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un membre" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Aucun</SelectItem>
+                  {members.map((m) => (
+                    <SelectItem key={m.user_id} value={m.user_id}>
+                      {m.display_name || m.first_name || "Anonyme"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

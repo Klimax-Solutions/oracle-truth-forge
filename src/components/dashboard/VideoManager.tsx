@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +20,15 @@ interface VideoData {
   embed_url: string;
   open_url: string | null;
   sort_order: number;
+  accessible_roles: string[];
 }
+
+const ROLE_OPTIONS = [
+  { value: "member", label: "Membre" },
+  { value: "early_access", label: "Early Access" },
+  { value: "admin", label: "Admin" },
+  { value: "super_admin", label: "Super Admin" },
+];
 
 interface VideoManagerProps {
   embedded?: boolean;
@@ -36,6 +45,7 @@ export const VideoManager = ({ embedded = false }: VideoManagerProps) => {
   const [description, setDescription] = useState("");
   const [embedUrl, setEmbedUrl] = useState("");
   const [openUrl, setOpenUrl] = useState("");
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(["member", "early_access", "admin", "super_admin"]);
 
   const fetchVideos = async () => {
     const { data } = await supabase
@@ -55,6 +65,7 @@ export const VideoManager = ({ embedded = false }: VideoManagerProps) => {
     setDescription("");
     setEmbedUrl("");
     setOpenUrl("");
+    setSelectedRoles(["member", "early_access", "admin", "super_admin"]);
     setEditing(null);
   };
 
@@ -64,6 +75,7 @@ export const VideoManager = ({ embedded = false }: VideoManagerProps) => {
     setDescription(video.description || "");
     setEmbedUrl(video.embed_url);
     setOpenUrl(video.open_url || "");
+    setSelectedRoles(video.accessible_roles || ["member", "early_access", "admin", "super_admin"]);
     setDialogOpen(true);
   };
 
@@ -78,15 +90,18 @@ export const VideoManager = ({ embedded = false }: VideoManagerProps) => {
       return;
     }
 
+    const payload = {
+      title: title.trim(),
+      description: description.trim() || null,
+      embed_url: embedUrl.trim(),
+      open_url: openUrl.trim() || null,
+      accessible_roles: selectedRoles,
+    };
+
     if (editing) {
       const { error } = await supabase
         .from("videos")
-        .update({
-          title: title.trim(),
-          description: description.trim() || null,
-          embed_url: embedUrl.trim(),
-          open_url: openUrl.trim() || null,
-        })
+        .update(payload as any)
         .eq("id", editing.id);
 
       if (error) {
@@ -97,12 +112,9 @@ export const VideoManager = ({ embedded = false }: VideoManagerProps) => {
     } else {
       const nextOrder = videos.length > 0 ? Math.max(...videos.map((v) => v.sort_order)) + 1 : 1;
       const { error } = await supabase.from("videos").insert({
-        title: title.trim(),
-        description: description.trim() || null,
-        embed_url: embedUrl.trim(),
-        open_url: openUrl.trim() || null,
+        ...payload,
         sort_order: nextOrder,
-      });
+      } as any);
 
       if (error) {
         toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -205,6 +217,13 @@ export const VideoManager = ({ embedded = false }: VideoManagerProps) => {
                     {video.description && (
                       <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">{video.description}</p>
                     )}
+                    <div className="flex items-center gap-1 mt-1">
+                      {(video.accessible_roles || []).map(role => (
+                        <Badge key={role} variant="secondary" className="text-[8px] px-1 py-0">
+                          {ROLE_OPTIONS.find(r => r.value === role)?.label || role}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => openEditDialog(video)}>
@@ -267,6 +286,24 @@ export const VideoManager = ({ embedded = false }: VideoManagerProps) => {
             <div className="space-y-2">
               <Label>Lien d'ouverture (optionnel)</Label>
               <Input value={openUrl} onChange={(e) => setOpenUrl(e.target.value)} placeholder="https://drive.google.com/file/d/.../view" />
+            </div>
+            <div className="space-y-2">
+              <Label>Rôles autorisés</Label>
+              <div className="flex flex-wrap gap-3">
+                {ROLE_OPTIONS.map(role => (
+                  <label key={role.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={selectedRoles.includes(role.value)}
+                      onCheckedChange={(checked) => {
+                        setSelectedRoles(prev =>
+                          checked ? [...prev, role.value] : prev.filter(r => r !== role.value)
+                        );
+                      }}
+                    />
+                    {role.label}
+                  </label>
+                ))}
+              </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Annuler</Button>
