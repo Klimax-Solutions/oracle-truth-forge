@@ -11,6 +11,7 @@ import {
   Mail,
   Clock,
 } from "lucide-react";
+import { EarlyAccessCRM } from "./EarlyAccessCRM";
 
 interface EARequest {
   id: string;
@@ -232,6 +233,9 @@ export const EarlyAccessRequestsTab = () => {
             </div>
         </div>
       )}
+
+      {/* CRM Section */}
+      <EarlyAccessCRM />
     </div>
   );
 };
