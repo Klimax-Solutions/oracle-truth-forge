@@ -282,7 +282,7 @@ const Auth = () => {
       <div className={`relative z-10 min-h-screen flex flex-col items-center justify-center px-4 md:px-6 py-8 transition-all duration-700 ${isTransitioning ? "auth-page-absorb" : ""}`}>
         <div className={`text-center mb-8 md:mb-16 transition-all duration-500 ${showingAnimation ? "opacity-0 scale-75" : "animate-fade-in"}`}>
           <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.3em] md:tracking-[0.4em] text-muted-foreground mb-4 md:mb-6">
-            {mode === "forgot-password" ? "Récupération" : "Authentification"}
+            {mode === "forgot-password" ? "Récupération" : mode === "magic-link" ? "Connexion par email" : "Authentification"}
           </p>
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-semibold tracking-tight text-foreground">
             Oracle<sup className="text-lg md:text-xl lg:text-2xl font-normal align-super ml-0.5 md:ml-1">™</sup>
