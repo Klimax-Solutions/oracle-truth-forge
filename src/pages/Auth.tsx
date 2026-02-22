@@ -21,6 +21,7 @@ const Auth = () => {
   const [mode, setMode] = useState<AuthMode>("login");
   const [isLoading, setIsLoading] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [isProgressActive, setIsProgressActive] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [userName, setUserName] = useState<string>("");
