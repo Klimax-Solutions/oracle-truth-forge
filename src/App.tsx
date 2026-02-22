@@ -31,6 +31,7 @@ const App = () => (
           <Route path="/setup/:setupId" element={<SetupDetail />} />
           <Route path="/oracle-m" element={<OracleM />} />
           <Route path="/early-access" element={<EarlyAccess />} />
+          <Route path="/setup-password" element={<SetupPasswordPage />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
