@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { LogOut, ExternalLink } from "lucide-react";
+import { EAApprovalNotification } from "@/components/dashboard/EAApprovalNotification";
 import { DashboardSidebar, useSidebarRoles } from "@/components/dashboard/DashboardSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -356,6 +357,7 @@ const Dashboard = () => {
               {showDataSourceSelector && (
                 <DataSourceSelector value={dataSource} onChange={setDataSource} showDataGenerale={showDataGenerale} />
               )}
+              <EAApprovalNotification />
               <ProfileSettingsDialog onDisplayNameChange={setDisplayName} />
               <ThemeToggle />
               <Button

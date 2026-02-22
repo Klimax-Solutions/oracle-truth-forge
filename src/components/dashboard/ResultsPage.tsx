@@ -94,7 +94,7 @@ export const ResultsPage = ({ isAdmin = false }: { isAdmin?: boolean }) => {
       ) : (
       <>
       <div className="p-4 md:p-6 border-b border-border">
-        <h2 className="text-lg md:text-xl font-semibold text-foreground">Résultats les plus récents</h2>
+        <h2 className="text-lg md:text-xl font-semibold text-foreground">Derniers résultats des membres</h2>
         <p className="text-xs text-muted-foreground font-mono mt-1">{filteredResults.length} résultat{filteredResults.length > 1 ? "s" : ""}</p>
         
         {/* Category Filter */}
@@ -122,7 +122,8 @@ export const ResultsPage = ({ isAdmin = false }: { isAdmin?: boolean }) => {
             Aucun résultat disponible pour le moment.
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+          <>
+          <div className="grid grid-cols-2 gap-3 md:gap-4">
             {filteredResults.map((result) => {
               const url = signedUrls[result.image_path];
               return (
@@ -139,7 +140,6 @@ export const ResultsPage = ({ isAdmin = false }: { isAdmin?: boolean }) => {
                         <div className="w-4 h-4 border border-foreground border-t-transparent rounded-full animate-spin" />
                       </div>
                     )}
-                    {/* Type badge */}
                     {result.result_type && result.result_type !== "trade" && (
                       <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[8px] font-mono uppercase bg-black/60 backdrop-blur-sm text-white rounded">
                         {RESULT_TYPES.find(t => t.value === result.result_type)?.label || result.result_type}
@@ -155,6 +155,17 @@ export const ResultsPage = ({ isAdmin = false }: { isAdmin?: boolean }) => {
               );
             })}
           </div>
+
+          <div className="flex justify-center mt-6">
+            <button
+              disabled
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-muted/50 text-muted-foreground text-xs font-mono uppercase cursor-not-allowed opacity-60"
+            >
+              <span className="w-5 h-5 rounded-full border border-muted-foreground/40 flex items-center justify-center text-sm leading-none">+</span>
+              Accéder à plus de résultats — bientôt disponible
+            </button>
+          </div>
+          </>
         )}
       </div>
 
