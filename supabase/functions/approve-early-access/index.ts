@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
       });
 
       if (updateErr) throw new Error(`Erreur reset: ${updateErr.message}`);
+      const firstName = profile.first_name || profile.display_name || "utilisateur";
 
       return new Response(
         JSON.stringify({ success: true, message: `Mot de passe réinitialisé pour ${firstName}` }),
