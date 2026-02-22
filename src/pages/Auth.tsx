@@ -521,12 +521,31 @@ const MagicLinkForm = ({ email, setEmail, isLoading, linkSent, onSubmit, onBack 
         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
           <Mail className="w-8 h-8 text-primary" />
         </div>
-        <p className="text-sm text-muted-foreground mb-4">
-          Vérifiez votre boîte mail à <strong>{email}</strong>
+        <p className="text-sm text-foreground font-medium mb-1">
+          Lien envoyé !
         </p>
-        <p className="text-xs text-muted-foreground mb-4">
-          Cliquez sur le lien reçu pour accéder directement à la plateforme.
+        <p className="text-sm text-muted-foreground mb-5">
+          Vérifiez votre boîte mail à <strong className="text-foreground">{email}</strong>
         </p>
+        <p className="text-xs text-muted-foreground mb-5">
+          Cliquez sur le lien reçu pour accéder directement à la plateforme. Si vous ne le trouvez pas, vérifiez vos spams.
+        </p>
+
+        <div className="flex flex-col gap-2 mb-5">
+          <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer"
+            className="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md border border-border bg-card text-sm text-foreground hover:bg-muted transition-colors">
+            Ouvrir Gmail
+          </a>
+          <a href="https://outlook.live.com" target="_blank" rel="noopener noreferrer"
+            className="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md border border-border bg-card text-sm text-foreground hover:bg-muted transition-colors">
+            Ouvrir Outlook
+          </a>
+          <a href="https://mail.yahoo.com" target="_blank" rel="noopener noreferrer"
+            className="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md border border-border bg-card text-sm text-foreground hover:bg-muted transition-colors">
+            Ouvrir Yahoo Mail
+          </a>
+        </div>
+
         <Button type="button" variant="outline" onClick={onBack} className="w-full">
           Retour à la connexion
         </Button>
