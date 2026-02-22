@@ -60,7 +60,7 @@ export const SignedImageCard = ({
       }
     };
     generateSignedUrl();
-  }, [storagePath]);
+  }, [storagePath, bucket]);
 
   if (!storagePath) return null;
 
