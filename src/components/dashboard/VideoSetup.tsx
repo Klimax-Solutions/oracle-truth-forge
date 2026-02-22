@@ -148,6 +148,13 @@ const VideoOracleContent = ({
 }: VideoOracleContentProps) => {
   const unlockBtn = eaSettings.find(s => s.button_key === "acceder_a_oracle");
   const unlockUrl = unlockBtn?.button_url;
+
+  // For Early Access: only video with sort_order 5 is unlocked
+  const isVideoLocked = (video: VideoData) => {
+    if (!isEarlyAccess) return false;
+    return video.sort_order !== 5;
+  };
+
   return (
   <>
     {/* Progress bar */}
@@ -178,7 +185,7 @@ const VideoOracleContent = ({
             </h3>
             <div className="relative rounded-lg overflow-hidden video-glow-border">
               <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-                {isEarlyAccess ? (
+                {isVideoLocked(selectedVideo) ? (
                   <div className="absolute inset-0 bg-muted/80 backdrop-blur-xl flex flex-col items-center justify-center rounded-md gap-3">
                     <Lock className="w-8 h-8 text-muted-foreground" />
                     <p className="text-sm font-semibold text-foreground">Contenu réservé</p>
@@ -210,7 +217,7 @@ const VideoOracleContent = ({
                   {selectedVideo.description}
                 </p>
               )}
-              {selectedVideo.open_url && !isEarlyAccess && (
+              {selectedVideo.open_url && !isVideoLocked(selectedVideo) && (
                 <a
                   href={selectedVideo.open_url}
                   target="_blank"
@@ -267,7 +274,7 @@ const VideoOracleContent = ({
                     className={cn(
                       "text-sm font-medium truncate",
                       isActive ? "text-foreground" : "text-muted-foreground",
-                      isEarlyAccess && "blur-sm select-none"
+                      isEarlyAccess && isVideoLocked(video) && "blur-sm select-none"
                     )}
                   >
                     {video.title}
@@ -275,7 +282,7 @@ const VideoOracleContent = ({
                   {video.description && (
                     <p className={cn(
                       "text-[10px] text-muted-foreground/60 truncate mt-0.5",
-                      isEarlyAccess && "blur-sm select-none"
+                      isEarlyAccess && isVideoLocked(video) && "blur-sm select-none"
                     )}>
                       {video.description}
                     </p>
