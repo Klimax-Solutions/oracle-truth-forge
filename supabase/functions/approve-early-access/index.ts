@@ -35,7 +35,6 @@ Deno.serve(async (req) => {
       const { userId } = body;
       if (!userId) throw new Error("userId manquant");
 
-      // Get profile to find first name
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("first_name, display_name")
@@ -59,6 +58,57 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ── Action: resend magic link for existing user ──
+    if (action === "resend_magic_link") {
+      const { email } = body;
+      if (!email) throw new Error("email manquant");
+
+      // Use signInWithOtp via admin - this actually sends the email
+      const gotrue = `${supabaseUrl}/auth/v1/magiclink`;
+      const otpRes = await fetch(gotrue, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": anonKey!,
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!otpRes.ok) {
+        const otpBody = await otpRes.text();
+        // If rate limited, try generateLink as fallback to get a direct URL
+        if (otpBody.includes("over_email_send_rate_limit")) {
+          // Generate a link directly (won't send email but returns the URL)
+          const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+            type: "magiclink",
+            email,
+            options: {
+              redirectTo: `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/setup-password`,
+            },
+          });
+
+          if (linkError) throw new Error(`Impossible de générer le lien: ${linkError.message}`);
+
+          // Return the action link so admin can share it manually
+          const actionLink = linkData?.properties?.action_link;
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              message: `Rate limit atteint. Lien de connexion généré manuellement.`,
+              magic_link: actionLink,
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        throw new Error(`Erreur envoi email: ${otpBody}`);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: `Lien de connexion renvoyé à ${email}` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // ── Default action: approve request ──
     if (!requestId) throw new Error("requestId manquant");
 
@@ -72,7 +122,7 @@ Deno.serve(async (req) => {
     if (fetchErr || !eaReq) throw new Error("Demande introuvable");
     if (eaReq.status !== "en_attente") throw new Error("Demande déjà traitée");
 
-    // Generate a secure random password (user will login via magic link, never needs this)
+    // Generate a secure random password
     const tempPassword = crypto.randomUUID();
 
     // Create the user via admin API
@@ -87,7 +137,6 @@ Deno.serve(async (req) => {
 
     const userId = newUser.user.id;
 
-    // The profile and member role are created automatically via triggers.
     // Set the profile to active status
     await supabaseAdmin
       .from("profiles")
@@ -113,22 +162,7 @@ Deno.serve(async (req) => {
       })
       .eq("id", requestId);
 
-    // Send magic link email so the user can login immediately
-    const { error: otpError } = await supabaseAdmin.auth.admin.generateLink({
-      type: "magiclink",
-      email: eaReq.email,
-      options: {
-        redirectTo: `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/setup-password`,
-      },
-    });
-
-    // Even if magic link generation fails, the account is created — we use signInWithOtp as fallback
-    if (otpError) {
-      console.warn("Magic link generation failed, user can request one manually:", otpError.message);
-    }
-
-    // Also send an OTP email directly so the user receives a clickable link
-    // Using the admin client to call the GoTrue endpoint directly
+    // Send magic link email - use the /auth/v1/magiclink endpoint which ACTUALLY sends an email
     const gotrue = `${supabaseUrl}/auth/v1/magiclink`;
     const otpRes = await fetch(gotrue, {
       method: "POST",
@@ -138,16 +172,34 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({ email: eaReq.email }),
     });
-    
+
+    let emailSent = true;
+    let magicLink: string | null = null;
+
     if (!otpRes.ok) {
       const otpBody = await otpRes.text();
-      console.warn("OTP email fallback failed:", otpBody);
+      console.warn("Magic link email failed, generating link manually:", otpBody);
+      emailSent = false;
+
+      // Fallback: generate the link directly so admin can share it
+      const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
+        type: "magiclink",
+        email: eaReq.email,
+        options: {
+          redirectTo: `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/setup-password`,
+        },
+      });
+      magicLink = linkData?.properties?.action_link || null;
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Compte créé pour ${eaReq.first_name} (${eaReq.email}). Un lien de connexion a été envoyé par email.`,
+        email_sent: emailSent,
+        magic_link: magicLink,
+        message: emailSent
+          ? `Compte créé pour ${eaReq.first_name} (${eaReq.email}). Email de connexion envoyé.`
+          : `Compte créé pour ${eaReq.first_name} (${eaReq.email}). Email échoué — lien généré manuellement.`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
