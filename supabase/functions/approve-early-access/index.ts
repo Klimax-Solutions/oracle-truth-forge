@@ -44,9 +44,7 @@ Deno.serve(async (req) => {
 
       if (!profile) throw new Error("Profil introuvable");
 
-      const firstName = profile.first_name || profile.display_name || "";
-      const basePwd = firstName.trim().toLowerCase();
-      const password = basePwd.length >= 6 ? basePwd : basePwd.padEnd(6, basePwd);
+      const password = crypto.randomUUID();
 
       const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
         password,
