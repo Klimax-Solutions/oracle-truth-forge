@@ -394,11 +394,18 @@ const AuthForm = ({
       </Button>
     </form>
 
-    <div className="mt-4 flex flex-col items-center gap-3">
+    <div className="mt-5 flex flex-col items-center gap-4">
+      <div className="w-full h-px bg-border" />
       <button type="button" onClick={onMagicLink} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
         <Mail className="w-4 h-4" />
-        Connexion par email (sans mot de passe)
+        Recevoir un lien de connexion par email
       </button>
+      <p className="text-[11px] text-muted-foreground text-center leading-relaxed max-w-xs">
+        Pas encore de compte ?{" "}
+        <a href="/early-access" className="text-primary hover:text-primary/80 underline underline-offset-2 transition-colors">
+          Déposez votre candidature ici
+        </a>
+      </p>
     </div>
   </>
 );
