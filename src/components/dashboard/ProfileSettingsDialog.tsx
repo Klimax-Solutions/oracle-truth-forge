@@ -226,3 +226,81 @@ export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDi
     </Dialog>
   );
 };
+
+// ── Password sub-component ──
+const PasswordSection = () => {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSetPassword = async () => {
+    if (newPassword.length < 6) {
+      toast.error("Le mot de passe doit contenir au moins 6 caractères.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Les mots de passe ne correspondent pas.");
+      return;
+    }
+
+    setSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Mot de passe défini avec succès !");
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="border-t border-border pt-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Lock className="w-4 h-4 text-muted-foreground" />
+        <Label className="text-sm font-medium">Définir un mot de passe</Label>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Optionnel — vous permet de vous connecter avec email + mot de passe en plus du lien par email.
+      </p>
+      <div className="space-y-2">
+        <div className="relative">
+          <Input
+            type={showPassword ? "text" : "password"}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Nouveau mot de passe"
+            minLength={6}
+            className="pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+        <Input
+          type={showPassword ? "text" : "password"}
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder="Confirmer le mot de passe"
+          minLength={6}
+        />
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleSetPassword}
+        disabled={saving || !newPassword || !confirmPassword}
+        className="w-full gap-2"
+      >
+        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
+        Définir le mot de passe
+      </Button>
+    </div>
+  );
+};
