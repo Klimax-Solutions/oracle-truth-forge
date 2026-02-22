@@ -518,4 +518,64 @@ const ForgotPasswordForm = ({ email, setEmail, isLoading, resetEmailSent, onSubm
   </>
 );
 
+// Magic link form
+interface MagicLinkFormProps {
+  email: string;
+  setEmail: (v: string) => void;
+  isLoading: boolean;
+  linkSent: boolean;
+  onSubmit: (e: React.FormEvent) => void;
+  onBack: () => void;
+}
+
+const MagicLinkForm = ({ email, setEmail, isLoading, linkSent, onSubmit, onBack }: MagicLinkFormProps) => (
+  <>
+    <button
+      type="button"
+      onClick={onBack}
+      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+    >
+      <ArrowLeft className="w-4 h-4" />
+      Retour
+    </button>
+    <div className="mb-6 md:mb-8">
+      <h2 className="text-base md:text-lg font-bold text-foreground mb-1">
+        Connexion par email
+      </h2>
+      <p className="text-xs md:text-sm text-muted-foreground">
+        {linkSent
+          ? "Un lien de connexion a été envoyé"
+          : "Recevez un lien sécurisé dans votre boîte mail pour vous connecter instantanément."}
+      </p>
+    </div>
+
+    {linkSent ? (
+      <div className="text-center py-4">
+        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Mail className="w-8 h-8 text-primary" />
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Vérifiez votre boîte mail à <strong>{email}</strong>
+        </p>
+        <p className="text-xs text-muted-foreground mb-4">
+          Cliquez sur le lien reçu pour accéder directement à la plateforme.
+        </p>
+        <Button type="button" variant="outline" onClick={onBack} className="w-full">
+          Retour à la connexion
+        </Button>
+      </div>
+    ) : (
+      <form onSubmit={onSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Email</label>
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@exemple.com" required className="h-12 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring rounded-md" />
+        </div>
+        <Button type="submit" className="w-full h-12 bg-primary text-primary-foreground font-bold hover:bg-primary/90 rounded-md transition-colors" disabled={isLoading}>
+          {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Envoyer le lien de connexion"}
+        </Button>
+      </form>
+    )}
+  </>
+);
+
 export default Auth;
