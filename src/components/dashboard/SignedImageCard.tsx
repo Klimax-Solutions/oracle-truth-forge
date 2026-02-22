@@ -11,6 +11,7 @@ interface SignedImageCardProps {
   label: string;
   className?: string;
   fillContainer?: boolean;
+  bucket?: string;
 }
 
 export const SignedImageCard = ({
