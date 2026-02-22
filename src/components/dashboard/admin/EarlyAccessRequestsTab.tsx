@@ -21,7 +21,7 @@ interface EARequest {
   created_at: string;
 }
 
-const DEFAULT_DURATION_HOURS = 48;
+const DEFAULT_DURATION_HOURS = 72;
 
 export const EarlyAccessRequestsTab = () => {
   const [requests, setRequests] = useState<EARequest[]>([]);
