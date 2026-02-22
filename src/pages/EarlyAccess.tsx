@@ -88,7 +88,7 @@ const EarlyAccess = () => {
                     Comment me connecter ?
                   </p>
                   <p className="text-sm text-foreground leading-relaxed">
-                    Une fois votre demande approuvée, rendez-vous sur la page de connexion et utilisez votre <strong>adresse email</strong> ainsi que votre <strong>prénom en minuscules</strong> comme mot de passe initial.
+                    Une fois votre demande approuvée, rendez-vous sur la page de connexion et utilisez l'option <strong>« Connexion par email »</strong>. Vous recevrez un lien sécurisé dans votre boîte mail pour accéder directement à la plateforme.
                   </p>
                 </div>
 

@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, Loader2, ArrowLeft, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import VortexTransition from "@/components/auth/VortexTransition";
 import LoginProgressBar from "@/components/auth/LoginProgressBar";
 
-type AuthMode = "login" | "signup" | "forgot-password";
+type AuthMode = "login" | "signup" | "forgot-password" | "magic-link";
 
 const ORACLE_LETTERS = ["O", "R", "A", "C", "L", "E"];
 
@@ -21,6 +21,7 @@ const Auth = () => {
   const [mode, setMode] = useState<AuthMode>("login");
   const [isLoading, setIsLoading] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [isProgressActive, setIsProgressActive] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [userName, setUserName] = useState<string>("");
@@ -225,6 +226,32 @@ const Auth = () => {
       setIsLoading(false);
     }
   };
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      if (error) throw error;
+      setMagicLinkSent(true);
+      toast({
+        title: "Lien envoyé",
+        description: "Vérifiez votre boîte mail pour vous connecter.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const showingAnimation = isProgressActive || isTransitioning;
 
@@ -255,7 +282,7 @@ const Auth = () => {
       <div className={`relative z-10 min-h-screen flex flex-col items-center justify-center px-4 md:px-6 py-8 transition-all duration-700 ${isTransitioning ? "auth-page-absorb" : ""}`}>
         <div className={`text-center mb-8 md:mb-16 transition-all duration-500 ${showingAnimation ? "opacity-0 scale-75" : "animate-fade-in"}`}>
           <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.3em] md:tracking-[0.4em] text-muted-foreground mb-4 md:mb-6">
-            {mode === "forgot-password" ? "Récupération" : "Authentification"}
+            {mode === "forgot-password" ? "Récupération" : mode === "magic-link" ? "Connexion par email" : "Authentification"}
           </p>
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-semibold tracking-tight text-foreground">
             Oracle<sup className="text-lg md:text-xl lg:text-2xl font-normal align-super ml-0.5 md:ml-1">™</sup>
@@ -276,6 +303,15 @@ const Auth = () => {
                   onSubmit={handleForgotPassword}
                   onBack={() => { setMode("login"); setResetEmailSent(false); }}
                 />
+              ) : mode === "magic-link" ? (
+                <MagicLinkForm
+                  email={email}
+                  setEmail={setEmail}
+                  isLoading={isLoading}
+                  linkSent={magicLinkSent}
+                  onSubmit={handleMagicLink}
+                  onBack={() => { setMode("login"); setMagicLinkSent(false); }}
+                />
               ) : (
                 <AuthForm
                   mode={mode}
@@ -292,6 +328,7 @@ const Auth = () => {
                   onSubmit={handleAuth}
                   onSwitchMode={() => setMode(mode === "login" ? "signup" : "login")}
                   onForgotPassword={() => setMode("forgot-password")}
+                  onMagicLink={() => setMode("magic-link")}
                 />
               )}
             </div>
@@ -331,12 +368,13 @@ interface AuthFormProps {
   onSubmit: (e: React.FormEvent) => void;
   onSwitchMode: () => void;
   onForgotPassword: () => void;
+  onMagicLink: () => void;
 }
 
 const AuthForm = ({
   mode, email, setEmail, password, setPassword, firstName, setFirstName,
   showPassword, setShowPassword, isLoading, showingAnimation,
-  onSubmit, onSwitchMode, onForgotPassword,
+  onSubmit, onSwitchMode, onForgotPassword, onMagicLink,
 }: AuthFormProps) => (
   <>
     <div className="mb-6 md:mb-8">
@@ -407,7 +445,13 @@ const AuthForm = ({
       </Button>
     </form>
 
-    <div className="mt-6 text-center">
+    <div className="mt-4 flex flex-col items-center gap-3">
+      {mode === "login" && (
+        <button type="button" onClick={onMagicLink} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
+          <Mail className="w-4 h-4" />
+          Connexion par email (sans mot de passe)
+        </button>
+      )}
       <button type="button" onClick={onSwitchMode} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
         {mode === "login" ? "Pas de compte ? Créer un compte" : "Déjà un compte ? Se connecter"}
       </button>
@@ -468,6 +512,66 @@ const ForgotPasswordForm = ({ email, setEmail, isLoading, resetEmailSent, onSubm
         </div>
         <Button type="submit" className="w-full h-12 bg-primary text-primary-foreground font-bold hover:bg-primary/90 rounded-md transition-colors" disabled={isLoading}>
           {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Envoyer le lien"}
+        </Button>
+      </form>
+    )}
+  </>
+);
+
+// Magic link form
+interface MagicLinkFormProps {
+  email: string;
+  setEmail: (v: string) => void;
+  isLoading: boolean;
+  linkSent: boolean;
+  onSubmit: (e: React.FormEvent) => void;
+  onBack: () => void;
+}
+
+const MagicLinkForm = ({ email, setEmail, isLoading, linkSent, onSubmit, onBack }: MagicLinkFormProps) => (
+  <>
+    <button
+      type="button"
+      onClick={onBack}
+      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+    >
+      <ArrowLeft className="w-4 h-4" />
+      Retour
+    </button>
+    <div className="mb-6 md:mb-8">
+      <h2 className="text-base md:text-lg font-bold text-foreground mb-1">
+        Connexion par email
+      </h2>
+      <p className="text-xs md:text-sm text-muted-foreground">
+        {linkSent
+          ? "Un lien de connexion a été envoyé"
+          : "Recevez un lien sécurisé dans votre boîte mail pour vous connecter instantanément."}
+      </p>
+    </div>
+
+    {linkSent ? (
+      <div className="text-center py-4">
+        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Mail className="w-8 h-8 text-primary" />
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Vérifiez votre boîte mail à <strong>{email}</strong>
+        </p>
+        <p className="text-xs text-muted-foreground mb-4">
+          Cliquez sur le lien reçu pour accéder directement à la plateforme.
+        </p>
+        <Button type="button" variant="outline" onClick={onBack} className="w-full">
+          Retour à la connexion
+        </Button>
+      </div>
+    ) : (
+      <form onSubmit={onSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Email</label>
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@exemple.com" required className="h-12 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring rounded-md" />
+        </div>
+        <Button type="submit" className="w-full h-12 bg-primary text-primary-foreground font-bold hover:bg-primary/90 rounded-md transition-colors" disabled={isLoading}>
+          {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Envoyer le lien de connexion"}
         </Button>
       </form>
     )}
