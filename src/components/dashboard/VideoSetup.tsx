@@ -42,7 +42,13 @@ export const VideoSetup = () => {
 
       if (videosRes.data) {
         setVideos(videosRes.data);
-        if (videosRes.data.length > 0) setSelectedVideo(videosRes.data[0]);
+        // For Early Access: default to video with sort_order 5 if available
+        const video5 = videosRes.data.find((v: VideoData) => v.sort_order === 5);
+        if (isEarlyAccess && video5) {
+          setSelectedVideo(video5);
+        } else if (videosRes.data.length > 0) {
+          setSelectedVideo(videosRes.data[0]);
+        }
       }
       if (viewsRes.data) setViewedIds(new Set(viewsRes.data.map((v: any) => v.video_id)));
       if (rolesRes.data) {
@@ -175,9 +181,9 @@ const VideoOracleContent = ({
     </div>
 
     {/* Split layout: Player + Playlist */}
-    <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+    <div className="flex-1 overflow-auto flex flex-col lg:flex-row">
       {/* Left: Video player */}
-      <div className="flex-1 flex flex-col min-w-0 p-4 md:p-6 overflow-auto scrollbar-hide">
+      <div className="flex-1 flex flex-col min-w-0 p-4 md:p-6 lg:overflow-auto scrollbar-hide">
         {selectedVideo ? (
           <>
             <h3 className="text-base md:text-lg font-semibold text-foreground mb-3">
@@ -271,10 +277,11 @@ const VideoOracleContent = ({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p
-                    className={cn(
+                     className={cn(
                       "text-sm font-medium truncate",
                       isActive ? "text-foreground" : "text-muted-foreground",
-                      isEarlyAccess && isVideoLocked(video) && "blur-sm select-none"
+                      isEarlyAccess && isVideoLocked(video) && "blur-sm select-none",
+                      isEarlyAccess && !isVideoLocked(video) && "font-bold animate-pulse"
                     )}
                   >
                     {video.title}

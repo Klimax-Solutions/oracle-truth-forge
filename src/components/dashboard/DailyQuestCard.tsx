@@ -16,6 +16,7 @@ import {
   Phone,
   Layout,
   Zap,
+  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -36,6 +37,7 @@ interface DailyQuestCardProps {
   onNavigateToSetup: () => void;
   onRequestVerification?: () => void;
   isEarlyAccess?: boolean;
+  earlyAccessType?: string | null;
   expiresAt?: string | null;
   eaSettings?: EASetting[];
 }
@@ -49,12 +51,16 @@ export const DailyQuestCard = ({
   onNavigateToSetup,
   onRequestVerification,
   isEarlyAccess = false,
+  earlyAccessType,
   expiresAt,
   eaSettings = [],
 }: DailyQuestCardProps) => {
   const [showCalendar, setShowCalendar] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Determine EA type
+  const isPrecall = earlyAccessType === "precall";
 
   const {
     allVideosWatched,
@@ -189,54 +195,12 @@ export const DailyQuestCard = ({
 
       {/* Early Access Quest Steps */}
       {isEarlyAccess && (
-        <div className="space-y-3">
-          {/* Step 1: Appel confidentiel - always completed */}
-          <QuestItem
-            completed={true}
-            active={false}
-            title="Appel confidentiel avec l'équipe Mercure"
-            subtitle="Candidature sur le point d'être validée"
-          />
-
-          {/* Step 2: Prendre en main la plateforme */}
-          <QuestItem
-            completed={false}
-            active={true}
-            title="Prendre en main la plateforme"
-            subtitle="Explorez les onglets, le simulateur de performance et consultez les 50 premières data accessibles"
-          />
-
-          {/* Step 3: Accéder à Oracle with timer + button */}
-          <div className={cn(
-            "flex items-start gap-3 p-3 rounded-md border transition-all",
-            "border-border bg-card/50 opacity-80"
-          )}>
-            <div className="mt-0.5">
-              <Circle className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <div className="flex-1 min-w-0 space-y-2">
-              <p className="text-sm font-medium text-foreground">Accéder à Oracle</p>
-              <p className="text-[10px] text-muted-foreground">Procéder au règlement</p>
-              {expiresAt && (
-                <div className="mt-1">
-                  <EarlyAccessTimer expiresAt={expiresAt} />
-                </div>
-              )}
-              {(() => {
-                const oracleSetting = eaSettings.find(s => s.button_key === "acceder_a_oracle");
-                const oracleUrl = oracleSetting?.button_url || "#";
-                return (
-                  <a href={oracleUrl} target="_blank" rel="noopener noreferrer">
-                    <Button variant="default" size="sm" className="mt-1 text-xs h-7 gap-1.5">
-                      <Zap className="w-3 h-3" />
-                      Accéder à Oracle
-                    </Button>
-                  </a>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
+        <EarlyAccessQuests
+          isPrecall={isPrecall}
+          eaSettings={eaSettings}
+          expiresAt={expiresAt}
+          onNavigateToVideos={onNavigateToVideos}
+        />
       )}
 
       {/* First Execution Quest (FX Replay setup) - member only */}
@@ -498,3 +462,89 @@ const QuestItem = ({
     </div>
   </div>
 );
+
+// Early Access quest steps - differentiated by pre-call / post-call
+interface EarlyAccessQuestsProps {
+  isPrecall: boolean;
+  eaSettings: EASetting[];
+  expiresAt?: string | null;
+  onNavigateToVideos: () => void;
+}
+
+const EarlyAccessQuests = ({ isPrecall, eaSettings, expiresAt, onNavigateToVideos }: EarlyAccessQuestsProps) => {
+  const oracleSetting = eaSettings.find(s => s.button_key === "acceder_a_oracle");
+  const oracleUrl = oracleSetting?.button_url || "#";
+
+  return (
+    <div className="space-y-3">
+      {/* Step 1 */}
+      {isPrecall ? (
+        <QuestItem
+          completed={true}
+          active={false}
+          title="Accéder à la plateforme"
+          subtitle="Vous êtes connecté à la plateforme Oracle"
+        />
+      ) : (
+        <QuestItem
+          completed={true}
+          active={false}
+          title="Appel confidentiel avec l'équipe Mercure"
+          subtitle="Candidature validée"
+        />
+      )}
+
+      {/* Step 2: Accéder aux vidéos exclusives */}
+      <div className={cn(
+        "flex items-start gap-3 p-3 rounded-md border transition-all",
+        "border-primary/40 bg-primary/5"
+      )}>
+        <div className="mt-0.5">
+          <Circle className="w-4 h-4 text-muted-foreground" />
+        </div>
+        <div className="flex-1 min-w-0 space-y-2">
+          <p className="text-sm font-medium text-foreground">
+            {isPrecall ? "Accéder aux vidéos exclusives" : "Accéder aux vidéos exclusives Oracle"}
+          </p>
+          <p className="text-[10px] text-muted-foreground">Consultez les vidéos de formation Oracle</p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-1 text-xs h-7 gap-1.5"
+            onClick={onNavigateToVideos}
+          >
+            <Video className="w-3 h-3" />
+            Accéder aux vidéos
+          </Button>
+        </div>
+      </div>
+
+      {/* Step 3: Accéder à Oracle */}
+      <div className={cn(
+        "flex items-start gap-3 p-3 rounded-md border transition-all",
+        "border-border bg-card/50 opacity-80"
+      )}>
+        <div className="mt-0.5">
+          <Circle className="w-4 h-4 text-muted-foreground" />
+        </div>
+        <div className="flex-1 min-w-0 space-y-2">
+          <p className="text-sm font-medium text-foreground">Accéder à Oracle</p>
+          <p className="text-[10px] text-muted-foreground">
+            {isPrecall ? "Déposer ma candidature" : "Procéder au règlement"}
+          </p>
+          {expiresAt && (
+            <div className="mt-1">
+              <EarlyAccessTimer expiresAt={expiresAt} />
+            </div>
+          )}
+          <a href={oracleUrl} target="_blank" rel="noopener noreferrer">
+            <Button variant="default" size="sm" className="mt-1 text-xs h-7 gap-1.5">
+              <Zap className="w-3 h-3" />
+              {isPrecall ? "Déposer ma candidature" : "Accéder à Oracle"}
+            </Button>
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};

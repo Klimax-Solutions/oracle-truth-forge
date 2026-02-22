@@ -109,7 +109,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   const [isAdmin, setIsAdmin] = useState(false);
   const [globalStats, setGlobalStats] = useState<{ totalData: number; totalRR: number; avgRR: number; totalUsers: number } | null>(null);
   const { toast } = useToast();
-  const { isEarlyAccess, expiresAt } = useEarlyAccess();
+  const { isEarlyAccess, expiresAt, earlyAccessType } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
   const { featured: eaFeaturedTrade } = useEaFeaturedTrade();
 
@@ -535,6 +535,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                     onNavigateToVideos={() => onNavigateToVideos?.()}
                     onNavigateToSetup={() => onNavigateToSetup?.()}
                     isEarlyAccess={isEarlyAccess}
+                    earlyAccessType={earlyAccessType}
                     expiresAt={expiresAt}
                     eaSettings={eaSettings}
                   />
