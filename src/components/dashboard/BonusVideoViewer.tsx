@@ -194,6 +194,13 @@ export const BonusVideoViewer = ({ userRoles = [] }: BonusVideoViewerProps) => {
 
   return (
     <div className="h-full flex flex-col">
+      {/* Chrome-only warning banner */}
+      <div className="px-4 md:px-6 py-2.5 bg-amber-500/15 border-b border-amber-500/30 flex items-center gap-2.5">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-amber-500 flex-shrink-0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <p className="text-xs font-medium text-amber-200/90">
+          <span className="font-semibold text-amber-400">Attention :</span> Les vidéos bonus du Mercure Institut sont consultables uniquement et exclusivement sur <span className="font-semibold text-amber-400">Google Chrome</span>, par souci de sécurité.
+        </p>
+      </div>
       {/* Category tabs + count */}
       <div className="px-4 md:px-6 py-3 border-b border-border flex items-center justify-between gap-3">
         <Tabs value={activeCategory} onValueChange={setActiveCategory}>
