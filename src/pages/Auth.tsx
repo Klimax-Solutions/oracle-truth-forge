@@ -374,7 +374,7 @@ interface AuthFormProps {
 const AuthForm = ({
   mode, email, setEmail, password, setPassword, firstName, setFirstName,
   showPassword, setShowPassword, isLoading, showingAnimation,
-  onSubmit, onSwitchMode, onForgotPassword,
+  onSubmit, onSwitchMode, onForgotPassword, onMagicLink,
 }: AuthFormProps) => (
   <>
     <div className="mb-6 md:mb-8">
