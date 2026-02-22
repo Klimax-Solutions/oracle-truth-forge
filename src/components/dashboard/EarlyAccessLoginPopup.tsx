@@ -20,20 +20,11 @@ export const EarlyAccessLoginPopup = () => {
   const [results, setResults] = useState<ResultItem[]>([]);
   const [popupTexts, setPopupTexts] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Show popup once per session for EA users
+  // Fetch data first, then show popup
   useEffect(() => {
     if (!isEarlyAccess || !expiresAt) return;
-    const key = `ea_popup_shown_${new Date().toDateString()}`;
-    if (!sessionStorage.getItem(key)) {
-      setOpen(true);
-      sessionStorage.setItem(key, "1");
-    }
-  }, [isEarlyAccess, expiresAt]);
-
-  // Fetch last 3 results + popup texts
-  useEffect(() => {
-    if (!isEarlyAccess) return;
     const fetchData = async () => {
       const [resultsRes, textsRes] = await Promise.all([
         supabase
@@ -51,9 +42,20 @@ export const EarlyAccessLoginPopup = () => {
         (textsRes.data as any[]).forEach((r: any) => { map[r.setting_key] = r.setting_value; });
         setPopupTexts(map);
       }
+      setDataLoaded(true);
     };
     fetchData();
-  }, [isEarlyAccess]);
+  }, [isEarlyAccess, expiresAt]);
+
+  // Show popup only after data is loaded
+  useEffect(() => {
+    if (!dataLoaded || !isEarlyAccess || !expiresAt) return;
+    const key = `ea_popup_shown_${new Date().toDateString()}`;
+    if (!sessionStorage.getItem(key)) {
+      setOpen(true);
+      sessionStorage.setItem(key, "1");
+    }
+  }, [dataLoaded, isEarlyAccess, expiresAt]);
 
   // Timer
   useEffect(() => {
