@@ -285,13 +285,10 @@ const Auth = () => {
                 />
               ) : (
                 <AuthForm
-                  mode={mode}
                   email={email}
                   setEmail={setEmail}
                   password={password}
                   setPassword={setPassword}
-                  firstName={firstName}
-                  setFirstName={setFirstName}
                   showPassword={showPassword}
                   setShowPassword={setShowPassword}
                   isLoading={isLoading}
