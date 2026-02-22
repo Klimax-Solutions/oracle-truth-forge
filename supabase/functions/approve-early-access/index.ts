@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
       type: "magiclink",
       email: eaReq.email,
       options: {
-        redirectTo: `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/dashboard`,
+        redirectTo: `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/setup-password`,
       },
     });
 
