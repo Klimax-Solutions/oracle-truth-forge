@@ -394,16 +394,32 @@ const AuthForm = ({
       </Button>
     </form>
 
-    <div className="mt-5 flex flex-col items-center gap-4">
-      <div className="w-full h-px bg-border" />
-      <button type="button" onClick={onMagicLink} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
-        <Mail className="w-4 h-4" />
-        Recevoir un lien de connexion par email
-      </button>
-      <p className="text-[11px] text-muted-foreground text-center leading-relaxed max-w-xs">
-        Pas encore de compte ?{" "}
-        <a href="/early-access" className="text-primary hover:text-primary/80 underline underline-offset-2 transition-colors">
-          Déposez votre candidature ici
+    <div className="mt-6 space-y-5">
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full h-px bg-border" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-card px-3 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+            Première connexion ?
+          </span>
+        </div>
+      </div>
+
+      <div className="bg-muted/30 border border-border rounded-md p-4 space-y-3">
+        <button type="button" onClick={onMagicLink} className="w-full flex items-center justify-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+          <Mail className="w-4 h-4" />
+          Recevoir mon lien de connexion par email
+        </button>
+        <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+          Si votre accès a été approuvé, vous recevrez un lien sécurisé pour vous connecter. Aucun mot de passe requis pour la première fois.
+        </p>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+        Vous n'avez pas encore de compte ?{" "}
+        <a href="/early-access" className="text-primary hover:text-primary/80 font-medium underline underline-offset-2 transition-colors">
+          Déposez votre candidature
         </a>
       </p>
     </div>
@@ -505,12 +521,31 @@ const MagicLinkForm = ({ email, setEmail, isLoading, linkSent, onSubmit, onBack 
         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
           <Mail className="w-8 h-8 text-primary" />
         </div>
-        <p className="text-sm text-muted-foreground mb-4">
-          Vérifiez votre boîte mail à <strong>{email}</strong>
+        <p className="text-sm text-foreground font-medium mb-1">
+          Lien envoyé !
         </p>
-        <p className="text-xs text-muted-foreground mb-4">
-          Cliquez sur le lien reçu pour accéder directement à la plateforme.
+        <p className="text-sm text-muted-foreground mb-5">
+          Vérifiez votre boîte mail à <strong className="text-foreground">{email}</strong>
         </p>
+        <p className="text-xs text-muted-foreground mb-5">
+          Cliquez sur le lien reçu pour accéder directement à la plateforme. Si vous ne le trouvez pas, vérifiez vos spams.
+        </p>
+
+        <div className="flex flex-col gap-2 mb-5">
+          <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer"
+            className="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md border border-border bg-card text-sm text-foreground hover:bg-muted transition-colors">
+            Ouvrir Gmail
+          </a>
+          <a href="https://outlook.live.com" target="_blank" rel="noopener noreferrer"
+            className="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md border border-border bg-card text-sm text-foreground hover:bg-muted transition-colors">
+            Ouvrir Outlook
+          </a>
+          <a href="https://mail.yahoo.com" target="_blank" rel="noopener noreferrer"
+            className="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md border border-border bg-card text-sm text-foreground hover:bg-muted transition-colors">
+            Ouvrir Yahoo Mail
+          </a>
+        </div>
+
         <Button type="button" variant="outline" onClick={onBack} className="w-full">
           Retour à la connexion
         </Button>
