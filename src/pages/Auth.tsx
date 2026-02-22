@@ -324,55 +324,35 @@ const Auth = () => {
 // ---- Sub-components ----
 
 interface AuthFormProps {
-  mode: "login" | "signup";
   email: string;
   setEmail: (v: string) => void;
   password: string;
   setPassword: (v: string) => void;
-  firstName: string;
-  setFirstName: (v: string) => void;
   showPassword: boolean;
   setShowPassword: (v: boolean) => void;
   isLoading: boolean;
   showingAnimation: boolean;
   onSubmit: (e: React.FormEvent) => void;
-  onSwitchMode: () => void;
   onForgotPassword: () => void;
   onMagicLink: () => void;
 }
 
 const AuthForm = ({
-  mode, email, setEmail, password, setPassword, firstName, setFirstName,
+  email, setEmail, password, setPassword,
   showPassword, setShowPassword, isLoading, showingAnimation,
-  onSubmit, onSwitchMode, onForgotPassword, onMagicLink,
+  onSubmit, onForgotPassword, onMagicLink,
 }: AuthFormProps) => (
   <>
     <div className="mb-6 md:mb-8">
       <h2 className="text-base md:text-lg font-bold text-foreground mb-1">
-        {mode === "login" ? "Connexion" : "Créer un compte"}
+        Connexion
       </h2>
       <p className="text-xs md:text-sm text-muted-foreground">
-        {mode === "login" ? "Accédez à votre base de données" : "Rejoignez la plateforme Oracle"}
+        Accédez à votre base de données
       </p>
     </div>
 
     <form onSubmit={onSubmit} className="space-y-4 md:space-y-6">
-      {/* First name - signup only */}
-      {mode === "signup" && (
-        <div className="space-y-2">
-          <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Prénom</label>
-          <Input
-            type="text"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            placeholder="Votre prénom"
-            required
-            maxLength={50}
-            className="h-12 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring rounded-md"
-          />
-        </div>
-      )}
-
       <div className="space-y-2">
         <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Email</label>
         <Input
@@ -388,11 +368,9 @@ const AuthForm = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Mot de passe</label>
-          {mode === "login" && (
-            <button type="button" onClick={onForgotPassword} className="text-xs text-primary hover:text-primary/80 transition-colors">
-              Mot de passe oublié ?
-            </button>
-          )}
+          <button type="button" onClick={onForgotPassword} className="text-xs text-primary hover:text-primary/80 transition-colors">
+            Mot de passe oublié ?
+          </button>
         </div>
         <div className="relative">
           <Input
@@ -411,19 +389,14 @@ const AuthForm = ({
       </div>
 
       <Button type="submit" className="w-full h-12 bg-primary text-primary-foreground font-bold hover:bg-primary/90 rounded-md transition-colors" disabled={isLoading || showingAnimation}>
-        {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : mode === "login" ? "Se connecter" : "Créer le compte"}
+        {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Se connecter"}
       </Button>
     </form>
 
     <div className="mt-4 flex flex-col items-center gap-3">
-      {mode === "login" && (
-        <button type="button" onClick={onMagicLink} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
-          <Mail className="w-4 h-4" />
-          Connexion par email (sans mot de passe)
-        </button>
-      )}
-      <button type="button" onClick={onSwitchMode} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-        {mode === "login" ? "Pas de compte ? Créer un compte" : "Déjà un compte ? Se connecter"}
+      <button type="button" onClick={onMagicLink} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
+        <Mail className="w-4 h-4" />
+        Connexion par email (sans mot de passe)
       </button>
     </div>
   </>
