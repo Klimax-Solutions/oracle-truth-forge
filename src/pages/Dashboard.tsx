@@ -16,6 +16,7 @@ import { DataAnalysisPage } from "@/components/dashboard/DataAnalysisPage";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 import { EarlyAccessTimer } from "@/components/dashboard/EarlyAccessTimer";
 import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
+import { useEaActivityTracking, trackEaButtonClick } from "@/hooks/useEaActivityTracking";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
@@ -76,6 +77,7 @@ const Dashboard = () => {
   const { isEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
   const navigate = useNavigate();
+  useEaActivityTracking(activeTab, isEarlyAccess);
   const showDataGenerale = isAdmin || isSuperAdmin;
   const needsDataGenerale = showDataGenerale || isEarlyAccess;
   const { dataGenerale } = useDataGenerale(trades, needsDataGenerale);
@@ -343,7 +345,7 @@ const Dashboard = () => {
                   const oracleBtn = eaSettings.find(s => s.button_key === "acceder_a_oracle");
                   const oracleUrl = oracleBtn?.button_url;
                   return oracleUrl ? (
-                    <a href={oracleUrl} target="_blank" rel="noopener noreferrer">
+                    <a href={oracleUrl} target="_blank" rel="noopener noreferrer" onClick={() => trackEaButtonClick("acceder_a_oracle")}>
                       <Button variant="outline" size="sm" className="gap-1.5 text-xs border-foreground/30 text-foreground hover:bg-accent">
                         <ExternalLink className="w-3 h-3" />
                         Accéder à Oracle
