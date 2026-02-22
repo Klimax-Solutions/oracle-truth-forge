@@ -130,7 +130,7 @@ const Dashboard = () => {
           navigate("/auth");
         } else {
           setUser(session.user);
-          checkUserAccess(session.user.id);
+          checkUserAccess(session.user.id, session.user.user_metadata);
         }
         setLoading(false);
       }
