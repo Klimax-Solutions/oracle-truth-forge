@@ -368,6 +368,7 @@ interface AuthFormProps {
   onSubmit: (e: React.FormEvent) => void;
   onSwitchMode: () => void;
   onForgotPassword: () => void;
+  onMagicLink: () => void;
 }
 
 const AuthForm = ({
