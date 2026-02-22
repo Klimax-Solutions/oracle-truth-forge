@@ -385,6 +385,7 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
           isOpen={isCreateDialogOpen}
           onClose={() => setIsCreateDialogOpen(false)}
           onCreated={refetchSetups}
+          isAdmin={isAdmin || isSuperAdmin}
         />
       </div>
     );
@@ -597,6 +598,7 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
             setIsCreateDialogOpen(false);
             refetchSetups();
           }}
+          isAdmin={isAdmin || isSuperAdmin}
         />
 
         {/* ─── Asset Class Sections (Personal Trades grouped) ─── */}

@@ -1149,6 +1149,7 @@ export type Database = {
       }
       videos: {
         Row: {
+          accessible_roles: string[]
           created_at: string
           created_by: string | null
           description: string | null
@@ -1160,6 +1161,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accessible_roles?: string[]
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1171,6 +1173,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accessible_roles?: string[]
           created_at?: string
           created_by?: string | null
           description?: string | null

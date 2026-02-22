@@ -409,7 +409,71 @@ export const EarlyAccessManagement = () => {
           </div>
         </div>
 
-        {/* ═══ SECTION PRÉ-CALL (AMBER) ═══ */}
+        {/* ═══ Popup Customization ═══ */}
+        <div className="border border-border rounded-md bg-card overflow-hidden">
+          <div className="p-4 border-b border-border bg-muted/30">
+            <h4 className="font-semibold text-foreground text-sm">Personnalisation du Pop-up</h4>
+            <p className="text-[10px] text-muted-foreground font-mono mt-1">
+              Textes affichés dans le pop-up de connexion Early Access
+            </p>
+          </div>
+          <div className="p-4 space-y-3">
+            {[
+              { key: "popup_title", label: "Titre du pop-up" },
+              { key: "popup_subtitle_precall", label: "Sous-titre (Pré-call)" },
+              { key: "popup_subtitle_postcall", label: "Sous-titre (Post-call)" },
+            ].map((field) => {
+              const saveId = `global_${field.key}`;
+              return (
+                <div key={field.key} className="flex items-center gap-2 p-2 border border-border rounded-md">
+                  <span className="text-xs font-mono text-foreground min-w-[180px] flex-shrink-0">{field.label}</span>
+                  <Input
+                    value={getGlobalUrl(field.key)}
+                    onChange={(e) => setGlobalEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                    placeholder={field.label}
+                    className="h-7 text-xs flex-1"
+                  />
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => saveGlobalUrl(field.key)} disabled={saving === saveId}>
+                    {saving === saveId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ═══ Next Steps Customization ═══ */}
+        <div className="border border-border rounded-md bg-card overflow-hidden">
+          <div className="p-4 border-b border-border bg-muted/30">
+            <h4 className="font-semibold text-foreground text-sm">Personnalisation « Prochaines Étapes »</h4>
+            <p className="text-[10px] text-muted-foreground font-mono mt-1">
+              Textes affichés dans l'encadré « Prochaines Étapes » pour chaque statut
+            </p>
+          </div>
+          <div className="p-4 space-y-3">
+            {[
+              { key: "next_steps_precall", label: "Texte Pré-call" },
+              { key: "next_steps_postcall", label: "Texte Post-call" },
+            ].map((field) => {
+              const saveId = `global_${field.key}`;
+              return (
+                <div key={field.key} className="flex items-center gap-2 p-2 border border-border rounded-md">
+                  <span className="text-xs font-mono text-foreground min-w-[140px] flex-shrink-0">{field.label}</span>
+                  <Input
+                    value={getGlobalUrl(field.key)}
+                    onChange={(e) => setGlobalEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                    placeholder={field.label}
+                    className="h-7 text-xs flex-1"
+                  />
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => saveGlobalUrl(field.key)} disabled={saving === saveId}>
+                    {saving === saveId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="border-2 border-amber-500/40 rounded-md overflow-hidden">
           <div className="p-4 bg-amber-500/10 border-b border-amber-500/30 flex items-center gap-3">
             <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-500 border border-amber-500/30">

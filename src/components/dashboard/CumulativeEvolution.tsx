@@ -14,6 +14,7 @@ interface Trade {
 
 interface CumulativeEvolutionProps {
   trades: Trade[];
+  isSuperAdmin?: boolean;
 }
 
 const CAPITAL_PRESETS = [
@@ -24,7 +25,7 @@ const CAPITAL_PRESETS = [
   { label: "1M", value: "1000000" },
 ];
 
-export const CumulativeEvolution = ({ trades }: CumulativeEvolutionProps) => {
+export const CumulativeEvolution = ({ trades, isSuperAdmin = false }: CumulativeEvolutionProps) => {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [capital, setCapital] = useState<string>("10000");
   const [riskPercent, setRiskPercent] = useState<string>("1");
@@ -228,7 +229,7 @@ export const CumulativeEvolution = ({ trades }: CumulativeEvolutionProps) => {
         </div>
 
         {/* Capital presets for early access */}
-        {isEarlyAccess && (
+        {(isEarlyAccess || isSuperAdmin) && (
           <div className="flex flex-wrap gap-2 mb-4">
             {CAPITAL_PRESETS.map((preset) => (
               <button
