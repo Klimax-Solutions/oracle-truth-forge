@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Settings, Save, Loader2, Camera } from "lucide-react";
+import { Settings, Save, Loader2, Camera, Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { AvatarCropper } from "./AvatarCropper";
 
