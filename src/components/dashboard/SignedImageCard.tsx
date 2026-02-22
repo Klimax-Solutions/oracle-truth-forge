@@ -11,6 +11,7 @@ interface SignedImageCardProps {
   label: string;
   className?: string;
   fillContainer?: boolean;
+  bucket?: string;
 }
 
 export const SignedImageCard = ({
@@ -19,6 +20,7 @@ export const SignedImageCard = ({
   label,
   className = "",
   fillContainer = false,
+  bucket = "trade-screenshots",
 }: SignedImageCardProps) => {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +44,7 @@ export const SignedImageCard = ({
       setError(false);
       try {
         const { data, error: signError } = await supabase.storage
-          .from("trade-screenshots")
+          .from(bucket)
           .createSignedUrl(pathToSign, 3600);
         if (signError) {
           setError(true);
@@ -58,7 +60,7 @@ export const SignedImageCard = ({
       }
     };
     generateSignedUrl();
-  }, [storagePath]);
+  }, [storagePath, bucket]);
 
   if (!storagePath) return null;
 
