@@ -518,6 +518,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                 onContinueHarvest={() => {
                   const harvestBtn = eaSettings.find(s => s.button_key === "continuer_ma_recolte");
                   const url = harvestBtn?.button_url || "https://app.fxreplay.com/en-US/auth/testing/dashboard";
+                  import("@/hooks/useEaActivityTracking").then(m => m.trackEaButtonClick("continuer_ma_recolte"));
                   window.open(url, "_blank");
                 }}
                 eaSettings={eaSettings}

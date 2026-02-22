@@ -95,7 +95,7 @@ export const ResultsPage = ({ isAdmin = false }: { isAdmin?: boolean }) => {
       <>
       <div className="p-4 md:p-6 border-b border-border">
         <h2 className="text-lg md:text-xl font-semibold text-foreground">Derniers résultats des membres</h2>
-        <p className="text-xs text-muted-foreground font-mono mt-1">{filteredResults.length} résultat{filteredResults.length > 1 ? "s" : ""}</p>
+        <p className="text-xs text-muted-foreground font-mono mt-1">Plus de 35 résultats</p>
         
         {/* Category Filter */}
         <div className="flex items-center gap-1.5 mt-3 flex-wrap">

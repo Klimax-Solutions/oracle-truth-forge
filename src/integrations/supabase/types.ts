@@ -170,6 +170,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ea_activity_tracking: {
+        Row: {
+          active_tab: string | null
+          button_clicks: Json | null
+          created_at: string
+          id: string
+          last_heartbeat: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_tab?: string | null
+          button_clicks?: Json | null
+          created_at?: string
+          id?: string
+          last_heartbeat?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_tab?: string | null
+          button_clicks?: Json | null
+          created_at?: string
+          id?: string
+          last_heartbeat?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ea_featured_trade: {
         Row: {
           content_type: string
