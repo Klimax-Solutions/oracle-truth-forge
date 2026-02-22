@@ -116,6 +116,7 @@ export const EarlyAccessLoginPopup = () => {
                         alt={r.title || "Résultat"}
                         label=""
                         fillContainer
+                        bucket="result-screenshots"
                       />
                     </div>
                     <div className="px-3 py-2">
