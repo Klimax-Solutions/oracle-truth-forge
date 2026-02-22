@@ -47,14 +47,10 @@ export const EarlyAccessLoginPopup = () => {
     fetchData();
   }, [isEarlyAccess, expiresAt]);
 
-  // Show popup only after data is loaded
+  // Show popup on every fresh page load (not persisted across refreshes)
   useEffect(() => {
     if (!dataLoaded || !isEarlyAccess || !expiresAt) return;
-    const key = `ea_popup_shown_${new Date().toDateString()}`;
-    if (!sessionStorage.getItem(key)) {
-      setOpen(true);
-      sessionStorage.setItem(key, "1");
-    }
+    setOpen(true);
   }, [dataLoaded, isEarlyAccess, expiresAt]);
 
   // Timer
