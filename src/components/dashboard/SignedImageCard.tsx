@@ -44,7 +44,7 @@ export const SignedImageCard = ({
       setError(false);
       try {
         const { data, error: signError } = await supabase.storage
-          .from("trade-screenshots")
+          .from(bucket)
           .createSignedUrl(pathToSign, 3600);
         if (signError) {
           setError(true);
