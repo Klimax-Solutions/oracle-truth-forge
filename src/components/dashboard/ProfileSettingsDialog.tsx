@@ -213,6 +213,9 @@ export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDi
               </p>
             </div>
 
+            {/* Password section */}
+            <PasswordSection />
+
             <Button onClick={handleSave} disabled={loading} className="w-full gap-2">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Enregistrer

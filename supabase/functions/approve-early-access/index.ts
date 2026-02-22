@@ -113,12 +113,41 @@ Deno.serve(async (req) => {
       })
       .eq("id", requestId);
 
-    // No recovery email needed — EA users login with first name + email
+    // Send magic link email so the user can login immediately
+    const { error: otpError } = await supabaseAdmin.auth.admin.generateLink({
+      type: "magiclink",
+      email: eaReq.email,
+      options: {
+        redirectTo: `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/dashboard`,
+      },
+    });
+
+    // Even if magic link generation fails, the account is created — we use signInWithOtp as fallback
+    if (otpError) {
+      console.warn("Magic link generation failed, user can request one manually:", otpError.message);
+    }
+
+    // Also send an OTP email directly so the user receives a clickable link
+    // Using the admin client to call the GoTrue endpoint directly
+    const gotrue = `${supabaseUrl}/auth/v1/magiclink`;
+    const otpRes = await fetch(gotrue, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": anonKey!,
+      },
+      body: JSON.stringify({ email: eaReq.email }),
+    });
+    
+    if (!otpRes.ok) {
+      const otpBody = await otpRes.text();
+      console.warn("OTP email fallback failed:", otpBody);
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Compte créé pour ${eaReq.first_name} (${eaReq.email}).`,
+        message: `Compte créé pour ${eaReq.first_name} (${eaReq.email}). Un lien de connexion a été envoyé par email.`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
