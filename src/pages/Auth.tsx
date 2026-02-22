@@ -445,7 +445,13 @@ const AuthForm = ({
       </Button>
     </form>
 
-    <div className="mt-6 text-center">
+    <div className="mt-4 flex flex-col items-center gap-3">
+      {mode === "login" && (
+        <button type="button" onClick={onMagicLink} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
+          <Mail className="w-4 h-4" />
+          Connexion par email (sans mot de passe)
+        </button>
+      )}
       <button type="button" onClick={onSwitchMode} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
         {mode === "login" ? "Pas de compte ? Créer un compte" : "Déjà un compte ? Se connecter"}
       </button>
