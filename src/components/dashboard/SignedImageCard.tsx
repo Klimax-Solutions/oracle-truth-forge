@@ -20,6 +20,7 @@ export const SignedImageCard = ({
   label,
   className = "",
   fillContainer = false,
+  bucket = "trade-screenshots",
 }: SignedImageCardProps) => {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
