@@ -226,6 +226,32 @@ const Auth = () => {
       setIsLoading(false);
     }
   };
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      if (error) throw error;
+      setMagicLinkSent(true);
+      toast({
+        title: "Lien envoyé",
+        description: "Vérifiez votre boîte mail pour vous connecter.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const showingAnimation = isProgressActive || isTransitioning;
 
