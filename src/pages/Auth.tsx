@@ -78,6 +78,10 @@ const Auth = () => {
         if (error) throw error;
 
         if (data.user) {
+          // If logging in with password, ensure flag is set
+          if (!data.user.user_metadata?.password_set) {
+            await supabase.auth.updateUser({ data: { password_set: true } });
+          }
           // Check user status
           const { data: profile } = await supabase
             .from("profiles")
@@ -204,7 +208,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/setup-password`,
         },
       });
       if (error) throw error;

@@ -84,7 +84,13 @@ const Dashboard = () => {
   }, [isEarlyAccess, expiresAt]);
 
   useEffect(() => {
-    const checkUserAccess = async (uid: string) => {
+    const checkUserAccess = async (uid: string, userMeta?: any) => {
+      // Check if password has been set — if not, redirect to setup
+      if (!userMeta?.password_set) {
+        navigate("/setup-password");
+        return false;
+      }
+
       const { data } = await supabase
         .from("profiles")
         .select("display_name, status")
@@ -124,7 +130,7 @@ const Dashboard = () => {
           navigate("/auth");
         } else {
           setUser(session.user);
-          checkUserAccess(session.user.id);
+          checkUserAccess(session.user.id, session.user.user_metadata);
         }
         setLoading(false);
       }
@@ -135,7 +141,7 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
-        checkUserAccess(session.user.id);
+        checkUserAccess(session.user.id, session.user.user_metadata);
       }
       setLoading(false);
     });
