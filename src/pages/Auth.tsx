@@ -394,16 +394,32 @@ const AuthForm = ({
       </Button>
     </form>
 
-    <div className="mt-5 flex flex-col items-center gap-4">
-      <div className="w-full h-px bg-border" />
-      <button type="button" onClick={onMagicLink} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
-        <Mail className="w-4 h-4" />
-        Recevoir un lien de connexion par email
-      </button>
-      <p className="text-[11px] text-muted-foreground text-center leading-relaxed max-w-xs">
-        Pas encore de compte ?{" "}
-        <a href="/early-access" className="text-primary hover:text-primary/80 underline underline-offset-2 transition-colors">
-          Déposez votre candidature ici
+    <div className="mt-6 space-y-5">
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full h-px bg-border" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-card px-3 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+            Première connexion ?
+          </span>
+        </div>
+      </div>
+
+      <div className="bg-muted/30 border border-border rounded-md p-4 space-y-3">
+        <button type="button" onClick={onMagicLink} className="w-full flex items-center justify-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+          <Mail className="w-4 h-4" />
+          Recevoir mon lien de connexion par email
+        </button>
+        <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+          Si votre accès a été approuvé, vous recevrez un lien sécurisé pour vous connecter. Aucun mot de passe requis pour la première fois.
+        </p>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+        Vous n'avez pas encore de compte ?{" "}
+        <a href="/early-access" className="text-primary hover:text-primary/80 font-medium underline underline-offset-2 transition-colors">
+          Déposez votre candidature
         </a>
       </p>
     </div>
