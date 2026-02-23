@@ -31,6 +31,7 @@ import { AdminVerificationPopup } from "@/components/dashboard/AdminVerification
 import { EarlyAccessManagement } from "@/components/dashboard/EarlyAccessManagement";
 import { CycleReportPopup } from "@/components/dashboard/CycleReportPopup";
 import { EarlyAccessLoginPopup } from "@/components/dashboard/EarlyAccessLoginPopup";
+import { EAPendingPopup } from "@/components/dashboard/EAPendingPopup";
 interface Trade {
   id: string;
   trade_number: number;
@@ -393,6 +394,11 @@ const Dashboard = () => {
       {/* Admin Verification Popup */}
       {(isAdmin || isSuperAdmin) && (
         <AdminVerificationPopup onNavigateToAdmin={() => setActiveTab("admin")} />
+      )}
+      
+      {/* EA Pending Popup - super admin only */}
+      {isSuperAdmin && (
+        <EAPendingPopup onNavigateToEA={() => setActiveTab("admin")} />
       )}
       
       {/* Cycle Report Popup for members */}

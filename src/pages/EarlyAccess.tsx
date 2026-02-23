@@ -35,6 +35,33 @@ const EarlyAccess = () => {
     }
 
     setIsLoading(true);
+
+    // Check for duplicate email
+    const { data: existingEmail } = await supabase
+      .from("early_access_requests" as any)
+      .select("id")
+      .eq("email", email.trim().toLowerCase())
+      .maybeSingle();
+
+    if (existingEmail) {
+      setError("Cette adresse email a déjà été utilisée pour une demande.");
+      setIsLoading(false);
+      return;
+    }
+
+    // Check for duplicate phone
+    const { data: existingPhone } = await supabase
+      .from("early_access_requests" as any)
+      .select("id")
+      .eq("phone", phone.trim())
+      .maybeSingle();
+
+    if (existingPhone) {
+      setError("Ce numéro de téléphone a déjà été utilisé pour une demande.");
+      setIsLoading(false);
+      return;
+    }
+
     const { error: insertError } = await supabase
       .from("early_access_requests" as any)
       .insert({

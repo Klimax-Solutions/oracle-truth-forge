@@ -1,24 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Loader2,
-  User,
-  Phone,
-  Mail,
-  Clock,
-  LogIn,
-  Activity,
-  Database,
-  Circle,
-  CalendarDays,
-  Hash,
-  KeyRound,
-  Send,
-  MousePointerClick,
-  Monitor,
+  Loader2, User, Phone, Mail, Clock, LogIn, Activity, Database, Circle,
+  CalendarDays, Hash, KeyRound, Send, MousePointerClick, Monitor, Search,
+  Filter, X, CheckSquare, MessageCircle, PhoneCall, FileText, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const TAB_LABELS: Record<string, string> = {
   execution: "Exécution d'Oracle",
@@ -29,8 +20,15 @@ const TAB_LABELS: Record<string, string> = {
   results: "Résultats",
 };
 
-interface EACrmMember {
+const CONTACT_METHODS = [
+  { value: "opt_in_call", label: "Opt-in Call" },
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "email", label: "Email" },
+];
+
+export interface EACrmMember {
   user_id: string;
+  request_id: string;
   first_name: string;
   email: string;
   phone: string;
@@ -43,22 +41,35 @@ interface EACrmMember {
   first_login: string | null;
   last_login: string | null;
   execution_count: number;
-  password_set: boolean;
   is_online: boolean;
   active_tab: string | null;
   button_clicks: Record<string, number>;
+  contacted: boolean;
+  contact_method: string | null;
+  form_submitted: boolean;
+  call_booked: boolean;
+  call_done: boolean;
 }
+
+type FilterKey = "connection" | "type" | "status" | "expiration";
 
 export const EarlyAccessCRM = () => {
   const [members, setMembers] = useState<EACrmMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMember, setSelectedMember] = useState<EACrmMember | null>(null);
   const [resetting, setResetting] = useState<string | null>(null);
   const [resending, setResending] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<Record<FilterKey, string>>({
+    connection: "all",
+    type: "all",
+    status: "all",
+    expiration: "all",
+  });
   const { toast } = useToast();
 
   const fetchCrmData = async () => {
     setLoading(true);
-
     const { data: approvedRequests } = await supabase
       .from("early_access_requests" as any)
       .select("*")
@@ -71,27 +82,13 @@ export const EarlyAccessCRM = () => {
       return;
     }
 
-    const { data: eaRoles } = await supabase
-      .from("user_roles")
-      .select("user_id, early_access_type, expires_at" as any)
-      .eq("role", "early_access");
-
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, display_name, first_name");
-
-    const { data: sessions } = await supabase
-      .from("user_sessions")
-      .select("user_id, created_at, updated_at");
-
-    const { data: executions } = await supabase
-      .from("user_executions")
-      .select("user_id");
-
-    // Fetch activity tracking
-    const { data: activityTracking } = await supabase
-      .from("ea_activity_tracking" as any)
-      .select("*");
+    const [{ data: eaRoles }, { data: profiles }, { data: sessions }, { data: executions }, { data: activityTracking }] = await Promise.all([
+      supabase.from("user_roles").select("user_id, early_access_type, expires_at" as any).eq("role", "early_access"),
+      supabase.from("profiles").select("user_id, display_name, first_name"),
+      supabase.from("user_sessions").select("user_id, created_at, updated_at"),
+      supabase.from("user_executions").select("user_id"),
+      supabase.from("ea_activity_tracking" as any).select("*"),
+    ]);
 
     const membersList: EACrmMember[] = [];
 
@@ -115,9 +112,8 @@ export const EarlyAccessCRM = () => {
       if (!matchedUserId) {
         for (const r of (eaRoles as any[]) || []) {
           if (!membersList.some((m) => m.user_id === r.user_id)) {
-            const profile = (profiles as any[])?.find((p: any) => p.user_id === r.user_id);
             matchedUserId = r.user_id;
-            matchedProfile = profile;
+            matchedProfile = (profiles as any[])?.find((p: any) => p.user_id === r.user_id);
             break;
           }
         }
@@ -126,32 +122,20 @@ export const EarlyAccessCRM = () => {
       const userRole = (eaRoles as any[])?.find((r: any) => r.user_id === matchedUserId);
       const userSessions = (sessions as any[])?.filter((s: any) => s.user_id === matchedUserId) || [];
       const userExecCount = (executions as any[])?.filter((e: any) => e.user_id === matchedUserId).length || 0;
-
-      const lastSessionUpdate = userSessions.length > 0
-        ? Math.max(...userSessions.map((s: any) => new Date(s.updated_at).getTime()))
-        : 0;
-
-      // Check activity tracking for more accurate online status
       const userActivity = (activityTracking as any[])?.find((a: any) => a.user_id === matchedUserId);
       const lastHeartbeat = userActivity?.last_heartbeat ? new Date(userActivity.last_heartbeat).getTime() : 0;
-      const isOnline = lastHeartbeat > Date.now() - 60 * 1000; // 1 minute heartbeat
+      const isOnline = lastHeartbeat > Date.now() - 60_000;
 
       const firstLogin = userSessions.length > 0
-        ? userSessions.reduce((min: any, s: any) => {
-            const d = new Date(s.created_at).getTime();
-            return d < min ? d : min;
-          }, Infinity)
+        ? new Date(Math.min(...userSessions.map((s: any) => new Date(s.created_at).getTime()))).toISOString()
         : null;
-
       const lastLogin = userSessions.length > 0
-        ? userSessions.reduce((max: any, s: any) => {
-            const d = new Date(s.updated_at).getTime();
-            return d > max ? d : max;
-          }, 0)
+        ? new Date(Math.max(...userSessions.map((s: any) => new Date(s.updated_at).getTime()))).toISOString()
         : null;
 
       membersList.push({
         user_id: matchedUserId || req.id,
+        request_id: req.id,
         first_name: req.first_name,
         email: req.email,
         phone: req.phone,
@@ -161,13 +145,17 @@ export const EarlyAccessCRM = () => {
         request_created_at: req.created_at,
         approved_at: req.reviewed_at,
         session_count: userSessions.length,
-        first_login: firstLogin ? new Date(firstLogin).toISOString() : null,
-        last_login: lastLogin ? new Date(lastLogin).toISOString() : null,
+        first_login: firstLogin,
+        last_login: lastLogin,
         execution_count: userExecCount,
-        password_set: false,
         is_online: isOnline,
         active_tab: isOnline ? (userActivity?.active_tab || null) : null,
         button_clicks: userActivity?.button_clicks || {},
+        contacted: req.contacted || false,
+        contact_method: req.contact_method || null,
+        form_submitted: req.form_submitted || false,
+        call_booked: req.call_booked || false,
+        call_done: req.call_done || false,
       });
     }
 
@@ -177,9 +165,23 @@ export const EarlyAccessCRM = () => {
 
   useEffect(() => {
     fetchCrmData();
-    const interval = setInterval(fetchCrmData, 15000); // Refresh every 15s
+    const interval = setInterval(fetchCrmData, 15000);
     return () => clearInterval(interval);
   }, []);
+
+  const updateRequestField = async (requestId: string, field: string, value: any) => {
+    await supabase
+      .from("early_access_requests" as any)
+      .update({ [field]: value } as any)
+      .eq("id", requestId);
+
+    setMembers(prev => prev.map(m =>
+      m.request_id === requestId ? { ...m, [field]: value } : m
+    ));
+    if (selectedMember?.request_id === requestId) {
+      setSelectedMember(prev => prev ? { ...prev, [field]: value } : null);
+    }
+  };
 
   const handleResetPassword = async (member: EACrmMember) => {
     setResetting(member.user_id);
@@ -204,7 +206,7 @@ export const EarlyAccessCRM = () => {
       if (error) throw error;
       if (data?.magic_link) {
         await navigator.clipboard.writeText(data.magic_link);
-        toast({ title: "Lien copié", description: "Le lien de connexion a été copié dans le presse-papier (email rate-limité)." });
+        toast({ title: "Lien copié", description: "Lien copié dans le presse-papier." });
       } else {
         toast({ title: "Email envoyé", description: data?.message });
       }
@@ -214,11 +216,36 @@ export const EarlyAccessCRM = () => {
     setResending(null);
   };
 
-  const formatDate = (iso: string | null) => {
+  const fmt = (iso: string | null) => {
     if (!iso) return "—";
     const d = new Date(iso);
     return `${d.toLocaleDateString("fr-FR")} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
   };
+
+  const filtered = useMemo(() => {
+    let list = members;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(m => m.first_name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q) || m.phone.includes(q));
+    }
+    if (filters.connection !== "all") {
+      if (filters.connection === "never") list = list.filter(m => m.session_count === 0);
+      if (filters.connection === "connected") list = list.filter(m => m.session_count > 0);
+    }
+    if (filters.type !== "all") {
+      list = list.filter(m => m.early_access_type === filters.type);
+    }
+    if (filters.status !== "all") {
+      if (filters.status === "online") list = list.filter(m => m.is_online);
+      if (filters.status === "offline") list = list.filter(m => !m.is_online);
+    }
+    if (filters.expiration !== "all") {
+      const now = Date.now();
+      if (filters.expiration === "expired") list = list.filter(m => m.expires_at && new Date(m.expires_at).getTime() <= now);
+      if (filters.expiration === "active") list = list.filter(m => !m.expires_at || new Date(m.expires_at).getTime() > now);
+    }
+    return list;
+  }, [members, searchQuery, filters]);
 
   if (loading) {
     return (
@@ -228,208 +255,277 @@ export const EarlyAccessCRM = () => {
     );
   }
 
-  if (members.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground text-sm">
-        Aucun membre Early Access approuvé.
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-        <Activity className="w-4 h-4 text-primary" />
-        CRM Early Access — Membres approuvés ({members.length})
-      </h3>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Activity className="w-4 h-4 text-primary" />
+          CRM Early Access ({members.length})
+        </h3>
+      </div>
 
-      <div className="grid gap-3">
-        {members.map((member) => {
-          const clickEntries = Object.entries(member.button_clicks);
-          const totalClicks = clickEntries.reduce((sum, [, v]) => sum + (v as number), 0);
+      {/* Search + Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Rechercher..."
+            className="h-7 pl-8 text-xs"
+          />
+        </div>
+        <select value={filters.connection} onChange={e => setFilters(p => ({ ...p, connection: e.target.value }))} className="h-7 text-[10px] rounded border border-input bg-background px-2 font-mono">
+          <option value="all">Connexion: Tous</option>
+          <option value="never">Jamais connecté</option>
+          <option value="connected">Connecté</option>
+        </select>
+        <select value={filters.type} onChange={e => setFilters(p => ({ ...p, type: e.target.value }))} className="h-7 text-[10px] rounded border border-input bg-background px-2 font-mono">
+          <option value="all">Type: Tous</option>
+          <option value="precall">Pré-call</option>
+          <option value="postcall">Post-call</option>
+        </select>
+        <select value={filters.status} onChange={e => setFilters(p => ({ ...p, status: e.target.value }))} className="h-7 text-[10px] rounded border border-input bg-background px-2 font-mono">
+          <option value="all">Statut: Tous</option>
+          <option value="online">En ligne</option>
+          <option value="offline">Hors ligne</option>
+        </select>
+        <select value={filters.expiration} onChange={e => setFilters(p => ({ ...p, expiration: e.target.value }))} className="h-7 text-[10px] rounded border border-input bg-background px-2 font-mono">
+          <option value="all">Expiration: Tous</option>
+          <option value="active">Actif</option>
+          <option value="expired">Expiré</option>
+        </select>
+      </div>
 
-          return (
-            <div
-              key={member.user_id}
-              className="border border-border rounded-lg bg-card overflow-hidden"
-            >
-              {/* Header */}
-              <div className="p-3 border-b border-border bg-muted/30 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="w-4 h-4 text-primary" />
+      {/* Table */}
+      <div className="border border-border rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-muted/50 border-b border-border">
+                <th className="text-left px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Nom</th>
+                <th className="text-left px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Type</th>
+                <th className="text-left px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Statut</th>
+                <th className="text-left px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Onglet actif</th>
+                <th className="text-center px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Data</th>
+                <th className="text-center px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Contacté</th>
+                <th className="text-center px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Formulaire</th>
+                <th className="text-center px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Call réservé</th>
+                <th className="text-center px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Call fait</th>
+                <th className="text-right px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filtered.length === 0 ? (
+                <tr><td colSpan={10} className="text-center py-8 text-muted-foreground">Aucun membre trouvé</td></tr>
+              ) : filtered.map(m => (
+                <tr
+                  key={m.user_id}
+                  className="hover:bg-muted/30 cursor-pointer transition-colors"
+                  onClick={() => setSelectedMember(m)}
+                >
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="w-3 h-3 text-primary" />
+                        </div>
+                        <Circle className={cn("w-2 h-2 absolute -bottom-0 -right-0", m.is_online ? "text-emerald-500 fill-emerald-500" : "text-muted-foreground/40 fill-muted-foreground/20")} />
+                      </div>
+                      <span className="font-medium text-foreground">{m.first_name}</span>
                     </div>
-                    <Circle
-                      className={`w-3 h-3 absolute -bottom-0.5 -right-0.5 ${
-                        member.is_online
-                          ? "text-emerald-500 fill-emerald-500"
-                          : "text-muted-foreground/50 fill-muted-foreground/30"
-                      }`}
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className={cn("text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-full", m.early_access_type === "precall" ? "bg-amber-500/20 text-amber-500" : "bg-emerald-500/20 text-emerald-500")}>
+                      {m.early_access_type === "precall" ? "Pré" : "Post"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className={cn("text-[10px] font-mono px-1.5 py-0.5 rounded-full", m.is_online ? "bg-emerald-500/20 text-emerald-500" : m.session_count === 0 ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground")}>
+                      {m.is_online ? "En ligne" : m.session_count === 0 ? "Jamais" : "Hors ligne"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {m.is_online && m.active_tab ? (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-primary/20 text-primary">
+                        {TAB_LABELS[m.active_tab] || m.active_tab}
+                      </span>
+                    ) : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-center font-semibold">
+                    <span className={m.execution_count > 0 ? "text-emerald-500" : "text-muted-foreground"}>{m.execution_count}</span>
+                  </td>
+                  <td className="px-3 py-2 text-center" onClick={e => e.stopPropagation()}>
+                    <Checkbox
+                      checked={m.contacted}
+                      onCheckedChange={(v) => updateRequestField(m.request_id, "contacted", !!v)}
+                      className="mx-auto"
                     />
+                  </td>
+                  <td className="px-3 py-2 text-center" onClick={e => e.stopPropagation()}>
+                    <Checkbox
+                      checked={m.form_submitted}
+                      onCheckedChange={(v) => updateRequestField(m.request_id, "form_submitted", !!v)}
+                      className="mx-auto"
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-center" onClick={e => e.stopPropagation()}>
+                    <Checkbox
+                      checked={m.call_booked}
+                      onCheckedChange={(v) => updateRequestField(m.request_id, "call_booked", !!v)}
+                      className="mx-auto"
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-center" onClick={e => e.stopPropagation()}>
+                    <Checkbox
+                      checked={m.call_done}
+                      onCheckedChange={(v) => updateRequestField(m.request_id, "call_done", !!v)}
+                      className="mx-auto"
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-right" onClick={e => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setSelectedMember(m)}>
+                      <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Profile Detail Popup */}
+      {selectedMember && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setSelectedMember(null)}>
+          <div className="relative w-full max-w-lg mx-4 bg-card border border-border rounded-xl shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="h-1 bg-gradient-to-r from-primary via-amber-500 to-primary" />
+            
+            {/* Header */}
+            <div className="p-5 pb-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="w-5 h-5 text-primary" />
+                  </div>
+                  <Circle className={cn("w-3 h-3 absolute -bottom-0.5 -right-0.5", selectedMember.is_online ? "text-emerald-500 fill-emerald-500" : "text-muted-foreground/40 fill-muted-foreground/20")} />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">{selectedMember.first_name}</h3>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-full", selectedMember.early_access_type === "precall" ? "bg-amber-500/20 text-amber-500" : "bg-emerald-500/20 text-emerald-500")}>
+                      {selectedMember.early_access_type === "precall" ? "Pré-call" : "Post-call"}
+                    </span>
+                    <span className={cn("text-[10px] font-mono px-1.5 py-0.5 rounded-full", selectedMember.is_online ? "bg-emerald-500/20 text-emerald-500" : "bg-muted text-muted-foreground")}>
+                      {selectedMember.is_online ? "● En ligne" : "○ Hors ligne"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setSelectedMember(null)} className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+
+            <div className="px-5 pb-5 space-y-4">
+              {/* Coordonnées */}
+              <Section title="Coordonnées" icon={<Mail className="w-3.5 h-3.5" />}>
+                <Info icon={<Mail className="w-3 h-3" />} label="Email" value={selectedMember.email} />
+                <Info icon={<Phone className="w-3 h-3" />} label="Téléphone" value={selectedMember.phone} />
+              </Section>
+
+              {/* Chronologie */}
+              <Section title="Chronologie" icon={<CalendarDays className="w-3.5 h-3.5" />}>
+                <Info icon={<CalendarDays className="w-3 h-3" />} label="Soumission" value={fmt(selectedMember.request_created_at)} />
+                <Info icon={<CalendarDays className="w-3 h-3" />} label="Approbation" value={fmt(selectedMember.approved_at)} />
+                <Info icon={<Clock className="w-3 h-3 text-amber-500" />} label="Expiration" value={fmt(selectedMember.expires_at)} />
+              </Section>
+
+              {/* Activité */}
+              <Section title="Activité" icon={<Activity className="w-3.5 h-3.5" />}>
+                <Info icon={<LogIn className="w-3 h-3" />} label="1ère connexion" value={fmt(selectedMember.first_login)} />
+                <Info icon={<LogIn className="w-3 h-3" />} label="Dernière" value={fmt(selectedMember.last_login)} />
+                <Info icon={<Hash className="w-3 h-3" />} label="Sessions" value={String(selectedMember.session_count)} />
+                <Info icon={<Database className="w-3 h-3" />} label="Data récoltée" value={String(selectedMember.execution_count)} highlight={selectedMember.execution_count > 0} />
+                {selectedMember.is_online && selectedMember.active_tab && (
+                  <Info icon={<Monitor className="w-3 h-3" />} label="Onglet actif" value={TAB_LABELS[selectedMember.active_tab] || selectedMember.active_tab} />
+                )}
+              </Section>
+
+              {/* Clics boutons */}
+              <Section title="Clics boutons" icon={<MousePointerClick className="w-3.5 h-3.5" />}>
+                {Object.entries(selectedMember.button_clicks).length > 0 ? (
+                  Object.entries(selectedMember.button_clicks).map(([key, count]) => (
+                    <div key={key} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{key}</span>
+                      <span className="font-semibold text-primary">{count as number}×</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">Aucun clic</p>
+                )}
+              </Section>
+
+              {/* Contact Tracking */}
+              <Section title="Suivi contact" icon={<MessageCircle className="w-3.5 h-3.5" />}>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox checked={selectedMember.contacted} onCheckedChange={v => updateRequestField(selectedMember.request_id, "contacted", !!v)} />
+                    <span className="text-xs text-foreground">Contacté</span>
+                    {selectedMember.contacted && (
+                      <select
+                        value={selectedMember.contact_method || ""}
+                        onChange={e => updateRequestField(selectedMember.request_id, "contact_method", e.target.value || null)}
+                        className="h-6 text-[10px] rounded border border-input bg-background px-1.5 font-mono ml-auto"
+                      >
+                        <option value="">Méthode...</option>
+                        {CONTACT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                      </select>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-foreground">{member.first_name}</span>
-                    <span
-                      className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-full ${
-                        member.early_access_type === "precall"
-                          ? "bg-amber-500/20 text-amber-500 border border-amber-500/30"
-                          : "bg-emerald-500/20 text-emerald-500 border border-emerald-500/30"
-                      }`}
-                    >
-                      {member.early_access_type === "precall" ? "Pré-call" : "Post-call"}
-                    </span>
+                    <Checkbox checked={selectedMember.form_submitted} onCheckedChange={v => updateRequestField(selectedMember.request_id, "form_submitted", !!v)} />
+                    <span className="text-xs text-foreground">Formulaire soumis</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox checked={selectedMember.call_booked} onCheckedChange={v => updateRequestField(selectedMember.request_id, "call_booked", !!v)} />
+                    <span className="text-xs text-foreground">Call réservé</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox checked={selectedMember.call_done} onCheckedChange={v => updateRequestField(selectedMember.request_id, "call_done", !!v)} />
+                    <span className="text-xs text-foreground">Call effectué</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {member.is_online && member.active_tab && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/20 text-primary flex items-center gap-1">
-                      <Monitor className="w-3 h-3" />
-                      {TAB_LABELS[member.active_tab] || member.active_tab}
-                    </span>
-                  )}
-                  <span
-                    className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                      member.is_online
-                        ? "bg-emerald-500/20 text-emerald-500"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {member.is_online ? "● En ligne" : "○ Hors ligne"}
-                  </span>
-                </div>
-              </div>
+              </Section>
 
-              {/* Details Grid */}
-              <div className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-                {/* Contact Info */}
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-mono uppercase text-muted-foreground font-semibold">Coordonnées</p>
-                  <div className="flex items-center gap-1.5 text-foreground">
-                    <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                    <span className="truncate">{member.email}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-foreground">
-                    <Phone className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                    <span>{member.phone}</span>
-                  </div>
-                </div>
-
-                {/* Timeline */}
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-mono uppercase text-muted-foreground font-semibold">Chronologie</p>
-                  <div className="flex items-center gap-1.5 text-foreground">
-                    <CalendarDays className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                    <span className="text-muted-foreground">Soumission :</span>
-                    <span>{formatDate(member.request_created_at)}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-foreground">
-                    <CalendarDays className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                    <span className="text-muted-foreground">Approbation :</span>
-                    <span>{formatDate(member.approved_at)}</span>
-                  </div>
-                  {member.expires_at && (
-                    <div className="flex items-center gap-1.5 text-foreground">
-                      <Clock className="w-3 h-3 text-amber-500 flex-shrink-0" />
-                      <span className="text-muted-foreground">Expiration :</span>
-                      <span>{formatDate(member.expires_at)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Activity */}
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-mono uppercase text-muted-foreground font-semibold">Activité</p>
-                  <div className="flex items-center gap-1.5 text-foreground">
-                    <LogIn className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                    <span className="text-muted-foreground">1ère :</span>
-                    <span>{formatDate(member.first_login)}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-foreground">
-                    <LogIn className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                    <span className="text-muted-foreground">Dernière :</span>
-                    <span>{formatDate(member.last_login)}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-foreground">
-                    <Hash className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                    <span className="text-muted-foreground">Sessions :</span>
-                    <span className="font-semibold">{member.session_count}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-foreground">
-                    <Database className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                    <span className="text-muted-foreground">Data :</span>
-                    <span className={`font-semibold ${member.execution_count > 0 ? "text-emerald-500" : "text-muted-foreground"}`}>
-                      {member.execution_count}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Button Clicks */}
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-mono uppercase text-muted-foreground font-semibold flex items-center gap-1">
-                    <MousePointerClick className="w-3 h-3" />
-                    Clics boutons ({totalClicks})
-                  </p>
-                  {clickEntries.length > 0 ? (
-                    clickEntries.map(([key, count]) => (
-                      <div key={key} className="flex items-center justify-between text-foreground">
-                        <span className="text-muted-foreground truncate">{key}</span>
-                        <span className="font-semibold text-primary">{count as number}×</span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground italic">Aucun clic</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Status + Actions */}
-              <div className="px-3 pb-3 flex items-center gap-2 flex-wrap">
-                <span
-                  className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                    member.session_count > 0
-                      ? "bg-emerald-500/20 text-emerald-500"
-                      : "bg-destructive/20 text-destructive"
-                  }`}
-                >
-                  {member.session_count > 0 ? "✓ S'est connecté" : "✗ Jamais connecté"}
-                </span>
-                <span
-                  className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                    member.execution_count > 0
-                      ? "bg-emerald-500/20 text-emerald-500"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {member.execution_count > 0 ? "✓ A récolté de la data" : "✗ Pas de data"}
-                </span>
-                <div className="flex items-center gap-1.5 ml-auto">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-5 text-[10px] gap-1"
-                    onClick={() => handleResendLink(member)}
-                    disabled={resending === member.user_id}
-                  >
-                    {resending === member.user_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                    Renvoyer le lien
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-5 text-[10px] gap-1"
-                    onClick={() => handleResetPassword(member)}
-                    disabled={resetting === member.user_id}
-                  >
-                    {resetting === member.user_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <KeyRound className="w-3 h-3" />}
-                    Reset MDP
-                  </Button>
-                </div>
+              {/* Actions */}
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" size="sm" className="flex-1 gap-1 text-[10px] h-7" onClick={() => handleResendLink(selectedMember)} disabled={resending === selectedMember.user_id}>
+                  {resending === selectedMember.user_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                  Renvoyer le lien
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1 gap-1 text-[10px] h-7" onClick={() => handleResetPassword(selectedMember)} disabled={resetting === selectedMember.user_id}>
+                  {resetting === selectedMember.user_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <KeyRound className="w-3 h-3" />}
+                  Reset MDP
+                </Button>
               </div>
             </div>
-          );
-        })}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+const Section = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
+  <div className="space-y-1.5">
+    <p className="text-[10px] font-mono uppercase text-muted-foreground font-semibold flex items-center gap-1.5">{icon}{title}</p>
+    {children}
+  </div>
+);
+
+const Info = ({ icon, label, value, highlight }: { icon: React.ReactNode; label: string; value: string; highlight?: boolean }) => (
+  <div className="flex items-center gap-1.5 text-xs">
+    <span className="text-muted-foreground">{icon}</span>
+    <span className="text-muted-foreground">{label} :</span>
+    <span className={cn("text-foreground", highlight && "text-emerald-500 font-semibold")}>{value}</span>
+  </div>
+);
