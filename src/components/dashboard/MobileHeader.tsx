@@ -57,6 +57,28 @@ export const MobileHeader = ({
   const { isAdmin: isMobileAdmin, isSuperAdmin: isMobileSuperAdmin } = (() => {
     return { isAdmin, isSuperAdmin };
   })();
+  // Setter-only mode
+  if (isSetter && !isSuperAdmin && !isAdmin) {
+    const allTabs = setterOnlyTabs;
+    const currentTab = allTabs.find((t) => t.id === activeTab);
+    return (
+      <header className="md:hidden border-b border-border bg-card sticky top-0 z-50">
+        <div className="flex items-center justify-between px-3 py-2.5 gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {currentTab && <currentTab.icon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />}
+            <span className="text-xs font-medium text-foreground truncate">{currentTab?.label || "Early Access"}</span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <ThemeToggle />
+            <Button variant="ghost" size="icon" className="w-8 h-8" onClick={onLogout}>
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
   let allTabs = isEarlyAccess 
     ? tabs.filter(t => t.id !== "successes") 
     : [...tabs];
@@ -68,7 +90,7 @@ export const MobileHeader = ({
     allTabs = [...allTabs, ...adminTabs];
   }
   if (isSuperAdmin) {
-    allTabs = [...allTabs, ...superAdminTabs];
+    allTabs = [...allTabs, { id: "early-access-mgmt", label: "Early Access", icon: UsersIcon }];
   }
 
   const currentTab = allTabs.find((t) => t.id === activeTab);
