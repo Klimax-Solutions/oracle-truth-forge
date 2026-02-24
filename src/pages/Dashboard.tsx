@@ -73,7 +73,7 @@ const Dashboard = () => {
   const [dataSource, setDataSource] = useState<DataSource>("all");
   const [displayName, setDisplayName] = useState<string>("");
   const { trades: personalTrades } = usePersonalTrades();
-  const { isAdmin, isSuperAdmin } = useSidebarRoles();
+  const { isAdmin, isSuperAdmin, isSetter } = useSidebarRoles();
   const questData = useQuestData();
   const { isEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
