@@ -14,6 +14,7 @@ interface MobileHeaderProps {
   onLogout: () => void;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  isSetter?: boolean;
   dataSourceSelector?: React.ReactNode;
   earlyAccessTimer?: React.ReactNode;
 }
