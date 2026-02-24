@@ -46,6 +46,7 @@ export const MobileHeader = ({
   onLogout,
   isAdmin,
   isSuperAdmin,
+  isSetter,
   dataSourceSelector,
   earlyAccessTimer,
 }: MobileHeaderProps) => {
