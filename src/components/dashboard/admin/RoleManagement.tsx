@@ -500,6 +500,7 @@ export const RoleManagement = () => {
       case 'admin': return "Admin";
       case 'early_access': return "Early Access";
       case 'institute': return "Institut";
+      case 'setter': return "Setter";
       default: return "Membre";
     }
   };
