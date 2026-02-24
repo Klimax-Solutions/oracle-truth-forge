@@ -13,7 +13,11 @@ import {
   Video,
   Image as ImageIcon,
   Trash2,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
+import { EarlyAccessCRM } from "./admin/EarlyAccessCRM";
+import { cn } from "@/lib/utils";
 
 // ── Types ──
 
@@ -51,6 +55,33 @@ const POSTCALL_BUTTONS = [
   { key: "acceder_a_oracle", label: "Accéder à Oracle" },
 ];
 
+// ── Collapsible Section ──
+
+const CollapsibleSection = ({ title, subtitle, defaultOpen = false, children, accentColor }: {
+  title: string;
+  subtitle?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+  accentColor?: string;
+}) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className={cn("border rounded-md bg-card overflow-hidden", accentColor ? `border-2 ${accentColor}` : "border-border")}>
+      <button
+        onClick={() => setOpen(!open)}
+        className={cn("w-full p-4 flex items-center justify-between text-left", accentColor ? "bg-muted/20" : "bg-muted/30 border-b border-border")}
+      >
+        <div>
+          <h4 className="font-semibold text-foreground text-sm">{title}</h4>
+          {subtitle && <p className="text-[10px] text-muted-foreground font-mono mt-1">{subtitle}</p>}
+        </div>
+        {open ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+      </button>
+      {open && <div className="p-4">{children}</div>}
+    </div>
+  );
+};
+
 export const EarlyAccessManagement = () => {
   const [users, setUsers] = useState<EAUser[]>([]);
   const [settings, setSettings] = useState<EASetting[]>([]);
@@ -73,7 +104,6 @@ export const EarlyAccessManagement = () => {
   const [ftPreview, setFtPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Local URL state for postcall per-user editing
   const [urlEdits, setUrlEdits] = useState<Record<string, string>>({});
 
   // ── Fetch data ──
@@ -116,7 +146,6 @@ export const EarlyAccessManagement = () => {
 
     setUsers(eaUsers);
     setSettings((settingsRes.data || []) as EASetting[]);
-    setGlobalSettings((globalRes.data || []) as unknown as GlobalSetting[]);
     setLoading(false);
   };
 
@@ -322,21 +351,18 @@ export const EarlyAccessManagement = () => {
           Gestion Early Access
         </h2>
         <p className="text-xs md:text-sm text-muted-foreground font-mono">
-          Configuration des sous-rôles Pré-call et Post-call
+          CRM, configuration des sous-rôles et personnalisation
         </p>
       </div>
 
-      <div className="flex-1 p-4 md:p-6 overflow-auto space-y-8">
+      <div className="flex-1 p-4 md:p-6 overflow-auto space-y-6">
 
-        {/* ═══ Featured Trade Config ═══ */}
-        <div className="border border-border rounded-md bg-card overflow-hidden">
-          <div className="p-4 border-b border-border bg-muted/30">
-            <h4 className="font-semibold text-foreground text-sm">Dernière data récoltée (contenu mis en avant)</h4>
-            <p className="text-[10px] text-muted-foreground font-mono mt-1">
-              Screenshot ou vidéo affiché dans l'espace Early Access
-            </p>
-          </div>
-          <div className="p-4 space-y-4">
+        {/* ═══ CRM — Always visible at top ═══ */}
+        <EarlyAccessCRM />
+
+        {/* ═══ Featured Trade Config (Collapsible) ═══ */}
+        <CollapsibleSection title="Dernière data récoltée" subtitle="Screenshot ou vidéo affiché dans l'espace Early Access">
+          <div className="space-y-4">
             <div className="flex gap-2">
               <Button size="sm" variant={ftContentType === "screenshot" ? "default" : "outline"} className="gap-1.5 text-xs" onClick={() => setFtContentType("screenshot")}>
                 <ImageIcon className="w-3.5 h-3.5" /> Screenshot
@@ -407,17 +433,11 @@ export const EarlyAccessManagement = () => {
               )}
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
 
-        {/* ═══ Popup Customization ═══ */}
-        <div className="border border-border rounded-md bg-card overflow-hidden">
-          <div className="p-4 border-b border-border bg-muted/30">
-            <h4 className="font-semibold text-foreground text-sm">Personnalisation du Pop-up</h4>
-            <p className="text-[10px] text-muted-foreground font-mono mt-1">
-              Textes affichés dans le pop-up de connexion Early Access
-            </p>
-          </div>
-          <div className="p-4 space-y-3">
+        {/* ═══ Popup Customization (Collapsible) ═══ */}
+        <CollapsibleSection title="Personnalisation du Pop-up" subtitle="Textes affichés dans le pop-up de connexion Early Access">
+          <div className="space-y-3">
             {[
               { key: "popup_title", label: "Titre du pop-up" },
               { key: "popup_subtitle_precall", label: "Sous-titre (Pré-call)" },
@@ -440,17 +460,11 @@ export const EarlyAccessManagement = () => {
               );
             })}
           </div>
-        </div>
+        </CollapsibleSection>
 
-        {/* ═══ Next Steps Customization ═══ */}
-        <div className="border border-border rounded-md bg-card overflow-hidden">
-          <div className="p-4 border-b border-border bg-muted/30">
-            <h4 className="font-semibold text-foreground text-sm">Personnalisation « Prochaines Étapes »</h4>
-            <p className="text-[10px] text-muted-foreground font-mono mt-1">
-              Textes affichés dans l'encadré « Prochaines Étapes » pour chaque statut
-            </p>
-          </div>
-          <div className="p-4 space-y-3">
+        {/* ═══ Next Steps Customization (Collapsible) ═══ */}
+        <CollapsibleSection title="Personnalisation « Prochaines Étapes »" subtitle="Textes affichés dans l'encadré pour chaque statut">
+          <div className="space-y-3">
             {[
               { key: "next_steps_precall", label: "Texte Pré-call" },
               { key: "next_steps_postcall", label: "Texte Post-call" },
@@ -472,21 +486,15 @@ export const EarlyAccessManagement = () => {
               );
             })}
           </div>
-        </div>
+        </CollapsibleSection>
 
-        <div className="border-2 border-amber-500/40 rounded-md overflow-hidden">
-          <div className="p-4 bg-amber-500/10 border-b border-amber-500/30 flex items-center gap-3">
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-500 border border-amber-500/30">
-              PRÉ-CALL
-            </span>
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">Early Access Pré-call</h3>
-              <p className="text-[10px] text-muted-foreground font-mono">URLs universelles — appliquées à tous les membres pré-call</p>
-            </div>
-          </div>
-
-          <div className="p-4 space-y-4">
-            {/* Global URL configuration */}
+        {/* ═══ SECTION PRÉ-CALL (Collapsible) ═══ */}
+        <CollapsibleSection
+          title="Early Access Pré-call"
+          subtitle="URLs universelles — appliquées à tous les membres pré-call"
+          accentColor="border-amber-500/40"
+        >
+          <div className="space-y-4">
             <div className="space-y-3">
               <p className="text-[10px] font-mono uppercase text-amber-500/80">Configuration des URLs globales</p>
               {PRECALL_BUTTONS.map((btn) => {
@@ -508,21 +516,20 @@ export const EarlyAccessManagement = () => {
               })}
             </div>
 
-            {/* Precall members list */}
             <div className="space-y-2">
               <p className="text-[10px] font-mono uppercase text-amber-500/80">Membres pré-call ({precallUsers.length})</p>
-             {precallUsers.length === 0 ? (
+              {precallUsers.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-4 text-center">Aucun membre pré-call</p>
-              ) : loading ? null : (
+              ) : (
                 <div className="border border-border rounded-md overflow-hidden">
                   <table className="w-full text-xs">
                     <thead>
-                       <tr className="bg-muted/30 border-b border-border">
-                         <th className="text-left p-2 font-mono uppercase text-muted-foreground">Nom</th>
-                         <th className="text-left p-2 font-mono uppercase text-muted-foreground">Expiration</th>
-                         <th className="text-left p-2 font-mono uppercase text-muted-foreground">Type</th>
-                         <th className="text-left p-2 font-mono uppercase text-muted-foreground">Action</th>
-                       </tr>
+                      <tr className="bg-muted/30 border-b border-border">
+                        <th className="text-left p-2 font-mono uppercase text-muted-foreground">Nom</th>
+                        <th className="text-left p-2 font-mono uppercase text-muted-foreground">Expiration</th>
+                        <th className="text-left p-2 font-mono uppercase text-muted-foreground">Type</th>
+                        <th className="text-left p-2 font-mono uppercase text-muted-foreground">Action</th>
+                      </tr>
                     </thead>
                     <tbody>
                       {precallUsers.map((u) => (
@@ -542,20 +549,20 @@ export const EarlyAccessManagement = () => {
                               />
                             </div>
                           </td>
-                           <td className="p-2">
-                             <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-500">pré-call</span>
-                           </td>
-                           <td className="p-2">
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               className="h-6 text-[10px] gap-1 border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10"
-                               onClick={() => switchEaType(u.user_id, u.role_id, "postcall")}
-                               disabled={saving === `type_${u.user_id}`}
-                             >
-                               {saving === `type_${u.user_id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : "→ Post-call"}
-                             </Button>
-                           </td>
+                          <td className="p-2">
+                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-500">pré-call</span>
+                          </td>
+                          <td className="p-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 text-[10px] gap-1 border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10"
+                              onClick={() => switchEaType(u.user_id, u.role_id, "postcall")}
+                              disabled={saving === `type_${u.user_id}`}
+                            >
+                              {saving === `type_${u.user_id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : "→ Post-call"}
+                            </Button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -564,21 +571,15 @@ export const EarlyAccessManagement = () => {
               )}
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
 
-        {/* ═══ SECTION POST-CALL (EMERALD) ═══ */}
-        <div className="border-2 border-emerald-500/40 rounded-md overflow-hidden">
-          <div className="p-4 bg-emerald-500/10 border-b border-emerald-500/30 flex items-center gap-3">
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-500 border border-emerald-500/30">
-              POST-CALL
-            </span>
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">Early Access Post-call</h3>
-              <p className="text-[10px] text-muted-foreground font-mono">URLs personnalisées par membre</p>
-            </div>
-          </div>
-
-          <div className="p-4 space-y-4">
+        {/* ═══ SECTION POST-CALL (Collapsible) ═══ */}
+        <CollapsibleSection
+          title="Early Access Post-call"
+          subtitle="URLs personnalisées par membre"
+          accentColor="border-emerald-500/40"
+        >
+          <div className="space-y-4">
             {postcallUsers.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <User className="w-10 h-10 text-muted-foreground mb-3" />
@@ -635,7 +636,7 @@ export const EarlyAccessManagement = () => {
               ))
             )}
           </div>
-        </div>
+        </CollapsibleSection>
 
       </div>
     </div>

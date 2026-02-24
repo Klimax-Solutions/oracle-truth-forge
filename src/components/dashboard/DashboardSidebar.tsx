@@ -193,6 +193,7 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
 export const useSidebarRoles = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isSetter, setIsSetter] = useState(false);
 
   useEffect(() => {
     const checkRoles = async () => {
@@ -200,9 +201,11 @@ export const useSidebarRoles = () => {
       if (isAdminData) setIsAdmin(true);
       const { data: isSuperAdminData } = await supabase.rpc('is_super_admin');
       if (isSuperAdminData) setIsSuperAdmin(true);
+      const { data: isSetterData } = await supabase.rpc('is_setter' as any);
+      if (isSetterData) setIsSetter(true);
     };
     checkRoles();
   }, []);
 
-  return { isAdmin, isSuperAdmin };
+  return { isAdmin, isSuperAdmin, isSetter };
 };
