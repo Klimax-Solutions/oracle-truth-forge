@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX IF NOT EXISTS unique_ea_request_email ON public.early_access_requests (lower(trim(email)));
+CREATE UNIQUE INDEX IF NOT EXISTS unique_ea_request_phone ON public.early_access_requests (regexp_replace(phone, '\D', '', 'g')) WHERE regexp_replace(phone, '\D', '', 'g') <> '';
