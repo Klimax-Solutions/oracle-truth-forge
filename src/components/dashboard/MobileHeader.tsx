@@ -36,6 +36,8 @@ const adminTabs = [
 ];
 
 const superAdminTabs: { id: string; label: string; icon: any }[] = [];
+import { Users as UsersIcon } from "lucide-react";
+const setterOnlyTabs = [{ id: "early-access-mgmt", label: "Early Access", icon: UsersIcon }];
 
 export const MobileHeader = ({
   userEmail,
