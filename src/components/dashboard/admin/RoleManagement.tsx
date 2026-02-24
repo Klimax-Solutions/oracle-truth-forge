@@ -1086,7 +1086,9 @@ export const RoleManagement = () => {
                               isSelected
                                 ? r.value === "institute"
                                   ? "border-blue-500 bg-blue-500/10 text-blue-500"
-                                  : "border-primary bg-primary/10 text-foreground"
+                                  : r.value === "setter"
+                                    ? "border-pink-500 bg-pink-500/10 text-pink-500"
+                                    : "border-primary bg-primary/10 text-foreground"
                                 : "border-border bg-card hover:bg-accent/50 text-muted-foreground",
                               r.disabled && "opacity-50 cursor-not-allowed"
                             )}
