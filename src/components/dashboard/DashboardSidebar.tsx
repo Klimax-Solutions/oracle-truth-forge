@@ -38,14 +38,13 @@ const adminTabs = [
 ];
 import { Users as UsersIcon } from "lucide-react";
 
-const superAdminTabs = [
-  { id: "early-access-mgmt", label: "Early Access", icon: UsersIcon },
-];
+const eaMgmtTab = { id: "early-access-mgmt", label: "Early Access", icon: UsersIcon };
 
 export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isSetter, setIsSetter] = useState(false);
   const { isEarlyAccess } = useEarlyAccess();
   const hasInstitute = useHasInstitute();
 
@@ -55,17 +54,66 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
       if (isAdminData) setIsAdmin(true);
       const { data: isSuperAdminData } = await supabase.rpc('is_super_admin');
       if (isSuperAdminData) setIsSuperAdmin(true);
+      const { data: isSetterData } = await supabase.rpc('is_setter' as any);
+      if (isSetterData) setIsSetter(true);
     };
     checkRoles();
   }, []);
 
+  // Setter role: only Early Access tab
+  if (isSetter && !isSuperAdmin && !isAdmin) {
+    const setterTabs = [eaMgmtTab];
+    return (
+      <aside
+        className={cn(
+          "hidden md:flex border-r border-border bg-card flex-col transition-all duration-300 ease-out",
+          isExpanded ? "w-64" : "w-16"
+        )}
+        onMouseEnter={() => setIsExpanded(true)}
+        onMouseLeave={() => setIsExpanded(false)}
+      >
+        <div className={cn("p-4 border-b border-border transition-all duration-300 flex items-center justify-center", isExpanded ? "p-6" : "p-4")}>
+          {isExpanded ? (
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground text-center">
+              Oracle<sup className="text-sm font-normal align-super ml-0.5">™</sup>
+            </h1>
+          ) : (
+            <span className="text-xl font-bold text-foreground">O</span>
+          )}
+        </div>
+        <nav className="flex-1 p-2 space-y-1">
+          {setterTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => onTabChange(tab.id)}
+              className={cn(
+                "w-full flex items-center gap-3 transition-all",
+                "text-sm font-mono uppercase tracking-wider",
+                isExpanded ? "px-4 py-3" : "px-0 py-3 justify-center",
+                activeTab === tab.id
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent",
+              )}
+            >
+              <tab.icon className="w-4 h-4 flex-shrink-0" />
+              {isExpanded && <span className="truncate text-left">{tab.label}</span>}
+            </button>
+          ))}
+        </nav>
+        {isExpanded && (
+          <div className="p-4 border-t border-border">
+            <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider text-center">Oracle™ © 2026</p>
+          </div>
+        )}
+      </aside>
+    );
+  }
+
   // Filter tabs based on role
-  // Chat (successes) is only visible to institute role holders (and admins)
   let allTabs = (isEarlyAccess || (!hasInstitute && !isAdmin && !isSuperAdmin))
     ? tabs.filter(t => t.id !== "successes") 
     : [...tabs];
   
-  // Add Results tab for early access, admin, and super admin
   if (isEarlyAccess || isAdmin || isSuperAdmin) {
     allTabs = [...allTabs, ...earlyAccessTabs];
   }
@@ -74,7 +122,7 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
     allTabs = [...allTabs, ...adminTabs];
   }
   if (isSuperAdmin) {
-    allTabs = [...allTabs, ...superAdminTabs];
+    allTabs = [...allTabs, eaMgmtTab];
   }
 
   return (
@@ -145,6 +193,7 @@ export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarPro
 export const useSidebarRoles = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isSetter, setIsSetter] = useState(false);
 
   useEffect(() => {
     const checkRoles = async () => {
@@ -152,9 +201,11 @@ export const useSidebarRoles = () => {
       if (isAdminData) setIsAdmin(true);
       const { data: isSuperAdminData } = await supabase.rpc('is_super_admin');
       if (isSuperAdminData) setIsSuperAdmin(true);
+      const { data: isSetterData } = await supabase.rpc('is_setter' as any);
+      if (isSetterData) setIsSetter(true);
     };
     checkRoles();
   }, []);
 
-  return { isAdmin, isSuperAdmin };
+  return { isAdmin, isSuperAdmin, isSetter };
 };

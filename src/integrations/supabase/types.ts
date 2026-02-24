@@ -266,6 +266,30 @@ export type Database = {
         }
         Relationships: []
       }
+      ea_lead_notes: {
+        Row: {
+          author_id: string
+          created_at: string
+          id: string
+          note: string
+          request_id: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          id?: string
+          note: string
+          request_id: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          id?: string
+          note?: string
+          request_id?: string
+        }
+        Relationships: []
+      }
       early_access_requests: {
         Row: {
           created_at: string
@@ -1264,6 +1288,7 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_early_access: { Args: never; Returns: boolean }
       is_institute: { Args: never; Returns: boolean }
+      is_setter: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       unlock_next_cycle: {
         Args: { p_current_cycle_number: number; p_user_id: string }
@@ -1277,6 +1302,7 @@ export type Database = {
         | "member"
         | "early_access"
         | "institute"
+        | "setter"
       cycle_status:
         | "locked"
         | "in_progress"
@@ -1411,7 +1437,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "admin", "member", "early_access", "institute"],
+      app_role: [
+        "super_admin",
+        "admin",
+        "member",
+        "early_access",
+        "institute",
+        "setter",
+      ],
       cycle_status: [
         "locked",
         "in_progress",

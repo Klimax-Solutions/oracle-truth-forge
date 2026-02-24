@@ -181,6 +181,9 @@ export const RoleManagement = () => {
         case "institute":
           result = result.filter(u => u.roles.includes("institute"));
           break;
+        case "setter":
+          result = result.filter(u => u.roles.includes("setter"));
+          break;
         case "client":
           result = result.filter(u => u.is_client);
           break;
@@ -470,6 +473,7 @@ export const RoleManagement = () => {
       case 'admin': return <ShieldCheck className="w-3 h-3" />;
       case 'early_access': return <Shield className="w-3 h-3" />;
       case 'institute': return <Award className="w-3 h-3" />;
+      case 'setter': return <UserPlus className="w-3 h-3" />;
       default: return <User className="w-3 h-3" />;
     }
   };
@@ -486,6 +490,7 @@ export const RoleManagement = () => {
 
   const getRoleBadgeClassName = (role: string) => {
     if (role === 'institute') return "bg-blue-500/10 text-blue-500 border-blue-500/30";
+    if (role === 'setter') return "bg-pink-500/10 text-pink-500 border-pink-500/30";
     return "";
   };
 
@@ -495,6 +500,7 @@ export const RoleManagement = () => {
       case 'admin': return "Admin";
       case 'early_access': return "Early Access";
       case 'institute': return "Institut";
+      case 'setter': return "Setter";
       default: return "Membre";
     }
   };
@@ -688,6 +694,7 @@ export const RoleManagement = () => {
     { key: "active", label: "Actifs", icon: <CheckCircle className="w-3 h-3" />, count: users.filter(u => u.status === 'active').length, color: "text-green-500" },
     { key: "institute", label: "Institut", icon: <Award className="w-3 h-3" />, count: users.filter(u => u.roles.includes('institute')).length, color: "text-blue-500" },
     { key: "client", label: "Client", icon: <Tag className="w-3 h-3" />, count: users.filter(u => u.is_client).length, color: "text-violet-500" },
+    { key: "setter", label: "Setter", icon: <UserPlus className="w-3 h-3" />, count: users.filter(u => u.roles.includes('setter')).length, color: "text-pink-500" },
     { key: "early_access", label: "Early", icon: <Shield className="w-3 h-3" />, count: users.filter(u => u.roles.includes('early_access')).length, color: "text-amber-500" },
     { key: "frozen", label: "Gelés", icon: <Snowflake className="w-3 h-3" />, count: users.filter(u => u.status === 'frozen').length, color: "text-blue-500" },
     { key: "banned", label: "Bannis", icon: <Ban className="w-3 h-3" />, count: users.filter(u => u.status === 'banned').length, color: "text-destructive" },
@@ -744,6 +751,7 @@ export const RoleManagement = () => {
                   <SelectContent>
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="institute">Institut</SelectItem>
+                    <SelectItem value="setter">Setter</SelectItem>
                     <SelectItem value="early_access">Early Access</SelectItem>
                   </SelectContent>
                 </Select>
@@ -1063,6 +1071,7 @@ export const RoleManagement = () => {
                         { value: "admin", label: "Admin", icon: <ShieldCheck className="w-3.5 h-3.5" /> },
                         { value: "early_access", label: "Early Access", icon: <Shield className="w-3.5 h-3.5" /> },
                         { value: "institute", label: "Institut", icon: <Award className="w-3.5 h-3.5" /> },
+                        { value: "setter", label: "Setter", icon: <UserPlus className="w-3.5 h-3.5" /> },
                         { value: "super_admin", label: "Super Admin", icon: <Crown className="w-3.5 h-3.5" /> },
                       ].map((r) => {
                         const isSelected = roleChangeSelectedRoles.includes(r.value);
@@ -1077,7 +1086,9 @@ export const RoleManagement = () => {
                               isSelected
                                 ? r.value === "institute"
                                   ? "border-blue-500 bg-blue-500/10 text-blue-500"
-                                  : "border-primary bg-primary/10 text-foreground"
+                                  : r.value === "setter"
+                                    ? "border-pink-500 bg-pink-500/10 text-pink-500"
+                                    : "border-primary bg-primary/10 text-foreground"
                                 : "border-border bg-card hover:bg-accent/50 text-muted-foreground",
                               r.disabled && "opacity-50 cursor-not-allowed"
                             )}

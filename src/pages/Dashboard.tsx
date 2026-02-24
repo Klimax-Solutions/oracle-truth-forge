@@ -68,12 +68,12 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [activeTab, setActiveTab] = useState("execution");
+  const [activeTab, setActiveTab] = useState(() => "execution");
   const [databaseFilters, setDatabaseFilters] = useState<any>(null);
   const [dataSource, setDataSource] = useState<DataSource>("all");
   const [displayName, setDisplayName] = useState<string>("");
   const { trades: personalTrades } = usePersonalTrades();
-  const { isAdmin, isSuperAdmin } = useSidebarRoles();
+  const { isAdmin, isSuperAdmin, isSetter } = useSidebarRoles();
   const questData = useQuestData();
   const { isEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
@@ -82,6 +82,13 @@ const Dashboard = () => {
   const showDataGenerale = isAdmin || isSuperAdmin;
   const needsDataGenerale = showDataGenerale || isEarlyAccess;
   const { dataGenerale } = useDataGenerale(trades, needsDataGenerale);
+
+  // Setter role: force to early-access-mgmt tab
+  useEffect(() => {
+    if (isSetter && !isSuperAdmin && !isAdmin) {
+      setActiveTab("early-access-mgmt");
+    }
+  }, [isSetter, isSuperAdmin, isAdmin]);
   const isEarlyAccessExpired = useMemo(() => {
     if (!isEarlyAccess || !expiresAt) return false;
     return new Date(expiresAt).getTime() <= Date.now();
@@ -321,6 +328,7 @@ const Dashboard = () => {
         onLogout={handleLogout}
         isAdmin={isAdmin}
         isSuperAdmin={isSuperAdmin}
+        isSetter={isSetter}
         dataSourceSelector={showDataSourceSelector ? (
           <DataSourceSelector value={dataSource} onChange={setDataSource} showDataGenerale={showDataGenerale} />
         ) : undefined}
