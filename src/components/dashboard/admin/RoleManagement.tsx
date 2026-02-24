@@ -879,6 +879,15 @@ export const RoleManagement = () => {
                                 {getRoleLabel(role)}
                               </Badge>
                             ))}
+                            {user.is_client && (
+                              <Badge 
+                                variant="outline"
+                                className="flex items-center gap-1 text-[10px] bg-violet-500/10 text-violet-500 border-violet-500/30"
+                              >
+                                <Tag className="w-3 h-3" />
+                                Client
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
