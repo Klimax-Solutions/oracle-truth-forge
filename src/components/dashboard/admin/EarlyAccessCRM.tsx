@@ -55,6 +55,7 @@ export interface EACrmMember {
 }
 
 type FilterKey = "connection" | "type" | "status" | "expiration";
+type DashboardFilter = "all" | "online" | "offline" | "never" | "contacted";
 
 // ── Live countdown for a single member ──
 const LiveTimer = ({ expiresAt }: { expiresAt: string | null }) => {
@@ -126,10 +127,19 @@ const PipelineStep = ({ label, done, date, isLast }: { label: string; done: bool
 );
 
 // ── Dashboard Stats ──
-const DashboardStats = ({ members }: { members: EACrmMember[] }) => {
+const DashboardStats = ({
+  members,
+  activeDashFilter,
+  onFilterChange,
+}: {
+  members: EACrmMember[];
+  activeDashFilter: DashboardFilter;
+  onFilterChange: (f: DashboardFilter) => void;
+}) => {
   const online = members.filter(m => m.is_online);
   const offline = members.filter(m => !m.is_online && m.session_count > 0);
   const never = members.filter(m => m.session_count === 0);
+  const contacted = members.filter(m => m.contacted);
   const todayApproved = members.filter(m => {
     if (!m.approved_at) return false;
     const d = new Date(m.approved_at);
@@ -137,52 +147,33 @@ const DashboardStats = ({ members }: { members: EACrmMember[] }) => {
     return d.toDateString() === now.toDateString();
   });
 
-  const [expanded, setExpanded] = useState<"online" | "offline" | null>(null);
+  const cards: { key: DashboardFilter; label: string; count: number; icon: React.ReactNode; color: string; activeColor: string }[] = [
+    { key: "all", label: "Pipeline", count: members.length, icon: <Users className="w-4 h-4" />, color: "text-primary", activeColor: "border-primary bg-primary/5" },
+    { key: "online", label: "En ligne", count: online.length, icon: <Wifi className="w-4 h-4" />, color: "text-emerald-500", activeColor: "border-emerald-500 bg-emerald-500/5" },
+    { key: "offline", label: "Hors ligne", count: offline.length, icon: <WifiOff className="w-4 h-4" />, color: "text-muted-foreground", activeColor: "border-muted-foreground bg-muted/10" },
+    { key: "never", label: "Jamais connecté", count: never.length, icon: <UserX className="w-4 h-4" />, color: "text-destructive", activeColor: "border-destructive bg-destructive/5" },
+    { key: "contacted", label: "Contactés", count: contacted.length, icon: <PhoneForwarded className="w-4 h-4" />, color: "text-blue-500", activeColor: "border-blue-500 bg-blue-500/5" },
+  ];
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {/* Total */}
-        <div className="border border-border rounded-lg p-3 bg-card">
-          <div className="flex items-center gap-2 mb-1">
-            <Users className="w-4 h-4 text-primary" />
-            <span className="text-[10px] font-mono uppercase text-muted-foreground">Pipeline</span>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{members.length}</p>
-        </div>
-
-        {/* Online */}
-        <button
-          onClick={() => setExpanded(expanded === "online" ? null : "online")}
-          className="border border-border rounded-lg p-3 bg-card text-left hover:bg-muted/30 transition-colors"
-        >
-          <div className="flex items-center gap-2 mb-1">
-            <Wifi className="w-4 h-4 text-emerald-500" />
-            <span className="text-[10px] font-mono uppercase text-muted-foreground">En ligne</span>
-          </div>
-          <p className="text-2xl font-bold text-emerald-500">{online.length}</p>
-        </button>
-
-        {/* Offline */}
-        <button
-          onClick={() => setExpanded(expanded === "offline" ? null : "offline")}
-          className="border border-border rounded-lg p-3 bg-card text-left hover:bg-muted/30 transition-colors"
-        >
-          <div className="flex items-center gap-2 mb-1">
-            <WifiOff className="w-4 h-4 text-muted-foreground" />
-            <span className="text-[10px] font-mono uppercase text-muted-foreground">Hors ligne</span>
-          </div>
-          <p className="text-2xl font-bold text-muted-foreground">{offline.length}</p>
-        </button>
-
-        {/* Never */}
-        <div className="border border-border rounded-lg p-3 bg-card">
-          <div className="flex items-center gap-2 mb-1">
-            <UserX className="w-4 h-4 text-destructive" />
-            <span className="text-[10px] font-mono uppercase text-muted-foreground">Jamais connecté</span>
-          </div>
-          <p className="text-2xl font-bold text-destructive">{never.length}</p>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {cards.map(c => (
+          <button
+            key={c.key}
+            onClick={() => onFilterChange(activeDashFilter === c.key ? "all" : c.key)}
+            className={cn(
+              "border rounded-lg p-3 text-left transition-all",
+              activeDashFilter === c.key ? c.activeColor + " border-2" : "border-border bg-card hover:bg-muted/30"
+            )}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <span className={c.color}>{c.icon}</span>
+              <span className="text-[10px] font-mono uppercase text-muted-foreground">{c.label}</span>
+            </div>
+            <p className={cn("text-2xl font-bold", c.color)}>{c.count}</p>
+          </button>
+        ))}
       </div>
 
       {/* Today's entries */}
@@ -200,35 +191,6 @@ const DashboardStats = ({ members }: { members: EACrmMember[] }) => {
           </div>
         </div>
       )}
-
-      {/* Expanded lists */}
-      {expanded === "online" && online.length > 0 && (
-        <div className="border border-emerald-500/30 rounded-lg p-3 bg-emerald-500/5">
-          <p className="text-[10px] font-mono uppercase text-emerald-500 mb-2">En ligne maintenant</p>
-          <div className="flex flex-wrap gap-1.5">
-            {online.map(m => (
-              <span key={m.user_id} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center gap-1">
-                <Circle className="w-1.5 h-1.5 fill-emerald-500" />
-                {m.first_name}
-                {m.active_tab && <span className="text-emerald-400/70">· {TAB_LABELS[m.active_tab] || m.active_tab}</span>}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-      {expanded === "offline" && offline.length > 0 && (
-        <div className="border border-border rounded-lg p-3 bg-muted/10">
-          <p className="text-[10px] font-mono uppercase text-muted-foreground mb-2">Hors ligne</p>
-          <div className="flex flex-wrap gap-1.5">
-            {offline.slice(0, 20).map(m => (
-              <span key={m.user_id} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                {m.first_name}
-              </span>
-            ))}
-            {offline.length > 20 && <span className="text-[10px] text-muted-foreground">+{offline.length - 20} autres</span>}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -241,6 +203,7 @@ export const EarlyAccessCRM = () => {
   const [resending, setResending] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
+  const [dashFilter, setDashFilter] = useState<DashboardFilter>("all");
   const [filters, setFilters] = useState<Record<FilterKey, string>>({
     connection: "all",
     type: "all",
@@ -257,19 +220,9 @@ export const EarlyAccessCRM = () => {
   const fetchCrmData = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
 
-    const { data: approvedRequests } = await supabase
-      .from("early_access_requests" as any)
-      .select("*")
-      .eq("status", "approuvée")
-      .order("created_at", { ascending: false });
-
-    if (!approvedRequests || approvedRequests.length === 0) {
-      setMembers([]);
-      if (!isRefresh) setLoading(false);
-      return;
-    }
-
-    const [{ data: eaRoles }, { data: profiles }, { data: sessions }, { data: executions }, { data: activityTracking }] = await Promise.all([
+    // Fetch approved requests AND current EA roles in parallel
+    const [{ data: approvedRequests }, { data: eaRoles }, { data: profiles }, { data: sessions }, { data: executions }, { data: activityTracking }] = await Promise.all([
+      supabase.from("early_access_requests" as any).select("*").eq("status", "approuvée").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("user_id, early_access_type, expires_at" as any).eq("role", "early_access"),
       supabase.from("profiles").select("user_id, display_name, first_name"),
       supabase.from("user_sessions").select("user_id, created_at, updated_at"),
@@ -277,12 +230,22 @@ export const EarlyAccessCRM = () => {
       supabase.from("ea_activity_tracking" as any).select("*"),
     ]);
 
+    if (!approvedRequests || approvedRequests.length === 0) {
+      setMembers([]);
+      if (!isRefresh) setLoading(false);
+      return;
+    }
+
+    // Build a set of user_ids who CURRENTLY have the early_access role
+    const eaUserIds = new Set((eaRoles as any[] || []).map((r: any) => r.user_id));
+
     const membersList: EACrmMember[] = [];
 
     for (const req of approvedRequests as any[]) {
       let matchedUserId: string | null = null;
       let matchedProfile: any = null;
 
+      // Match by first_name
       for (const r of (eaRoles as any[]) || []) {
         const profile = (profiles as any[])?.find((p: any) => p.user_id === r.user_id);
         if (profile) {
@@ -304,6 +267,11 @@ export const EarlyAccessCRM = () => {
             break;
           }
         }
+      }
+
+      // CRITICAL: Only include members who STILL have the early_access role
+      if (matchedUserId && !eaUserIds.has(matchedUserId)) {
+        continue;
       }
 
       const userRole = (eaRoles as any[])?.find((r: any) => r.user_id === matchedUserId);
@@ -352,6 +320,7 @@ export const EarlyAccessCRM = () => {
     if (currentSelected) {
       const updated = membersList.find(m => m.request_id === currentSelected.request_id);
       if (updated) setSelectedMember(updated);
+      else setSelectedMember(null); // removed from EA
     }
 
     if (!isRefresh) setLoading(false);
@@ -369,11 +338,30 @@ export const EarlyAccessCRM = () => {
       .update({ [field]: value } as any)
       .eq("id", requestId);
 
+    // Auto-transition: if call_done is checked, switch to postcall
+    if (field === "call_done" && value === true) {
+      const member = members.find(m => m.request_id === requestId);
+      if (member && member.early_access_type === "precall") {
+        await supabase.from("user_roles")
+          .update({ early_access_type: "postcall" } as any)
+          .eq("user_id", member.user_id)
+          .eq("role", "early_access" as any);
+      }
+    }
+
     setMembers(prev => prev.map(m =>
-      m.request_id === requestId ? { ...m, [field]: value } : m
+      m.request_id === requestId ? {
+        ...m,
+        [field]: value,
+        ...(field === "call_done" && value === true ? { early_access_type: "postcall" } : {}),
+      } : m
     ));
     if (selectedMember?.request_id === requestId) {
-      setSelectedMember(prev => prev ? { ...prev, [field]: value } : null);
+      setSelectedMember(prev => prev ? {
+        ...prev,
+        [field]: value,
+        ...(field === "call_done" && value === true ? { early_access_type: "postcall" } : {}),
+      } : null);
     }
   };
 
@@ -423,6 +411,13 @@ export const EarlyAccessCRM = () => {
 
   const filtered = useMemo(() => {
     let list = members;
+
+    // Dashboard filter (from stat cards)
+    if (dashFilter === "online") list = list.filter(m => m.is_online);
+    else if (dashFilter === "offline") list = list.filter(m => !m.is_online && m.session_count > 0);
+    else if (dashFilter === "never") list = list.filter(m => m.session_count === 0);
+    else if (dashFilter === "contacted") list = list.filter(m => m.contacted);
+
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       list = list.filter(m => m.first_name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q) || m.phone.includes(q));
@@ -451,7 +446,7 @@ export const EarlyAccessCRM = () => {
     });
 
     return list;
-  }, [members, searchQuery, filters, sortAsc]);
+  }, [members, searchQuery, filters, sortAsc, dashFilter]);
 
   // ── Helpers for pipeline ──
   const getConnectionStatus = (m: EACrmMember) => {
@@ -478,14 +473,19 @@ export const EarlyAccessCRM = () => {
   return (
     <div className="space-y-4">
       {/* ═══ DASHBOARD ═══ */}
-      <DashboardStats members={members} />
+      <DashboardStats members={members} activeDashFilter={dashFilter} onFilterChange={setDashFilter} />
 
       {/* ═══ CRM HEADER ═══ */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Activity className="w-4 h-4 text-primary" />
-          CRM Early Access ({members.length})
+          CRM Early Access ({filtered.length}{filtered.length !== members.length ? ` / ${members.length}` : ""})
         </h3>
+        {dashFilter !== "all" && (
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={() => setDashFilter("all")}>
+            <X className="w-3 h-3" /> Réinitialiser filtre
+          </Button>
+        )}
       </div>
 
       {/* Search + Filters */}
@@ -621,7 +621,7 @@ export const EarlyAccessCRM = () => {
           <div className="relative w-full max-w-lg mx-4 bg-card border border-border rounded-xl shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="h-1 bg-gradient-to-r from-primary via-amber-500 to-primary" />
             
-            {/* ── Header (like reference screenshot) ── */}
+            {/* ── Header ── */}
             <div className="p-5 pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
