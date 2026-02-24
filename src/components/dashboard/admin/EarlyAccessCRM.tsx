@@ -497,6 +497,9 @@ export const EarlyAccessCRM = () => {
                 </div>
               </Section>
 
+              {/* Notes */}
+              <EALeadNotes requestId={selectedMember.request_id} />
+
               {/* Actions */}
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" size="sm" className="flex-1 gap-1 text-[10px] h-7" onClick={() => handleResendLink(selectedMember)} disabled={resending === selectedMember.user_id}>
