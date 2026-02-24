@@ -50,6 +50,7 @@ import {
   Search,
   RefreshCw,
   Award,
+  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminUserDataViewer } from "./AdminUserDataViewer";
