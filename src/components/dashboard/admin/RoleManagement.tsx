@@ -751,6 +751,7 @@ export const RoleManagement = () => {
                   <SelectContent>
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="institute">Institut</SelectItem>
+                    <SelectItem value="setter">Setter</SelectItem>
                     <SelectItem value="early_access">Early Access</SelectItem>
                   </SelectContent>
                 </Select>
