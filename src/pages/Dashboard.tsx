@@ -68,7 +68,7 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [activeTab, setActiveTab] = useState("execution");
+  const [activeTab, setActiveTab] = useState(() => "execution");
   const [databaseFilters, setDatabaseFilters] = useState<any>(null);
   const [dataSource, setDataSource] = useState<DataSource>("all");
   const [displayName, setDisplayName] = useState<string>("");
