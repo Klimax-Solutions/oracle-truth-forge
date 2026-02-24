@@ -490,6 +490,7 @@ export const RoleManagement = () => {
 
   const getRoleBadgeClassName = (role: string) => {
     if (role === 'institute') return "bg-blue-500/10 text-blue-500 border-blue-500/30";
+    if (role === 'setter') return "bg-pink-500/10 text-pink-500 border-pink-500/30";
     return "";
   };
 
