@@ -949,6 +949,33 @@ export const RoleManagement = () => {
                     Modifier le rôle
                   </Button>
 
+                  {/* Client tag toggle */}
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start gap-3 h-11",
+                      qaUser.is_client && "border-violet-500/30 bg-violet-500/10"
+                    )}
+                    onClick={async () => {
+                      const newVal = !qaUser.is_client;
+                      const { error } = await supabase
+                        .from("profiles")
+                        .update({ is_client: newVal } as any)
+                        .eq("user_id", qaUser.user_id);
+                      if (error) {
+                        toast.error("Erreur lors de la mise à jour");
+                      } else {
+                        toast.success(newVal ? "Tag Client ajouté" : "Tag Client retiré");
+                        setUsers(prev => prev.map(u =>
+                          u.user_id === qaUser.user_id ? { ...u, is_client: newVal } : u
+                        ));
+                      }
+                    }}
+                  >
+                    <Tag className={cn("w-4 h-4", qaUser.is_client ? "text-violet-500" : "text-muted-foreground")} />
+                    {qaUser.is_client ? "Retirer le tag Client" : "Ajouter le tag Client"}
+                  </Button>
+
                   <div className="border-t border-border my-2" />
 
                   {qaUser.status === 'active' && (
