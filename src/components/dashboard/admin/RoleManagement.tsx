@@ -1067,6 +1067,7 @@ export const RoleManagement = () => {
                         { value: "admin", label: "Admin", icon: <ShieldCheck className="w-3.5 h-3.5" /> },
                         { value: "early_access", label: "Early Access", icon: <Shield className="w-3.5 h-3.5" /> },
                         { value: "institute", label: "Institut", icon: <Award className="w-3.5 h-3.5" /> },
+                        { value: "setter", label: "Setter", icon: <UserPlus className="w-3.5 h-3.5" /> },
                         { value: "super_admin", label: "Super Admin", icon: <Crown className="w-3.5 h-3.5" /> },
                       ].map((r) => {
                         const isSelected = roleChangeSelectedRoles.includes(r.value);
