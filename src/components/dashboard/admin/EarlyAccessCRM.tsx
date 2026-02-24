@@ -1,9 +1,10 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Loader2, User, Phone, Mail, Clock, LogIn, Activity, Database, Circle,
   CalendarDays, Hash, KeyRound, Send, MousePointerClick, Monitor, Search,
   Filter, X, CheckSquare, MessageCircle, PhoneCall, FileText, Eye,
+  ArrowUpDown, Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +55,37 @@ export interface EACrmMember {
 
 type FilterKey = "connection" | "type" | "status" | "expiration";
 
+// ── Live countdown for a single member ──
+const LiveTimer = ({ expiresAt }: { expiresAt: string | null }) => {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!expiresAt) return <span className="text-muted-foreground">—</span>;
+
+  const end = new Date(expiresAt).getTime();
+  const diff = end - now;
+
+  if (diff <= 0) {
+    return <span className="text-destructive font-mono text-[10px]">EXPIRÉ</span>;
+  }
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((diff / (1000 * 60)) % 60);
+  const seconds = Math.floor((diff / 1000) % 60);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+
+  return (
+    <span className={cn("font-mono text-[10px] font-bold", diff < 3600_000 ? "text-destructive" : "text-amber-500")}>
+      {days > 0 && `${days}j `}{pad(hours)}:{pad(minutes)}:{pad(seconds)}
+    </span>
+  );
+};
+
 export const EarlyAccessCRM = () => {
   const [members, setMembers] = useState<EACrmMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +93,7 @@ export const EarlyAccessCRM = () => {
   const [resetting, setResetting] = useState<string | null>(null);
   const [resending, setResending] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortAsc, setSortAsc] = useState(false); // false = newest first
   const [filters, setFilters] = useState<Record<FilterKey, string>>({
     connection: "all",
     type: "all",
@@ -68,9 +101,16 @@ export const EarlyAccessCRM = () => {
     expiration: "all",
   });
   const { toast } = useToast();
+  const selectedMemberRef = useRef<EACrmMember | null>(null);
 
-  const fetchCrmData = async () => {
-    setLoading(true);
+  // Keep ref in sync
+  useEffect(() => {
+    selectedMemberRef.current = selectedMember;
+  }, [selectedMember]);
+
+  const fetchCrmData = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
+
     const { data: approvedRequests } = await supabase
       .from("early_access_requests" as any)
       .select("*")
@@ -79,7 +119,7 @@ export const EarlyAccessCRM = () => {
 
     if (!approvedRequests || approvedRequests.length === 0) {
       setMembers([]);
-      setLoading(false);
+      if (!isRefresh) setLoading(false);
       return;
     }
 
@@ -161,14 +201,24 @@ export const EarlyAccessCRM = () => {
     }
 
     setMembers(membersList);
-    setLoading(false);
-  };
+
+    // Update selected member if popup is open (preserve popup state)
+    const currentSelected = selectedMemberRef.current;
+    if (currentSelected) {
+      const updated = membersList.find(m => m.request_id === currentSelected.request_id);
+      if (updated) {
+        setSelectedMember(updated);
+      }
+    }
+
+    if (!isRefresh) setLoading(false);
+  }, []);
 
   useEffect(() => {
-    fetchCrmData();
-    const interval = setInterval(fetchCrmData, 15000);
+    fetchCrmData(false);
+    const interval = setInterval(() => fetchCrmData(true), 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchCrmData]);
 
   const updateRequestField = async (requestId: string, field: string, value: any) => {
     await supabase
@@ -223,6 +273,11 @@ export const EarlyAccessCRM = () => {
     return `${d.toLocaleDateString("fr-FR")} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
   };
 
+  const fmtDate = (iso: string | null) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+  };
+
   const filtered = useMemo(() => {
     let list = members;
     if (searchQuery) {
@@ -245,8 +300,16 @@ export const EarlyAccessCRM = () => {
       if (filters.expiration === "expired") list = list.filter(m => m.expires_at && new Date(m.expires_at).getTime() <= now);
       if (filters.expiration === "active") list = list.filter(m => !m.expires_at || new Date(m.expires_at).getTime() > now);
     }
+
+    // Sort by date
+    list = [...list].sort((a, b) => {
+      const dateA = new Date(a.request_created_at).getTime();
+      const dateB = new Date(b.request_created_at).getTime();
+      return sortAsc ? dateA - dateB : dateB - dateA;
+    });
+
     return list;
-  }, [members, searchQuery, filters]);
+  }, [members, searchQuery, filters, sortAsc]);
 
   if (loading) {
     return (
@@ -304,7 +367,13 @@ export const EarlyAccessCRM = () => {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-muted/50 border-b border-border">
-                <th className="text-left px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Nom</th>
+                <th className="text-left px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">
+                  <button className="flex items-center gap-1 hover:text-foreground" onClick={() => setSortAsc(p => !p)}>
+                    Nom / Date
+                    <ArrowUpDown className="w-3 h-3" />
+                  </button>
+                </th>
+                <th className="text-left px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Timer</th>
                 <th className="text-left px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Type</th>
                 <th className="text-left px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Statut</th>
                 <th className="text-left px-3 py-2 font-mono text-[10px] uppercase text-muted-foreground">Onglet actif</th>
@@ -318,7 +387,7 @@ export const EarlyAccessCRM = () => {
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.length === 0 ? (
-                <tr><td colSpan={10} className="text-center py-8 text-muted-foreground">Aucun membre trouvé</td></tr>
+                <tr><td colSpan={11} className="text-center py-8 text-muted-foreground">Aucun membre trouvé</td></tr>
               ) : filtered.map(m => (
                 <tr
                   key={m.user_id}
@@ -333,8 +402,14 @@ export const EarlyAccessCRM = () => {
                         </div>
                         <Circle className={cn("w-2 h-2 absolute -bottom-0 -right-0", m.is_online ? "text-emerald-500 fill-emerald-500" : "text-muted-foreground/40 fill-muted-foreground/20")} />
                       </div>
-                      <span className="font-medium text-foreground">{m.first_name}</span>
+                      <div>
+                        <span className="font-medium text-foreground block">{m.first_name}</span>
+                        <span className="text-[9px] text-muted-foreground font-mono">{fmtDate(m.request_created_at)}</span>
+                      </div>
                     </div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <LiveTimer expiresAt={m.expires_at} />
                   </td>
                   <td className="px-3 py-2">
                     <span className={cn("text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-full", m.early_access_type === "precall" ? "bg-amber-500/20 text-amber-500" : "bg-emerald-500/20 text-emerald-500")}>
@@ -438,6 +513,11 @@ export const EarlyAccessCRM = () => {
                 <Info icon={<CalendarDays className="w-3 h-3" />} label="Soumission" value={fmt(selectedMember.request_created_at)} />
                 <Info icon={<CalendarDays className="w-3 h-3" />} label="Approbation" value={fmt(selectedMember.approved_at)} />
                 <Info icon={<Clock className="w-3 h-3 text-amber-500" />} label="Expiration" value={fmt(selectedMember.expires_at)} />
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-muted-foreground"><Timer className="w-3 h-3" /></span>
+                  <span className="text-muted-foreground">Temps restant :</span>
+                  <LiveTimer expiresAt={selectedMember.expires_at} />
+                </div>
               </Section>
 
               {/* Activité */}
