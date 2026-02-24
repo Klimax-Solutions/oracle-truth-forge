@@ -292,9 +292,14 @@ export type Database = {
       }
       early_access_requests: {
         Row: {
+          call_booked: boolean
+          call_done: boolean
+          contact_method: string | null
+          contacted: boolean
           created_at: string
           email: string
           first_name: string
+          form_submitted: boolean
           id: string
           phone: string
           reviewed_at: string | null
@@ -302,9 +307,14 @@ export type Database = {
           status: string
         }
         Insert: {
+          call_booked?: boolean
+          call_done?: boolean
+          contact_method?: string | null
+          contacted?: boolean
           created_at?: string
           email: string
           first_name: string
+          form_submitted?: boolean
           id?: string
           phone: string
           reviewed_at?: string | null
@@ -312,9 +322,14 @@ export type Database = {
           status?: string
         }
         Update: {
+          call_booked?: boolean
+          call_done?: boolean
+          contact_method?: string | null
+          contacted?: boolean
           created_at?: string
           email?: string
           first_name?: string
+          form_submitted?: boolean
           id?: string
           phone?: string
           reviewed_at?: string | null
