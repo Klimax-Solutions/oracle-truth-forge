@@ -357,10 +357,29 @@ export const EarlyAccessCRM = () => {
   }, [fetchCrmData]);
 
   const updateRequestField = async (requestId: string, field: string, value: any) => {
-    await supabase
+    // Optimistic update
+    const rollback = { members: [...members], selected: selectedMember ? { ...selectedMember } : null };
+    const patch: Partial<EACrmMember> = {
+      [field]: value,
+      ...(field === "call_done" ? { early_access_type: value ? "postcall" : "precall" } : {}),
+    };
+    setMembers(prev => prev.map(m => m.request_id === requestId ? { ...m, ...patch } : m));
+    if (selectedMember?.request_id === requestId) {
+      setSelectedMember(prev => prev ? { ...prev, ...patch } : null);
+    }
+
+    const { error } = await supabase
       .from("early_access_requests" as any)
       .update({ [field]: value } as any)
       .eq("id", requestId);
+
+    if (error) {
+      // Rollback on failure
+      setMembers(rollback.members);
+      setSelectedMember(rollback.selected);
+      toast({ title: "Erreur de sauvegarde", description: error.message, variant: "destructive" });
+      return;
+    }
 
     // Auto-transition: call_done checked → postcall, unchecked → precall
     if (field === "call_done") {
@@ -368,27 +387,15 @@ export const EarlyAccessCRM = () => {
       if (member) {
         const newType = value ? "postcall" : "precall";
         if (member.early_access_type !== newType) {
-          await supabase.from("user_roles")
+          const { error: roleErr } = await supabase.from("user_roles")
             .update({ early_access_type: newType } as any)
             .eq("user_id", member.user_id)
             .eq("role", "early_access" as any);
+          if (roleErr) {
+            toast({ title: "Erreur rôle", description: roleErr.message, variant: "destructive" });
+          }
         }
       }
-    }
-
-    setMembers(prev => prev.map(m =>
-      m.request_id === requestId ? {
-        ...m,
-        [field]: value,
-        ...(field === "call_done" ? { early_access_type: value ? "postcall" : "precall" } : {}),
-      } : m
-    ));
-    if (selectedMember?.request_id === requestId) {
-      setSelectedMember(prev => prev ? {
-        ...prev,
-        [field]: value,
-        ...(field === "call_done" ? { early_access_type: value ? "postcall" : "precall" } : {}),
-      } : null);
     }
   };
 
