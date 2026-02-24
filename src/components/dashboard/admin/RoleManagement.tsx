@@ -181,6 +181,9 @@ export const RoleManagement = () => {
         case "institute":
           result = result.filter(u => u.roles.includes("institute"));
           break;
+        case "setter":
+          result = result.filter(u => u.roles.includes("setter"));
+          break;
         case "client":
           result = result.filter(u => u.is_client);
           break;
