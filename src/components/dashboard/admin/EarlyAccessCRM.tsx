@@ -666,8 +666,18 @@ export const EarlyAccessCRM = () => {
                     </div>
                     <Circle className={cn("w-3 h-3 absolute -bottom-0.5 -right-0.5", selectedMember.is_online ? "text-emerald-500 fill-emerald-500" : "text-muted-foreground/40 fill-muted-foreground/20")} />
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="text-base font-semibold text-foreground">{selectedMember.first_name}</h3>
+                    <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-semibold text-foreground">{selectedMember.first_name}</h3>
+                      <span className={cn(
+                        "text-[10px] font-mono uppercase px-2 py-0.5 rounded-full font-bold",
+                        selectedMember.early_access_type === "postcall"
+                          ? "bg-emerald-500/20 text-emerald-500 border border-emerald-500/30"
+                          : "bg-amber-500/20 text-amber-500 border border-amber-500/30"
+                      )}>
+                        {selectedMember.early_access_type === "postcall" ? "Post-call" : "Pré-call"}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Mail className="w-3 h-3" />
                       <span>{selectedMember.email}</span>
