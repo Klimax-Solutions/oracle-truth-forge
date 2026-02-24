@@ -362,14 +362,17 @@ export const EarlyAccessCRM = () => {
       .update({ [field]: value } as any)
       .eq("id", requestId);
 
-    // Auto-transition: if call_done is checked, switch to postcall
-    if (field === "call_done" && value === true) {
+    // Auto-transition: call_done checked → postcall, unchecked → precall
+    if (field === "call_done") {
       const member = members.find(m => m.request_id === requestId);
-      if (member && member.early_access_type === "precall") {
-        await supabase.from("user_roles")
-          .update({ early_access_type: "postcall" } as any)
-          .eq("user_id", member.user_id)
-          .eq("role", "early_access" as any);
+      if (member) {
+        const newType = value ? "postcall" : "precall";
+        if (member.early_access_type !== newType) {
+          await supabase.from("user_roles")
+            .update({ early_access_type: newType } as any)
+            .eq("user_id", member.user_id)
+            .eq("role", "early_access" as any);
+        }
       }
     }
 
@@ -377,14 +380,14 @@ export const EarlyAccessCRM = () => {
       m.request_id === requestId ? {
         ...m,
         [field]: value,
-        ...(field === "call_done" && value === true ? { early_access_type: "postcall" } : {}),
+        ...(field === "call_done" ? { early_access_type: value ? "postcall" : "precall" } : {}),
       } : m
     ));
     if (selectedMember?.request_id === requestId) {
       setSelectedMember(prev => prev ? {
         ...prev,
         [field]: value,
-        ...(field === "call_done" && value === true ? { early_access_type: "postcall" } : {}),
+        ...(field === "call_done" ? { early_access_type: value ? "postcall" : "precall" } : {}),
       } : null);
     }
   };
