@@ -328,6 +328,7 @@ const Dashboard = () => {
         onLogout={handleLogout}
         isAdmin={isAdmin}
         isSuperAdmin={isSuperAdmin}
+        isSetter={isSetter}
         dataSourceSelector={showDataSourceSelector ? (
           <DataSourceSelector value={dataSource} onChange={setDataSource} showDataGenerale={showDataGenerale} />
         ) : undefined}
