@@ -473,6 +473,7 @@ export const RoleManagement = () => {
       case 'admin': return <ShieldCheck className="w-3 h-3" />;
       case 'early_access': return <Shield className="w-3 h-3" />;
       case 'institute': return <Award className="w-3 h-3" />;
+      case 'setter': return <UserPlus className="w-3 h-3" />;
       default: return <User className="w-3 h-3" />;
     }
   };
