@@ -433,7 +433,8 @@ export const EarlyAccessCRM = () => {
 
   const fmtDate = (iso: string | null) => {
     if (!iso) return "—";
-    return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+    const d = new Date(iso);
+    return `${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
   };
 
   const filtered = useMemo(() => {
