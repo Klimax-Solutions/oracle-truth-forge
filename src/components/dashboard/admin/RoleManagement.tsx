@@ -65,6 +65,7 @@ interface UserWithRole {
   roles: string[];
   status: UserStatus;
   status_reason: string | null;
+  is_client: boolean;
 }
 
 export const RoleManagement = () => {
