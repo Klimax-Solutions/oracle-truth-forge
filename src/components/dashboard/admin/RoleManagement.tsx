@@ -115,7 +115,7 @@ export const RoleManagement = () => {
     
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("user_id, display_name, first_name, status, status_reason");
+      .select("user_id, display_name, first_name, status, status_reason, is_client");
 
     if (profilesError) {
       console.error("Error fetching profiles:", profilesError);
