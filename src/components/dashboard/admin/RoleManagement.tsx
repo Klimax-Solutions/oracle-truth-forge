@@ -691,6 +691,7 @@ export const RoleManagement = () => {
     { key: "active", label: "Actifs", icon: <CheckCircle className="w-3 h-3" />, count: users.filter(u => u.status === 'active').length, color: "text-green-500" },
     { key: "institute", label: "Institut", icon: <Award className="w-3 h-3" />, count: users.filter(u => u.roles.includes('institute')).length, color: "text-blue-500" },
     { key: "client", label: "Client", icon: <Tag className="w-3 h-3" />, count: users.filter(u => u.is_client).length, color: "text-violet-500" },
+    { key: "setter", label: "Setter", icon: <UserPlus className="w-3 h-3" />, count: users.filter(u => u.roles.includes('setter')).length, color: "text-pink-500" },
     { key: "early_access", label: "Early", icon: <Shield className="w-3 h-3" />, count: users.filter(u => u.roles.includes('early_access')).length, color: "text-amber-500" },
     { key: "frozen", label: "Gelés", icon: <Snowflake className="w-3 h-3" />, count: users.filter(u => u.status === 'frozen').length, color: "text-blue-500" },
     { key: "banned", label: "Bannis", icon: <Ban className="w-3 h-3" />, count: users.filter(u => u.status === 'banned').length, color: "text-destructive" },
