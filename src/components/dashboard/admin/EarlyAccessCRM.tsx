@@ -220,7 +220,6 @@ export const EarlyAccessCRM = () => {
   const fetchCrmData = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
 
-    // Fetch approved requests AND current EA roles in parallel
     const [{ data: approvedRequests }, { data: eaRoles }, { data: profiles }, { data: sessions }, { data: executions }, { data: activityTracking }] = await Promise.all([
       supabase.from("early_access_requests" as any).select("*").eq("status", "approuvée").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("user_id, early_access_type, expires_at" as any).eq("role", "early_access"),
@@ -236,45 +235,70 @@ export const EarlyAccessCRM = () => {
       return;
     }
 
-    // Build a set of user_ids who CURRENTLY have the early_access role
-    const eaUserIds = new Set((eaRoles as any[] || []).map((r: any) => r.user_id));
+    // Build maps for fast lookup
+    const eaRolesByUserId = new Map<string, any>();
+    for (const r of (eaRoles as any[] || [])) {
+      eaRolesByUserId.set(r.user_id, r);
+    }
 
+    // Build email -> user_id map from auth profiles + ea roles
+    const emailToUserId = new Map<string, string>();
+    for (const p of (profiles as any[] || [])) {
+      // We only care about users who currently have the early_access role
+      if (eaRolesByUserId.has(p.user_id)) {
+        // Try to find email from requests themselves
+        const matchingReq = (approvedRequests as any[]).find(
+          (r: any) => {
+            const profileName = (p.first_name || p.display_name || "").toLowerCase().trim();
+            const reqName = (r.first_name || "").toLowerCase().trim();
+            return profileName === reqName;
+          }
+        );
+        if (matchingReq) {
+          emailToUserId.set(matchingReq.email.toLowerCase().trim(), p.user_id);
+        }
+      }
+    }
+
+    // Deduplicate: keep only 1 request per email (the most recent approved one)
+    const seenEmails = new Set<string>();
+    const seenUserIds = new Set<string>();
     const membersList: EACrmMember[] = [];
 
     for (const req of approvedRequests as any[]) {
-      let matchedUserId: string | null = null;
-      let matchedProfile: any = null;
+      const emailKey = (req.email || "").toLowerCase().trim();
+      if (seenEmails.has(emailKey)) continue;
+      seenEmails.add(emailKey);
 
-      // Match by first_name
-      for (const r of (eaRoles as any[]) || []) {
-        const profile = (profiles as any[])?.find((p: any) => p.user_id === r.user_id);
-        if (profile) {
-          const profileName = (profile.first_name || profile.display_name || "").toLowerCase().trim();
-          const reqName = (req.first_name || "").toLowerCase().trim();
-          if (profileName === reqName) {
-            matchedUserId = r.user_id;
-            matchedProfile = profile;
-            break;
-          }
-        }
-      }
+      // Try to match to a user with early_access role
+      let matchedUserId = emailToUserId.get(emailKey) || null;
 
+      // If no match by email-name, try unmatched EA roles
       if (!matchedUserId) {
-        for (const r of (eaRoles as any[]) || []) {
-          if (!membersList.some((m) => m.user_id === r.user_id)) {
-            matchedUserId = r.user_id;
-            matchedProfile = (profiles as any[])?.find((p: any) => p.user_id === r.user_id);
-            break;
+        for (const [uid] of eaRolesByUserId) {
+          if (!seenUserIds.has(uid) && !Array.from(emailToUserId.values()).includes(uid)) {
+            const profile = (profiles as any[])?.find((p: any) => p.user_id === uid);
+            const profileName = (profile?.first_name || profile?.display_name || "").toLowerCase().trim();
+            const reqName = (req.first_name || "").toLowerCase().trim();
+            if (profileName === reqName) {
+              matchedUserId = uid;
+              break;
+            }
           }
         }
       }
 
       // CRITICAL: Only include members who STILL have the early_access role
-      if (matchedUserId && !eaUserIds.has(matchedUserId)) {
+      if (matchedUserId && !eaRolesByUserId.has(matchedUserId)) continue;
+      if (matchedUserId) {
+        if (seenUserIds.has(matchedUserId)) continue;
+        seenUserIds.add(matchedUserId);
+      } else {
+        // No matching user with EA role -> skip (user lost EA or was never matched)
         continue;
       }
 
-      const userRole = (eaRoles as any[])?.find((r: any) => r.user_id === matchedUserId);
+      const userRole = eaRolesByUserId.get(matchedUserId);
       const userSessions = (sessions as any[])?.filter((s: any) => s.user_id === matchedUserId) || [];
       const userExecCount = (executions as any[])?.filter((e: any) => e.user_id === matchedUserId).length || 0;
       const userActivity = (activityTracking as any[])?.find((a: any) => a.user_id === matchedUserId);
@@ -289,12 +313,12 @@ export const EarlyAccessCRM = () => {
         : null;
 
       membersList.push({
-        user_id: matchedUserId || req.id,
+        user_id: matchedUserId,
         request_id: req.id,
         first_name: req.first_name,
         email: req.email,
         phone: req.phone,
-        display_name: matchedProfile?.display_name || null,
+        display_name: (profiles as any[])?.find((p: any) => p.user_id === matchedUserId)?.display_name || null,
         early_access_type: userRole?.early_access_type || "precall",
         expires_at: userRole?.expires_at || null,
         request_created_at: req.created_at,
@@ -320,7 +344,7 @@ export const EarlyAccessCRM = () => {
     if (currentSelected) {
       const updated = membersList.find(m => m.request_id === currentSelected.request_id);
       if (updated) setSelectedMember(updated);
-      else setSelectedMember(null); // removed from EA
+      else setSelectedMember(null);
     }
 
     if (!isRefresh) setLoading(false);
