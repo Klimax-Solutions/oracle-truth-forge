@@ -144,6 +144,7 @@ export const RoleManagement = () => {
         roles: [],
         status: (profile.status as UserStatus) || "active",
         status_reason: profile.status_reason,
+        is_client: (profile as any).is_client || false,
       });
     });
 
