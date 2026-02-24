@@ -340,6 +340,7 @@ export type Database = {
           frozen_at: string | null
           frozen_by: string | null
           id: string
+          is_client: boolean
           status: Database["public"]["Enums"]["user_status"]
           status_reason: string | null
           updated_at: string
@@ -355,6 +356,7 @@ export type Database = {
           frozen_at?: string | null
           frozen_by?: string | null
           id?: string
+          is_client?: boolean
           status?: Database["public"]["Enums"]["user_status"]
           status_reason?: string | null
           updated_at?: string
@@ -370,6 +372,7 @@ export type Database = {
           frozen_at?: string | null
           frozen_by?: string | null
           id?: string
+          is_client?: boolean
           status?: Database["public"]["Enums"]["user_status"]
           status_reason?: string | null
           updated_at?: string

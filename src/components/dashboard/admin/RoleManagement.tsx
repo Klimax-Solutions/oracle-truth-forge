@@ -50,6 +50,7 @@ import {
   Search,
   RefreshCw,
   Award,
+  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminUserDataViewer } from "./AdminUserDataViewer";
@@ -64,6 +65,7 @@ interface UserWithRole {
   roles: string[];
   status: UserStatus;
   status_reason: string | null;
+  is_client: boolean;
 }
 
 export const RoleManagement = () => {
@@ -113,7 +115,7 @@ export const RoleManagement = () => {
     
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("user_id, display_name, first_name, status, status_reason");
+      .select("user_id, display_name, first_name, status, status_reason, is_client");
 
     if (profilesError) {
       console.error("Error fetching profiles:", profilesError);
@@ -142,6 +144,7 @@ export const RoleManagement = () => {
         roles: [],
         status: (profile.status as UserStatus) || "active",
         status_reason: profile.status_reason,
+        is_client: (profile as any).is_client || false,
       });
     });
 
@@ -177,6 +180,9 @@ export const RoleManagement = () => {
           break;
         case "institute":
           result = result.filter(u => u.roles.includes("institute"));
+          break;
+        case "client":
+          result = result.filter(u => u.is_client);
           break;
         case "frozen":
           result = result.filter(u => u.status === "frozen");
@@ -681,6 +687,7 @@ export const RoleManagement = () => {
     { key: "admin", label: "Admin", icon: <ShieldCheck className="w-3 h-3" />, count: users.filter(u => u.roles.includes('admin')).length, color: "text-foreground" },
     { key: "active", label: "Actifs", icon: <CheckCircle className="w-3 h-3" />, count: users.filter(u => u.status === 'active').length, color: "text-green-500" },
     { key: "institute", label: "Institut", icon: <Award className="w-3 h-3" />, count: users.filter(u => u.roles.includes('institute')).length, color: "text-blue-500" },
+    { key: "client", label: "Client", icon: <Tag className="w-3 h-3" />, count: users.filter(u => u.is_client).length, color: "text-violet-500" },
     { key: "early_access", label: "Early", icon: <Shield className="w-3 h-3" />, count: users.filter(u => u.roles.includes('early_access')).length, color: "text-amber-500" },
     { key: "frozen", label: "Gelés", icon: <Snowflake className="w-3 h-3" />, count: users.filter(u => u.status === 'frozen').length, color: "text-blue-500" },
     { key: "banned", label: "Bannis", icon: <Ban className="w-3 h-3" />, count: users.filter(u => u.status === 'banned').length, color: "text-destructive" },
@@ -872,6 +879,15 @@ export const RoleManagement = () => {
                                 {getRoleLabel(role)}
                               </Badge>
                             ))}
+                            {user.is_client && (
+                              <Badge 
+                                variant="outline"
+                                className="flex items-center gap-1 text-[10px] bg-violet-500/10 text-violet-500 border-violet-500/30"
+                              >
+                                <Tag className="w-3 h-3" />
+                                Client
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -931,6 +947,33 @@ export const RoleManagement = () => {
                   <Button variant="outline" className="w-full justify-start gap-3 h-11" onClick={() => openRoleChangeDialog(qaUser.user_id)}>
                     <RefreshCw className="w-4 h-4 text-primary" />
                     Modifier le rôle
+                  </Button>
+
+                  {/* Client tag toggle */}
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start gap-3 h-11",
+                      qaUser.is_client && "border-violet-500/30 bg-violet-500/10"
+                    )}
+                    onClick={async () => {
+                      const newVal = !qaUser.is_client;
+                      const { error } = await supabase
+                        .from("profiles")
+                        .update({ is_client: newVal } as any)
+                        .eq("user_id", qaUser.user_id);
+                      if (error) {
+                        toast.error("Erreur lors de la mise à jour");
+                      } else {
+                        toast.success(newVal ? "Tag Client ajouté" : "Tag Client retiré");
+                        setUsers(prev => prev.map(u =>
+                          u.user_id === qaUser.user_id ? { ...u, is_client: newVal } : u
+                        ));
+                      }
+                    }}
+                  >
+                    <Tag className={cn("w-4 h-4", qaUser.is_client ? "text-violet-500" : "text-muted-foreground")} />
+                    {qaUser.is_client ? "Retirer le tag Client" : "Ajouter le tag Client"}
                   </Button>
 
                   <div className="border-t border-border my-2" />
