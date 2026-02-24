@@ -4,7 +4,8 @@ import {
   Loader2, User, Phone, Mail, Clock, LogIn, Activity, Database, Circle,
   CalendarDays, Hash, KeyRound, Send, MousePointerClick, Monitor, Search,
   Filter, X, CheckSquare, MessageCircle, PhoneCall, FileText, Eye,
-  ArrowUpDown, Timer,
+  ArrowUpDown, Timer, Copy, Users, Wifi, WifiOff, UserX,
+  CheckCircle2, PhoneForwarded, CreditCard, ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,6 +87,152 @@ const LiveTimer = ({ expiresAt }: { expiresAt: string | null }) => {
   );
 };
 
+// ── Copy button ──
+const CopyBtn = ({ text }: { text: string }) => {
+  const { toast } = useToast();
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        toast({ title: "Copié !" });
+      }}
+      className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+    >
+      <Copy className="w-3 h-3" />
+    </button>
+  );
+};
+
+// ── Pipeline Step ──
+const PipelineStep = ({ label, done, date, isLast }: { label: string; done: boolean; date?: string | null; isLast?: boolean }) => (
+  <div className="flex flex-col items-center flex-1 relative">
+    <div className={cn(
+      "w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-colors z-10",
+      done
+        ? "bg-amber-500/20 border-amber-500 text-amber-500"
+        : "bg-muted/50 border-border text-muted-foreground"
+    )}>
+      <CheckCircle2 className="w-4 h-4" />
+    </div>
+    <span className={cn("text-[9px] font-mono mt-1 text-center", done ? "text-foreground font-semibold" : "text-muted-foreground")}>{label}</span>
+    {done && date && (
+      <span className="text-[8px] font-mono text-amber-500">{new Date(date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })} {new Date(date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
+    )}
+    {!isLast && (
+      <div className={cn("absolute top-4 left-[calc(50%+16px)] w-[calc(100%-32px)] h-0.5", done ? "bg-amber-500/50" : "bg-border")} />
+    )}
+  </div>
+);
+
+// ── Dashboard Stats ──
+const DashboardStats = ({ members }: { members: EACrmMember[] }) => {
+  const online = members.filter(m => m.is_online);
+  const offline = members.filter(m => !m.is_online && m.session_count > 0);
+  const never = members.filter(m => m.session_count === 0);
+  const todayApproved = members.filter(m => {
+    if (!m.approved_at) return false;
+    const d = new Date(m.approved_at);
+    const now = new Date();
+    return d.toDateString() === now.toDateString();
+  });
+
+  const [expanded, setExpanded] = useState<"online" | "offline" | null>(null);
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* Total */}
+        <div className="border border-border rounded-lg p-3 bg-card">
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="w-4 h-4 text-primary" />
+            <span className="text-[10px] font-mono uppercase text-muted-foreground">Pipeline</span>
+          </div>
+          <p className="text-2xl font-bold text-foreground">{members.length}</p>
+        </div>
+
+        {/* Online */}
+        <button
+          onClick={() => setExpanded(expanded === "online" ? null : "online")}
+          className="border border-border rounded-lg p-3 bg-card text-left hover:bg-muted/30 transition-colors"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <Wifi className="w-4 h-4 text-emerald-500" />
+            <span className="text-[10px] font-mono uppercase text-muted-foreground">En ligne</span>
+          </div>
+          <p className="text-2xl font-bold text-emerald-500">{online.length}</p>
+        </button>
+
+        {/* Offline */}
+        <button
+          onClick={() => setExpanded(expanded === "offline" ? null : "offline")}
+          className="border border-border rounded-lg p-3 bg-card text-left hover:bg-muted/30 transition-colors"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <WifiOff className="w-4 h-4 text-muted-foreground" />
+            <span className="text-[10px] font-mono uppercase text-muted-foreground">Hors ligne</span>
+          </div>
+          <p className="text-2xl font-bold text-muted-foreground">{offline.length}</p>
+        </button>
+
+        {/* Never */}
+        <div className="border border-border rounded-lg p-3 bg-card">
+          <div className="flex items-center gap-2 mb-1">
+            <UserX className="w-4 h-4 text-destructive" />
+            <span className="text-[10px] font-mono uppercase text-muted-foreground">Jamais connecté</span>
+          </div>
+          <p className="text-2xl font-bold text-destructive">{never.length}</p>
+        </div>
+      </div>
+
+      {/* Today's entries */}
+      {todayApproved.length > 0 && (
+        <div className="border border-border rounded-lg p-3 bg-card">
+          <p className="text-[10px] font-mono uppercase text-muted-foreground mb-2 flex items-center gap-1.5">
+            <CalendarDays className="w-3.5 h-3.5" /> Acceptés aujourd'hui ({todayApproved.length})
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {todayApproved.map(m => (
+              <span key={m.user_id} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                {m.first_name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Expanded lists */}
+      {expanded === "online" && online.length > 0 && (
+        <div className="border border-emerald-500/30 rounded-lg p-3 bg-emerald-500/5">
+          <p className="text-[10px] font-mono uppercase text-emerald-500 mb-2">En ligne maintenant</p>
+          <div className="flex flex-wrap gap-1.5">
+            {online.map(m => (
+              <span key={m.user_id} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center gap-1">
+                <Circle className="w-1.5 h-1.5 fill-emerald-500" />
+                {m.first_name}
+                {m.active_tab && <span className="text-emerald-400/70">· {TAB_LABELS[m.active_tab] || m.active_tab}</span>}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {expanded === "offline" && offline.length > 0 && (
+        <div className="border border-border rounded-lg p-3 bg-muted/10">
+          <p className="text-[10px] font-mono uppercase text-muted-foreground mb-2">Hors ligne</p>
+          <div className="flex flex-wrap gap-1.5">
+            {offline.slice(0, 20).map(m => (
+              <span key={m.user_id} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                {m.first_name}
+              </span>
+            ))}
+            {offline.length > 20 && <span className="text-[10px] text-muted-foreground">+{offline.length - 20} autres</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const EarlyAccessCRM = () => {
   const [members, setMembers] = useState<EACrmMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +240,7 @@ export const EarlyAccessCRM = () => {
   const [resetting, setResetting] = useState<string | null>(null);
   const [resending, setResending] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortAsc, setSortAsc] = useState(false); // false = newest first
+  const [sortAsc, setSortAsc] = useState(false);
   const [filters, setFilters] = useState<Record<FilterKey, string>>({
     connection: "all",
     type: "all",
@@ -103,7 +250,6 @@ export const EarlyAccessCRM = () => {
   const { toast } = useToast();
   const selectedMemberRef = useRef<EACrmMember | null>(null);
 
-  // Keep ref in sync
   useEffect(() => {
     selectedMemberRef.current = selectedMember;
   }, [selectedMember]);
@@ -202,13 +348,10 @@ export const EarlyAccessCRM = () => {
 
     setMembers(membersList);
 
-    // Update selected member if popup is open (preserve popup state)
     const currentSelected = selectedMemberRef.current;
     if (currentSelected) {
       const updated = membersList.find(m => m.request_id === currentSelected.request_id);
-      if (updated) {
-        setSelectedMember(updated);
-      }
+      if (updated) setSelectedMember(updated);
     }
 
     if (!isRefresh) setLoading(false);
@@ -301,7 +444,6 @@ export const EarlyAccessCRM = () => {
       if (filters.expiration === "active") list = list.filter(m => !m.expires_at || new Date(m.expires_at).getTime() > now);
     }
 
-    // Sort by date
     list = [...list].sort((a, b) => {
       const dateA = new Date(a.request_created_at).getTime();
       const dateB = new Date(b.request_created_at).getTime();
@@ -310,6 +452,20 @@ export const EarlyAccessCRM = () => {
 
     return list;
   }, [members, searchQuery, filters, sortAsc]);
+
+  // ── Helpers for pipeline ──
+  const getConnectionStatus = (m: EACrmMember) => {
+    if (m.is_online) return "online";
+    if (m.session_count === 0) return "never";
+    return "offline";
+  };
+
+  const getStatusBadge = (m: EACrmMember) => {
+    const s = getConnectionStatus(m);
+    if (s === "online") return { label: "En ligne", cls: "bg-emerald-500/20 text-emerald-500" };
+    if (s === "never") return { label: "Jamais connecté", cls: "bg-destructive/20 text-destructive" };
+    return { label: "Hors ligne", cls: "bg-muted text-muted-foreground" };
+  };
 
   if (loading) {
     return (
@@ -320,7 +476,11 @@ export const EarlyAccessCRM = () => {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* ═══ DASHBOARD ═══ */}
+      <DashboardStats members={members} />
+
+      {/* ═══ CRM HEADER ═══ */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Activity className="w-4 h-4 text-primary" />
@@ -432,32 +592,16 @@ export const EarlyAccessCRM = () => {
                     <span className={m.execution_count > 0 ? "text-emerald-500" : "text-muted-foreground"}>{m.execution_count}</span>
                   </td>
                   <td className="px-3 py-2 text-center" onClick={e => e.stopPropagation()}>
-                    <Checkbox
-                      checked={m.contacted}
-                      onCheckedChange={(v) => updateRequestField(m.request_id, "contacted", !!v)}
-                      className="mx-auto"
-                    />
+                    <Checkbox checked={m.contacted} onCheckedChange={(v) => updateRequestField(m.request_id, "contacted", !!v)} className="mx-auto" />
                   </td>
                   <td className="px-3 py-2 text-center" onClick={e => e.stopPropagation()}>
-                    <Checkbox
-                      checked={m.form_submitted}
-                      onCheckedChange={(v) => updateRequestField(m.request_id, "form_submitted", !!v)}
-                      className="mx-auto"
-                    />
+                    <Checkbox checked={m.form_submitted} onCheckedChange={(v) => updateRequestField(m.request_id, "form_submitted", !!v)} className="mx-auto" />
                   </td>
                   <td className="px-3 py-2 text-center" onClick={e => e.stopPropagation()}>
-                    <Checkbox
-                      checked={m.call_booked}
-                      onCheckedChange={(v) => updateRequestField(m.request_id, "call_booked", !!v)}
-                      className="mx-auto"
-                    />
+                    <Checkbox checked={m.call_booked} onCheckedChange={(v) => updateRequestField(m.request_id, "call_booked", !!v)} className="mx-auto" />
                   </td>
                   <td className="px-3 py-2 text-center" onClick={e => e.stopPropagation()}>
-                    <Checkbox
-                      checked={m.call_done}
-                      onCheckedChange={(v) => updateRequestField(m.request_id, "call_done", !!v)}
-                      className="mx-auto"
-                    />
+                    <Checkbox checked={m.call_done} onCheckedChange={(v) => updateRequestField(m.request_id, "call_done", !!v)} className="mx-auto" />
                   </td>
                   <td className="px-3 py-2 text-right" onClick={e => e.stopPropagation()}>
                     <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setSelectedMember(m)}>
@@ -471,43 +615,79 @@ export const EarlyAccessCRM = () => {
         </div>
       </div>
 
-      {/* Profile Detail Popup */}
+      {/* ═══ Profile Detail Popup ═══ */}
       {selectedMember && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setSelectedMember(null)}>
           <div className="relative w-full max-w-lg mx-4 bg-card border border-border rounded-xl shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="h-1 bg-gradient-to-r from-primary via-amber-500 to-primary" />
             
-            {/* Header */}
-            <div className="p-5 pb-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="w-5 h-5 text-primary" />
+            {/* ── Header (like reference screenshot) ── */}
+            <div className="p-5 pb-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
+                      {selectedMember.first_name.charAt(0).toUpperCase()}
+                    </div>
+                    <Circle className={cn("w-3 h-3 absolute -bottom-0.5 -right-0.5", selectedMember.is_online ? "text-emerald-500 fill-emerald-500" : "text-muted-foreground/40 fill-muted-foreground/20")} />
                   </div>
-                  <Circle className={cn("w-3 h-3 absolute -bottom-0.5 -right-0.5", selectedMember.is_online ? "text-emerald-500 fill-emerald-500" : "text-muted-foreground/40 fill-muted-foreground/20")} />
+                  <div className="space-y-1">
+                    <h3 className="text-base font-semibold text-foreground">{selectedMember.first_name}</h3>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Mail className="w-3 h-3" />
+                      <span>{selectedMember.email}</span>
+                      <CopyBtn text={selectedMember.email} />
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Phone className="w-3 h-3" />
+                      <span>{selectedMember.phone}</span>
+                      <CopyBtn text={selectedMember.phone} />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-semibold text-foreground">{selectedMember.first_name}</h3>
-                  <div className="flex items-center gap-2">
-                    <span className={cn("text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-full", selectedMember.early_access_type === "precall" ? "bg-amber-500/20 text-amber-500" : "bg-emerald-500/20 text-emerald-500")}>
-                      {selectedMember.early_access_type === "precall" ? "Pré-call" : "Post-call"}
-                    </span>
-                    <span className={cn("text-[10px] font-mono px-1.5 py-0.5 rounded-full", selectedMember.is_online ? "bg-emerald-500/20 text-emerald-500" : "bg-muted text-muted-foreground")}>
-                      {selectedMember.is_online ? "● En ligne" : "○ Hors ligne"}
-                    </span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const badge = getStatusBadge(selectedMember);
+                    return <span className={cn("text-[10px] font-mono px-2 py-1 rounded-full", badge.cls)}>{badge.label}</span>;
+                  })()}
+                  <button onClick={() => setSelectedMember(null)} className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground">
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-              <button onClick={() => setSelectedMember(null)} className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+
+            {/* ── Pipeline Timeline ── */}
+            <div className="px-5 pb-3">
+              <div className="flex items-start">
+                <PipelineStep
+                  label="Approbation"
+                  done={!!selectedMember.approved_at}
+                  date={selectedMember.approved_at}
+                />
+                <PipelineStep
+                  label="Setting"
+                  done={selectedMember.contacted}
+                />
+                <PipelineStep
+                  label="Connexion"
+                  done={selectedMember.session_count > 0}
+                  date={selectedMember.first_login}
+                />
+                {/* Conditional last step */}
+                {selectedMember.call_done ? (
+                  <PipelineStep label="Payé" done={false} isLast />
+                ) : selectedMember.call_booked ? (
+                  <PipelineStep label="Call fait" done={selectedMember.call_done} isLast />
+                ) : selectedMember.form_submitted ? (
+                  <PipelineStep label="Call" done={selectedMember.call_booked} isLast />
+                ) : (
+                  <PipelineStep label="Formulaire" done={selectedMember.form_submitted} isLast />
+                )}
+              </div>
             </div>
 
             <div className="px-5 pb-5 space-y-4">
-              {/* Coordonnées */}
-              <Section title="Coordonnées" icon={<Mail className="w-3.5 h-3.5" />}>
-                <Info icon={<Mail className="w-3 h-3" />} label="Email" value={selectedMember.email} />
-                <Info icon={<Phone className="w-3 h-3" />} label="Téléphone" value={selectedMember.phone} />
-              </Section>
-
               {/* Chronologie */}
               <Section title="Chronologie" icon={<CalendarDays className="w-3.5 h-3.5" />}>
                 <Info icon={<CalendarDays className="w-3 h-3" />} label="Soumission" value={fmt(selectedMember.request_created_at)} />
