@@ -12,6 +12,7 @@ interface ResultItem {
   sort_order: number;
   created_at: string;
   result_type: string | null;
+  result_date: string | null;
 }
 
 const RESULT_TYPES = [
@@ -42,11 +43,17 @@ export const ResultsPage = ({ isAdmin = false }: { isAdmin?: boolean }) => {
       const { data } = await supabase
         .from("results")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("result_date", { ascending: false, nullsFirst: false });
       
       if (data) {
-        setResults(data as ResultItem[]);
-        const paths = data.map((r: any) => r.image_path).filter(Boolean);
+        // Secondary sort: for same result_date, sort by created_at desc
+        const sorted = (data as ResultItem[]).sort((a, b) => {
+          const dateA = a.result_date || a.created_at;
+          const dateB = b.result_date || b.created_at;
+          return new Date(dateB).getTime() - new Date(dateA).getTime();
+        });
+        setResults(sorted);
+        const paths = sorted.map((r: any) => r.image_path).filter(Boolean);
         if (paths.length > 0) {
           const { data: signed } = await supabase.storage
             .from("result-screenshots")
@@ -95,7 +102,7 @@ export const ResultsPage = ({ isAdmin = false }: { isAdmin?: boolean }) => {
       <>
       <div className="p-4 md:p-6 border-b border-border">
         <h2 className="text-lg md:text-xl font-semibold text-foreground">Derniers résultats des membres</h2>
-        <p className="text-xs text-muted-foreground font-mono mt-1">Plus de 35 résultats</p>
+        <p className="text-xs text-muted-foreground font-mono mt-1">Plus de {results.length} résultats</p>
         
         {/* Category Filter */}
         <div className="flex items-center gap-1.5 mt-3 flex-wrap">
@@ -122,16 +129,36 @@ export const ResultsPage = ({ isAdmin = false }: { isAdmin?: boolean }) => {
             Aucun résultat disponible pour le moment.
           </div>
         ) : (
-          <>
-          <div className="grid grid-cols-2 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
             {filteredResults.map((result) => {
               const url = signedUrls[result.image_path];
+              const displayDate = result.result_date 
+                ? formatLiteralDate(result.result_date) 
+                : formatLiteralDate(result.created_at);
               return (
                 <button
                   key={result.id}
                   onClick={() => url && setLightboxUrl(url)}
-                  className="relative border border-border rounded-md overflow-hidden bg-card hover:border-foreground/30 transition-all group result-glow-card"
+                  className="relative border border-border rounded-lg overflow-hidden bg-card hover:border-foreground/30 transition-all group text-left"
                 >
+                  {/* Title + Date on TOP */}
+                  <div className="p-2.5 md:p-3 space-y-0.5">
+                    {result.title && (
+                      <p className="text-sm md:text-base font-semibold text-foreground leading-tight drop-shadow-[0_0_6px_hsl(var(--primary)/0.4)]">
+                        {result.title}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <p className="text-[10px] md:text-xs text-muted-foreground font-mono">{displayDate}</p>
+                      {result.result_type && result.result_type !== "trade" && (
+                        <span className="px-1.5 py-0.5 text-[8px] font-mono uppercase bg-primary/15 text-primary rounded">
+                          {RESULT_TYPES.find(t => t.value === result.result_type)?.label || result.result_type}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Screenshot */}
                   <div className="aspect-video bg-muted relative">
                     {url ? (
                       <img src={url} alt={result.title || "Résultat"} className="w-full h-full object-cover" />
@@ -140,32 +167,11 @@ export const ResultsPage = ({ isAdmin = false }: { isAdmin?: boolean }) => {
                         <div className="w-4 h-4 border border-foreground border-t-transparent rounded-full animate-spin" />
                       </div>
                     )}
-                    {result.result_type && result.result_type !== "trade" && (
-                      <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[8px] font-mono uppercase bg-black/60 backdrop-blur-sm text-white rounded">
-                        {RESULT_TYPES.find(t => t.value === result.result_type)?.label || result.result_type}
-                      </span>
-                    )}
                   </div>
-                  {result.title && (
-                    <div className="p-2">
-                      <p className="text-[10px] font-mono text-muted-foreground truncate">{result.title}</p>
-                    </div>
-                  )}
                 </button>
               );
             })}
           </div>
-
-          <div className="flex justify-center mt-6">
-            <button
-              disabled
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-muted/50 text-muted-foreground text-xs font-mono uppercase cursor-not-allowed opacity-60"
-            >
-              <span className="w-5 h-5 rounded-full border border-muted-foreground/40 flex items-center justify-center text-sm leading-none">+</span>
-              Accéder à plus de résultats — bientôt disponible
-            </button>
-          </div>
-          </>
         )}
       </div>
 
