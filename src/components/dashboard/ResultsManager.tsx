@@ -87,7 +87,7 @@ export const ResultsManager = () => {
         : title.trim() || null;
       const { error } = await supabase
         .from("results")
-        .update({ title: finalTitle, result_type: resultType })
+        .update({ title: finalTitle, result_type: resultType, result_date: resultDate || null } as any)
         .eq("id", editing.id);
       if (error) {
         toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -121,7 +121,8 @@ export const ResultsManager = () => {
         image_path: path,
         sort_order: results.length,
         result_type: resultType,
-      });
+        result_date: resultDate || null,
+      } as any);
 
       if (error) {
         toast({ title: "Erreur", description: error.message, variant: "destructive" });

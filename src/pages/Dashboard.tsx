@@ -32,6 +32,7 @@ import { EarlyAccessManagement } from "@/components/dashboard/EarlyAccessManagem
 import { CycleReportPopup } from "@/components/dashboard/CycleReportPopup";
 import { EarlyAccessLoginPopup } from "@/components/dashboard/EarlyAccessLoginPopup";
 import { EAPendingPopup } from "@/components/dashboard/EAPendingPopup";
+import { ResultNotificationPopup } from "@/components/dashboard/ResultNotificationPopup";
 interface Trade {
   id: string;
   trade_number: number;
@@ -414,6 +415,7 @@ const Dashboard = () => {
       
       {/* Early Access Login Popup */}
       <EarlyAccessLoginPopup />
+      <ResultNotificationPopup onNavigateToResults={() => setActiveTab("results")} />
     </div>
     </div>
   );
