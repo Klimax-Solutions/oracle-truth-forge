@@ -14,23 +14,42 @@ const ResetPassword = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [recoveryReady, setRecoveryReady] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if we have a valid session from the reset link
+    // Listen for the PASSWORD_RECOVERY event from the reset link
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        // User arrived via reset link — ready to set new password
+        setRecoveryReady(true);
+      }
+    });
+
+    // Also check if there's already a session (user may have already been authenticated by the link)
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast({
-          title: "Lien invalide",
-          description: "Le lien de réinitialisation est invalide ou a expiré.",
-          variant: "destructive",
-        });
-        navigate("/auth");
+      if (session) {
+        setRecoveryReady(true);
+      } else {
+        // Wait a moment for the auth state change to fire
+        setTimeout(async () => {
+          const { data: { session: s } } = await supabase.auth.getSession();
+          if (!s && !recoveryReady) {
+            toast({
+              title: "Lien invalide",
+              description: "Le lien de réinitialisation est invalide ou a expiré.",
+              variant: "destructive",
+            });
+            navigate("/auth");
+          }
+        }, 3000);
       }
     };
     checkSession();
+
+    return () => subscription.unsubscribe();
   }, [navigate, toast]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
