@@ -93,6 +93,42 @@ Deno.serve(async (req) => {
     if (fetchErr || !eaReq) throw new Error("Demande introuvable");
     if (eaReq.status !== "en_attente") throw new Error("Demande déjà traitée");
 
+    // ── Duplicate check: email & phone ──
+    const { data: dupEmail } = await supabaseAdmin
+      .from("early_access_requests")
+      .select("id, first_name, status")
+      .eq("status", "approuvée")
+      .ilike("email", eaReq.email.trim())
+      .neq("id", requestId)
+      .limit(1);
+
+    if (dupEmail && dupEmail.length > 0) {
+      // Auto-reject the duplicate and mark the old one as canonical
+      await supabaseAdmin
+        .from("early_access_requests")
+        .update({ status: "doublon", reviewed_at: new Date().toISOString() })
+        .eq("id", requestId);
+      throw new Error(`Doublon email détecté — ${eaReq.email} déjà approuvé (${dupEmail[0].first_name})`);
+    }
+
+    const phoneClean = eaReq.phone.replace(/\s+/g, "");
+    const { data: allApproved } = await supabaseAdmin
+      .from("early_access_requests")
+      .select("id, first_name, phone")
+      .eq("status", "approuvée")
+      .neq("id", requestId);
+
+    const dupPhone = (allApproved || []).find(
+      (r: any) => r.phone.replace(/\s+/g, "") === phoneClean
+    );
+    if (dupPhone) {
+      await supabaseAdmin
+        .from("early_access_requests")
+        .update({ status: "doublon", reviewed_at: new Date().toISOString() })
+        .eq("id", requestId);
+      throw new Error(`Doublon téléphone détecté — ${phoneClean} déjà approuvé (${dupPhone.first_name})`);
+    }
+
     // Try to create user, or find existing one
     let userId: string;
     const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({

@@ -241,25 +241,6 @@ export const EarlyAccessCRM = () => {
       eaRolesByUserId.set(r.user_id, r);
     }
 
-    // Build email -> user_id map from auth profiles + ea roles
-    const emailToUserId = new Map<string, string>();
-    for (const p of (profiles as any[] || [])) {
-      // We only care about users who currently have the early_access role
-      if (eaRolesByUserId.has(p.user_id)) {
-        // Try to find email from requests themselves
-        const matchingReq = (approvedRequests as any[]).find(
-          (r: any) => {
-            const profileName = (p.first_name || p.display_name || "").toLowerCase().trim();
-            const reqName = (r.first_name || "").toLowerCase().trim();
-            return profileName === reqName;
-          }
-        );
-        if (matchingReq) {
-          emailToUserId.set(matchingReq.email.toLowerCase().trim(), p.user_id);
-        }
-      }
-    }
-
     // Deduplicate: keep only 1 request per email (the most recent approved one)
     const seenEmails = new Set<string>();
     const seenUserIds = new Set<string>();
@@ -270,13 +251,13 @@ export const EarlyAccessCRM = () => {
       if (seenEmails.has(emailKey)) continue;
       seenEmails.add(emailKey);
 
-      // Try to match to a user with early_access role
-      let matchedUserId = emailToUserId.get(emailKey) || null;
+      // Match by user_id stored on the request (primary), fallback to name matching
+      let matchedUserId: string | null = req.user_id || null;
 
-      // If no match by email-name, try unmatched EA roles
+      // Fallback: match by profile name if user_id not set on request
       if (!matchedUserId) {
         for (const [uid] of eaRolesByUserId) {
-          if (!seenUserIds.has(uid) && !Array.from(emailToUserId.values()).includes(uid)) {
+          if (!seenUserIds.has(uid)) {
             const profile = (profiles as any[])?.find((p: any) => p.user_id === uid);
             const profileName = (profile?.first_name || profile?.display_name || "").toLowerCase().trim();
             const reqName = (req.first_name || "").toLowerCase().trim();
@@ -288,13 +269,13 @@ export const EarlyAccessCRM = () => {
         }
       }
 
-      // CRITICAL: Only include members who STILL have the early_access role
+      // Only include members who STILL have the early_access role
       if (matchedUserId && !eaRolesByUserId.has(matchedUserId)) continue;
       if (matchedUserId) {
         if (seenUserIds.has(matchedUserId)) continue;
         seenUserIds.add(matchedUserId);
       } else {
-        // No matching user with EA role -> skip (user lost EA or was never matched)
+        // No matching user with EA role -> skip
         continue;
       }
 
