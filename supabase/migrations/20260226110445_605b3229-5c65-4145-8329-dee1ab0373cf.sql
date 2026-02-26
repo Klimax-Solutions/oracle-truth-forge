@@ -1,0 +1,1 @@
+UPDATE profiles SET status = 'active', frozen_at = NULL, frozen_by = NULL, status_reason = NULL WHERE user_id = 'd4a7fb4d-4b19-4a5c-9f7c-0b57a23c5221'
