@@ -52,6 +52,7 @@ export const ResultsManager = () => {
     const { data } = await supabase
       .from("results")
       .select("*")
+      .order("result_date", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
     if (data) {
       setResults(data as ResultItem[]);
