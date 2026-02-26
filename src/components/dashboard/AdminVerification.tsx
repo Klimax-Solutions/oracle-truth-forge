@@ -1277,11 +1277,10 @@ export const AdminVerification = () => {
                                                   ? "bg-emerald-500/30 text-emerald-400"
                                                   : "hover:bg-emerald-500/20 text-muted-foreground hover:text-emerald-400"
                                               )}
-                                              onClick={(e) => {
+                                            onClick={(e) => {
                                                 e.stopPropagation();
                                                 if (status !== "validated") {
-                                                  handleCycleStatusChange(user.id, cycle, userCycle, "pending_review");
-                                                  // Force to validated (next after pending_review is validated)
+                                                  handleCycleStatusChangeDirectly(user.id, cycle, userCycle, "validated");
                                                 }
                                               }}
                                               disabled={status === "validated"}
