@@ -87,9 +87,7 @@ export const ResultsManager = () => {
 
   const handleSave = async () => {
     if (editing) {
-      const finalTitle = resultDate 
-        ? `${formatLiteralDate(resultDate)}${title.trim() ? ` — ${title.trim()}` : ""}`
-        : title.trim() || null;
+      const finalTitle = title.trim() || null;
       const { error } = await supabase
         .from("results")
         .update({ title: finalTitle, result_type: resultType, result_date: resultDate || null } as any)
@@ -118,9 +116,7 @@ export const ResultsManager = () => {
         return;
       }
 
-      const finalTitle = resultDate 
-        ? `${formatLiteralDate(resultDate)}${title.trim() ? ` — ${title.trim()}` : ""}`
-        : title.trim() || null;
+      const finalTitle = title.trim() || null;
       const { error } = await supabase.from("results").insert({
         title: finalTitle,
         image_path: path,
