@@ -305,6 +305,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
+          user_id: string | null
         }
         Insert: {
           call_booked?: boolean
@@ -320,6 +321,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+          user_id?: string | null
         }
         Update: {
           call_booked?: boolean
@@ -335,6 +337,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+          user_id?: string | null
         }
         Relationships: []
       }
