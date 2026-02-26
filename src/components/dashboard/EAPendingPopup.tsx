@@ -47,14 +47,17 @@ export const EAPendingPopup = ({ onNavigateToEA }: EAPendingPopupProps) => {
 
   return (
     <div className={cn(
-      "fixed inset-0 z-[101] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300",
+      "fixed inset-0 z-[101] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300 overflow-y-auto p-4",
       animateIn ? "opacity-100" : "opacity-0"
-    )}>
-      {/* Offset to the right so it doesn't overlap with verification popup */}
+    )}
+      onClick={() => setDismissed(true)}
+    >
       <div className={cn(
-        "relative w-full max-w-md mx-4 ml-auto mr-8 bg-card border border-border rounded-xl shadow-2xl overflow-hidden transition-all duration-500",
+        "relative w-full max-w-md bg-card border border-border rounded-xl shadow-2xl overflow-hidden transition-all duration-500",
         animateIn ? "scale-100 translate-y-0" : "scale-95 translate-y-4"
-      )}>
+      )}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="h-1 bg-gradient-to-r from-amber-500 via-primary to-amber-500 animate-pulse" />
 
         <div className="p-5 pb-3">

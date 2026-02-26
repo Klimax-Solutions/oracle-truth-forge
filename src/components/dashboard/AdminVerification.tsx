@@ -87,6 +87,7 @@ interface UserCycle {
   total_rr: number;
   completed_at: string | null;
   admin_feedback: string | null;
+  started_at: string | null;
 }
 
 interface Cycle {
@@ -863,6 +864,78 @@ export const AdminVerification = () => {
       default: return status;
     }
   };
+  const CYCLE_STATUSES = ["locked", "in_progress", "pending_review", "validated", "rejected"] as const;
+
+  const handleCycleStatusChange = async (
+    userId: string,
+    cycle: Cycle,
+    userCycle: UserCycle | undefined,
+    currentStatus: string
+  ) => {
+    // Cycle through statuses: locked → in_progress → pending_review → validated → rejected → locked
+    const currentIdx = CYCLE_STATUSES.indexOf(currentStatus as any);
+    const nextIdx = (currentIdx + 1) % CYCLE_STATUSES.length;
+    const newStatus = CYCLE_STATUSES[nextIdx];
+
+    if (!userCycle) {
+      toast({
+        title: "Erreur",
+        description: "Ce cycle n'est pas encore initialisé pour cet utilisateur.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const updateData: any = { status: newStatus };
+      if (newStatus === "validated") {
+        updateData.verified_at = new Date().toISOString();
+        updateData.completed_at = new Date().toISOString();
+      }
+      if (newStatus === "in_progress" && !userCycle.started_at) {
+        updateData.started_at = new Date().toISOString();
+      }
+      if (newStatus === "rejected" || newStatus === "locked" || newStatus === "in_progress") {
+        updateData.verified_at = null;
+        updateData.completed_at = null;
+      }
+
+      const { error } = await supabase
+        .from("user_cycles")
+        .update(updateData)
+        .eq("id", userCycle.id);
+
+      if (error) throw error;
+
+      // Also update the corresponding verification_request if exists
+      if (newStatus === "validated" || newStatus === "rejected") {
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase
+          .from("verification_requests")
+          .update({
+            status: newStatus === "validated" ? "approved" : "rejected",
+            reviewed_at: new Date().toISOString(),
+            reviewed_by: user?.id,
+          })
+          .eq("user_cycle_id", userCycle.id)
+          .eq("status", "pending");
+      }
+
+      toast({
+        title: "Statut modifié",
+        description: `${cycle.name} → ${getStatusLabel(newStatus)}`,
+      });
+
+      fetchUsers();
+      fetchRequests();
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de modifier le statut.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getUserProgressPercentage = (user: PlatformUser) => {
     const validatedCycles = user.userCycles.filter(uc => uc.status === "validated").length;
@@ -1098,6 +1171,7 @@ export const AdminVerification = () => {
                             <div>
                               <p className="text-[10px] md:text-xs font-mono uppercase text-muted-foreground mb-2 md:mb-3">
                                 Détail des cycles
+                                <span className="ml-2 text-[9px] text-primary">(cliquer pour modifier)</span>
                               </p>
                               <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-1.5 md:gap-2">
                               {cycles.map((cycle) => {
@@ -1108,13 +1182,17 @@ export const AdminVerification = () => {
                                   <div
                                     key={cycle.id}
                                     className={cn(
-                                      "p-3 border rounded-md text-center",
-                                      status === "locked" && "bg-muted/30 border-border/50 opacity-50",
+                                      "p-3 border rounded-md text-center cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all relative group",
+                                      status === "locked" && "bg-muted/30 border-border/50 opacity-50 hover:opacity-80",
                                       status === "in_progress" && "bg-blue-500/10 border-blue-500/40",
                                       status === "pending_review" && "bg-orange-500/10 border-orange-500/40",
                                       status === "validated" && "bg-emerald-500/10 border-emerald-500/40",
                                       status === "rejected" && "bg-red-500/10 border-red-500/40"
                                     )}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCycleStatusChange(user.id, cycle, userCycle, status);
+                                    }}
                                   >
                                     <div className="flex items-center justify-center mb-1">
                                       {getStatusIcon(status)}
