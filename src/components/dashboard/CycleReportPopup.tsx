@@ -68,12 +68,15 @@ export const CycleReportPopup = () => {
   const lines = current.message.split("\n").filter(Boolean);
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[300] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto p-4"
+      onClick={handleDismiss}
+    >
       <div
         className={cn(
-          "w-full max-w-lg mx-4 rounded-lg border shadow-2xl overflow-hidden",
+          "w-full max-w-lg rounded-lg border shadow-2xl overflow-hidden",
           isValidated ? "border-emerald-500/40 bg-card" : "border-red-500/40 bg-card"
         )}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className={cn(
