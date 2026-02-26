@@ -217,7 +217,7 @@ export const ResultsManager = () => {
                   )}
                 </div>
                 <p className="text-[10px] text-muted-foreground truncate mt-0.5">
-                  {formatLiteralDate(item.created_at)}
+                  {formatLiteralDate(item.result_date || item.created_at)}
                 </p>
               </div>
 
