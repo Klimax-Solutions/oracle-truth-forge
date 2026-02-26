@@ -118,13 +118,17 @@ export const AdminVerificationPopup = ({ onNavigateToAdmin }: AdminVerificationP
 
   return (
     <div className={cn(
-      "fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300",
+      "fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300 overflow-y-auto p-4",
       animateIn ? "opacity-100" : "opacity-0"
-    )}>
+    )}
+      onClick={() => setDismissed(true)}
+    >
       <div className={cn(
-        "relative w-full max-w-md mx-4 bg-card border border-border rounded-xl shadow-2xl overflow-hidden transition-all duration-500",
+        "relative w-full max-w-md bg-card border border-border rounded-xl shadow-2xl overflow-hidden transition-all duration-500",
         animateIn ? "scale-100 translate-y-0" : "scale-95 translate-y-4"
-      )}>
+      )}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Animated top bar */}
         <div className="h-1 bg-gradient-to-r from-orange-500 via-primary to-orange-500 animate-pulse" />
 
