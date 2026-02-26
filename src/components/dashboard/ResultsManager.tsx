@@ -224,7 +224,8 @@ export const ResultsManager = () => {
               <div className="flex items-center gap-1 flex-shrink-0">
                 <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => { 
                   setEditing(item); 
-                  setTitle(item.title || ""); 
+                  setTitle(stripLegacyDatePrefix(item.title || ""));
+                  setResultDate(item.result_date || "");
                   setResultType(item.result_type || "trade");
                   setDialogOpen(true); 
                 }}>
