@@ -864,6 +864,64 @@ export const AdminVerification = () => {
       default: return status;
     }
   };
+  const handleCycleStatusChangeDirectly = async (
+    userId: string,
+    cycle: Cycle,
+    userCycle: UserCycle | undefined,
+    targetStatus: string
+  ) => {
+    if (!userCycle) {
+      toast({ title: "Erreur", description: "Cycle non initialisé.", variant: "destructive" });
+      return;
+    }
+    try {
+      const updateData: any = { status: targetStatus };
+      if (targetStatus === "validated") {
+        updateData.verified_at = new Date().toISOString();
+        updateData.completed_at = new Date().toISOString();
+      }
+      if (targetStatus === "rejected" || targetStatus === "locked" || targetStatus === "in_progress") {
+        updateData.verified_at = null;
+        updateData.completed_at = null;
+      }
+      if (targetStatus === "in_progress" && !userCycle.started_at) {
+        updateData.started_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from("user_cycles")
+        .update(updateData)
+        .eq("id", userCycle.id);
+      if (error) throw error;
+
+      if (targetStatus === "validated" || targetStatus === "rejected") {
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase
+          .from("verification_requests")
+          .update({
+            status: targetStatus === "validated" ? "approved" : "rejected",
+            reviewed_at: new Date().toISOString(),
+            reviewed_by: user?.id,
+          })
+          .eq("user_cycle_id", userCycle.id)
+          .eq("status", "pending");
+
+        if (targetStatus === "validated") {
+          await supabase.rpc("unlock_next_cycle", {
+            p_user_id: userId,
+            p_current_cycle_number: cycle.cycle_number,
+          });
+        }
+      }
+
+      toast({ title: "Statut modifié", description: `${cycle.name} → ${getStatusLabel(targetStatus)}` });
+      fetchUsers();
+      fetchRequests();
+    } catch (error: any) {
+      toast({ title: "Erreur", description: error.message || "Impossible de modifier le statut.", variant: "destructive" });
+    }
+  };
+
   const CYCLE_STATUSES = ["locked", "in_progress", "pending_review", "validated", "rejected"] as const;
 
   const handleCycleStatusChange = async (
@@ -1182,17 +1240,13 @@ export const AdminVerification = () => {
                                   <div
                                     key={cycle.id}
                                     className={cn(
-                                      "p-3 border rounded-md text-center cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all relative group",
-                                      status === "locked" && "bg-muted/30 border-border/50 opacity-50 hover:opacity-80",
+                                      "p-3 border rounded-md text-center relative group",
+                                      status === "locked" && "bg-muted/30 border-border/50 opacity-50",
                                       status === "in_progress" && "bg-blue-500/10 border-blue-500/40",
                                       status === "pending_review" && "bg-orange-500/10 border-orange-500/40",
                                       status === "validated" && "bg-emerald-500/10 border-emerald-500/40",
                                       status === "rejected" && "bg-red-500/10 border-red-500/40"
                                     )}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCycleStatusChange(user.id, cycle, userCycle, status);
-                                    }}
                                   >
                                     <div className="flex items-center justify-center mb-1">
                                       {getStatusIcon(status)}
@@ -1210,6 +1264,55 @@ export const AdminVerification = () => {
                                       )}>
                                         {(userCycle.total_rr || 0) >= 0 ? "+" : ""}{(userCycle.total_rr || 0).toFixed(0)}
                                       </p>
+                                    )}
+                                    {/* Buttons to validate/reject - only for non-locked cycles with a userCycle */}
+                                    {userCycle && status !== "locked" && (
+                                      <div className="flex gap-0.5 mt-1.5 justify-center">
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <button
+                                              className={cn(
+                                                "p-0.5 rounded transition-colors",
+                                                status === "validated"
+                                                  ? "bg-emerald-500/30 text-emerald-400"
+                                                  : "hover:bg-emerald-500/20 text-muted-foreground hover:text-emerald-400"
+                                              )}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (status !== "validated") {
+                                                  handleCycleStatusChangeDirectly(user.id, cycle, userCycle, "validated");
+                                                }
+                                              }}
+                                              disabled={status === "validated"}
+                                            >
+                                              <CheckCircle className="w-3 h-3" />
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent side="top" className="text-[10px]">Valider ce cycle</TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <button
+                                              className={cn(
+                                                "p-0.5 rounded transition-colors",
+                                                status === "rejected"
+                                                  ? "bg-red-500/30 text-red-400"
+                                                  : "hover:bg-red-500/20 text-muted-foreground hover:text-red-400"
+                                              )}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (status !== "rejected") {
+                                                  handleCycleStatusChangeDirectly(user.id, cycle, userCycle, "rejected");
+                                                }
+                                              }}
+                                              disabled={status === "rejected"}
+                                            >
+                                              <XCircle className="w-3 h-3" />
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent side="top" className="text-[10px]">Refuser ce cycle</TooltipContent>
+                                        </Tooltip>
+                                      </div>
                                     )}
                                   </div>
                                 );
