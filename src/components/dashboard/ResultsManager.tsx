@@ -16,6 +16,7 @@ interface ResultItem {
   sort_order: number;
   created_at: string;
   result_type: string | null;
+  result_date: string | null;
 }
 
 const RESULT_TYPES = [
@@ -31,6 +32,9 @@ const formatLiteralDate = (dateStr: string) => {
   const d = new Date(dateStr);
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 };
+
+const stripLegacyDatePrefix = (value: string) =>
+  value.replace(/^\d{1,2}\s+[\p{L}]+\s+\d{4}\s+—\s+/u, "").trim();
 
 export const ResultsManager = () => {
   const [results, setResults] = useState<ResultItem[]>([]);
