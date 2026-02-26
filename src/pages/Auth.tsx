@@ -124,7 +124,7 @@ const Auth = () => {
           const knownFingerprints = (existingSessions || []).map(s => (s as any).device_fingerprint).filter(Boolean);
           const isNewDevice = !knownFingerprints.includes(deviceFingerprint);
           
-          if (isNewDevice && knownFingerprints.length >= 3) {
+          if (isNewDevice && knownFingerprints.length >= 5) {
             // 3rd device detected — freeze account + create security alert
             await supabase
               .from("profiles")
