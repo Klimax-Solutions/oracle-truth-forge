@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+
 
 interface ResultItem {
   id: string;
@@ -16,6 +16,7 @@ interface ResultItem {
   sort_order: number;
   created_at: string;
   result_type: string | null;
+  result_date: string | null;
 }
 
 const RESULT_TYPES = [
@@ -31,6 +32,9 @@ const formatLiteralDate = (dateStr: string) => {
   const d = new Date(dateStr);
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 };
+
+const stripLegacyDatePrefix = (value: string) =>
+  value.replace(/^\d{1,2}\s+[\p{L}]+\s+\d{4}\s+—\s+/u, "").trim();
 
 export const ResultsManager = () => {
   const [results, setResults] = useState<ResultItem[]>([]);
@@ -48,6 +52,7 @@ export const ResultsManager = () => {
     const { data } = await supabase
       .from("results")
       .select("*")
+      .order("result_date", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
     if (data) {
       setResults(data as ResultItem[]);
@@ -82,9 +87,7 @@ export const ResultsManager = () => {
 
   const handleSave = async () => {
     if (editing) {
-      const finalTitle = resultDate 
-        ? `${formatLiteralDate(resultDate)}${title.trim() ? ` — ${title.trim()}` : ""}`
-        : title.trim() || null;
+      const finalTitle = title.trim() || null;
       const { error } = await supabase
         .from("results")
         .update({ title: finalTitle, result_type: resultType, result_date: resultDate || null } as any)
@@ -113,9 +116,7 @@ export const ResultsManager = () => {
         return;
       }
 
-      const finalTitle = resultDate 
-        ? `${formatLiteralDate(resultDate)}${title.trim() ? ` — ${title.trim()}` : ""}`
-        : title.trim() || null;
+      const finalTitle = title.trim() || null;
       const { error } = await supabase.from("results").insert({
         title: finalTitle,
         image_path: path,
@@ -216,14 +217,15 @@ export const ResultsManager = () => {
                   )}
                 </div>
                 <p className="text-[10px] text-muted-foreground truncate mt-0.5">
-                  {formatLiteralDate(item.created_at)}
+                  {formatLiteralDate(item.result_date || item.created_at)}
                 </p>
               </div>
 
               <div className="flex items-center gap-1 flex-shrink-0">
                 <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => { 
                   setEditing(item); 
-                  setTitle(item.title || ""); 
+                  setTitle(stripLegacyDatePrefix(item.title || ""));
+                  setResultDate(item.result_date || "");
                   setResultType(item.result_type || "trade");
                   setDialogOpen(true); 
                 }}>
