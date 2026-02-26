@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update request status
+    // Update request status with user_id for CRM matching
     const { data: { user: caller } } = await callerClient.auth.getUser();
     await supabaseAdmin
       .from("early_access_requests")
@@ -152,6 +152,7 @@ Deno.serve(async (req) => {
         status: "approuvée",
         reviewed_at: new Date().toISOString(),
         reviewed_by: caller?.id || null,
+        user_id: userId,
       })
       .eq("id", requestId);
 
