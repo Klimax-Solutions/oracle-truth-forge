@@ -1182,17 +1182,13 @@ export const AdminVerification = () => {
                                   <div
                                     key={cycle.id}
                                     className={cn(
-                                      "p-3 border rounded-md text-center cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all relative group",
-                                      status === "locked" && "bg-muted/30 border-border/50 opacity-50 hover:opacity-80",
+                                      "p-3 border rounded-md text-center relative group",
+                                      status === "locked" && "bg-muted/30 border-border/50 opacity-50",
                                       status === "in_progress" && "bg-blue-500/10 border-blue-500/40",
                                       status === "pending_review" && "bg-orange-500/10 border-orange-500/40",
                                       status === "validated" && "bg-emerald-500/10 border-emerald-500/40",
                                       status === "rejected" && "bg-red-500/10 border-red-500/40"
                                     )}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCycleStatusChange(user.id, cycle, userCycle, status);
-                                    }}
                                   >
                                     <div className="flex items-center justify-center mb-1">
                                       {getStatusIcon(status)}
@@ -1210,6 +1206,56 @@ export const AdminVerification = () => {
                                       )}>
                                         {(userCycle.total_rr || 0) >= 0 ? "+" : ""}{(userCycle.total_rr || 0).toFixed(0)}
                                       </p>
+                                    )}
+                                    {/* Buttons to validate/reject - only for non-locked cycles with a userCycle */}
+                                    {userCycle && status !== "locked" && (
+                                      <div className="flex gap-0.5 mt-1.5 justify-center">
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <button
+                                              className={cn(
+                                                "p-0.5 rounded transition-colors",
+                                                status === "validated"
+                                                  ? "bg-emerald-500/30 text-emerald-400"
+                                                  : "hover:bg-emerald-500/20 text-muted-foreground hover:text-emerald-400"
+                                              )}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (status !== "validated") {
+                                                  handleCycleStatusChange(user.id, cycle, userCycle, "pending_review");
+                                                  // Force to validated (next after pending_review is validated)
+                                                }
+                                              }}
+                                              disabled={status === "validated"}
+                                            >
+                                              <CheckCircle className="w-3 h-3" />
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent side="top" className="text-[10px]">Valider ce cycle</TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <button
+                                              className={cn(
+                                                "p-0.5 rounded transition-colors",
+                                                status === "rejected"
+                                                  ? "bg-red-500/30 text-red-400"
+                                                  : "hover:bg-red-500/20 text-muted-foreground hover:text-red-400"
+                                              )}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (status !== "rejected") {
+                                                  handleCycleStatusChangeDirectly(user.id, cycle, userCycle, "rejected");
+                                                }
+                                              }}
+                                              disabled={status === "rejected"}
+                                            >
+                                              <XCircle className="w-3 h-3" />
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent side="top" className="text-[10px]">Refuser ce cycle</TooltipContent>
+                                        </Tooltip>
+                                      </div>
                                     )}
                                   </div>
                                 );
