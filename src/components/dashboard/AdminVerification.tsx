@@ -1098,6 +1098,7 @@ export const AdminVerification = () => {
                             <div>
                               <p className="text-[10px] md:text-xs font-mono uppercase text-muted-foreground mb-2 md:mb-3">
                                 Détail des cycles
+                                <span className="ml-2 text-[9px] text-primary">(cliquer pour modifier)</span>
                               </p>
                               <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-1.5 md:gap-2">
                               {cycles.map((cycle) => {
@@ -1108,13 +1109,17 @@ export const AdminVerification = () => {
                                   <div
                                     key={cycle.id}
                                     className={cn(
-                                      "p-3 border rounded-md text-center",
-                                      status === "locked" && "bg-muted/30 border-border/50 opacity-50",
+                                      "p-3 border rounded-md text-center cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all relative group",
+                                      status === "locked" && "bg-muted/30 border-border/50 opacity-50 hover:opacity-80",
                                       status === "in_progress" && "bg-blue-500/10 border-blue-500/40",
                                       status === "pending_review" && "bg-orange-500/10 border-orange-500/40",
                                       status === "validated" && "bg-emerald-500/10 border-emerald-500/40",
                                       status === "rejected" && "bg-red-500/10 border-red-500/40"
                                     )}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCycleStatusChange(user.id, cycle, userCycle, status);
+                                    }}
                                   >
                                     <div className="flex items-center justify-center mb-1">
                                       {getStatusIcon(status)}
