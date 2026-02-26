@@ -87,6 +87,7 @@ interface UserCycle {
   total_rr: number;
   completed_at: string | null;
   admin_feedback: string | null;
+  started_at: string | null;
 }
 
 interface Cycle {
