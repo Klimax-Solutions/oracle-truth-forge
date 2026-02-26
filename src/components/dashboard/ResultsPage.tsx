@@ -43,15 +43,11 @@ export const ResultsPage = ({ isAdmin = false }: { isAdmin?: boolean }) => {
       const { data } = await supabase
         .from("results")
         .select("*")
-        .order("result_date", { ascending: false, nullsFirst: false });
+        .order("result_date", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
       
       if (data) {
-        // Secondary sort: for same result_date, sort by created_at desc
-        const sorted = (data as ResultItem[]).sort((a, b) => {
-          const dateA = a.result_date || a.created_at;
-          const dateB = b.result_date || b.created_at;
-          return new Date(dateB).getTime() - new Date(dateA).getTime();
-        });
+        const sorted = (data as ResultItem[]);
         setResults(sorted);
         const paths = sorted.map((r: any) => r.image_path).filter(Boolean);
         if (paths.length > 0) {
