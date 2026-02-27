@@ -343,6 +343,7 @@ const Dashboard = () => {
         isAdmin={isAdmin}
         isSuperAdmin={isSuperAdmin}
         isSetter={isSetter}
+        overrideIsEarlyAccess={simulatedRole !== "none" ? isEarlyAccess : undefined}
         dataSourceSelector={showDataSourceSelector ? (
           <DataSourceSelector value={dataSource} onChange={setDataSource} showDataGenerale={showDataGenerale} />
         ) : undefined}
