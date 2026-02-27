@@ -388,7 +388,7 @@ const Dashboard = () => {
               </div>
             )}
             <div className="flex items-center gap-3">
-              <HeaderClock timezone={timezone} />
+              <HeaderClock timezone={timezone} onTimezoneChange={setUserTimezone} />
               {showDataSourceSelector && (
                 <DataSourceSelector value={dataSource} onChange={setDataSource} showDataGenerale={showDataGenerale} />
               )}
