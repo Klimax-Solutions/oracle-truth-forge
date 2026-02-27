@@ -50,6 +50,7 @@ import { AdminUserDataViewer } from "./admin/AdminUserDataViewer";
 import { AdminTradeNotesViewer } from "./admin/AdminTradeNotesViewer";
 import { RoleManagement } from "./admin/RoleManagement";
 import { EarlyAccessRequestsTab } from "./admin/EarlyAccessRequestsTab";
+import { QuestStepManager } from "./admin/QuestStepManager";
 import { ScreenshotLink } from "./ScreenshotLink";
 import { TradeNavigationLightbox, type TradeScreenshotItem, type OracleMatch } from "./TradeNavigationLightbox";
 import { useSidebarRoles } from "./DashboardSidebar";
@@ -1057,6 +1058,10 @@ export const AdminVerification = () => {
             <TabsTrigger value="security" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
               <AlertTriangle className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Alertes Sécurité</span>
+            </TabsTrigger>
+            <TabsTrigger value="quests" className="gap-1.5 text-xs md:text-sm px-2 md:px-3">
+              <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Gestion Quêtes</span>
             </TabsTrigger>
           </TabsList>
 
@@ -2399,6 +2404,11 @@ export const AdminVerification = () => {
           {/* Roles Tab - embedded RoleManagement */}
           <TabsContent value="roles" className="flex-1 overflow-auto mt-0">
             <RoleManagement />
+          </TabsContent>
+
+          {/* Quest Management Tab */}
+          <TabsContent value="quests" className="flex-1 overflow-auto mt-0">
+            <QuestStepManager />
           </TabsContent>
         </Tabs>
       </div>
