@@ -80,7 +80,23 @@ export const DailyQuestCard = ({
     executionsByDate,
     onboardingComplete,
     setFxReplayFlag,
+    currentCycleNumber,
   } = questData;
+
+  // Determine quest phase for video
+  const questPhaseRole = useMemo(() => {
+    if (isEarlyAccess) return isPrecall ? "early_access_precall" : "early_access_postcall";
+    return "member";
+  }, [isEarlyAccess, isPrecall]);
+
+  const questPhaseKey = useMemo(() => {
+    if (isEarlyAccess) return "default";
+    if (!onboardingComplete) return "ebauche";
+    if (currentCycleNumber && currentCycleNumber >= 1 && currentCycleNumber <= 8) return `cycle_${currentCycleNumber}`;
+    return "ebauche";
+  }, [isEarlyAccess, onboardingComplete, currentCycleNumber]);
+
+  const { videoUrl: phaseVideo } = useQuestPhaseVideo(questPhaseRole, questPhaseKey);
 
   // Determine which onboarding step is active
   const onboardingStep = !allVideosWatched ? 1 : !ebaucheComplete ? 2 : 3;
