@@ -12,10 +12,39 @@ interface ProfileSettingsDialogProps {
   onDisplayNameChange?: (name: string) => void;
 }
 
+const TIMEZONE_OPTIONS = [
+  { value: "Europe/Paris", label: "Paris (UTC+1/+2)", city: "Paris" },
+  { value: "Europe/London", label: "Londres (UTC+0/+1)", city: "Londres" },
+  { value: "Europe/Berlin", label: "Berlin (UTC+1/+2)", city: "Berlin" },
+  { value: "Europe/Madrid", label: "Madrid (UTC+1/+2)", city: "Madrid" },
+  { value: "Europe/Rome", label: "Rome (UTC+1/+2)", city: "Rome" },
+  { value: "Europe/Brussels", label: "Bruxelles (UTC+1/+2)", city: "Bruxelles" },
+  { value: "Europe/Zurich", label: "Zurich (UTC+1/+2)", city: "Zurich" },
+  { value: "Europe/Moscow", label: "Moscou (UTC+3)", city: "Moscou" },
+  { value: "America/New_York", label: "New York (UTC-5/-4)", city: "New York" },
+  { value: "America/Chicago", label: "Chicago (UTC-6/-5)", city: "Chicago" },
+  { value: "America/Denver", label: "Denver (UTC-7/-6)", city: "Denver" },
+  { value: "America/Los_Angeles", label: "Los Angeles (UTC-8/-7)", city: "Los Angeles" },
+  { value: "America/Toronto", label: "Toronto (UTC-5/-4)", city: "Toronto" },
+  { value: "America/Montreal", label: "Montréal (UTC-5/-4)", city: "Montréal" },
+  { value: "America/Sao_Paulo", label: "São Paulo (UTC-3)", city: "São Paulo" },
+  { value: "Asia/Dubai", label: "Dubaï (UTC+4)", city: "Dubaï" },
+  { value: "Asia/Tokyo", label: "Tokyo (UTC+9)", city: "Tokyo" },
+  { value: "Asia/Shanghai", label: "Shanghai (UTC+8)", city: "Shanghai" },
+  { value: "Asia/Singapore", label: "Singapour (UTC+8)", city: "Singapour" },
+  { value: "Asia/Kolkata", label: "Mumbai (UTC+5:30)", city: "Mumbai" },
+  { value: "Australia/Sydney", label: "Sydney (UTC+10/+11)", city: "Sydney" },
+  { value: "Africa/Casablanca", label: "Casablanca (UTC+0/+1)", city: "Casablanca" },
+  { value: "Africa/Lagos", label: "Lagos (UTC+1)", city: "Lagos" },
+  { value: "Africa/Johannesburg", label: "Johannesburg (UTC+2)", city: "Johannesburg" },
+  { value: "Pacific/Auckland", label: "Auckland (UTC+12/+13)", city: "Auckland" },
+];
+
 export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDialogProps) => {
   const [open, setOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [timezone, setTimezone] = useState("Europe/Paris");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -32,13 +61,14 @@ export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDi
 
       const { data } = await supabase
         .from("profiles")
-        .select("display_name, avatar_url")
+        .select("display_name, avatar_url, timezone" as any)
         .eq("user_id", user.id)
         .single();
 
       if (data) {
-        setDisplayName(data.display_name || "");
+        setDisplayName((data as any).display_name || "");
         setAvatarUrl((data as any).avatar_url || null);
+        setTimezone((data as any).timezone || "Europe/Paris");
       }
       setFetching(false);
     };
@@ -121,7 +151,7 @@ export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDi
 
     const { error } = await supabase
       .from("profiles")
-      .update({ display_name: trimmed })
+      .update({ display_name: trimmed, timezone } as any)
       .eq("user_id", user.id);
 
     if (error) {
@@ -210,6 +240,24 @@ export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDi
               />
               <p className="text-xs text-muted-foreground">
                 Ce nom sera visible par tous les membres.
+              </p>
+            </div>
+
+            {/* Timezone */}
+            <div className="space-y-2">
+              <Label htmlFor="timezone">Fuseau horaire</Label>
+              <select
+                id="timezone"
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {TIMEZONE_OPTIONS.map(tz => (
+                  <option key={tz.value} value={tz.value}>{tz.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                L'heure affichée et les conversions de données seront basées sur ce fuseau.
               </p>
             </div>
 

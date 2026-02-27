@@ -222,7 +222,8 @@ export const RoleManagement = () => {
     };
 
     if (selectedRole === "early_access" && earlyAccessExpiry) {
-      insertData.expires_at = new Date(earlyAccessExpiry).toISOString();
+      const durationMinutes = Math.round(parseFloat(earlyAccessExpiry) * 60);
+      insertData.ea_timer_duration_minutes = durationMinutes;
     }
 
     const { error } = await supabase
@@ -298,7 +299,10 @@ export const RoleManagement = () => {
           assigned_by: currentUser?.id,
         };
         if (role === "early_access") {
-          if (roleChangeExpiry) insertData.expires_at = new Date(roleChangeExpiry).toISOString();
+          if (roleChangeExpiry) {
+            const durationMinutes = Math.round(parseFloat(roleChangeExpiry) * 60);
+            insertData.ea_timer_duration_minutes = durationMinutes;
+          }
           insertData.early_access_type = roleChangeEaType;
         }
         const { error } = await supabase.from("user_roles").insert(insertData);
@@ -759,14 +763,16 @@ export const RoleManagement = () => {
 
               {selectedRole === "early_access" && (
                 <div className="space-y-2">
-                  <Label>Date d'expiration du minuteur</Label>
+                  <Label>Durée du minuteur (en heures)</Label>
                   <Input
-                    type="datetime-local"
+                    type="number"
+                    min="1"
+                    placeholder="Ex: 48"
                     value={earlyAccessExpiry}
                     onChange={(e) => setEarlyAccessExpiry(e.target.value)}
                   />
                   <p className="text-[10px] text-muted-foreground">
-                    Le minuteur s'affichera en rouge dans le header pour cet utilisateur
+                    Le minuteur démarre à la première connexion de l'utilisateur
                   </p>
                 </div>
               )}
@@ -1134,14 +1140,16 @@ export const RoleManagement = () => {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label>Date d'expiration du minuteur</Label>
+                        <Label>Durée du minuteur (en heures)</Label>
                         <Input
-                          type="datetime-local"
+                          type="number"
+                          min="1"
+                          placeholder="Ex: 48"
                           value={roleChangeExpiry}
                           onChange={(e) => setRoleChangeExpiry(e.target.value)}
                         />
                         <p className="text-[10px] text-muted-foreground">
-                          Le minuteur s'affichera en rouge dans le header
+                          Le minuteur démarre à la première connexion de l'utilisateur
                         </p>
                       </div>
                     </div>

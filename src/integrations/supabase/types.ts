@@ -385,6 +385,7 @@ export type Database = {
           is_client: boolean
           status: Database["public"]["Enums"]["user_status"]
           status_reason: string | null
+          timezone: string | null
           updated_at: string
           user_id: string
         }
@@ -401,6 +402,7 @@ export type Database = {
           is_client?: boolean
           status?: Database["public"]["Enums"]["user_status"]
           status_reason?: string | null
+          timezone?: string | null
           updated_at?: string
           user_id: string
         }
@@ -417,6 +419,7 @@ export type Database = {
           is_client?: boolean
           status?: Database["public"]["Enums"]["user_status"]
           status_reason?: string | null
+          timezone?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1000,6 +1003,7 @@ export type Database = {
         Row: {
           assigned_by: string | null
           created_at: string
+          ea_timer_duration_minutes: number | null
           early_access_type: string | null
           expires_at: string | null
           id: string
@@ -1009,6 +1013,7 @@ export type Database = {
         Insert: {
           assigned_by?: string | null
           created_at?: string
+          ea_timer_duration_minutes?: number | null
           early_access_type?: string | null
           expires_at?: string | null
           id?: string
@@ -1018,6 +1023,7 @@ export type Database = {
         Update: {
           assigned_by?: string | null
           created_at?: string
+          ea_timer_duration_minutes?: number | null
           early_access_type?: string | null
           expires_at?: string | null
           id?: string
@@ -1269,6 +1275,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_ea_timer: { Args: never; Returns: undefined }
       add_complementary_trades_from_cycle: {
         Args: { p_cycle_id: string; p_member_user_id: string }
         Returns: number

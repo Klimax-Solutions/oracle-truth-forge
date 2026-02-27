@@ -18,6 +18,8 @@ import { EarlyAccessTimer } from "@/components/dashboard/EarlyAccessTimer";
 import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
 import { useEaActivityTracking, trackEaButtonClick } from "@/hooks/useEaActivityTracking";
 import { RoleSwitcher, SimulatedRole, getEffectiveRoles } from "@/components/dashboard/RoleSwitcher";
+import { HeaderClock } from "@/components/dashboard/HeaderClock";
+import { useUserTimezone } from "@/hooks/useUserTimezone";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
@@ -80,6 +82,7 @@ const Dashboard = () => {
   const { isEarlyAccess: realIsEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
   const navigate = useNavigate();
+  const { timezone } = useUserTimezone();
   
   // Role switching for super admins
   const [simulatedRole, setSimulatedRole] = useState<SimulatedRole>("none");
@@ -385,6 +388,7 @@ const Dashboard = () => {
               </div>
             )}
             <div className="flex items-center gap-3">
+              <HeaderClock timezone={timezone} />
               {showDataSourceSelector && (
                 <DataSourceSelector value={dataSource} onChange={setDataSource} showDataGenerale={showDataGenerale} />
               )}
