@@ -23,6 +23,8 @@ export interface QuestData {
   loading: boolean;
   // Onboarding completed (ebauche validated)
   onboardingComplete: boolean;
+  // Current cycle number (1-8, or 0 for ebauche)
+  currentCycleNumber: number | null;
   // Analyzed trade numbers (for checkbox state)
   analyzedTradeNumbers: number[];
   // Optimistic toggle for trade analysis
