@@ -17,6 +17,7 @@ interface MobileHeaderProps {
   isSetter?: boolean;
   dataSourceSelector?: React.ReactNode;
   earlyAccessTimer?: React.ReactNode;
+  overrideIsEarlyAccess?: boolean;
 }
 
 const tabs = [
@@ -49,8 +50,10 @@ export const MobileHeader = ({
   isSetter,
   dataSourceSelector,
   earlyAccessTimer,
+  overrideIsEarlyAccess,
 }: MobileHeaderProps) => {
-  const { isEarlyAccess } = useEarlyAccess();
+  const { isEarlyAccess: _isEarlyAccess } = useEarlyAccess();
+  const isEarlyAccess = overrideIsEarlyAccess !== undefined ? overrideIsEarlyAccess : _isEarlyAccess;
   const { settings: eaSettings } = useEarlyAccessSettings();
   const oracleBtn = eaSettings.find(s => s.button_key === "acceder_a_oracle");
   const oracleUrl = oracleBtn?.button_url;

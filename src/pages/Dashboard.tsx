@@ -17,6 +17,7 @@ import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 import { EarlyAccessTimer } from "@/components/dashboard/EarlyAccessTimer";
 import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
 import { useEaActivityTracking, trackEaButtonClick } from "@/hooks/useEaActivityTracking";
+import { RoleSwitcher, SimulatedRole, getEffectiveRoles } from "@/components/dashboard/RoleSwitcher";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
@@ -74,12 +75,24 @@ const Dashboard = () => {
   const [dataSource, setDataSource] = useState<DataSource>("all");
   const [displayName, setDisplayName] = useState<string>("");
   const { trades: personalTrades } = usePersonalTrades();
-  const { isAdmin, isSuperAdmin, isSetter } = useSidebarRoles();
+  const { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter } = useSidebarRoles();
   const questData = useQuestData();
-  const { isEarlyAccess, expiresAt } = useEarlyAccess();
+  const { isEarlyAccess: realIsEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
   const navigate = useNavigate();
-  useEaActivityTracking(activeTab, isEarlyAccess);
+  
+  // Role switching for super admins
+  const [simulatedRole, setSimulatedRole] = useState<SimulatedRole>("none");
+  const { effectiveIsAdmin, effectiveIsSuperAdmin, effectiveIsEarlyAccess, effectiveIsSetter } = 
+    getEffectiveRoles(realIsSuperAdmin, simulatedRole);
+  
+  // Use effective roles throughout the dashboard
+  const isAdmin = effectiveIsAdmin;
+  const isSuperAdmin = effectiveIsSuperAdmin;
+  const isSetter = effectiveIsSetter;
+  const isEarlyAccess = simulatedRole !== "none" ? effectiveIsEarlyAccess : realIsEarlyAccess;
+  
+  useEaActivityTracking(activeTab, realIsEarlyAccess);
   const showDataGenerale = isAdmin || isSuperAdmin;
   const needsDataGenerale = showDataGenerale || isEarlyAccess;
   const { dataGenerale } = useDataGenerale(trades, needsDataGenerale);
@@ -330,6 +343,7 @@ const Dashboard = () => {
         isAdmin={isAdmin}
         isSuperAdmin={isSuperAdmin}
         isSetter={isSetter}
+        overrideIsEarlyAccess={simulatedRole !== "none" ? isEarlyAccess : undefined}
         dataSourceSelector={showDataSourceSelector ? (
           <DataSourceSelector value={dataSource} onChange={setDataSource} showDataGenerale={showDataGenerale} />
         ) : undefined}
@@ -337,16 +351,21 @@ const Dashboard = () => {
       />
 
       {/* Desktop Sidebar */}
-      <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} overrideRoles={simulatedRole !== "none" ? { isAdmin, isSuperAdmin, isSetter, isEarlyAccess } : undefined} />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Desktop Header */}
         <header className="hidden md:block border-b border-border bg-card">
           <div className="px-6 py-4 flex items-center justify-between">
-            <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-              {displayName || user?.email?.split("@")[0] || ""}
-            </span>
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                {displayName || user?.email?.split("@")[0] || ""}
+              </span>
+              {realIsSuperAdmin && (
+                <RoleSwitcher current={simulatedRole} onChange={setSimulatedRole} />
+              )}
+            </div>
             {/* Early Access Timer centered */}
             {isEarlyAccess && expiresAt && (
               <div className="flex-1 flex items-center justify-center gap-3">
