@@ -357,8 +357,14 @@ const Dashboard = () => {
         {/* Desktop Header */}
         <header className="hidden md:block border-b border-border bg-card">
           <div className="px-6 py-4 flex items-center justify-between">
-            <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-              {displayName || user?.email?.split("@")[0] || ""}
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                {displayName || user?.email?.split("@")[0] || ""}
+              </span>
+              {realIsSuperAdmin && (
+                <RoleSwitcher current={simulatedRole} onChange={setSimulatedRole} />
+              )}
+            </div>
             </span>
             {/* Early Access Timer centered */}
             {isEarlyAccess && expiresAt && (
