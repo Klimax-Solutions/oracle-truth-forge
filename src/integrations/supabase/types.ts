@@ -425,6 +425,51 @@ export type Database = {
         }
         Relationships: []
       }
+      quest_step_configs: {
+        Row: {
+          action_label: string | null
+          action_url: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          step_description: string | null
+          step_label: string
+          step_order: number
+          target_phase: string
+          target_role: string
+          updated_at: string
+          video_embed: string | null
+        }
+        Insert: {
+          action_label?: string | null
+          action_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          step_description?: string | null
+          step_label?: string
+          step_order?: number
+          target_phase?: string
+          target_role: string
+          updated_at?: string
+          video_embed?: string | null
+        }
+        Update: {
+          action_label?: string | null
+          action_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          step_description?: string | null
+          step_label?: string
+          step_order?: number
+          target_phase?: string
+          target_role?: string
+          updated_at?: string
+          video_embed?: string | null
+        }
+        Relationships: []
+      }
       results: {
         Row: {
           created_at: string
