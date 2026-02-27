@@ -24,7 +24,7 @@ export const useUserTimezone = () => {
     fetch();
   }, []);
 
-  return { timezone, loading };
+  return { timezone, setTimezone, loading };
 };
 
 /**

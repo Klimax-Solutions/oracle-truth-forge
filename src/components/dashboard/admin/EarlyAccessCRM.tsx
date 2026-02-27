@@ -88,6 +88,59 @@ const LiveTimer = ({ expiresAt }: { expiresAt: string | null }) => {
   );
 };
 
+// ── Editable Timer in CRM table ──
+const EditableTimer = ({ member, onUpdate }: { member: EACrmMember; onUpdate: (isRefresh?: boolean) => void }) => {
+  const [editing, setEditing] = useState(false);
+  const [hours, setHours] = useState("");
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+        <Input
+          type="number"
+          min={1}
+          value={hours}
+          onChange={e => setHours(e.target.value)}
+          placeholder="h"
+          className="h-5 w-12 text-[10px] px-1"
+          autoFocus
+          onKeyDown={e => { if (e.key === "Escape") setEditing(false); }}
+        />
+        <button
+          disabled={saving || !hours}
+          className="text-[9px] font-mono text-primary hover:underline disabled:opacity-50"
+          onClick={async () => {
+            const h = parseInt(hours);
+            if (!h || h < 1) return;
+            setSaving(true);
+            const newExpires = new Date(Date.now() + h * 60 * 60 * 1000).toISOString();
+            const { error } = await supabase
+              .from("user_roles")
+              .update({ expires_at: newExpires } as any)
+              .eq("user_id", member.user_id)
+              .eq("role", "early_access" as any);
+            if (error) toast({ title: "Erreur", description: error.message, variant: "destructive" });
+            else { toast({ title: "Timer mis à jour" }); onUpdate(true); }
+            setSaving(false);
+            setEditing(false);
+          }}
+        >
+          OK
+        </button>
+        <button className="text-[9px] text-muted-foreground hover:text-foreground" onClick={() => setEditing(false)}>✕</button>
+      </div>
+    );
+  }
+
+  return (
+    <button onClick={() => setEditing(true)} className="hover:underline" title="Cliquer pour modifier">
+      <LiveTimer expiresAt={member.expires_at} />
+    </button>
+  );
+};
+
 // ── Copy button ──
 const CopyBtn = ({ text }: { text: string }) => {
   const { toast } = useToast();
@@ -584,8 +637,8 @@ export const EarlyAccessCRM = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-2">
-                    <LiveTimer expiresAt={m.expires_at} />
+                  <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
+                    <EditableTimer member={m} onUpdate={fetchCrmData} />
                   </td>
                   <td className="px-3 py-2">
                     <span className={cn("text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-full", m.early_access_type === "precall" ? "bg-amber-500/20 text-amber-500" : "bg-emerald-500/20 text-emerald-500")}>

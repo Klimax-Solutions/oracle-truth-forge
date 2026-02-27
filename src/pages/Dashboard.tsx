@@ -82,7 +82,7 @@ const Dashboard = () => {
   const { isEarlyAccess: realIsEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
   const navigate = useNavigate();
-  const { timezone } = useUserTimezone();
+  const { timezone, setTimezone: setUserTimezone } = useUserTimezone();
   
   // Role switching for super admins
   const [simulatedRole, setSimulatedRole] = useState<SimulatedRole>("none");
@@ -94,18 +94,27 @@ const Dashboard = () => {
   const isSuperAdmin = effectiveIsSuperAdmin;
   const isSetter = effectiveIsSetter;
   const isEarlyAccess = simulatedRole !== "none" ? effectiveIsEarlyAccess : realIsEarlyAccess;
+  // When simulating EA, create a fake expiresAt 3 days from now for demo
+  const effectiveExpiresAt = simulatedRole === "early_access" 
+    ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+    : expiresAt;
   
   useEaActivityTracking(activeTab, realIsEarlyAccess);
-  const showDataGenerale = isAdmin || isSuperAdmin;
+  const showDataGenerale = simulatedRole !== "none" 
+    ? (effectiveIsAdmin || effectiveIsSuperAdmin)
+    : (realIsAdmin || realIsSuperAdmin);
   const needsDataGenerale = showDataGenerale || isEarlyAccess;
   const { dataGenerale } = useDataGenerale(trades, needsDataGenerale);
 
-  // Setter role: force to early-access-mgmt tab
+  // Force tab change when role changes
   useEffect(() => {
     if (isSetter && !isSuperAdmin && !isAdmin) {
       setActiveTab("early-access-mgmt");
+    } else if (simulatedRole !== "none") {
+      // Reset to a valid tab for the simulated role
+      setActiveTab("execution");
     }
-  }, [isSetter, isSuperAdmin, isAdmin]);
+  }, [isSetter, isSuperAdmin, isAdmin, simulatedRole]);
   const isEarlyAccessExpired = useMemo(() => {
     if (!isEarlyAccess || !expiresAt) return false;
     return new Date(expiresAt).getTime() <= Date.now();
@@ -350,7 +359,7 @@ const Dashboard = () => {
         dataSourceSelector={showDataSourceSelector ? (
           <DataSourceSelector value={dataSource} onChange={setDataSource} showDataGenerale={showDataGenerale} />
         ) : undefined}
-        earlyAccessTimer={isEarlyAccess && expiresAt ? <EarlyAccessTimer expiresAt={expiresAt} /> : undefined}
+        earlyAccessTimer={isEarlyAccess && effectiveExpiresAt ? <EarlyAccessTimer expiresAt={effectiveExpiresAt} /> : undefined}
       />
 
       {/* Desktop Sidebar */}
@@ -370,9 +379,9 @@ const Dashboard = () => {
               )}
             </div>
             {/* Early Access Timer centered */}
-            {isEarlyAccess && expiresAt && (
+            {isEarlyAccess && effectiveExpiresAt && (
               <div className="flex-1 flex items-center justify-center gap-3">
-                <EarlyAccessTimer expiresAt={expiresAt} />
+                <EarlyAccessTimer expiresAt={effectiveExpiresAt} />
                 {(() => {
                   const oracleBtn = eaSettings.find(s => s.button_key === "acceder_a_oracle");
                   const oracleUrl = oracleBtn?.button_url;
@@ -388,7 +397,7 @@ const Dashboard = () => {
               </div>
             )}
             <div className="flex items-center gap-3">
-              <HeaderClock timezone={timezone} />
+              <HeaderClock timezone={timezone} onTimezoneChange={setUserTimezone} />
               {showDataSourceSelector && (
                 <DataSourceSelector value={dataSource} onChange={setDataSource} showDataGenerale={showDataGenerale} />
               )}
