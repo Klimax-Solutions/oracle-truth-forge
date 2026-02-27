@@ -131,7 +131,7 @@ export const useQuestData = () => {
 
     const today = new Date().toISOString().split("T")[0];
 
-    const [videosRes, viewsRes, execsRes, cyclesRes, cycleDefsRes, analysesRes, flagsRes] = await Promise.all([
+    const [videosRes, viewsRes, execsRes, cyclesRes, cycleDefsRes, analysesRes, flagsRes, allCycleDefsRes] = await Promise.all([
       supabase.from("videos").select("id", { count: "exact", head: true }),
       supabase.from("user_video_views").select("video_id").eq("user_id", user.id),
       supabase.from("user_executions").select("id, trade_number, rr, created_at, trade_date").eq("user_id", user.id),
@@ -139,6 +139,7 @@ export const useQuestData = () => {
       supabase.from("cycles").select("id, cycle_number").eq("cycle_number", 0).single(),
       supabase.from("user_trade_analyses").select("trade_number").eq("user_id", user.id),
       supabase.from("user_quest_flags").select("flag_key").eq("user_id", user.id),
+      supabase.from("cycles").select("id, cycle_number").order("cycle_number", { ascending: true }),
     ]);
 
     // Videos
