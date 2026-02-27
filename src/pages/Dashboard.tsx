@@ -75,12 +75,24 @@ const Dashboard = () => {
   const [dataSource, setDataSource] = useState<DataSource>("all");
   const [displayName, setDisplayName] = useState<string>("");
   const { trades: personalTrades } = usePersonalTrades();
-  const { isAdmin, isSuperAdmin, isSetter } = useSidebarRoles();
+  const { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter } = useSidebarRoles();
   const questData = useQuestData();
-  const { isEarlyAccess, expiresAt } = useEarlyAccess();
+  const { isEarlyAccess: realIsEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
   const navigate = useNavigate();
-  useEaActivityTracking(activeTab, isEarlyAccess);
+  
+  // Role switching for super admins
+  const [simulatedRole, setSimulatedRole] = useState<SimulatedRole>("none");
+  const { effectiveIsAdmin, effectiveIsSuperAdmin, effectiveIsEarlyAccess, effectiveIsSetter } = 
+    getEffectiveRoles(realIsSuperAdmin, simulatedRole);
+  
+  // Use effective roles throughout the dashboard
+  const isAdmin = effectiveIsAdmin;
+  const isSuperAdmin = effectiveIsSuperAdmin;
+  const isSetter = effectiveIsSetter;
+  const isEarlyAccess = simulatedRole !== "none" ? effectiveIsEarlyAccess : realIsEarlyAccess;
+  
+  useEaActivityTracking(activeTab, realIsEarlyAccess);
   const showDataGenerale = isAdmin || isSuperAdmin;
   const needsDataGenerale = showDataGenerale || isEarlyAccess;
   const { dataGenerale } = useDataGenerale(trades, needsDataGenerale);
