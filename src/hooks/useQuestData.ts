@@ -43,6 +43,7 @@ export const useQuestData = () => {
   const [todayExecutions, setTodayExecutions] = useState(0);
   const [todayWinningExecutions, setTodayWinningExecutions] = useState(0);
   const [executionsByDate, setExecutionsByDate] = useState<Record<string, { count: number; wins: number; rr: number }>>({});
+  const [currentCycleNumber, setCurrentCycleNumber] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   const dailyGoal = 5;
