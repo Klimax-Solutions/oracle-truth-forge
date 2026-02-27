@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { QuestData } from "@/hooks/useQuestData";
+import { useQuestPhaseVideo } from "@/hooks/useQuestPhaseVideo";
+import { QuestVideoEmbed } from "./QuestVideoEmbed";
 import { useToast } from "@/hooks/use-toast";
 import { EarlyAccessTimer } from "./EarlyAccessTimer";
 
