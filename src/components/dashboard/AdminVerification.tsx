@@ -2405,6 +2405,11 @@ export const AdminVerification = () => {
           <TabsContent value="roles" className="flex-1 overflow-auto mt-0">
             <RoleManagement />
           </TabsContent>
+
+          {/* Quest Management Tab */}
+          <TabsContent value="quests" className="flex-1 overflow-auto mt-0">
+            <QuestStepManager />
+          </TabsContent>
         </Tabs>
       </div>
 
