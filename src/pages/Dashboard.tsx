@@ -94,9 +94,15 @@ const Dashboard = () => {
   const isSuperAdmin = effectiveIsSuperAdmin;
   const isSetter = effectiveIsSetter;
   const isEarlyAccess = simulatedRole !== "none" ? effectiveIsEarlyAccess : realIsEarlyAccess;
+  // When simulating EA, create a fake expiresAt 3 days from now for demo
+  const effectiveExpiresAt = simulatedRole === "early_access" 
+    ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+    : expiresAt;
   
   useEaActivityTracking(activeTab, realIsEarlyAccess);
-  const showDataGenerale = isAdmin || isSuperAdmin;
+  const showDataGenerale = simulatedRole !== "none" 
+    ? (effectiveIsAdmin || effectiveIsSuperAdmin)
+    : (realIsAdmin || realIsSuperAdmin);
   const needsDataGenerale = showDataGenerale || isEarlyAccess;
   const { dataGenerale } = useDataGenerale(trades, needsDataGenerale);
 
