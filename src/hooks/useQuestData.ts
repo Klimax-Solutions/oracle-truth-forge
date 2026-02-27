@@ -23,6 +23,8 @@ export interface QuestData {
   loading: boolean;
   // Onboarding completed (ebauche validated)
   onboardingComplete: boolean;
+  // Current cycle number (1-8, or 0 for ebauche)
+  currentCycleNumber: number | null;
   // Analyzed trade numbers (for checkbox state)
   analyzedTradeNumbers: number[];
   // Optimistic toggle for trade analysis
@@ -41,6 +43,7 @@ export const useQuestData = () => {
   const [todayExecutions, setTodayExecutions] = useState(0);
   const [todayWinningExecutions, setTodayWinningExecutions] = useState(0);
   const [executionsByDate, setExecutionsByDate] = useState<Record<string, { count: number; wins: number; rr: number }>>({});
+  const [currentCycleNumber, setCurrentCycleNumber] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   const dailyGoal = 5;
@@ -128,7 +131,7 @@ export const useQuestData = () => {
 
     const today = new Date().toISOString().split("T")[0];
 
-    const [videosRes, viewsRes, execsRes, cyclesRes, cycleDefsRes, analysesRes, flagsRes] = await Promise.all([
+    const [videosRes, viewsRes, execsRes, cyclesRes, cycleDefsRes, analysesRes, flagsRes, allCycleDefsRes] = await Promise.all([
       supabase.from("videos").select("id", { count: "exact", head: true }),
       supabase.from("user_video_views").select("video_id").eq("user_id", user.id),
       supabase.from("user_executions").select("id, trade_number, rr, created_at, trade_date").eq("user_id", user.id),
@@ -136,17 +139,29 @@ export const useQuestData = () => {
       supabase.from("cycles").select("id, cycle_number").eq("cycle_number", 0).single(),
       supabase.from("user_trade_analyses").select("trade_number").eq("user_id", user.id),
       supabase.from("user_quest_flags").select("flag_key").eq("user_id", user.id),
+      supabase.from("cycles").select("id, cycle_number").order("cycle_number", { ascending: true }),
     ]);
 
     // Videos
     setTotalVideos(videosRes.count || 0);
     setViewedVideos(viewsRes.data?.length || 0);
 
-    // Ebauche status
+    // Ebauche status + current cycle number
     const ebaucheId = cycleDefsRes.data?.id;
     if (ebaucheId && cyclesRes.data) {
       const ebUc = cyclesRes.data.find((uc: any) => uc.cycle_id === ebaucheId);
       setEbaucheStatus(ebUc?.status || null);
+    }
+
+    // Find active cycle number
+    if (cyclesRes.data && allCycleDefsRes.data) {
+      const activeCycle = cyclesRes.data.find((uc: any) => uc.status === "in_progress" || uc.status === "rejected");
+      if (activeCycle) {
+        const cycleDef = allCycleDefsRes.data.find((c: any) => c.id === activeCycle.cycle_id);
+        setCurrentCycleNumber(cycleDef?.cycle_number ?? null);
+      } else {
+        setCurrentCycleNumber(null);
+      }
     }
 
     // Trade analyses (checkboxes for trades 1-15)
@@ -223,6 +238,7 @@ export const useQuestData = () => {
     executionsByDate,
     loading,
     onboardingComplete,
+    currentCycleNumber,
     analyzedTradeNumbers,
     toggleTradeAnalysis,
     setFxReplayFlag,

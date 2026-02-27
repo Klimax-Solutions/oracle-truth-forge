@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   CheckCircle2,
   Circle,
@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { QuestData } from "@/hooks/useQuestData";
+import { useQuestPhaseVideo } from "@/hooks/useQuestPhaseVideo";
+import { QuestVideoEmbed } from "./QuestVideoEmbed";
 import { useToast } from "@/hooks/use-toast";
 import { EarlyAccessTimer } from "./EarlyAccessTimer";
 
@@ -78,7 +80,23 @@ export const DailyQuestCard = ({
     executionsByDate,
     onboardingComplete,
     setFxReplayFlag,
+    currentCycleNumber,
   } = questData;
+
+  // Determine quest phase for video
+  const questPhaseRole = useMemo(() => {
+    if (isEarlyAccess) return isPrecall ? "early_access_precall" : "early_access_postcall";
+    return "member";
+  }, [isEarlyAccess, isPrecall]);
+
+  const questPhaseKey = useMemo(() => {
+    if (isEarlyAccess) return "default";
+    if (!onboardingComplete) return "ebauche";
+    if (currentCycleNumber && currentCycleNumber >= 1 && currentCycleNumber <= 8) return `cycle_${currentCycleNumber}`;
+    return "ebauche";
+  }, [isEarlyAccess, onboardingComplete, currentCycleNumber]);
+
+  const { videoUrl: phaseVideo } = useQuestPhaseVideo(questPhaseRole, questPhaseKey);
 
   // Determine which onboarding step is active
   const onboardingStep = !allVideosWatched ? 1 : !ebaucheComplete ? 2 : 3;
@@ -145,6 +163,14 @@ export const DailyQuestCard = ({
           </Button>
         )}
       </div>
+
+      {/* Phase video */}
+      {phaseVideo && (
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider">Vidéo explicative</p>
+          <QuestVideoEmbed embedCode={phaseVideo} />
+        </div>
+      )}
 
       {/* Onboarding Quests */}
       {!onboardingComplete && !isEarlyAccess && (
