@@ -106,12 +106,15 @@ const Dashboard = () => {
   const needsDataGenerale = showDataGenerale || isEarlyAccess;
   const { dataGenerale } = useDataGenerale(trades, needsDataGenerale);
 
-  // Setter role: force to early-access-mgmt tab
+  // Force tab change when role changes
   useEffect(() => {
     if (isSetter && !isSuperAdmin && !isAdmin) {
       setActiveTab("early-access-mgmt");
+    } else if (simulatedRole !== "none") {
+      // Reset to a valid tab for the simulated role
+      setActiveTab("execution");
     }
-  }, [isSetter, isSuperAdmin, isAdmin]);
+  }, [isSetter, isSuperAdmin, isAdmin, simulatedRole]);
   const isEarlyAccessExpired = useMemo(() => {
     if (!isEarlyAccess || !expiresAt) return false;
     return new Date(expiresAt).getTime() <= Date.now();
