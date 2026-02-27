@@ -41,13 +41,18 @@ import { Users as UsersIcon } from "lucide-react";
 
 const eaMgmtTab = { id: "early-access-mgmt", label: "Early Access", icon: UsersIcon };
 
-export const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarProps) => {
+export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: DashboardSidebarProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [isSetter, setIsSetter] = useState(false);
-  const { isEarlyAccess } = useEarlyAccess();
+  const [_isAdmin, setIsAdmin] = useState(false);
+  const [_isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [_isSetter, setIsSetter] = useState(false);
+  const { isEarlyAccess: _isEarlyAccess } = useEarlyAccess();
   const hasInstitute = useHasInstitute();
+
+  const isAdmin = overrideRoles ? overrideRoles.isAdmin : _isAdmin;
+  const isSuperAdmin = overrideRoles ? overrideRoles.isSuperAdmin : _isSuperAdmin;
+  const isSetter = overrideRoles ? overrideRoles.isSetter : _isSetter;
+  const isEarlyAccess = overrideRoles ? overrideRoles.isEarlyAccess : _isEarlyAccess;
 
   useEffect(() => {
     const checkRoles = async () => {
