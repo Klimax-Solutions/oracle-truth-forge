@@ -146,11 +146,22 @@ export const useQuestData = () => {
     setTotalVideos(videosRes.count || 0);
     setViewedVideos(viewsRes.data?.length || 0);
 
-    // Ebauche status
+    // Ebauche status + current cycle number
     const ebaucheId = cycleDefsRes.data?.id;
     if (ebaucheId && cyclesRes.data) {
       const ebUc = cyclesRes.data.find((uc: any) => uc.cycle_id === ebaucheId);
       setEbaucheStatus(ebUc?.status || null);
+    }
+
+    // Find active cycle number
+    if (cyclesRes.data && allCycleDefsRes.data) {
+      const activeCycle = cyclesRes.data.find((uc: any) => uc.status === "in_progress" || uc.status === "rejected");
+      if (activeCycle) {
+        const cycleDef = allCycleDefsRes.data.find((c: any) => c.id === activeCycle.cycle_id);
+        setCurrentCycleNumber(cycleDef?.cycle_number ?? null);
+      } else {
+        setCurrentCycleNumber(null);
+      }
     }
 
     // Trade analyses (checkboxes for trades 1-15)
