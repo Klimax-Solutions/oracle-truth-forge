@@ -365,7 +365,6 @@ const Dashboard = () => {
                 <RoleSwitcher current={simulatedRole} onChange={setSimulatedRole} />
               )}
             </div>
-            </span>
             {/* Early Access Timer centered */}
             {isEarlyAccess && expiresAt && (
               <div className="flex-1 flex items-center justify-center gap-3">
