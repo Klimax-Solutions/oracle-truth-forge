@@ -17,6 +17,7 @@ import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 import { EarlyAccessTimer } from "@/components/dashboard/EarlyAccessTimer";
 import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
 import { useEaActivityTracking, trackEaButtonClick } from "@/hooks/useEaActivityTracking";
+import { RoleSwitcher, SimulatedRole, getEffectiveRoles } from "@/components/dashboard/RoleSwitcher";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
