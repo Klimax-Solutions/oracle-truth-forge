@@ -299,7 +299,10 @@ export const RoleManagement = () => {
           assigned_by: currentUser?.id,
         };
         if (role === "early_access") {
-          if (roleChangeExpiry) insertData.expires_at = new Date(roleChangeExpiry).toISOString();
+          if (roleChangeExpiry) {
+            const durationMinutes = Math.round(parseFloat(roleChangeExpiry) * 60);
+            insertData.ea_timer_duration_minutes = durationMinutes;
+          }
           insertData.early_access_type = roleChangeEaType;
         }
         const { error } = await supabase.from("user_roles").insert(insertData);

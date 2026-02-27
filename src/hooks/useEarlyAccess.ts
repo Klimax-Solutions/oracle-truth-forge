@@ -15,6 +15,9 @@ export const useEarlyAccess = () => {
       if (data) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          // Try to activate timer on first login (sets expires_at from duration if not yet set)
+          await supabase.rpc("activate_ea_timer" as any);
+
           const { data: roleData } = await supabase
             .from("user_roles")
             .select("expires_at, early_access_type" as any)
