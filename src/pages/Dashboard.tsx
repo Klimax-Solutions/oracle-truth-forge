@@ -82,6 +82,7 @@ const Dashboard = () => {
   const { isEarlyAccess: realIsEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
   const navigate = useNavigate();
+  const { timezone } = useUserTimezone();
   
   // Role switching for super admins
   const [simulatedRole, setSimulatedRole] = useState<SimulatedRole>("none");
