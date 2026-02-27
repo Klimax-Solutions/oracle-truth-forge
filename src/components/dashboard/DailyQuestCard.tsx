@@ -167,10 +167,8 @@ export const DailyQuestCard = ({
       {/* Phase video */}
       {phaseVideo && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Vidéo explicative</p>
-          <div className="max-w-sm">
-            <QuestVideoEmbed embedCode={phaseVideo} />
-          </div>
+          <p className="text-sm font-bold uppercase text-muted-foreground tracking-wider">Vidéo explicative</p>
+          <QuestVideoEmbed embedCode={phaseVideo} />
         </div>
       )}
 
