@@ -50,6 +50,7 @@ import { AdminUserDataViewer } from "./admin/AdminUserDataViewer";
 import { AdminTradeNotesViewer } from "./admin/AdminTradeNotesViewer";
 import { RoleManagement } from "./admin/RoleManagement";
 import { EarlyAccessRequestsTab } from "./admin/EarlyAccessRequestsTab";
+import { QuestStepManager } from "./admin/QuestStepManager";
 import { ScreenshotLink } from "./ScreenshotLink";
 import { TradeNavigationLightbox, type TradeScreenshotItem, type OracleMatch } from "./TradeNavigationLightbox";
 import { useSidebarRoles } from "./DashboardSidebar";
