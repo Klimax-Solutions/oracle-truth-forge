@@ -151,7 +151,7 @@ export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDi
 
     const { error } = await supabase
       .from("profiles")
-      .update({ display_name: trimmed })
+      .update({ display_name: trimmed, timezone } as any)
       .eq("user_id", user.id);
 
     if (error) {
