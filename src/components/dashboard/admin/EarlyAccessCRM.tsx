@@ -584,8 +584,8 @@ export const EarlyAccessCRM = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-2">
-                    <LiveTimer expiresAt={m.expires_at} />
+                  <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
+                    <EditableTimer member={m} onUpdate={fetchCrmData} />
                   </td>
                   <td className="px-3 py-2">
                     <span className={cn("text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-full", m.early_access_type === "precall" ? "bg-amber-500/20 text-amber-500" : "bg-emerald-500/20 text-emerald-500")}>
