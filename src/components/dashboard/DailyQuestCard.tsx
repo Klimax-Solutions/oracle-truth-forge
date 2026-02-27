@@ -164,6 +164,14 @@ export const DailyQuestCard = ({
         )}
       </div>
 
+      {/* Phase video */}
+      {phaseVideo && (
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider">Vidéo explicative</p>
+          <QuestVideoEmbed embedCode={phaseVideo} />
+        </div>
+      )}
+
       {/* Onboarding Quests */}
       {!onboardingComplete && !isEarlyAccess && (
         <div className="space-y-3">
