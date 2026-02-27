@@ -17,6 +17,7 @@ interface MobileHeaderProps {
   isSetter?: boolean;
   dataSourceSelector?: React.ReactNode;
   earlyAccessTimer?: React.ReactNode;
+  overrideIsEarlyAccess?: boolean;
 }
 
 const tabs = [
