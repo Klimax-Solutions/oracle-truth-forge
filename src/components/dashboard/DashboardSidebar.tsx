@@ -19,6 +19,7 @@ const useHasInstitute = () => {
 interface DashboardSidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  overrideRoles?: { isAdmin: boolean; isSuperAdmin: boolean; isSetter: boolean; isEarlyAccess: boolean };
 }
 
 const tabs = [
