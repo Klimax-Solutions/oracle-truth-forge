@@ -759,14 +759,16 @@ export const RoleManagement = () => {
 
               {selectedRole === "early_access" && (
                 <div className="space-y-2">
-                  <Label>Date d'expiration du minuteur</Label>
+                  <Label>Durée du minuteur (en heures)</Label>
                   <Input
-                    type="datetime-local"
+                    type="number"
+                    min="1"
+                    placeholder="Ex: 48"
                     value={earlyAccessExpiry}
                     onChange={(e) => setEarlyAccessExpiry(e.target.value)}
                   />
                   <p className="text-[10px] text-muted-foreground">
-                    Le minuteur s'affichera en rouge dans le header pour cet utilisateur
+                    Le minuteur démarre à la première connexion de l'utilisateur
                   </p>
                 </div>
               )}
