@@ -376,9 +376,9 @@ const Dashboard = () => {
               )}
             </div>
             {/* Early Access Timer centered */}
-            {isEarlyAccess && expiresAt && (
+            {isEarlyAccess && effectiveExpiresAt && (
               <div className="flex-1 flex items-center justify-center gap-3">
-                <EarlyAccessTimer expiresAt={expiresAt} />
+                <EarlyAccessTimer expiresAt={effectiveExpiresAt} />
                 {(() => {
                   const oracleBtn = eaSettings.find(s => s.button_key === "acceder_a_oracle");
                   const oracleUrl = oracleBtn?.button_url;
