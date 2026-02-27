@@ -238,6 +238,7 @@ export const useQuestData = () => {
     executionsByDate,
     loading,
     onboardingComplete,
+    currentCycleNumber,
     analyzedTradeNumbers,
     toggleTradeAnalysis,
     setFxReplayFlag,
