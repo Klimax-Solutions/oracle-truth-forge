@@ -222,7 +222,8 @@ export const RoleManagement = () => {
     };
 
     if (selectedRole === "early_access" && earlyAccessExpiry) {
-      insertData.expires_at = new Date(earlyAccessExpiry).toISOString();
+      const durationMinutes = Math.round(parseFloat(earlyAccessExpiry) * 60);
+      insertData.ea_timer_duration_minutes = durationMinutes;
     }
 
     const { error } = await supabase
