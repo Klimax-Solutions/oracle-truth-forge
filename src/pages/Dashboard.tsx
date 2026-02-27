@@ -356,7 +356,7 @@ const Dashboard = () => {
         dataSourceSelector={showDataSourceSelector ? (
           <DataSourceSelector value={dataSource} onChange={setDataSource} showDataGenerale={showDataGenerale} />
         ) : undefined}
-        earlyAccessTimer={isEarlyAccess && expiresAt ? <EarlyAccessTimer expiresAt={expiresAt} /> : undefined}
+        earlyAccessTimer={isEarlyAccess && effectiveExpiresAt ? <EarlyAccessTimer expiresAt={effectiveExpiresAt} /> : undefined}
       />
 
       {/* Desktop Sidebar */}
