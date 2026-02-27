@@ -243,6 +243,24 @@ export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDi
               </p>
             </div>
 
+            {/* Timezone */}
+            <div className="space-y-2">
+              <Label htmlFor="timezone">Fuseau horaire</Label>
+              <select
+                id="timezone"
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {TIMEZONE_OPTIONS.map(tz => (
+                  <option key={tz.value} value={tz.value}>{tz.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                L'heure affichée et les conversions de données seront basées sur ce fuseau.
+              </p>
+            </div>
+
             {/* Password section */}
             <PasswordSection />
 
