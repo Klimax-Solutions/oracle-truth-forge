@@ -54,16 +54,28 @@ export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: Dash
   const isSetter = overrideRoles ? overrideRoles.isSetter : _isSetter;
   const isEarlyAccess = overrideRoles ? overrideRoles.isEarlyAccess : _isEarlyAccess;
 
+  const checkInternalRoles = async () => {
+    const { data: isAdminData } = await supabase.rpc('is_admin');
+    setIsAdmin(!!isAdminData);
+    const { data: isSuperAdminData } = await supabase.rpc('is_super_admin');
+    setIsSuperAdmin(!!isSuperAdminData);
+    const { data: isSetterData } = await supabase.rpc('is_setter' as any);
+    setIsSetter(!!isSetterData);
+  };
+
   useEffect(() => {
-    const checkRoles = async () => {
-      const { data: isAdminData } = await supabase.rpc('is_admin');
-      if (isAdminData) setIsAdmin(true);
-      const { data: isSuperAdminData } = await supabase.rpc('is_super_admin');
-      if (isSuperAdminData) setIsSuperAdmin(true);
-      const { data: isSetterData } = await supabase.rpc('is_setter' as any);
-      if (isSetterData) setIsSetter(true);
+    checkInternalRoles();
+
+    const channel = supabase
+      .channel('sidebar-internal-roles')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => {
+        checkInternalRoles();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-    checkRoles();
   }, []);
 
   // Setter role: only Early Access tab
