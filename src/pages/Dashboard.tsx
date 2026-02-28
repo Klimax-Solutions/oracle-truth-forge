@@ -267,7 +267,7 @@ const Dashboard = () => {
     setActiveTab("setup");
   };
 
-  if (loading) {
+  if (loading || loadingRoles) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-6 h-6 border border-foreground border-t-transparent rounded-full animate-spin" />
