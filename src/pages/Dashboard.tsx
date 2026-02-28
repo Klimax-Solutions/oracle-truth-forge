@@ -447,7 +447,8 @@ const Dashboard = () => {
       
       {/* Early Access Login Popup */}
       <EarlyAccessLoginPopup />
-      <ResultNotificationPopup onNavigateToResults={() => setActiveTab("results")} />
+      {!isSetter && <ResultNotificationPopup onNavigateToResults={() => setActiveTab("results")} />}
+      {isEarlyAccess && isEarlyAccessExpired && <EarlyAccessExpiredPopup />}
     </div>
     </div>
   );
