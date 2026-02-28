@@ -36,6 +36,7 @@ import { CycleReportPopup } from "@/components/dashboard/CycleReportPopup";
 import { EarlyAccessLoginPopup } from "@/components/dashboard/EarlyAccessLoginPopup";
 import { EAPendingPopup } from "@/components/dashboard/EAPendingPopup";
 import { ResultNotificationPopup } from "@/components/dashboard/ResultNotificationPopup";
+import { EarlyAccessExpiredPopup } from "@/components/dashboard/EarlyAccessExpiredPopup";
 interface Trade {
   id: string;
   trade_number: number;
