@@ -78,7 +78,7 @@ const Dashboard = () => {
   const [dataSource, setDataSource] = useState<DataSource>("all");
   const [displayName, setDisplayName] = useState<string>("");
   const { trades: personalTrades } = usePersonalTrades();
-  const { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter } = useSidebarRoles();
+  const { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter, loadingRoles } = useSidebarRoles();
   const questData = useQuestData();
   const { isEarlyAccess: realIsEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
@@ -94,6 +94,7 @@ const Dashboard = () => {
   const isAdmin = effectiveIsAdmin;
   const isSuperAdmin = effectiveIsSuperAdmin;
   const isSetter = effectiveIsSetter;
+  const isSetterOnly = isSetter && !isSuperAdmin && !isAdmin;
   const isEarlyAccess = simulatedRole !== "none" ? effectiveIsEarlyAccess : realIsEarlyAccess;
   // When simulating EA, create a fake expiresAt 3 days from now for demo
   const effectiveExpiresAt = simulatedRole === "early_access" 
@@ -109,13 +110,13 @@ const Dashboard = () => {
 
   // Force tab change when role changes
   useEffect(() => {
-    if (isSetter && !isSuperAdmin && !isAdmin) {
+    if (isSetterOnly) {
       setActiveTab("early-access-mgmt");
     } else if (simulatedRole !== "none") {
       // Reset to a valid tab for the simulated role
       setActiveTab("execution");
     }
-  }, [isSetter, isSuperAdmin, isAdmin, simulatedRole]);
+  }, [isSetterOnly, simulatedRole]);
   const isEarlyAccessExpired = useMemo(() => {
     if (!isEarlyAccess || !expiresAt) return false;
     return new Date(expiresAt).getTime() <= Date.now();
@@ -266,7 +267,7 @@ const Dashboard = () => {
     setActiveTab("setup");
   };
 
-  if (loading) {
+  if (loading || loadingRoles) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-6 h-6 border border-foreground border-t-transparent rounded-full animate-spin" />
@@ -315,9 +316,10 @@ const Dashboard = () => {
   };
 
   const displayTrades = getDisplayTrades();
-  const showDataSourceSelector = ["data-analysis"].includes(activeTab) && !isEarlyAccess;
+  const showDataSourceSelector = ["data-analysis"].includes(activeTab) && !isEarlyAccess && !isSetterOnly;
 
   const renderContent = () => {
+    if (isSetterOnly) return <EarlyAccessManagement />;
     switch (activeTab) {
       case "execution":
         return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} />;
@@ -364,7 +366,15 @@ const Dashboard = () => {
       />
 
       {/* Desktop Sidebar */}
-      <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} overrideRoles={simulatedRole !== "none" ? { isAdmin, isSuperAdmin, isSetter, isEarlyAccess } : undefined} />
+      <DashboardSidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        overrideRoles={
+          simulatedRole !== "none"
+            ? { isAdmin, isSuperAdmin, isSetter, isEarlyAccess }
+            : { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter, isEarlyAccess: realIsEarlyAccess }
+        }
+      />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -425,13 +435,14 @@ const Dashboard = () => {
         </main>
       </div>
 
-      {/* Quest Floating Bubble */}
-      <QuestFloatingBubble
-        questData={questData}
-        onNavigateToVideos={() => setActiveTab("videos")}
-        onNavigateToSetup={() => setActiveTab("setup")}
-        onNavigateToExecution={() => setActiveTab("execution")}
-      />
+      {!isSetterOnly && (
+        <QuestFloatingBubble
+          questData={questData}
+          onNavigateToVideos={() => setActiveTab("videos")}
+          onNavigateToSetup={() => setActiveTab("setup")}
+          onNavigateToExecution={() => setActiveTab("execution")}
+        />
+      )}
 
       {/* Admin Verification Popup */}
       {(isAdmin || isSuperAdmin) && (
@@ -444,11 +455,11 @@ const Dashboard = () => {
       )}
       
       {/* Cycle Report Popup for members */}
-      <CycleReportPopup />
+      {!isSetterOnly && <CycleReportPopup />}
       
       {/* Early Access Login Popup */}
-      <EarlyAccessLoginPopup />
-      {!isSetter && <ResultNotificationPopup onNavigateToResults={() => setActiveTab("results")} />}
+      {!isSetterOnly && <EarlyAccessLoginPopup />}
+      {!isSetterOnly && <ResultNotificationPopup onNavigateToResults={() => setActiveTab("results")} />}
       {isEarlyAccess && isEarlyAccessExpired && <EarlyAccessExpiredPopup />}
     </div>
     </div>
