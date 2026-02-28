@@ -316,9 +316,10 @@ const Dashboard = () => {
   };
 
   const displayTrades = getDisplayTrades();
-  const showDataSourceSelector = ["data-analysis"].includes(activeTab) && !isEarlyAccess;
+  const showDataSourceSelector = ["data-analysis"].includes(activeTab) && !isEarlyAccess && !isSetterOnly;
 
   const renderContent = () => {
+    if (isSetterOnly) return <EarlyAccessManagement />;
     switch (activeTab) {
       case "execution":
         return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} />;
