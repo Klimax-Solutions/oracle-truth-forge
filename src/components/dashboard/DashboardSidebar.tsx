@@ -201,16 +201,29 @@ export const useSidebarRoles = () => {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isSetter, setIsSetter] = useState(false);
 
+  const checkRoles = async () => {
+    const { data: isAdminData } = await supabase.rpc('is_admin');
+    setIsAdmin(!!isAdminData);
+    const { data: isSuperAdminData } = await supabase.rpc('is_super_admin');
+    setIsSuperAdmin(!!isSuperAdminData);
+    const { data: isSetterData } = await supabase.rpc('is_setter' as any);
+    setIsSetter(!!isSetterData);
+  };
+
   useEffect(() => {
-    const checkRoles = async () => {
-      const { data: isAdminData } = await supabase.rpc('is_admin');
-      if (isAdminData) setIsAdmin(true);
-      const { data: isSuperAdminData } = await supabase.rpc('is_super_admin');
-      if (isSuperAdminData) setIsSuperAdmin(true);
-      const { data: isSetterData } = await supabase.rpc('is_setter' as any);
-      if (isSetterData) setIsSetter(true);
-    };
     checkRoles();
+
+    // Listen for realtime role changes to update instantly
+    const channel = supabase
+      .channel('sidebar-roles-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => {
+        checkRoles();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return { isAdmin, isSuperAdmin, isSetter };
