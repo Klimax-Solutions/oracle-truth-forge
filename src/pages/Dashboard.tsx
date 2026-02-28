@@ -427,13 +427,14 @@ const Dashboard = () => {
         </main>
       </div>
 
-      {/* Quest Floating Bubble */}
-      <QuestFloatingBubble
-        questData={questData}
-        onNavigateToVideos={() => setActiveTab("videos")}
-        onNavigateToSetup={() => setActiveTab("setup")}
-        onNavigateToExecution={() => setActiveTab("execution")}
-      />
+      {!isSetterOnly && (
+        <QuestFloatingBubble
+          questData={questData}
+          onNavigateToVideos={() => setActiveTab("videos")}
+          onNavigateToSetup={() => setActiveTab("setup")}
+          onNavigateToExecution={() => setActiveTab("execution")}
+        />
+      )}
 
       {/* Admin Verification Popup */}
       {(isAdmin || isSuperAdmin) && (
@@ -446,11 +447,11 @@ const Dashboard = () => {
       )}
       
       {/* Cycle Report Popup for members */}
-      <CycleReportPopup />
+      {!isSetterOnly && <CycleReportPopup />}
       
       {/* Early Access Login Popup */}
-      <EarlyAccessLoginPopup />
-      {!isSetter && <ResultNotificationPopup onNavigateToResults={() => setActiveTab("results")} />}
+      {!isSetterOnly && <EarlyAccessLoginPopup />}
+      {!isSetterOnly && <ResultNotificationPopup onNavigateToResults={() => setActiveTab("results")} />}
       {isEarlyAccess && isEarlyAccessExpired && <EarlyAccessExpiredPopup />}
     </div>
     </div>
