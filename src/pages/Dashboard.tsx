@@ -78,7 +78,7 @@ const Dashboard = () => {
   const [dataSource, setDataSource] = useState<DataSource>("all");
   const [displayName, setDisplayName] = useState<string>("");
   const { trades: personalTrades } = usePersonalTrades();
-  const { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter } = useSidebarRoles();
+  const { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter, loadingRoles } = useSidebarRoles();
   const questData = useQuestData();
   const { isEarlyAccess: realIsEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
@@ -94,6 +94,7 @@ const Dashboard = () => {
   const isAdmin = effectiveIsAdmin;
   const isSuperAdmin = effectiveIsSuperAdmin;
   const isSetter = effectiveIsSetter;
+  const isSetterOnly = isSetter && !isSuperAdmin && !isAdmin;
   const isEarlyAccess = simulatedRole !== "none" ? effectiveIsEarlyAccess : realIsEarlyAccess;
   // When simulating EA, create a fake expiresAt 3 days from now for demo
   const effectiveExpiresAt = simulatedRole === "early_access" 

@@ -212,18 +212,46 @@ export const useSidebarRoles = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isSetter, setIsSetter] = useState(false);
+  const [loadingRoles, setLoadingRoles] = useState(true);
+
+  const resetRoles = () => {
+    setIsAdmin(false);
+    setIsSuperAdmin(false);
+    setIsSetter(false);
+  };
 
   const checkRoles = async () => {
-    const { data: isAdminData } = await supabase.rpc('is_admin');
-    setIsAdmin(!!isAdminData);
-    const { data: isSuperAdminData } = await supabase.rpc('is_super_admin');
-    setIsSuperAdmin(!!isSuperAdminData);
-    const { data: isSetterData } = await supabase.rpc('is_setter' as any);
-    setIsSetter(!!isSetterData);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      resetRoles();
+      setLoadingRoles(false);
+      return;
+    }
+
+    const [adminRes, superAdminRes, setterRes] = await Promise.all([
+      supabase.rpc('is_admin'),
+      supabase.rpc('is_super_admin'),
+      supabase.rpc('is_setter' as any),
+    ]);
+
+    setIsAdmin(!!adminRes.data);
+    setIsSuperAdmin(!!superAdminRes.data);
+    setIsSetter(!!setterRes.data);
+    setLoadingRoles(false);
   };
 
   useEffect(() => {
     checkRoles();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        resetRoles();
+        setLoadingRoles(false);
+        return;
+      }
+      setLoadingRoles(true);
+      checkRoles();
+    });
 
     // Listen for realtime role changes to update instantly
     const channel = supabase
@@ -234,9 +262,10 @@ export const useSidebarRoles = () => {
       .subscribe();
 
     return () => {
+      subscription.unsubscribe();
       supabase.removeChannel(channel);
     };
   }, []);
 
-  return { isAdmin, isSuperAdmin, isSetter };
+  return { isAdmin, isSuperAdmin, isSetter, loadingRoles };
 };
