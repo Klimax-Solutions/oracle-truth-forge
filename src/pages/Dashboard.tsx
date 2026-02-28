@@ -366,7 +366,15 @@ const Dashboard = () => {
       />
 
       {/* Desktop Sidebar */}
-      <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} overrideRoles={simulatedRole !== "none" ? { isAdmin, isSuperAdmin, isSetter, isEarlyAccess } : undefined} />
+      <DashboardSidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        overrideRoles={
+          simulatedRole !== "none"
+            ? { isAdmin, isSuperAdmin, isSetter, isEarlyAccess }
+            : { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter, isEarlyAccess: realIsEarlyAccess }
+        }
+      />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
