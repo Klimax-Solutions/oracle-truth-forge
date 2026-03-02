@@ -582,10 +582,24 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                       onNavigateToVideos={() => onNavigateToVideos?.()}
                       onNavigateToSetup={() => onNavigateToSetup?.()}
                       onRequestVerification={
-                        ebauche && ebauche.userCycle?.status === 'in_progress'
-                          ? () => handleRequestVerification(ebauche)
-                          : undefined
+                        (() => {
+                          // Ebauche verification
+                          if (ebauche && ebauche.userCycle?.status === 'in_progress' && questData.ebaucheComplete) {
+                            return () => handleRequestVerification(ebauche);
+                          }
+                          // Active cycle verification
+                          if (currentCycle && currentCycle.userCycle?.status === 'in_progress' && currentCycle.userExecutions.length >= currentCycle.total_trades) {
+                            return () => handleRequestVerification(currentCycle);
+                          }
+                          return undefined;
+                        })()
                       }
+                      currentCycleData={currentCycle ? {
+                        name: currentCycle.name,
+                        progress: currentCycle.userExecutions.length,
+                        total: currentCycle.total_trades,
+                        isComplete: currentCycle.userExecutions.length >= currentCycle.total_trades,
+                      } : undefined}
                     />
                   </div>
                 )}
