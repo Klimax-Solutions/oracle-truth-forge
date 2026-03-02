@@ -342,7 +342,7 @@ const Dashboard = () => {
       case "early-access-mgmt":
         return <EarlyAccessManagement />;
       default:
-        return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} />;
+        return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
     }
   };
 

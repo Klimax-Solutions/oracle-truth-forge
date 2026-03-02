@@ -478,7 +478,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
 
   // Determine if verification popup should show
   const verificationPopupData = useMemo(() => {
-    if (loading) return null;
+    if (loading || isStaff) return null;
     // Check ébauche: complete + still in_progress + no existing request
     if (
       ebauche &&
@@ -510,7 +510,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
       };
     }
     return null;
-  }, [loading, ebauche, currentCycle, requestedCycleIds, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
+  }, [loading, isStaff, ebauche, currentCycle, requestedCycleIds, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
 
   if (loading) {
     return (
