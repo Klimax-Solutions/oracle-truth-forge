@@ -280,7 +280,14 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   // Request verification - now based on user executions count
   const handleRequestVerification = async (cycleData: CycleWithProgress) => {
     if (!cycleData.userCycle) return;
-    
+
+    if (requestedCycleIds.has(cycleData.id)) {
+      toast({
+        title: "Déjà demandé",
+        description: "Votre demande de vérification est déjà enregistrée pour ce cycle.",
+      });
+      return;
+    }
     // For ebauche (cycle 0), check trade analyses instead of user executions
     if (cycleData.cycle_number === 0) {
       const analyzedCount = questData?.ebaucheTradesAnalyzed || 0;
