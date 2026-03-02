@@ -64,6 +64,7 @@ export const DailyQuestCard = ({
   earlyAccessType,
   expiresAt,
   eaSettings = [],
+  currentCycleData,
 }: DailyQuestCardProps) => {
   const [showCalendar, setShowCalendar] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
