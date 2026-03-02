@@ -10,6 +10,7 @@ import {
 
 interface VerificationRequiredPopupProps {
   open: boolean;
+  onClose: () => void;
   cycleName: string;
   cycleNumber: number;
   progress: number;
@@ -20,6 +21,7 @@ interface VerificationRequiredPopupProps {
 
 export const VerificationRequiredPopup = ({
   open,
+  onClose,
   cycleName,
   cycleNumber,
   progress,
@@ -28,7 +30,7 @@ export const VerificationRequiredPopup = ({
   onRequestVerification,
 }: VerificationRequiredPopupProps) => {
   return (
-    <Dialog open={open}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent
         className="sm:max-w-md border-primary/40 bg-card"
       >
