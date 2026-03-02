@@ -33,6 +33,13 @@ interface EASetting {
   button_url: string;
 }
 
+interface CycleProgress {
+  name: string;
+  progress: number;
+  total: number;
+  isComplete: boolean;
+}
+
 interface DailyQuestCardProps {
   questData: QuestData;
   onNavigateToVideos: () => void;
@@ -42,6 +49,7 @@ interface DailyQuestCardProps {
   earlyAccessType?: string | null;
   expiresAt?: string | null;
   eaSettings?: EASetting[];
+  currentCycleData?: CycleProgress;
 }
 
 const FX_REPLAY_LOGIN_URL = "https://app.fxreplay.com/en-US/login";
@@ -56,6 +64,7 @@ export const DailyQuestCard = ({
   earlyAccessType,
   expiresAt,
   eaSettings = [],
+  currentCycleData,
 }: DailyQuestCardProps) => {
   const [showCalendar, setShowCalendar] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -199,23 +208,45 @@ export const DailyQuestCard = ({
             showAction={!ebaucheComplete && onboardingStep === 2}
           />
 
-          {/* Quest 3: Request verification */}
-          <QuestItem
-            completed={ebaucheStatus === "validated" || ebaucheStatus === "pending_review"}
-            active={onboardingStep === 3}
-            title="Demander la vérification"
-            subtitle={
-              ebaucheStatus === "pending_review"
-                ? "En attente de validation"
-                : ebaucheStatus === "validated"
-                ? "Phase d'ébauche validée !"
-                : "Débloquer le cycle 1 de récolte"
-            }
-            actionLabel="Demander la vérification"
-            actionIcon={<Send className="w-3 h-3" />}
-            onAction={onRequestVerification}
-            showAction={onboardingStep === 3 && ebaucheStatus !== "pending_review" && ebaucheStatus !== "validated"}
-          />
+          {/* Quest 3: Request verification — prominent when ready */}
+          {onboardingStep === 3 && ebaucheStatus !== "pending_review" && ebaucheStatus !== "validated" && onRequestVerification ? (
+            <div className="p-3 rounded-md border-2 border-primary bg-primary/10 space-y-2">
+              <div className="flex items-center gap-2">
+                <Send className="w-4 h-4 text-primary" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Ébauche terminée — {ebaucheTradesAnalyzed}/{ebaucheTradesRequired} datas récoltées
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">Débloquer le cycle 1 de récolte</p>
+                </div>
+              </div>
+              <Button
+                onClick={onRequestVerification}
+                className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold animate-pulse"
+                size="sm"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Demander ma vérification
+              </Button>
+            </div>
+          ) : (
+            <QuestItem
+              completed={ebaucheStatus === "validated" || ebaucheStatus === "pending_review"}
+              active={onboardingStep === 3}
+              title="Demander la vérification"
+              subtitle={
+                ebaucheStatus === "pending_review"
+                  ? "En attente de validation"
+                  : ebaucheStatus === "validated"
+                  ? "Phase d'ébauche validée !"
+                  : "Débloquer le cycle 1 de récolte"
+              }
+              actionLabel="Demander la vérification"
+              actionIcon={<Send className="w-3 h-3" />}
+              onAction={onRequestVerification}
+              showAction={false}
+            />
+          )}
         </div>
       )}
 
@@ -267,6 +298,28 @@ export const DailyQuestCard = ({
             title="Récolter vos 5 premières datas"
             subtitle="Disponible après connexion à FX Replay"
           />
+        </div>
+      )}
+
+      {/* Verification CTA for active cycles */}
+      {onboardingComplete && !isFirstExecutionQuest && onRequestVerification && (
+        <div className="p-3 rounded-md border-2 border-primary bg-primary/10 space-y-2">
+          <div className="flex items-center gap-2">
+            <Send className="w-4 h-4 text-primary" />
+            <p className="text-sm font-semibold text-foreground">
+              {currentCycleData
+                ? `${currentCycleData.name} — ${currentCycleData.progress}/${currentCycleData.total} datas récoltées`
+                : "Vos datas sont prêtes pour vérification"}
+            </p>
+          </div>
+          <Button
+            onClick={onRequestVerification}
+            className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold animate-pulse"
+            size="sm"
+          >
+            <Send className="w-3.5 h-3.5" />
+            Demander ma vérification
+          </Button>
         </div>
       )}
 
