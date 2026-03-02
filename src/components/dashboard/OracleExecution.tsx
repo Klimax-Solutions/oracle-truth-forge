@@ -557,68 +557,56 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
         {/* Non-Early Access: Last Data Preview + Daily Quest side by side */}
         {!isEarlyAccess && (
           <>
-            {/* Side-by-side: Last data preview (left) + Daily Quest (right) */}
-            {userExecutions.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Left: Last Data Preview with stats */}
-                <LastDataPreviewCard
-                  lastExecution={userExecutions[userExecutions.length - 1]}
-                  totalUserTrades={totalUserTrades}
-                  currentCycleName={currentCycle?.name || "—"}
-                  totalUserRR={totalUserRR}
-                  averageUserRR={averageUserRR}
-                  completedCycles={completedCycles}
-                  onContinueHarvest={() => {
-                    window.open("https://app.fxreplay.com/en-US/auth/testing/dashboard", "_blank");
-                    onNavigateToSetup?.();
-                  }}
-                />
-
-                {/* Right: Daily Quest */}
-                {questData && !questData.loading && (
-                  <div className="border border-border rounded-md bg-card overflow-hidden">
-                    <DailyQuestCard
-                      questData={questData}
-                      onNavigateToVideos={() => onNavigateToVideos?.()}
-                      onNavigateToSetup={() => onNavigateToSetup?.()}
-                      onRequestVerification={
-                        (() => {
-                          // Ebauche verification
-                          if (ebauche && ebauche.userCycle?.status === 'in_progress' && questData.ebaucheComplete) {
-                            return () => handleRequestVerification(ebauche);
-                          }
-                          // Active cycle verification
-                          if (currentCycle && currentCycle.userCycle?.status === 'in_progress' && currentCycle.userExecutions.length >= currentCycle.total_trades) {
-                            return () => handleRequestVerification(currentCycle);
-                          }
-                          return undefined;
-                        })()
-                      }
-                      currentCycleData={currentCycle ? {
-                        name: currentCycle.name,
-                        progress: currentCycle.userExecutions.length,
-                        total: currentCycle.total_trades,
-                        isComplete: currentCycle.userExecutions.length >= currentCycle.total_trades,
-                      } : undefined}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* If no executions yet, show daily quest full width */}
-            {userExecutions.length === 0 && questData && !questData.loading && (
-              <DailyQuestCard
-                questData={questData}
-                onNavigateToVideos={() => onNavigateToVideos?.()}
-                onNavigateToSetup={() => onNavigateToSetup?.()}
-                onRequestVerification={
-                  ebauche && ebauche.userCycle?.status === 'in_progress' && questData.ebaucheComplete
-                    ? () => handleRequestVerification(ebauche)
-                    : undefined
-                }
+            {/* Side-by-side: Last data preview (left) + Daily Quest (right) — always visible */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Left: Last Data Preview with stats */}
+              <LastDataPreviewCard
+                lastExecution={userExecutions[userExecutions.length - 1]}
+                totalUserTrades={totalUserTrades}
+                currentCycleName={currentCycle?.name || "—"}
+                totalUserRR={totalUserRR}
+                averageUserRR={averageUserRR}
+                completedCycles={completedCycles}
+                onContinueHarvest={() => {
+                  window.open("https://app.fxreplay.com/en-US/auth/testing/dashboard", "_blank");
+                  onNavigateToSetup?.();
+                }}
               />
-            )}
+
+              {/* Right: Daily Quest */}
+              {questData && !questData.loading ? (
+                <div className="border border-border rounded-md bg-card overflow-hidden">
+                  <DailyQuestCard
+                    questData={questData}
+                    onNavigateToVideos={() => onNavigateToVideos?.()}
+                    onNavigateToSetup={() => onNavigateToSetup?.()}
+                    onRequestVerification={
+                      (() => {
+                        // Ebauche verification
+                        if (ebauche && ebauche.userCycle?.status === 'in_progress' && questData.ebaucheComplete) {
+                          return () => handleRequestVerification(ebauche);
+                        }
+                        // Active cycle verification
+                        if (currentCycle && currentCycle.userCycle?.status === 'in_progress' && currentCycle.userExecutions.length >= currentCycle.total_trades) {
+                          return () => handleRequestVerification(currentCycle);
+                        }
+                        return undefined;
+                      })()
+                    }
+                    currentCycleData={currentCycle ? {
+                      name: currentCycle.name,
+                      progress: currentCycle.userExecutions.length,
+                      total: currentCycle.total_trades,
+                      isComplete: currentCycle.userExecutions.length >= currentCycle.total_trades,
+                    } : undefined}
+                  />
+                </div>
+              ) : (
+                <div className="border border-border rounded-md bg-card p-4 flex items-center justify-center text-sm text-muted-foreground">
+                  Chargement des quêtes...
+                </div>
+              )}
+            </div>
 
             {/* Données Clés - aggregate stats for non-EA users */}
             {userExecutions.length > 0 && (

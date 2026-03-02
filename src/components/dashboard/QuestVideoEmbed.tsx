@@ -66,16 +66,21 @@ export const QuestVideoEmbed = ({ embedCode }: QuestVideoEmbedProps) => {
     }
   }, [html, isScript]);
 
+  const wrapperClasses = "relative w-full max-w-[520px] mx-auto rounded-md overflow-hidden border border-border bg-muted";
+
   if (isScript) {
     return (
-      <div className="relative w-full max-h-[280px] rounded overflow-hidden bg-muted" style={{ aspectRatio: "16/9" }}>
-        <div ref={containerRef} className="absolute inset-0" />
+      <div className={wrapperClasses} style={{ aspectRatio: "16/9" }}>
+        <div
+          ref={containerRef}
+          className="absolute inset-0 [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0"
+        />
       </div>
     );
   }
 
   return (
-    <div className="relative w-full max-h-[280px] rounded overflow-hidden bg-muted" style={{ aspectRatio: "16/9" }}>
+    <div className={wrapperClasses} style={{ aspectRatio: "16/9" }}>
       <div
         className="absolute inset-0 [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0"
         dangerouslySetInnerHTML={{ __html: html }}
