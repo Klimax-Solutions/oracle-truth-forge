@@ -476,9 +476,12 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
     }
   };
 
+  // Local dismiss state for verification popup
+  const [verificationDismissed, setVerificationDismissed] = useState(false);
+
   // Determine if verification popup should show
   const verificationPopupData = useMemo(() => {
-    if (loading || isStaff) return null;
+    if (loading || isStaff || verificationDismissed) return null;
     // Check ébauche: complete + still in_progress + no existing request
     if (
       ebauche &&
@@ -510,7 +513,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
       };
     }
     return null;
-  }, [loading, isStaff, ebauche, currentCycle, requestedCycleIds, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
+  }, [loading, isStaff, verificationDismissed, ebauche, currentCycle, requestedCycleIds, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
 
   if (loading) {
     return (
@@ -526,6 +529,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
       {verificationPopupData && (
         <VerificationRequiredPopup
           open={true}
+          onClose={() => setVerificationDismissed(true)}
           cycleName={verificationPopupData.cycleName}
           cycleNumber={verificationPopupData.cycleNumber}
           progress={verificationPopupData.progress}
