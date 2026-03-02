@@ -478,8 +478,13 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   // Determine if verification popup should show
   const verificationPopupData = useMemo(() => {
     if (loading) return null;
-    // Check ébauche: complete + still in_progress (not yet requested)
-    if (ebauche && ebauche.userCycle?.status === 'in_progress' && questData?.ebaucheComplete) {
+    // Check ébauche: complete + still in_progress + no existing request
+    if (
+      ebauche &&
+      ebauche.userCycle?.status === 'in_progress' &&
+      questData?.ebaucheComplete &&
+      !requestedCycleIds.has(ebauche.id)
+    ) {
       return {
         cycleName: "Phase d'ébauche",
         cycleNumber: 0,
@@ -488,8 +493,13 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
         handler: () => handleRequestVerification(ebauche),
       };
     }
-    // Check active cycle: complete + still in_progress
-    if (currentCycle && currentCycle.userCycle?.status === 'in_progress' && currentCycle.userExecutions.length >= currentCycle.total_trades) {
+    // Check active cycle: complete + still in_progress + no existing request
+    if (
+      currentCycle &&
+      currentCycle.userCycle?.status === 'in_progress' &&
+      currentCycle.userExecutions.length >= currentCycle.total_trades &&
+      !requestedCycleIds.has(currentCycle.id)
+    ) {
       return {
         cycleName: currentCycle.name,
         cycleNumber: currentCycle.cycle_number,
@@ -499,7 +509,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
       };
     }
     return null;
-  }, [loading, ebauche, currentCycle, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
+  }, [loading, ebauche, currentCycle, requestedCycleIds, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
 
   if (loading) {
     return (
