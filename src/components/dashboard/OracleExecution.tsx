@@ -109,6 +109,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   const [submitting, setSubmitting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [globalStats, setGlobalStats] = useState<{ totalData: number; totalRR: number; avgRR: number; totalUsers: number } | null>(null);
+  const [requestedCycleIds, setRequestedCycleIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { isEarlyAccess, expiresAt, earlyAccessType } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
