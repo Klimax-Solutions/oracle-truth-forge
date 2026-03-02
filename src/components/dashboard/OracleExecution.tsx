@@ -443,16 +443,9 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
     }
   };
 
-  if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   // Determine if verification popup should show
   const verificationPopupData = useMemo(() => {
+    if (loading) return null;
     // Check ébauche: complete + still in_progress (not yet requested)
     if (ebauche && ebauche.userCycle?.status === 'in_progress' && questData?.ebaucheComplete) {
       return {
@@ -474,7 +467,15 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
       };
     }
     return null;
-  }, [ebauche, currentCycle, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
+  }, [loading, ebauche, currentCycle, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">
