@@ -279,6 +279,28 @@ export const DailyQuestCard = ({
         </div>
       )}
 
+      {/* Verification CTA for active cycles */}
+      {onboardingComplete && !isFirstExecutionQuest && onRequestVerification && (
+        <div className="p-3 rounded-md border-2 border-primary bg-primary/10 space-y-2">
+          <div className="flex items-center gap-2">
+            <Send className="w-4 h-4 text-primary" />
+            <p className="text-sm font-semibold text-foreground">
+              {currentCycleData
+                ? `${currentCycleData.name} — ${currentCycleData.progress}/${currentCycleData.total} datas récoltées`
+                : "Vos datas sont prêtes pour vérification"}
+            </p>
+          </div>
+          <Button
+            onClick={onRequestVerification}
+            className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold animate-pulse"
+            size="sm"
+          >
+            <Send className="w-3.5 h-3.5" />
+            Demander ma vérification
+          </Button>
+        </div>
+      )}
+
       {/* Daily Quest (after onboarding + FX Replay connected) */}
       {onboardingComplete && !isFirstExecutionQuest && (
         <div className="space-y-3">
