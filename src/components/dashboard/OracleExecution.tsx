@@ -330,6 +330,13 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
 
       if (requestError) throw requestError;
 
+      // Dès qu'une demande existe, on masque le pop-up obligatoire
+      setRequestedCycleIds((prev) => {
+        const next = new Set(prev);
+        next.add(cycleData.id);
+        return next;
+      });
+
       // For cycles 1+, check accuracy for auto-validation (90%+ = auto-approve)
       if (cycleData.cycle_number > 0) {
         const { data: accuracy, error: accError } = await supabase.rpc(
