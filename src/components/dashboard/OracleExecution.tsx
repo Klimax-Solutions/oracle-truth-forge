@@ -109,6 +109,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   const [submitting, setSubmitting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [globalStats, setGlobalStats] = useState<{ totalData: number; totalRR: number; avgRR: number; totalUsers: number } | null>(null);
+  const [requestedCycleIds, setRequestedCycleIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { isEarlyAccess, expiresAt, earlyAccessType } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
@@ -141,6 +142,23 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
 
       if (userCyclesData) {
         setUserCycles(userCyclesData as UserCycle[]);
+      }
+
+      // Fetch existing verification requests for this user
+      const { data: verificationRequestsData } = await supabase
+        .from("verification_requests")
+        .select("cycle_id, status")
+        .eq("user_id", user.id);
+
+      if (verificationRequestsData) {
+        const requestedIds = new Set(
+          verificationRequestsData
+            .filter((request) => request.status !== "rejected")
+            .map((request) => request.cycle_id)
+        );
+        setRequestedCycleIds(requestedIds);
+      } else {
+        setRequestedCycleIds(new Set());
       }
 
       // Fetch user executions for progress tracking
@@ -262,7 +280,14 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   // Request verification - now based on user executions count
   const handleRequestVerification = async (cycleData: CycleWithProgress) => {
     if (!cycleData.userCycle) return;
-    
+
+    if (requestedCycleIds.has(cycleData.id)) {
+      toast({
+        title: "Déjà demandé",
+        description: "Votre demande de vérification est déjà enregistrée pour ce cycle.",
+      });
+      return;
+    }
     // For ebauche (cycle 0), check trade analyses instead of user executions
     if (cycleData.cycle_number === 0) {
       const analyzedCount = questData?.ebaucheTradesAnalyzed || 0;
@@ -304,6 +329,13 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
         });
 
       if (requestError) throw requestError;
+
+      // Dès qu'une demande existe, on masque le pop-up obligatoire
+      setRequestedCycleIds((prev) => {
+        const next = new Set(prev);
+        next.add(cycleData.id);
+        return next;
+      });
 
       // For cycles 1+, check accuracy for auto-validation (90%+ = auto-approve)
       if (cycleData.cycle_number > 0) {
@@ -446,8 +478,13 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   // Determine if verification popup should show
   const verificationPopupData = useMemo(() => {
     if (loading) return null;
-    // Check ébauche: complete + still in_progress (not yet requested)
-    if (ebauche && ebauche.userCycle?.status === 'in_progress' && questData?.ebaucheComplete) {
+    // Check ébauche: complete + still in_progress + no existing request
+    if (
+      ebauche &&
+      ebauche.userCycle?.status === 'in_progress' &&
+      questData?.ebaucheComplete &&
+      !requestedCycleIds.has(ebauche.id)
+    ) {
       return {
         cycleName: "Phase d'ébauche",
         cycleNumber: 0,
@@ -456,8 +493,13 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
         handler: () => handleRequestVerification(ebauche),
       };
     }
-    // Check active cycle: complete + still in_progress
-    if (currentCycle && currentCycle.userCycle?.status === 'in_progress' && currentCycle.userExecutions.length >= currentCycle.total_trades) {
+    // Check active cycle: complete + still in_progress + no existing request
+    if (
+      currentCycle &&
+      currentCycle.userCycle?.status === 'in_progress' &&
+      currentCycle.userExecutions.length >= currentCycle.total_trades &&
+      !requestedCycleIds.has(currentCycle.id)
+    ) {
       return {
         cycleName: currentCycle.name,
         cycleNumber: currentCycle.cycle_number,
@@ -467,7 +509,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
       };
     }
     return null;
-  }, [loading, ebauche, currentCycle, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
+  }, [loading, ebauche, currentCycle, requestedCycleIds, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
 
   if (loading) {
     return (
