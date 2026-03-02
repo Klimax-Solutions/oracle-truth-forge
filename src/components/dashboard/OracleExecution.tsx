@@ -48,6 +48,7 @@ interface OracleExecutionProps {
   onNavigateToVideos?: () => void;
   onNavigateToSetup?: () => void;
   questData?: QuestData;
+  isStaff?: boolean;
 }
 
 interface Cycle {
@@ -100,7 +101,7 @@ interface CycleWithProgress extends Cycle {
   progress: number;
 }
 
-export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos, onNavigateToSetup, questData }: OracleExecutionProps) => {
+export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos, onNavigateToSetup, questData, isStaff = false }: OracleExecutionProps) => {
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [userCycles, setUserCycles] = useState<UserCycle[]>([]);
   const [userExecutions, setUserExecutions] = useState<UserExecution[]>([]);
