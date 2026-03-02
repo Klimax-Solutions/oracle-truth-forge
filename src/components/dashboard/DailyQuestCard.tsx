@@ -33,6 +33,13 @@ interface EASetting {
   button_url: string;
 }
 
+interface CycleProgress {
+  name: string;
+  progress: number;
+  total: number;
+  isComplete: boolean;
+}
+
 interface DailyQuestCardProps {
   questData: QuestData;
   onNavigateToVideos: () => void;
@@ -42,6 +49,7 @@ interface DailyQuestCardProps {
   earlyAccessType?: string | null;
   expiresAt?: string | null;
   eaSettings?: EASetting[];
+  currentCycleData?: CycleProgress;
 }
 
 const FX_REPLAY_LOGIN_URL = "https://app.fxreplay.com/en-US/login";
