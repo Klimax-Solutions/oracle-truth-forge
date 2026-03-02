@@ -30,9 +30,7 @@ export const VerificationRequiredPopup = ({
   return (
     <Dialog open={open}>
       <DialogContent
-        className="sm:max-w-md border-primary/40 bg-card [&>button]:hidden"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
+        className="sm:max-w-md border-primary/40 bg-card"
       >
         <DialogHeader className="text-center items-center gap-3">
           <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center mx-auto">
