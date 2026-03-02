@@ -22,6 +22,19 @@ export const EAPendingPopup = ({ onNavigateToEA }: EAPendingPopupProps) => {
   const [loaded, setLoaded] = useState(false);
   const [animateIn, setAnimateIn] = useState(false);
 
+  const buildPendingSignature = (items: PendingEA[]) => {
+    if (items.length === 0) return "empty";
+    const first = items[0]?.id ?? "none";
+    const last = items[items.length - 1]?.id ?? "none";
+    return `${items.length}:${first}:${last}`;
+  };
+
+  const handleDismiss = () => {
+    const signature = buildPendingSignature(pending);
+    localStorage.setItem("ea_pending_popup_dismissed_signature", signature);
+    setDismissed(true);
+  };
+
   useEffect(() => {
     const check = async () => {
       const { data: sa } = await supabase.rpc("is_super_admin");
@@ -35,7 +48,16 @@ export const EAPendingPopup = ({ onNavigateToEA }: EAPendingPopupProps) => {
         .order("created_at", { ascending: false });
 
       if (data && (data as any[]).length > 0) {
-        setPending(data as any as PendingEA[]);
+        const nextPending = data as any as PendingEA[];
+        setPending(nextPending);
+
+        const signature = buildPendingSignature(nextPending);
+        const dismissedSignature = localStorage.getItem("ea_pending_popup_dismissed_signature");
+        if (dismissedSignature === signature) {
+          setDismissed(true);
+        } else {
+          setDismissed(false);
+        }
       }
       setLoaded(true);
       setTimeout(() => setAnimateIn(true), 200);
