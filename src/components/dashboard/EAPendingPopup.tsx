@@ -30,9 +30,16 @@ export const EAPendingPopup = ({ onNavigateToEA }: EAPendingPopupProps) => {
   };
 
   const handleDismiss = () => {
-    const signature = buildPendingSignature(pending);
-    localStorage.setItem("ea_pending_popup_dismissed_signature", signature);
+    // Toujours fermer visuellement en priorité
     setDismissed(true);
+
+    // Persistance non bloquante (certains environnements peuvent bloquer localStorage)
+    try {
+      const signature = buildPendingSignature(pending);
+      localStorage.setItem("ea_pending_popup_dismissed_signature", signature);
+    } catch (error) {
+      console.warn("Unable to persist EA popup dismissal", error);
+    }
   };
 
   useEffect(() => {
@@ -52,10 +59,11 @@ export const EAPendingPopup = ({ onNavigateToEA }: EAPendingPopupProps) => {
         setPending(nextPending);
 
         const signature = buildPendingSignature(nextPending);
-        const dismissedSignature = localStorage.getItem("ea_pending_popup_dismissed_signature");
-        if (dismissedSignature === signature) {
-          setDismissed(true);
-        } else {
+        try {
+          const dismissedSignature = localStorage.getItem("ea_pending_popup_dismissed_signature");
+          setDismissed(dismissedSignature === signature);
+        } catch (error) {
+          console.warn("Unable to read EA popup dismissal", error);
           setDismissed(false);
         }
       }
