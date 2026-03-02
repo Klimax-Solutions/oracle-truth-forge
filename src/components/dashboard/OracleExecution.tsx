@@ -144,6 +144,23 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
         setUserCycles(userCyclesData as UserCycle[]);
       }
 
+      // Fetch existing verification requests for this user
+      const { data: verificationRequestsData } = await supabase
+        .from("verification_requests")
+        .select("cycle_id, status")
+        .eq("user_id", user.id);
+
+      if (verificationRequestsData) {
+        const requestedIds = new Set(
+          verificationRequestsData
+            .filter((request) => request.status !== "rejected")
+            .map((request) => request.cycle_id)
+        );
+        setRequestedCycleIds(requestedIds);
+      } else {
+        setRequestedCycleIds(new Set());
+      }
+
       // Fetch user executions for progress tracking
       const { data: userExecsData } = await supabase
         .from("user_executions")
