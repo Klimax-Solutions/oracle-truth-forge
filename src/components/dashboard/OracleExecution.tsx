@@ -111,6 +111,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   const [isAdmin, setIsAdmin] = useState(false);
   const [globalStats, setGlobalStats] = useState<{ totalData: number; totalRR: number; avgRR: number; totalUsers: number } | null>(null);
   const [requestedCycleIds, setRequestedCycleIds] = useState<Set<string>>(new Set());
+  const [verificationDismissed, setVerificationDismissed] = useState(false);
   const { toast } = useToast();
   const { isEarlyAccess, expiresAt, earlyAccessType } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
@@ -476,9 +477,10 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
     }
   };
 
+
   // Determine if verification popup should show
   const verificationPopupData = useMemo(() => {
-    if (loading || isStaff) return null;
+    if (loading || isStaff || verificationDismissed) return null;
     // Check ébauche: complete + still in_progress + no existing request
     if (
       ebauche &&
@@ -510,7 +512,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
       };
     }
     return null;
-  }, [loading, isStaff, ebauche, currentCycle, requestedCycleIds, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
+  }, [loading, isStaff, verificationDismissed, ebauche, currentCycle, requestedCycleIds, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
 
   if (loading) {
     return (
@@ -526,6 +528,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
       {verificationPopupData && (
         <VerificationRequiredPopup
           open={true}
+          onClose={() => setVerificationDismissed(true)}
           cycleName={verificationPopupData.cycleName}
           cycleNumber={verificationPopupData.cycleNumber}
           progress={verificationPopupData.progress}
