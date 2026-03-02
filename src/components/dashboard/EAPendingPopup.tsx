@@ -59,10 +59,11 @@ export const EAPendingPopup = ({ onNavigateToEA }: EAPendingPopupProps) => {
         setPending(nextPending);
 
         const signature = buildPendingSignature(nextPending);
-        const dismissedSignature = localStorage.getItem("ea_pending_popup_dismissed_signature");
-        if (dismissedSignature === signature) {
-          setDismissed(true);
-        } else {
+        try {
+          const dismissedSignature = localStorage.getItem("ea_pending_popup_dismissed_signature");
+          setDismissed(dismissedSignature === signature);
+        } catch (error) {
+          console.warn("Unable to read EA popup dismissal", error);
           setDismissed(false);
         }
       }
