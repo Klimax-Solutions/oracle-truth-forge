@@ -613,7 +613,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                 onNavigateToVideos={() => onNavigateToVideos?.()}
                 onNavigateToSetup={() => onNavigateToSetup?.()}
                 onRequestVerification={
-                  ebauche && ebauche.userCycle?.status === 'in_progress'
+                  ebauche && ebauche.userCycle?.status === 'in_progress' && questData.ebaucheComplete
                     ? () => handleRequestVerification(ebauche)
                     : undefined
                 }
