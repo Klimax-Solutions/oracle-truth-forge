@@ -31,6 +31,7 @@ import { ImageLightbox } from "./ImageLightbox";
 import { SignedImageCard } from "./SignedImageCard";
 import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
 import { useEaFeaturedTrade, type EaFeaturedTrade } from "@/hooks/useEaFeaturedTrade";
+import { VerificationRequiredPopup } from "./VerificationRequiredPopup";
 
 interface Trade {
   id: string;
