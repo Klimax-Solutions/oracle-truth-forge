@@ -30,9 +30,16 @@ export const EAPendingPopup = ({ onNavigateToEA }: EAPendingPopupProps) => {
   };
 
   const handleDismiss = () => {
-    const signature = buildPendingSignature(pending);
-    localStorage.setItem("ea_pending_popup_dismissed_signature", signature);
+    // Toujours fermer visuellement en priorité
     setDismissed(true);
+
+    // Persistance non bloquante (certains environnements peuvent bloquer localStorage)
+    try {
+      const signature = buildPendingSignature(pending);
+      localStorage.setItem("ea_pending_popup_dismissed_signature", signature);
+    } catch (error) {
+      console.warn("Unable to persist EA popup dismissal", error);
+    }
   };
 
   useEffect(() => {
