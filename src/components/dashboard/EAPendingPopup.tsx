@@ -72,7 +72,7 @@ export const EAPendingPopup = ({ onNavigateToEA }: EAPendingPopupProps) => {
       "fixed inset-0 z-[101] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300 overflow-y-auto p-4",
       animateIn ? "opacity-100" : "opacity-0"
     )}
-      onClick={() => setDismissed(true)}
+      onClick={handleDismiss}
     >
       <div className={cn(
         "relative w-full max-w-md bg-card border border-border rounded-xl shadow-2xl overflow-hidden transition-all duration-500",
@@ -93,7 +93,7 @@ export const EAPendingPopup = ({ onNavigateToEA }: EAPendingPopupProps) => {
                 <p className="text-xs text-muted-foreground font-mono">{pending.length} en attente</p>
               </div>
             </div>
-            <button onClick={() => setDismissed(true)} className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground">
+            <button onClick={handleDismiss} className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -118,7 +118,7 @@ export const EAPendingPopup = ({ onNavigateToEA }: EAPendingPopupProps) => {
         </div>
 
         <div className="p-5 pt-3 border-t border-border">
-          <Button className="w-full gap-2 bg-amber-600 hover:bg-amber-700 text-white" onClick={() => { setDismissed(true); onNavigateToEA(); }}>
+          <Button className="w-full gap-2 bg-amber-600 hover:bg-amber-700 text-white" onClick={() => { handleDismiss(); onNavigateToEA(); }}>
             <UserPlus className="w-4 h-4" />
             Voir les demandes EA
             <ChevronRight className="w-4 h-4" />
