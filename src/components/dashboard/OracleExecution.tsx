@@ -477,8 +477,6 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
     }
   };
 
-  // Local dismiss state for verification popup
-  const [verificationDismissed, setVerificationDismissed] = useState(false);
 
   // Determine if verification popup should show
   const verificationPopupData = useMemo(() => {
