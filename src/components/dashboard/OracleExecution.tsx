@@ -48,6 +48,7 @@ interface OracleExecutionProps {
   onNavigateToVideos?: () => void;
   onNavigateToSetup?: () => void;
   questData?: QuestData;
+  isStaff?: boolean;
 }
 
 interface Cycle {
@@ -100,7 +101,7 @@ interface CycleWithProgress extends Cycle {
   progress: number;
 }
 
-export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos, onNavigateToSetup, questData }: OracleExecutionProps) => {
+export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos, onNavigateToSetup, questData, isStaff = false }: OracleExecutionProps) => {
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [userCycles, setUserCycles] = useState<UserCycle[]>([]);
   const [userExecutions, setUserExecutions] = useState<UserExecution[]>([]);
@@ -477,7 +478,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
 
   // Determine if verification popup should show
   const verificationPopupData = useMemo(() => {
-    if (loading) return null;
+    if (loading || isStaff) return null;
     // Check ébauche: complete + still in_progress + no existing request
     if (
       ebauche &&
@@ -509,7 +510,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
       };
     }
     return null;
-  }, [loading, ebauche, currentCycle, requestedCycleIds, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
+  }, [loading, isStaff, ebauche, currentCycle, requestedCycleIds, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
 
   if (loading) {
     return (

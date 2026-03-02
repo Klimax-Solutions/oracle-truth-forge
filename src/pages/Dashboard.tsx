@@ -322,7 +322,7 @@ const Dashboard = () => {
     if (isSetterOnly) return <EarlyAccessManagement />;
     switch (activeTab) {
       case "execution":
-        return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} />;
+        return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
       case "setup":
         return <SetupPage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} />;
       case "data-analysis":
@@ -342,7 +342,7 @@ const Dashboard = () => {
       case "early-access-mgmt":
         return <EarlyAccessManagement />;
       default:
-        return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} />;
+        return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
     }
   };
 
