@@ -43,10 +43,11 @@ export const RoleSwitcher = ({ current, onChange }: RoleSwitcherProps) => {
  */
 export const getEffectiveRoles = (
   realIsSuperAdmin: boolean,
-  simulatedRole: SimulatedRole
+  simulatedRole: SimulatedRole,
+  realIsSetter: boolean = false
 ) => {
   if (!realIsSuperAdmin || simulatedRole === "none") {
-    return { effectiveIsAdmin: realIsSuperAdmin, effectiveIsSuperAdmin: realIsSuperAdmin, effectiveIsEarlyAccess: false, effectiveIsSetter: false, effectiveIsMember: true };
+    return { effectiveIsAdmin: realIsSuperAdmin, effectiveIsSuperAdmin: realIsSuperAdmin, effectiveIsEarlyAccess: false, effectiveIsSetter: realIsSetter, effectiveIsMember: true };
   }
 
   switch (simulatedRole) {
