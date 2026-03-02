@@ -31,6 +31,7 @@ import { ImageLightbox } from "./ImageLightbox";
 import { SignedImageCard } from "./SignedImageCard";
 import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
 import { useEaFeaturedTrade, type EaFeaturedTrade } from "@/hooks/useEaFeaturedTrade";
+import { VerificationRequiredPopup } from "./VerificationRequiredPopup";
 
 interface Trade {
   id: string;
@@ -450,8 +451,45 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
     );
   }
 
+  // Determine if verification popup should show
+  const verificationPopupData = useMemo(() => {
+    // Check ébauche: complete + still in_progress (not yet requested)
+    if (ebauche && ebauche.userCycle?.status === 'in_progress' && questData?.ebaucheComplete) {
+      return {
+        cycleName: "Phase d'ébauche",
+        cycleNumber: 0,
+        progress: questData.ebaucheTradesAnalyzed,
+        total: ebauche.total_trades,
+        handler: () => handleRequestVerification(ebauche),
+      };
+    }
+    // Check active cycle: complete + still in_progress
+    if (currentCycle && currentCycle.userCycle?.status === 'in_progress' && currentCycle.userExecutions.length >= currentCycle.total_trades) {
+      return {
+        cycleName: currentCycle.name,
+        cycleNumber: currentCycle.cycle_number,
+        progress: currentCycle.userExecutions.length,
+        total: currentCycle.total_trades,
+        handler: () => handleRequestVerification(currentCycle),
+      };
+    }
+    return null;
+  }, [ebauche, currentCycle, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
+
   return (
     <div className="h-full flex flex-col">
+      {/* Verification Required Popup */}
+      {verificationPopupData && (
+        <VerificationRequiredPopup
+          open={true}
+          cycleName={verificationPopupData.cycleName}
+          cycleNumber={verificationPopupData.cycleNumber}
+          progress={verificationPopupData.progress}
+          total={verificationPopupData.total}
+          submitting={submitting}
+          onRequestVerification={verificationPopupData.handler}
+        />
+      )}
       {/* Header */}
       <div className="p-4 md:p-6 border-b border-border">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
