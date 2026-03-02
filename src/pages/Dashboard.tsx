@@ -88,7 +88,7 @@ const Dashboard = () => {
   // Role switching for super admins
   const [simulatedRole, setSimulatedRole] = useState<SimulatedRole>("none");
   const { effectiveIsAdmin, effectiveIsSuperAdmin, effectiveIsEarlyAccess, effectiveIsSetter } = 
-    getEffectiveRoles(realIsSuperAdmin, simulatedRole);
+    getEffectiveRoles(realIsSuperAdmin, simulatedRole, realIsSetter);
   
   // Use effective roles throughout the dashboard
   const isAdmin = effectiveIsAdmin;
