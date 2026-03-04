@@ -1037,7 +1037,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         ) : (
                           <Button type="button" variant="outline" onClick={() => entryFileRef.current?.click()} className="w-full h-20 border-dashed gap-2 text-xs" disabled={uploading}>
                             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                            Screenshot Entrée (M5)
+                            Screenshot Entrée (TF modèle d'entrée)
                           </Button>
                         )}
                       </div>
