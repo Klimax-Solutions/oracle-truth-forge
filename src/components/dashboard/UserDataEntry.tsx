@@ -818,7 +818,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Paramètres du Setup</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Setup Type</Label>
+                        <Label className="text-xs">Type de Configuration</Label>
                         <CustomizableMultiSelect
                           value={formData.setup_type}
                           onChange={(v) => setFormData({ ...formData, setup_type: v })}
