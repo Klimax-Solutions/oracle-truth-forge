@@ -175,8 +175,9 @@ export const TradeNavigationLightbox = ({
 
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft") { e.preventDefault(); goToPrev(); }
-      if (e.key === "ArrowRight") { e.preventDefault(); goToNext(); }
+      const anyDialogOpen = showRefusalDialog || showValidationDialog || showSupplementaryDialog;
+      if (!anyDialogOpen && e.key === "ArrowLeft") { e.preventDefault(); goToPrev(); }
+      if (!anyDialogOpen && e.key === "ArrowRight") { e.preventDefault(); goToNext(); }
       if (e.key === "+" || e.key === "=") setZoom((z) => Math.min(z + 0.25, 5));
       if (e.key === "-") setZoom((z) => Math.max(z - 0.25, 0.25));
       if (e.key === "0") setZoom(1);
@@ -188,7 +189,7 @@ export const TradeNavigationLightbox = ({
       document.removeEventListener("keydown", handleKey);
       document.body.style.overflow = "";
     };
-  }, [open, currentIndex, activeScreen, items.length]);
+  }, [open, currentIndex, activeScreen, items.length, showRefusalDialog, showValidationDialog, showSupplementaryDialog]);
 
   const goToPrev = () => {
     if (currentIndex > 0) {
