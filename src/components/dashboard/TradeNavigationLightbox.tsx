@@ -194,6 +194,7 @@ export const TradeNavigationLightbox = ({
     if (currentIndex > 0) {
       setCurrentIndex((i) => i - 1);
       setZoom(1);
+      setPan({ x: 0, y: 0 });
       setShowOracleComparison(false);
     }
   };
@@ -202,6 +203,7 @@ export const TradeNavigationLightbox = ({
     if (currentIndex < items.length - 1) {
       setCurrentIndex((i) => i + 1);
       setZoom(1);
+      setPan({ x: 0, y: 0 });
       setShowOracleComparison(false);
     }
   };
@@ -209,7 +211,23 @@ export const TradeNavigationLightbox = ({
   const toggleScreen = () => {
     setActiveScreen(prev => prev === "m15" ? "m5" : "m15");
     setZoom(1);
+    setPan({ x: 0, y: 0 });
   };
+
+  const handleImageMouseDown = (e: React.MouseEvent) => {
+    if (zoom <= 1) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsPanning(true);
+    setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleImageMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning) return;
+    setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+  };
+
+  const handleImageMouseUp = () => setIsPanning(false);
 
   if (!open || !currentItem) return null;
 
