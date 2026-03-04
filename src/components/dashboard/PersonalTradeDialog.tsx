@@ -826,7 +826,7 @@ export const PersonalTradeDialog = ({
             </div>
             <div className="space-y-2">
               <ScreenshotUploadField
-                label="Screenshot Entrée"
+                label="Screenshot Entrée (TF modèle d'entrée)"
                 file={entryFile}
                 preview={entryPreview}
                 existingUrl={existingEntryUrl}

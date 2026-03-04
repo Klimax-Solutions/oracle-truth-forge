@@ -830,7 +830,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Structure</Label>
+                        <Label className="text-xs">Contexte</Label>
                         <CustomizableMultiSelect
                           value={formData.direction_structure}
                           onChange={(v) => setFormData({ ...formData, direction_structure: v })}
