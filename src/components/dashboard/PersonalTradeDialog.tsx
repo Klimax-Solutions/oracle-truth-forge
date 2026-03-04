@@ -620,7 +620,7 @@ export const PersonalTradeDialog = ({
               />
             </div>
             <div className="space-y-2">
-              <Label>Type de Setup</Label>
+              <Label>Type de Configuration</Label>
               <CustomizableMultiSelect
                 value={formData.setup_type}
                 onChange={(value) => setFormData({ ...formData, setup_type: value })}
