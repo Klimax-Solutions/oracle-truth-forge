@@ -818,7 +818,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Paramètres du Setup</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Setup Type</Label>
+                        <Label className="text-xs">Type de Configuration</Label>
                         <CustomizableMultiSelect
                           value={formData.setup_type}
                           onChange={(v) => setFormData({ ...formData, setup_type: v })}
@@ -830,7 +830,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Structure</Label>
+                        <Label className="text-xs">Contexte</Label>
                         <CustomizableMultiSelect
                           value={formData.direction_structure}
                           onChange={(v) => setFormData({ ...formData, direction_structure: v })}
@@ -1008,7 +1008,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Screenshots</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Contexte (M15) <span className="text-muted-foreground">(facultatif)</span></Label>
+                        <Label className="text-xs">Contexte (M15) <span className="text-destructive">*</span></Label>
                         <input ref={contextFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setContextFile, setContextPreview)} className="hidden" />
                         {(contextPreview || existingContextUrl) ? (
                           <div className="relative border border-border rounded-lg p-2 bg-muted/30">
@@ -1025,11 +1025,11 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         )}
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Entrée (M5) <span className="text-muted-foreground">(facultatif)</span></Label>
+                        <Label className="text-xs">Entrée (TF modèle d'entrée) <span className="text-destructive">*</span></Label>
                         <input ref={entryFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setEntryFile, setEntryPreview)} className="hidden" />
                         {(entryPreview || existingEntryUrl) ? (
                           <div className="relative border border-border rounded-lg p-2 bg-muted/30">
-                            <img src={entryPreview || existingEntryUrl || ""} alt="Entrée M5" className="max-h-32 object-contain mx-auto rounded" />
+                            <img src={entryPreview || existingEntryUrl || ""} alt="Entrée TF" className="max-h-32 object-contain mx-auto rounded" />
                             <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5" onClick={() => { setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }}>
                               <X className="w-3 h-3" />
                             </Button>
@@ -1037,7 +1037,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         ) : (
                           <Button type="button" variant="outline" onClick={() => entryFileRef.current?.click()} className="w-full h-20 border-dashed gap-2 text-xs" disabled={uploading}>
                             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                            Screenshot Entrée (M5)
+                            Screenshot Entrée (TF modèle d'entrée)
                           </Button>
                         )}
                       </div>
@@ -1386,7 +1386,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                       {/* Additional info - responsive */}
                       <div className="grid grid-cols-3 gap-2 md:gap-3">
                         <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                          <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Structure</span>
+                          <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Contexte</span>
                           <p className="text-xs md:text-sm font-medium text-foreground mt-0.5 md:mt-1">{execution.direction_structure || "—"}</p>
                         </div>
                         <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">

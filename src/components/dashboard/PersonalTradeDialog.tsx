@@ -221,7 +221,7 @@ const ScreenshotUploadField = ({
 
   return (
     <div className="space-y-2">
-      <Label className="text-xs">{label} <span className="text-muted-foreground">(facultatif)</span></Label>
+      <Label className="text-xs">{label} <span className="text-destructive">*</span></Label>
       <input
         ref={fileInputRef}
         type="file"
@@ -609,7 +609,7 @@ export const PersonalTradeDialog = ({
           {/* Row 4: Structure & Type de Setup (multi-select) */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Structure</Label>
+              <Label>Contexte</Label>
               <CustomizableMultiSelect
                 value={formData.direction_structure}
                 onChange={(value) => setFormData({ ...formData, direction_structure: value })}
@@ -620,7 +620,7 @@ export const PersonalTradeDialog = ({
               />
             </div>
             <div className="space-y-2">
-              <Label>Type de Setup</Label>
+              <Label>Type de Configuration</Label>
               <CustomizableMultiSelect
                 value={formData.setup_type}
                 onChange={(value) => setFormData({ ...formData, setup_type: value })}
@@ -826,7 +826,7 @@ export const PersonalTradeDialog = ({
             </div>
             <div className="space-y-2">
               <ScreenshotUploadField
-                label="Screenshot Entrée"
+                label="Screenshot Entrée (TF modèle d'entrée)"
                 file={entryFile}
                 preview={entryPreview}
                 existingUrl={existingEntryUrl}
