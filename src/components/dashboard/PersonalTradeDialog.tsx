@@ -221,7 +221,7 @@ const ScreenshotUploadField = ({
 
   return (
     <div className="space-y-2">
-      <Label className="text-xs">{label} <span className="text-muted-foreground">(facultatif)</span></Label>
+      <Label className="text-xs">{label} <span className="text-destructive">*</span></Label>
       <input
         ref={fileInputRef}
         type="file"
