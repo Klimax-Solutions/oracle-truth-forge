@@ -204,11 +204,16 @@ const Dashboard = () => {
 
       const localToken = localStorage.getItem("oracle_session_token");
       if (localToken) {
-        const { data: sessions } = await supabase
+        const { data: sessions, error: sessionsError } = await supabase
           .from("user_sessions")
           .select("session_token")
           .eq("user_id", uid);
-        
+
+        if (sessionsError) {
+          console.warn("Unable to verify user session token", sessionsError);
+          return true;
+        }
+
         const tokenExists = (sessions || []).some(s => s.session_token === localToken);
         if (!tokenExists) {
           await supabase.auth.signOut();
@@ -221,23 +226,29 @@ const Dashboard = () => {
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         if (!session) {
           navigate("/auth");
-        } else {
-          setUser(session.user);
-          checkUserAccess(session.user.id, session.user.user_metadata);
+          setLoading(false);
+          return;
         }
+
+        setUser(session.user);
+
+        if (["SIGNED_IN", "INITIAL_SESSION", "USER_UPDATED"].includes(event)) {
+          await checkUserAccess(session.user.id, session.user.user_metadata);
+        }
+
         setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
       } else {
         setUser(session.user);
-        checkUserAccess(session.user.id, session.user.user_metadata);
+        await checkUserAccess(session.user.id, session.user.user_metadata);
       }
       setLoading(false);
     });
