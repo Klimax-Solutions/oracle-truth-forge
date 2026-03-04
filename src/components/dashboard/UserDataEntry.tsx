@@ -1029,7 +1029,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         <input ref={entryFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setEntryFile, setEntryPreview)} className="hidden" />
                         {(entryPreview || existingEntryUrl) ? (
                           <div className="relative border border-border rounded-lg p-2 bg-muted/30">
-                            <img src={entryPreview || existingEntryUrl || ""} alt="Entrée M5" className="max-h-32 object-contain mx-auto rounded" />
+                            <img src={entryPreview || existingEntryUrl || ""} alt="Entrée TF" className="max-h-32 object-contain mx-auto rounded" />
                             <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5" onClick={() => { setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }}>
                               <X className="w-3 h-3" />
                             </Button>
