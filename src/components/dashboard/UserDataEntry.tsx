@@ -1008,7 +1008,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Screenshots</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Contexte (M15) <span className="text-muted-foreground">(facultatif)</span></Label>
+                        <Label className="text-xs">Contexte (M15) <span className="text-destructive">*</span></Label>
                         <input ref={contextFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setContextFile, setContextPreview)} className="hidden" />
                         {(contextPreview || existingContextUrl) ? (
                           <div className="relative border border-border rounded-lg p-2 bg-muted/30">
