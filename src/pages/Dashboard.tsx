@@ -109,12 +109,13 @@ const readDashboardState = (): {
 };
 
 const Dashboard = () => {
+  const persistedState = useMemo(() => readDashboardState(), []);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [activeTab, setActiveTab] = useState(() => "execution");
-  const [databaseFilters, setDatabaseFilters] = useState<any>(null);
-  const [dataSource, setDataSource] = useState<DataSource>("all");
+  const [activeTab, setActiveTab] = useState(() => persistedState.activeTab || DASHBOARD_DEFAULT_TAB);
+  const [databaseFilters, setDatabaseFilters] = useState<any>(() => persistedState.databaseFilters ?? null);
+  const [dataSource, setDataSource] = useState<DataSource>(() => persistedState.dataSource || "all");
   const [displayName, setDisplayName] = useState<string>("");
   const { trades: personalTrades } = usePersonalTrades();
   const { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter, loadingRoles } = useSidebarRoles();
