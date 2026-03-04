@@ -189,7 +189,7 @@ export const TradeNavigationLightbox = ({
       document.removeEventListener("keydown", handleKey);
       document.body.style.overflow = "";
     };
-  }, [open, currentIndex, activeScreen, items.length]);
+  }, [open, currentIndex, activeScreen, items.length, showRefusalDialog, showValidationDialog, showSupplementaryDialog]);
 
   const goToPrev = () => {
     if (currentIndex > 0) {
