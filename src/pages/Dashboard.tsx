@@ -69,6 +69,45 @@ interface TimingFilters {
   week?: string;
 }
 
+const DASHBOARD_DEFAULT_TAB = "execution";
+const DASHBOARD_DATA_SOURCE_VALUES: DataSource[] = ["all", "perso", "oracle", "data-generale"];
+const DASHBOARD_STATE_VERSION = 1;
+
+const getDashboardStateStorageKey = () => {
+  try {
+    const sessionToken = localStorage.getItem("oracle_session_token") || "anonymous";
+    return `oracle_dashboard_state_${sessionToken}`;
+  } catch {
+    return "oracle_dashboard_state_anonymous";
+  }
+};
+
+const readDashboardState = (): {
+  activeTab?: string;
+  databaseFilters?: any;
+  dataSource?: DataSource;
+} => {
+  try {
+    const rawState = localStorage.getItem(getDashboardStateStorageKey());
+    if (!rawState) return {};
+
+    const parsedState = JSON.parse(rawState);
+    if (parsedState?.version !== DASHBOARD_STATE_VERSION) return {};
+
+    const persistedDataSource = DASHBOARD_DATA_SOURCE_VALUES.includes(parsedState?.dataSource)
+      ? (parsedState.dataSource as DataSource)
+      : "all";
+
+    return {
+      activeTab: typeof parsedState?.activeTab === "string" ? parsedState.activeTab : DASHBOARD_DEFAULT_TAB,
+      databaseFilters: parsedState?.databaseFilters ?? null,
+      dataSource: persistedDataSource,
+    };
+  } catch {
+    return {};
+  }
+};
+
 const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
