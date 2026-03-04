@@ -1320,6 +1320,45 @@ export const AdminVerification = () => {
                                         </Tooltip>
                                       </div>
                                     )}
+                                    {/* View past corrections for validated/rejected cycles */}
+                                    {userCycle && (status === "validated" || status === "rejected") && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            className="mt-1 p-0.5 rounded text-primary hover:text-primary/80 transition-colors"
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              // Find verification request for this user_cycle
+                                              const { data: vr } = await supabase
+                                                .from("verification_requests")
+                                                .select("id")
+                                                .eq("user_cycle_id", userCycle.id)
+                                                .order("created_at", { ascending: false })
+                                                .limit(1)
+                                                .maybeSingle();
+                                              if (vr) {
+                                                // Load the executions for this cycle
+                                                const cycleExecs = user.executions.filter(
+                                                  ex => ex.trade_number >= cycle.trade_start && ex.trade_number <= cycle.trade_end
+                                                );
+                                                setNotesViewerRequestId(vr.id);
+                                                setNotesViewerExecs(cycleExecs.map(ex => ({
+                                                  id: ex.id,
+                                                  trade_number: ex.trade_number,
+                                                  direction: ex.direction,
+                                                  trade_date: ex.trade_date,
+                                                })));
+                                              } else {
+                                                toast({ title: "Aucune correction trouvée", description: "Aucune demande de vérification n'a été trouvée pour ce cycle." });
+                                              }
+                                            }}
+                                          >
+                                            <MessageSquare className="w-3 h-3" />
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="text-[10px]">Voir les corrections</TooltipContent>
+                                      </Tooltip>
+                                    )}
                                   </div>
                                 );
                               })}
