@@ -16,6 +16,15 @@ interface AdminVerificationPopupProps {
   onNavigateToAdmin: () => void;
 }
 
+const buildPopupSeenKey = (userId: string) => {
+  try {
+    const sessionToken = localStorage.getItem("oracle_session_token") || "anonymous";
+    return `oracle_admin_verification_popup_seen_${userId}_${sessionToken}`;
+  } catch {
+    return `oracle_admin_verification_popup_seen_${userId}_anonymous`;
+  }
+};
+
 export const AdminVerificationPopup = ({ onNavigateToAdmin }: AdminVerificationPopupProps) => {
   const [pendingItems, setPendingItems] = useState<PendingVerification[]>([]);
   const [dismissed, setDismissed] = useState(false);
@@ -26,17 +35,28 @@ export const AdminVerificationPopup = ({ onNavigateToAdmin }: AdminVerificationP
   useEffect(() => {
     const check = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setLoaded(true);
+        return;
+      }
 
       // Check admin role
       const { data: adminCheck } = await supabase.rpc("is_admin");
       const { data: superAdminCheck } = await supabase.rpc("is_super_admin");
-      
+
       if (!adminCheck && !superAdminCheck) {
         setLoaded(true);
         return;
       }
       setIsAdmin(true);
+
+      const popupSeenKey = buildPopupSeenKey(user.id);
+      let popupAlreadyShown = false;
+      try {
+        popupAlreadyShown = localStorage.getItem(popupSeenKey) === "1";
+      } catch {
+        popupAlreadyShown = false;
+      }
 
       // Fetch pending verification requests
       const { data: requests } = await supabase
@@ -70,49 +90,22 @@ export const AdminVerificationPopup = ({ onNavigateToAdmin }: AdminVerificationP
       setPendingItems(items);
       setLoaded(true);
 
+      if (popupAlreadyShown) {
+        setDismissed(true);
+        return;
+      }
+
+      try {
+        localStorage.setItem(popupSeenKey, "1");
+      } catch {
+        // Ignore storage issues and keep popup visible for current runtime
+      }
+
       // Trigger animation
       setTimeout(() => setAnimateIn(true), 100);
     };
     check();
   }, []);
-
-  // Listen for new verification requests in real-time
-  useEffect(() => {
-    if (!isAdmin) return;
-
-    const channel = supabase
-      .channel("admin_verification_popup")
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "verification_requests",
-      }, async (payload) => {
-        const newReq = payload.new as any;
-        if (newReq.status !== "pending") return;
-
-        const [{ data: cycle }, { data: profile }] = await Promise.all([
-          supabase.from("cycles").select("name").eq("id", newReq.cycle_id).single(),
-          supabase.from("profiles").select("display_name").eq("user_id", newReq.user_id).single(),
-        ]);
-
-        const item: PendingVerification = {
-          id: newReq.id,
-          user_id: newReq.user_id,
-          cycle_name: cycle?.name || "Cycle inconnu",
-          user_name: profile?.display_name || `User ${newReq.user_id.slice(0, 8)}`,
-          requested_at: newReq.requested_at,
-        };
-
-        setPendingItems(prev => [item, ...prev]);
-        setDismissed(false);
-        setAnimateIn(true);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isAdmin]);
 
   if (!loaded || !isAdmin || pendingItems.length === 0 || dismissed) return null;
 

@@ -300,6 +300,7 @@ const Dashboard = () => {
   };
 
   const handleLogout = async () => {
+    localStorage.removeItem(getDashboardStateStorageKey());
     localStorage.removeItem("oracle_session_token");
     await supabase.auth.signOut();
     navigate("/auth");
