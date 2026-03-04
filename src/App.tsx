@@ -15,7 +15,14 @@ import EarlyAccess from "./pages/EarlyAccess";
 import SetupPasswordPage from "./pages/SetupPasswordPage";
 import { SuccessNotification } from "./components/dashboard/SuccessNotification";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
+  },
+});
 
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>

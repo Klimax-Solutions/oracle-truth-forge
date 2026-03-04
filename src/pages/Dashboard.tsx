@@ -69,13 +69,53 @@ interface TimingFilters {
   week?: string;
 }
 
+const DASHBOARD_DEFAULT_TAB = "execution";
+const DASHBOARD_DATA_SOURCE_VALUES: DataSource[] = ["all", "perso", "oracle", "data-generale"];
+const DASHBOARD_STATE_VERSION = 1;
+
+const getDashboardStateStorageKey = () => {
+  try {
+    const sessionToken = localStorage.getItem("oracle_session_token") || "anonymous";
+    return `oracle_dashboard_state_${sessionToken}`;
+  } catch {
+    return "oracle_dashboard_state_anonymous";
+  }
+};
+
+const readDashboardState = (): {
+  activeTab?: string;
+  databaseFilters?: any;
+  dataSource?: DataSource;
+} => {
+  try {
+    const rawState = localStorage.getItem(getDashboardStateStorageKey());
+    if (!rawState) return {};
+
+    const parsedState = JSON.parse(rawState);
+    if (parsedState?.version !== DASHBOARD_STATE_VERSION) return {};
+
+    const persistedDataSource = DASHBOARD_DATA_SOURCE_VALUES.includes(parsedState?.dataSource)
+      ? (parsedState.dataSource as DataSource)
+      : "all";
+
+    return {
+      activeTab: typeof parsedState?.activeTab === "string" ? parsedState.activeTab : DASHBOARD_DEFAULT_TAB,
+      databaseFilters: parsedState?.databaseFilters ?? null,
+      dataSource: persistedDataSource,
+    };
+  } catch {
+    return {};
+  }
+};
+
 const Dashboard = () => {
+  const persistedState = useMemo(() => readDashboardState(), []);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [activeTab, setActiveTab] = useState(() => "execution");
-  const [databaseFilters, setDatabaseFilters] = useState<any>(null);
-  const [dataSource, setDataSource] = useState<DataSource>("all");
+  const [activeTab, setActiveTab] = useState(() => persistedState.activeTab || DASHBOARD_DEFAULT_TAB);
+  const [databaseFilters, setDatabaseFilters] = useState<any>(() => persistedState.databaseFilters ?? null);
+  const [dataSource, setDataSource] = useState<DataSource>(() => persistedState.dataSource || "all");
   const [displayName, setDisplayName] = useState<string>("");
   const { trades: personalTrades } = usePersonalTrades();
   const { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter, loadingRoles } = useSidebarRoles();
@@ -117,6 +157,23 @@ const Dashboard = () => {
       setActiveTab("execution");
     }
   }, [isSetterOnly, simulatedRole]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        getDashboardStateStorageKey(),
+        JSON.stringify({
+          version: DASHBOARD_STATE_VERSION,
+          activeTab,
+          databaseFilters,
+          dataSource,
+        }),
+      );
+    } catch (error) {
+      console.warn("Unable to persist dashboard state", error);
+    }
+  }, [activeTab, databaseFilters, dataSource]);
+
   const isEarlyAccessExpired = useMemo(() => {
     if (!isEarlyAccess || !expiresAt) return false;
     return new Date(expiresAt).getTime() <= Date.now();
@@ -147,11 +204,16 @@ const Dashboard = () => {
 
       const localToken = localStorage.getItem("oracle_session_token");
       if (localToken) {
-        const { data: sessions } = await supabase
+        const { data: sessions, error: sessionsError } = await supabase
           .from("user_sessions")
           .select("session_token")
           .eq("user_id", uid);
-        
+
+        if (sessionsError) {
+          console.warn("Unable to verify user session token", sessionsError);
+          return true;
+        }
+
         const tokenExists = (sessions || []).some(s => s.session_token === localToken);
         if (!tokenExists) {
           await supabase.auth.signOut();
@@ -164,23 +226,29 @@ const Dashboard = () => {
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         if (!session) {
           navigate("/auth");
-        } else {
-          setUser(session.user);
-          checkUserAccess(session.user.id, session.user.user_metadata);
+          setLoading(false);
+          return;
         }
+
+        setUser(session.user);
+
+        if (["SIGNED_IN", "INITIAL_SESSION", "USER_UPDATED"].includes(event)) {
+          await checkUserAccess(session.user.id, session.user.user_metadata);
+        }
+
         setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
       } else {
         setUser(session.user);
-        checkUserAccess(session.user.id, session.user.user_metadata);
+        await checkUserAccess(session.user.id, session.user.user_metadata);
       }
       setLoading(false);
     });
@@ -243,6 +311,7 @@ const Dashboard = () => {
   };
 
   const handleLogout = async () => {
+    localStorage.removeItem(getDashboardStateStorageKey());
     localStorage.removeItem("oracle_session_token");
     await supabase.auth.signOut();
     navigate("/auth");
