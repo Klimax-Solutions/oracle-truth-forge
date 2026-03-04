@@ -1025,7 +1025,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         )}
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Entrée (M5) <span className="text-muted-foreground">(facultatif)</span></Label>
+                        <Label className="text-xs">Entrée (TF modèle d'entrée) <span className="text-destructive">*</span></Label>
                         <input ref={entryFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setEntryFile, setEntryPreview)} className="hidden" />
                         {(entryPreview || existingEntryUrl) ? (
                           <div className="relative border border-border rounded-lg p-2 bg-muted/30">
