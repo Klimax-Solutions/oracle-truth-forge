@@ -1612,9 +1612,30 @@ export const AdminVerification = () => {
                     onChange={(e) => setVerificationSearch(e.target.value)}
                     className="max-w-xs h-8 text-sm"
                   />
+                  {/* Assignee filter */}
+                  <select
+                    value={verificationAssigneeFilter}
+                    onChange={(e) => setVerificationAssigneeFilter(e.target.value)}
+                    className="h-8 text-xs font-mono bg-card border border-border rounded-md px-2 text-foreground max-w-[200px]"
+                  >
+                    <option value="all">Tous les vérificateurs</option>
+                    <option value="unassigned">Non assignés</option>
+                    {adminProfiles.map(a => (
+                      <option key={a.user_id} value={a.user_id}>
+                        {a.display_name || "Admin"}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {requests.filter(r => !verificationSearch || r.userName.toLowerCase().includes(verificationSearch.toLowerCase())).map((request) => {
+                {requests
+                  .filter(r => !verificationSearch || r.userName.toLowerCase().includes(verificationSearch.toLowerCase()))
+                  .filter(r => {
+                    if (verificationAssigneeFilter === "all") return true;
+                    if (verificationAssigneeFilter === "unassigned") return !(r as any).assigned_to;
+                    return (r as any).assigned_to === verificationAssigneeFilter;
+                  })
+                  .map((request) => {
                   const stats = calculateStats(request.executions);
                   const isExpanded = expandedRequest === request.id;
                   const isProcessing = processing === request.id;
