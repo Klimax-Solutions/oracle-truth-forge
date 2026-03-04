@@ -609,7 +609,7 @@ export const PersonalTradeDialog = ({
           {/* Row 4: Structure & Type de Setup (multi-select) */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Structure</Label>
+              <Label>Contexte</Label>
               <CustomizableMultiSelect
                 value={formData.direction_structure}
                 onChange={(value) => setFormData({ ...formData, direction_structure: value })}
