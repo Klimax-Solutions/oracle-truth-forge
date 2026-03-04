@@ -157,6 +157,23 @@ const Dashboard = () => {
       setActiveTab("execution");
     }
   }, [isSetterOnly, simulatedRole]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        getDashboardStateStorageKey(),
+        JSON.stringify({
+          version: DASHBOARD_STATE_VERSION,
+          activeTab,
+          databaseFilters,
+          dataSource,
+        }),
+      );
+    } catch (error) {
+      console.warn("Unable to persist dashboard state", error);
+    }
+  }, [activeTab, databaseFilters, dataSource]);
+
   const isEarlyAccessExpired = useMemo(() => {
     if (!isEarlyAccess || !expiresAt) return false;
     return new Date(expiresAt).getTime() <= Date.now();
