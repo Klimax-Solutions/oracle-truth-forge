@@ -1386,7 +1386,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                       {/* Additional info - responsive */}
                       <div className="grid grid-cols-3 gap-2 md:gap-3">
                         <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                          <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Structure</span>
+                          <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Contexte</span>
                           <p className="text-xs md:text-sm font-medium text-foreground mt-0.5 md:mt-1">{execution.direction_structure || "—"}</p>
                         </div>
                         <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
