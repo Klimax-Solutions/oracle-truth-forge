@@ -208,6 +208,7 @@ export const AdminVerification = () => {
   // Search states
   const [userSearch, setUserSearch] = useState("");
   const [verificationSearch, setVerificationSearch] = useState("");
+  const [verificationAssigneeFilter, setVerificationAssigneeFilter] = useState<string>("all");
   const [historySearch, setHistorySearch] = useState("");
   // Assignment states
   const [assigningRequest, setAssigningRequest] = useState<string | null>(null);
