@@ -401,16 +401,26 @@ export const TradeNavigationLightbox = ({
         >
           <div
             className={cn(
-              "overflow-auto cursor-grab active:cursor-grabbing",
+              "overflow-hidden",
+              zoom > 1 ? "cursor-grab" : "cursor-default",
+              isPanning && "cursor-grabbing",
               showOracleComparison && matchingOracle
                 ? "max-w-[42vw] max-h-[calc(100vh-180px)]"
                 : "max-w-[85vw] max-h-[calc(100vh-180px)]"
             )}
             onWheel={(e) => {
               e.stopPropagation();
-              const delta = e.deltaY > 0 ? -0.1 : 0.1;
-              setZoom((z) => Math.min(Math.max(z + delta, 0.25), 5));
+              const delta = e.deltaY > 0 ? -0.15 : 0.15;
+              setZoom((z) => {
+                const newZ = Math.min(Math.max(z + delta, 0.25), 5);
+                if (newZ <= 1) setPan({ x: 0, y: 0 });
+                return newZ;
+              });
             }}
+            onMouseDown={handleImageMouseDown}
+            onMouseMove={handleImageMouseMove}
+            onMouseUp={handleImageMouseUp}
+            onMouseLeave={handleImageMouseUp}
           >
             {showOracleComparison && (
               <div className="text-center mb-2">
@@ -433,8 +443,11 @@ export const TradeNavigationLightbox = ({
               <img
                 src={imageUrl}
                 alt={`Trade #${currentItem.tradeNumber} ${activeScreen === "m15" ? "Contexte" : "Entrée"}`}
-                className="transition-transform duration-150 ease-out select-none"
-                style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
+                className="transition-transform duration-100 ease-out select-none"
+                style={{
+                  transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
+                  transformOrigin: "center center",
+                }}
                 draggable={false}
               />
             ) : (
