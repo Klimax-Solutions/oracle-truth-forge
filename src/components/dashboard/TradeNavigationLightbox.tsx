@@ -74,6 +74,9 @@ export const TradeNavigationLightbox = ({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [activeScreen, setActiveScreen] = useState<"m15" | "m5">(initialScreenshot);
   const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [loadingUrl, setLoadingUrl] = useState(false);
   const [showOracleComparison, setShowOracleComparison] = useState(false);
@@ -88,7 +91,7 @@ export const TradeNavigationLightbox = ({
 
   const currentItem = items[currentIndex];
 
-  const resetZoom = useCallback(() => setZoom(1), []);
+  const resetZoom = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
 
   const matchingOracle = oracleTrades?.find(o => o.tradeDate === currentItem?.tradeDate);
 
@@ -191,6 +194,7 @@ export const TradeNavigationLightbox = ({
     if (currentIndex > 0) {
       setCurrentIndex((i) => i - 1);
       setZoom(1);
+      setPan({ x: 0, y: 0 });
       setShowOracleComparison(false);
     }
   };
@@ -199,6 +203,7 @@ export const TradeNavigationLightbox = ({
     if (currentIndex < items.length - 1) {
       setCurrentIndex((i) => i + 1);
       setZoom(1);
+      setPan({ x: 0, y: 0 });
       setShowOracleComparison(false);
     }
   };
@@ -206,7 +211,23 @@ export const TradeNavigationLightbox = ({
   const toggleScreen = () => {
     setActiveScreen(prev => prev === "m15" ? "m5" : "m15");
     setZoom(1);
+    setPan({ x: 0, y: 0 });
   };
+
+  const handleImageMouseDown = (e: React.MouseEvent) => {
+    if (zoom <= 1) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsPanning(true);
+    setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleImageMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning) return;
+    setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+  };
+
+  const handleImageMouseUp = () => setIsPanning(false);
 
   if (!open || !currentItem) return null;
 
@@ -380,16 +401,26 @@ export const TradeNavigationLightbox = ({
         >
           <div
             className={cn(
-              "overflow-auto cursor-grab active:cursor-grabbing",
+              "overflow-hidden",
+              zoom > 1 ? "cursor-grab" : "cursor-default",
+              isPanning && "cursor-grabbing",
               showOracleComparison && matchingOracle
                 ? "max-w-[42vw] max-h-[calc(100vh-180px)]"
                 : "max-w-[85vw] max-h-[calc(100vh-180px)]"
             )}
             onWheel={(e) => {
               e.stopPropagation();
-              const delta = e.deltaY > 0 ? -0.1 : 0.1;
-              setZoom((z) => Math.min(Math.max(z + delta, 0.25), 5));
+              const delta = e.deltaY > 0 ? -0.15 : 0.15;
+              setZoom((z) => {
+                const newZ = Math.min(Math.max(z + delta, 0.25), 5);
+                if (newZ <= 1) setPan({ x: 0, y: 0 });
+                return newZ;
+              });
             }}
+            onMouseDown={handleImageMouseDown}
+            onMouseMove={handleImageMouseMove}
+            onMouseUp={handleImageMouseUp}
+            onMouseLeave={handleImageMouseUp}
           >
             {showOracleComparison && (
               <div className="text-center mb-2">
@@ -412,8 +443,11 @@ export const TradeNavigationLightbox = ({
               <img
                 src={imageUrl}
                 alt={`Trade #${currentItem.tradeNumber} ${activeScreen === "m15" ? "Contexte" : "Entrée"}`}
-                className="transition-transform duration-150 ease-out select-none"
-                style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
+                className="transition-transform duration-100 ease-out select-none"
+                style={{
+                  transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
+                  transformOrigin: "center center",
+                }}
                 draggable={false}
               />
             ) : (

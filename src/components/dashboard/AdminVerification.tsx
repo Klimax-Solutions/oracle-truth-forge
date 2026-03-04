@@ -208,6 +208,7 @@ export const AdminVerification = () => {
   // Search states
   const [userSearch, setUserSearch] = useState("");
   const [verificationSearch, setVerificationSearch] = useState("");
+  const [verificationAssigneeFilter, setVerificationAssigneeFilter] = useState<string>("all");
   const [historySearch, setHistorySearch] = useState("");
   // Assignment states
   const [assigningRequest, setAssigningRequest] = useState<string | null>(null);
@@ -1319,6 +1320,45 @@ export const AdminVerification = () => {
                                         </Tooltip>
                                       </div>
                                     )}
+                                    {/* View past corrections for validated/rejected cycles */}
+                                    {userCycle && (status === "validated" || status === "rejected") && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            className="mt-1 p-0.5 rounded text-primary hover:text-primary/80 transition-colors"
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              // Find verification request for this user_cycle
+                                              const { data: vr } = await supabase
+                                                .from("verification_requests")
+                                                .select("id")
+                                                .eq("user_cycle_id", userCycle.id)
+                                                .order("created_at", { ascending: false })
+                                                .limit(1)
+                                                .maybeSingle();
+                                              if (vr) {
+                                                // Load the executions for this cycle
+                                                const cycleExecs = user.executions.filter(
+                                                  ex => ex.trade_number >= cycle.trade_start && ex.trade_number <= cycle.trade_end
+                                                );
+                                                setNotesViewerRequestId(vr.id);
+                                                setNotesViewerExecs(cycleExecs.map(ex => ({
+                                                  id: ex.id,
+                                                  trade_number: ex.trade_number,
+                                                  direction: ex.direction,
+                                                  trade_date: ex.trade_date,
+                                                })));
+                                              } else {
+                                                toast({ title: "Aucune correction trouvée", description: "Aucune demande de vérification n'a été trouvée pour ce cycle." });
+                                              }
+                                            }}
+                                          >
+                                            <MessageSquare className="w-3 h-3" />
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="text-[10px]">Voir les corrections</TooltipContent>
+                                      </Tooltip>
+                                    )}
                                   </div>
                                 );
                               })}
@@ -1611,9 +1651,30 @@ export const AdminVerification = () => {
                     onChange={(e) => setVerificationSearch(e.target.value)}
                     className="max-w-xs h-8 text-sm"
                   />
+                  {/* Assignee filter */}
+                  <select
+                    value={verificationAssigneeFilter}
+                    onChange={(e) => setVerificationAssigneeFilter(e.target.value)}
+                    className="h-8 text-xs font-mono bg-card border border-border rounded-md px-2 text-foreground max-w-[200px]"
+                  >
+                    <option value="all">Tous les vérificateurs</option>
+                    <option value="unassigned">Non assignés</option>
+                    {adminProfiles.map(a => (
+                      <option key={a.user_id} value={a.user_id}>
+                        {a.display_name || "Admin"}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {requests.filter(r => !verificationSearch || r.userName.toLowerCase().includes(verificationSearch.toLowerCase())).map((request) => {
+                {requests
+                  .filter(r => !verificationSearch || r.userName.toLowerCase().includes(verificationSearch.toLowerCase()))
+                  .filter(r => {
+                    if (verificationAssigneeFilter === "all") return true;
+                    if (verificationAssigneeFilter === "unassigned") return !(r as any).assigned_to;
+                    return (r as any).assigned_to === verificationAssigneeFilter;
+                  })
+                  .map((request) => {
                   const stats = calculateStats(request.executions);
                   const isExpanded = expandedRequest === request.id;
                   const isProcessing = processing === request.id;
@@ -2440,11 +2501,28 @@ export const AdminVerification = () => {
           screenshotM5: o.screenshot_m1 || null,
         }))}
         isSuperAdmin={isSuperAdmin}
-        onValidate={galleryRequestId ? (executionId, isValid, note) => {
+        onValidate={galleryRequestId ? async (executionId, isValid, note) => {
           const key = `${galleryRequestId}_${executionId}`;
           setTradeValidity(prev => ({ ...prev, [key]: isValid }));
           setTradeNotes(prev => ({ ...prev, [key]: note }));
           saveTradeNote(galleryRequestId!, executionId, note, isValid);
+
+          // Send per-trade notification to the student
+          const request = requests.find(r => r.id === galleryRequestId);
+          if (request) {
+            const exec = request.executions.find(e => e.id === executionId);
+            const tradeNum = exec?.trade_number || "?";
+            const { data: { user } } = await supabase.auth.getUser();
+            const notifMessage = isValid
+              ? `✅ Trade #${tradeNum} validé${note ? ` — ${note}` : ""}`
+              : `❌ Trade #${tradeNum} refusé${note ? ` — ${note}` : ""}`;
+            await supabase.from("user_notifications").insert({
+              user_id: request.user_id,
+              sender_id: user?.id || null,
+              type: isValid ? "trade_validated" : "trade_rejected",
+              message: notifMessage,
+            });
+          }
         } : undefined}
         onSupplementaryNote={galleryRequestId ? (executionId, note) => {
           saveTradeNote(galleryRequestId!, executionId, tradeNotes[`${galleryRequestId}_${executionId}`] || "", tradeValidity[`${galleryRequestId}_${executionId}`] !== false, note);

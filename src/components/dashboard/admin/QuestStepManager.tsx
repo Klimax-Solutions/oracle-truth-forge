@@ -3,52 +3,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Save, Loader2, Video, CheckCircle2, Circle } from "lucide-react";
+import { Save, Loader2, Video, Plus, Trash2, GripVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { QuestVideoEmbed } from "../QuestVideoEmbed";
+import { Textarea } from "@/components/ui/textarea";
 
-// Default steps per role/phase (read-only reference)
-const DEFAULT_STEPS: Record<string, { label: string; subtitle: string }[]> = {
-  "member__ebauche": [
-    { label: "Visionner l'intégralité des vidéos Oracle", subtitle: "X/X vidéos vues" },
-    { label: "Récolter les 15 premières data", subtitle: "0/15 data récoltées, analysées et comprises" },
-    { label: "Demander la vérification", subtitle: "Débloquer le cycle 1 de récolte" },
-  ],
-  "member__cycle_1": [
-    { label: "Récolter 5 datas gagnantes aujourd'hui", subtitle: "Objectif quotidien de récolte" },
-  ],
-  "member__cycle_2": [
-    { label: "Récolter 5 datas gagnantes aujourd'hui", subtitle: "Objectif quotidien de récolte" },
-  ],
-  "member__cycle_3": [
-    { label: "Récolter 5 datas gagnantes aujourd'hui", subtitle: "Objectif quotidien de récolte" },
-  ],
-  "member__cycle_4": [
-    { label: "Récolter 5 datas gagnantes aujourd'hui", subtitle: "Objectif quotidien de récolte" },
-  ],
-  "member__cycle_5": [
-    { label: "Récolter 5 datas gagnantes aujourd'hui", subtitle: "Objectif quotidien de récolte" },
-  ],
-  "member__cycle_6": [
-    { label: "Récolter 5 datas gagnantes aujourd'hui", subtitle: "Objectif quotidien de récolte" },
-  ],
-  "member__cycle_7": [
-    { label: "Récolter 5 datas gagnantes aujourd'hui", subtitle: "Objectif quotidien de récolte" },
-  ],
-  "member__cycle_8": [
-    { label: "Récolter 5 datas gagnantes aujourd'hui", subtitle: "Objectif quotidien de récolte" },
-  ],
-  "early_access_precall__default": [
-    { label: "Accéder à la plateforme", subtitle: "Connecté à la plateforme Oracle" },
-    { label: "Accéder aux vidéos exclusives", subtitle: "Consultez les vidéos de formation Oracle" },
-    { label: "Déposer ma candidature", subtitle: "Accéder à Oracle" },
-  ],
-  "early_access_postcall__default": [
-    { label: "Appel confidentiel avec l'équipe Mercure", subtitle: "Candidature validée" },
-    { label: "Accéder aux vidéos exclusives Oracle", subtitle: "Consultez les vidéos de formation Oracle" },
-    { label: "Accéder à Oracle", subtitle: "Procéder au règlement" },
-  ],
-};
+interface StepRow {
+  id?: string;
+  step_label: string;
+  step_description: string;
+  step_order: number;
+  isNew?: boolean;
+}
 
 const ROLE_PHASES: Record<string, { label: string; phases: { key: string; label: string }[] }> = {
   member: {
@@ -75,28 +41,89 @@ const ROLE_PHASES: Record<string, { label: string; phases: { key: string; label:
   },
 };
 
+// Fallback defaults when no DB rows exist yet
+const DEFAULT_STEPS: Record<string, { label: string; description: string }[]> = {
+  "member__ebauche": [
+    { label: "Visionner l'intégralité des vidéos Oracle", description: "X/X vidéos vues" },
+    { label: "Récolter les 15 premières data", description: "0/15 data récoltées, analysées et comprises" },
+    { label: "Demander la vérification", description: "Débloquer le cycle 1 de récolte" },
+  ],
+  "member__cycle_1": [{ label: "Récolter 5 datas gagnantes aujourd'hui", description: "Objectif quotidien de récolte" }],
+  "member__cycle_2": [{ label: "Récolter 5 datas gagnantes aujourd'hui", description: "Objectif quotidien de récolte" }],
+  "member__cycle_3": [{ label: "Récolter 5 datas gagnantes aujourd'hui", description: "Objectif quotidien de récolte" }],
+  "member__cycle_4": [{ label: "Récolter 5 datas gagnantes aujourd'hui", description: "Objectif quotidien de récolte" }],
+  "member__cycle_5": [{ label: "Récolter 5 datas gagnantes aujourd'hui", description: "Objectif quotidien de récolte" }],
+  "member__cycle_6": [{ label: "Récolter 5 datas gagnantes aujourd'hui", description: "Objectif quotidien de récolte" }],
+  "member__cycle_7": [{ label: "Récolter 5 datas gagnantes aujourd'hui", description: "Objectif quotidien de récolte" }],
+  "member__cycle_8": [{ label: "Récolter 5 datas gagnantes aujourd'hui", description: "Objectif quotidien de récolte" }],
+  "early_access_precall__default": [
+    { label: "Accéder à la plateforme", description: "Connecté à la plateforme Oracle" },
+    { label: "Accéder aux vidéos exclusives", description: "Consultez les vidéos de formation Oracle" },
+    { label: "Déposer ma candidature", description: "Accéder à Oracle" },
+  ],
+  "early_access_postcall__default": [
+    { label: "Appel confidentiel avec l'équipe Mercure", description: "Candidature validée" },
+    { label: "Accéder aux vidéos exclusives Oracle", description: "Consultez les vidéos de formation Oracle" },
+    { label: "Accéder à Oracle", description: "Procéder au règlement" },
+  ],
+};
+
 export const QuestStepManager = () => {
+  const [steps, setSteps] = useState<StepRow[]>([]);
   const [videoUrls, setVideoUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingSteps, setSavingSteps] = useState(false);
   const [activeRole, setActiveRole] = useState("member");
   const [activePhase, setActivePhase] = useState("ebauche");
   const { toast } = useToast();
 
-  // Fetch all quest video settings
-  const fetchVideos = async () => {
+  const roleConfig = ROLE_PHASES[activeRole];
+  const phaseKey = `${activeRole}__${activePhase}`;
+  const settingKey = `quest_video_${activeRole}_${activePhase}`;
+  const currentVideo = videoUrls[settingKey] || "";
+
+  // Fetch steps from DB for current role/phase
+  const fetchSteps = async () => {
     setLoading(true);
+    const { data } = await supabase
+      .from("quest_step_configs")
+      .select("*")
+      .eq("target_role", activeRole)
+      .eq("target_phase", activePhase)
+      .order("step_order", { ascending: true });
+
+    if (data && data.length > 0) {
+      setSteps(data.map((d: any) => ({
+        id: d.id,
+        step_label: d.step_label,
+        step_description: d.step_description || "",
+        step_order: d.step_order,
+      })));
+    } else {
+      // Initialize from defaults
+      const defaults = DEFAULT_STEPS[phaseKey] || [];
+      setSteps(defaults.map((d, i) => ({
+        step_label: d.label,
+        step_description: d.description,
+        step_order: i + 1,
+        isNew: true,
+      })));
+    }
+    setLoading(false);
+  };
+
+  // Fetch video settings
+  const fetchVideos = async () => {
     const { data } = await supabase
       .from("ea_global_settings")
       .select("setting_key, setting_value")
       .like("setting_key", "quest_video_%");
-    
     if (data) {
       const map: Record<string, string> = {};
       data.forEach(d => { map[d.setting_key] = d.setting_value; });
       setVideoUrls(map);
     }
-    setLoading(false);
   };
 
   useEffect(() => { fetchVideos(); }, []);
@@ -108,10 +135,67 @@ export const QuestStepManager = () => {
     }
   }, [activeRole]);
 
-  const settingKey = `quest_video_${activeRole}_${activePhase}`;
-  const currentVideo = videoUrls[settingKey] || "";
-  const defaultSteps = DEFAULT_STEPS[`${activeRole}__${activePhase}`] || [];
-  const roleConfig = ROLE_PHASES[activeRole];
+  useEffect(() => {
+    fetchSteps();
+  }, [activeRole, activePhase]);
+
+  const handleStepChange = (index: number, field: "step_label" | "step_description", value: string) => {
+    setSteps(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
+  };
+
+  const addStep = () => {
+    setSteps(prev => [...prev, {
+      step_label: "",
+      step_description: "",
+      step_order: prev.length + 1,
+      isNew: true,
+    }]);
+  };
+
+  const removeStep = (index: number) => {
+    setSteps(prev => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.map((s, i) => ({ ...s, step_order: i + 1 }));
+    });
+  };
+
+  const saveSteps = async () => {
+    setSavingSteps(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
+      // Delete all existing steps for this role/phase
+      await supabase
+        .from("quest_step_configs")
+        .delete()
+        .eq("target_role", activeRole)
+        .eq("target_phase", activePhase);
+
+      // Insert all current steps
+      if (steps.length > 0) {
+        const rows = steps.map((s, i) => ({
+          target_role: activeRole,
+          target_phase: activePhase,
+          step_order: i + 1,
+          step_label: s.step_label,
+          step_description: s.step_description || null,
+          created_by: user.id,
+        }));
+
+        const { error } = await supabase.from("quest_step_configs").insert(rows);
+        if (error) throw error;
+      }
+
+      toast({ title: "Étapes sauvegardées", description: `${steps.length} étape(s) enregistrée(s) pour ${roleConfig?.label} — ${roleConfig?.phases.find(p => p.key === activePhase)?.label}` });
+      
+      // Refresh to get IDs
+      fetchSteps();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+    setSavingSteps(false);
+  };
 
   const handleVideoChange = (value: string) => {
     setVideoUrls(prev => ({ ...prev, [settingKey]: value }));
@@ -138,7 +222,7 @@ export const QuestStepManager = () => {
           .insert({ setting_key: settingKey, setting_value: currentVideo, updated_by: user.id });
       }
 
-      toast({ title: "Vidéo sauvegardée", description: `Vidéo mise à jour pour ${roleConfig?.label} — ${roleConfig?.phases.find(p => p.key === activePhase)?.label}` });
+      toast({ title: "Vidéo sauvegardée" });
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     }
@@ -185,33 +269,60 @@ export const QuestStepManager = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Default steps (read-only) */}
+          {/* Editable steps */}
           <div className="space-y-2">
-            <p className="text-xs font-mono uppercase text-muted-foreground tracking-wider">
-              Étapes affichées à l'utilisateur
-            </p>
-            {defaultSteps.length > 0 ? (
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-mono uppercase text-muted-foreground tracking-wider">
+                Étapes affichées à l'utilisateur
+              </p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={addStep}>
+                  <Plus className="w-3.5 h-3.5" />
+                  Ajouter
+                </Button>
+                <Button size="sm" className="gap-1.5 text-xs" onClick={saveSteps} disabled={savingSteps}>
+                  {savingSteps ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Sauvegarder
+                </Button>
+              </div>
+            </div>
+
+            {steps.length > 0 ? (
               <div className="space-y-2">
-                {defaultSteps.map((step, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 rounded-md border border-border bg-card/50">
-                    <div className="mt-0.5">
-                      {i === 0 && activePhase === "ebauche" ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                      ) : (
-                        <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      )}
+                {steps.map((step, i) => (
+                  <div key={i} className="flex items-start gap-2 p-3 rounded-md border border-border bg-card/50">
+                    <div className="mt-2 flex items-center gap-1 flex-shrink-0">
+                      <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-[10px] font-mono text-muted-foreground w-5 text-center">#{i + 1}</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">{step.label}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{step.subtitle}</p>
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <Input
+                        value={step.step_label}
+                        onChange={(e) => handleStepChange(i, "step_label", e.target.value)}
+                        placeholder="Titre de l'étape..."
+                        className="text-sm h-8"
+                      />
+                      <Input
+                        value={step.step_description}
+                        onChange={(e) => handleStepChange(i, "step_description", e.target.value)}
+                        placeholder="Description / sous-titre (optionnel)..."
+                        className="text-xs h-7 text-muted-foreground"
+                      />
                     </div>
-                    <span className="text-[10px] font-mono text-muted-foreground">#{i + 1}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-1 text-muted-foreground hover:text-destructive p-1.5 h-auto"
+                      onClick={() => removeStep(i)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
                 ))}
               </div>
             ) : (
               <p className="text-xs text-muted-foreground italic py-2">
-                Aucune étape par défaut pour cette phase.
+                Aucune étape pour cette phase. Cliquez sur "Ajouter" pour en créer.
               </p>
             )}
           </div>
