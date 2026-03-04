@@ -2462,11 +2462,28 @@ export const AdminVerification = () => {
           screenshotM5: o.screenshot_m1 || null,
         }))}
         isSuperAdmin={isSuperAdmin}
-        onValidate={galleryRequestId ? (executionId, isValid, note) => {
+        onValidate={galleryRequestId ? async (executionId, isValid, note) => {
           const key = `${galleryRequestId}_${executionId}`;
           setTradeValidity(prev => ({ ...prev, [key]: isValid }));
           setTradeNotes(prev => ({ ...prev, [key]: note }));
           saveTradeNote(galleryRequestId!, executionId, note, isValid);
+
+          // Send per-trade notification to the student
+          const request = requests.find(r => r.id === galleryRequestId);
+          if (request) {
+            const exec = request.executions.find(e => e.id === executionId);
+            const tradeNum = exec?.trade_number || "?";
+            const { data: { user } } = await supabase.auth.getUser();
+            const notifMessage = isValid
+              ? `✅ Trade #${tradeNum} validé${note ? ` — ${note}` : ""}`
+              : `❌ Trade #${tradeNum} refusé${note ? ` — ${note}` : ""}`;
+            await supabase.from("user_notifications").insert({
+              user_id: request.user_id,
+              sender_id: user?.id || null,
+              type: isValid ? "trade_validated" : "trade_rejected",
+              message: notifMessage,
+            });
+          }
         } : undefined}
         onSupplementaryNote={galleryRequestId ? (executionId, note) => {
           saveTradeNote(galleryRequestId!, executionId, tradeNotes[`${galleryRequestId}_${executionId}`] || "", tradeValidity[`${galleryRequestId}_${executionId}`] !== false, note);
