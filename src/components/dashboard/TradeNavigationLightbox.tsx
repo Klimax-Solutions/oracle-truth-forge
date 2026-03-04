@@ -91,7 +91,7 @@ export const TradeNavigationLightbox = ({
 
   const currentItem = items[currentIndex];
 
-  const resetZoom = useCallback(() => setZoom(1), []);
+  const resetZoom = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
 
   const matchingOracle = oracleTrades?.find(o => o.tradeDate === currentItem?.tradeDate);
 
