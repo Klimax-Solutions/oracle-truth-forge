@@ -129,7 +129,7 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">
-              {isEarlyAccess ? "Data Analysis — Indices US" : "Data Analysis"}
+              {isEarlyAccess ? "Data Analysis — Indices US" : isPersoOnly ? "Data Analysis — Setup Perso" : "Data Analysis"}
             </h2>
             <p className="text-xs text-muted-foreground font-mono">
               {displayTrades.length} trades • {totalRR >= 0 ? "+" : ""}{totalRR.toFixed(1)} RR • WR {winRate}%
