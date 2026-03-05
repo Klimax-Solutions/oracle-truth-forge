@@ -24,9 +24,14 @@ const SetupPasswordPage = () => {
         return;
       }
 
-      // If user already has password set (flag in metadata), redirect to dashboard
-      const hasPassword = session.user.user_metadata?.password_set === true;
-      if (hasPassword) {
+      // If user already has password set (flag in metadata or signed in with password), redirect to dashboard
+      const hasPasswordFlag = session.user.user_metadata?.password_set === true;
+      const signedInWithPassword = (session.user as any).amr?.some((a: any) => a.method === "password");
+      if (hasPasswordFlag || signedInWithPassword) {
+        // Ensure flag is set for future checks
+        if (!hasPasswordFlag && signedInWithPassword) {
+          await supabase.auth.updateUser({ data: { password_set: true } });
+        }
         navigate("/dashboard");
         return;
       }
