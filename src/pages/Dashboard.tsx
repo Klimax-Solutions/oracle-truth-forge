@@ -180,11 +180,25 @@ const Dashboard = () => {
   }, [isEarlyAccess, expiresAt]);
 
   useEffect(() => {
-    const checkUserAccess = async (uid: string, userMeta?: any) => {
+    let authChecked = false;
+    
+    const checkUserAccess = async (uid: string, session?: any) => {
+      if (authChecked) return true;
+      authChecked = true;
+      
+      const userMeta = session?.user?.user_metadata;
+      const hasPasswordFlag = userMeta?.password_set === true;
+      const signedInWithPassword = (session?.user as any)?.amr?.some((a: any) => a.method === "password");
+      
       // Check if password has been set — if not, redirect to setup
-      if (!userMeta?.password_set) {
+      if (!hasPasswordFlag && !signedInWithPassword) {
         navigate("/setup-password");
         return false;
+      }
+      
+      // Auto-fix missing flag
+      if (!hasPasswordFlag && signedInWithPassword) {
+        supabase.auth.updateUser({ data: { password_set: true } });
       }
 
       const { data } = await supabase
@@ -236,7 +250,7 @@ const Dashboard = () => {
         setUser(session.user);
 
         if (["SIGNED_IN", "INITIAL_SESSION", "USER_UPDATED"].includes(event)) {
-          await checkUserAccess(session.user.id, session.user.user_metadata);
+          await checkUserAccess(session.user.id, session);
         }
 
         setLoading(false);
@@ -248,7 +262,7 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
-        await checkUserAccess(session.user.id, session.user.user_metadata);
+        await checkUserAccess(session.user.id, session);
       }
       setLoading(false);
     });
