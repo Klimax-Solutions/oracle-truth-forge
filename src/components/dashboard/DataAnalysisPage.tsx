@@ -122,6 +122,19 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
     );
   }
 
+  // Empty state for perso-only with no trades
+  if (isPersoOnly && displayTrades.length === 0) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+        <BarChart3 className="w-10 h-10 text-muted-foreground mb-4" />
+        <h2 className="text-lg font-semibold text-foreground mb-2">Aucune donnée personnelle</h2>
+        <p className="text-sm text-muted-foreground max-w-md">
+          Commencez par enregistrer vos trades dans l'onglet Setup → Data Personnelle pour voir vos analyses ici.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
