@@ -37,6 +37,7 @@ interface DataAnalysisPageProps {
   onNavigateToDatabase?: (filters: any) => void;
   isEarlyAccess?: boolean;
   isExpired?: boolean;
+  isPersoOnly?: boolean;
 }
 
 type ExpandedView = "journal" | "distribution" | null;
