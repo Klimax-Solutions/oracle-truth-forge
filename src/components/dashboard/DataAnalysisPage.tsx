@@ -37,6 +37,7 @@ interface DataAnalysisPageProps {
   onNavigateToDatabase?: (filters: any) => void;
   isEarlyAccess?: boolean;
   isExpired?: boolean;
+  isPersoOnly?: boolean;
 }
 
 type ExpandedView = "journal" | "distribution" | null;
@@ -50,7 +51,7 @@ const ExpiredOverlay = () => (
   </div>
 );
 
-export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess = false, isExpired = false }: DataAnalysisPageProps) => {
+export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess = false, isExpired = false, isPersoOnly = false }: DataAnalysisPageProps) => {
   const [isEntering, setIsEntering] = useState(true);
   const [expandedView, setExpandedView] = useState<ExpandedView>(null);
 
@@ -121,6 +122,19 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
     );
   }
 
+  // Empty state for perso-only with no trades
+  if (isPersoOnly && displayTrades.length === 0) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+        <BarChart3 className="w-10 h-10 text-muted-foreground mb-4" />
+        <h2 className="text-lg font-semibold text-foreground mb-2">Aucune donnée personnelle</h2>
+        <p className="text-sm text-muted-foreground max-w-md">
+          Commencez par enregistrer vos trades dans l'onglet Setup → Data Personnelle pour voir vos analyses ici.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
@@ -128,7 +142,7 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">
-              {isEarlyAccess ? "Data Analysis — Indices US" : "Data Analysis"}
+              {isEarlyAccess ? "Data Analysis — Indices US" : isPersoOnly ? "Data Analysis — Setup Perso" : "Data Analysis"}
             </h2>
             <p className="text-xs text-muted-foreground font-mono">
               {displayTrades.length} trades • {totalRR >= 0 ? "+" : ""}{totalRR.toFixed(1)} RR • WR {winRate}%

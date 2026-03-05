@@ -399,7 +399,8 @@ const Dashboard = () => {
   };
 
   const displayTrades = getDisplayTrades();
-  const showDataSourceSelector = ["data-analysis"].includes(activeTab) && !isEarlyAccess && !isSetterOnly;
+  const isRegularMember = !isAdmin && !isSuperAdmin && !isEarlyAccess && !isSetterOnly;
+  const showDataSourceSelector = ["data-analysis"].includes(activeTab) && !isEarlyAccess && !isSetterOnly && (isAdmin || isSuperAdmin);
 
   const renderContent = () => {
     if (isSetterOnly) return <EarlyAccessManagement />;
@@ -408,8 +409,35 @@ const Dashboard = () => {
         return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
       case "setup":
         return <SetupPage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} />;
-      case "data-analysis":
-        return <DataAnalysisPage trades={isEarlyAccess ? dataGenerale : displayTrades} onNavigateToDatabase={handleNavigateToDatabase} isEarlyAccess={isEarlyAccess} isExpired={isEarlyAccessExpired} />;
+      case "data-analysis": {
+        // Regular members: only see their personal trades
+        const dataAnalysisTrades = isRegularMember
+          ? personalTrades.map(pt => ({
+              id: pt.id,
+              trade_number: pt.trade_number + 1000,
+              trade_date: pt.trade_date,
+              day_of_week: pt.day_of_week,
+              direction: pt.direction,
+              direction_structure: pt.direction_structure || "",
+              entry_time: pt.entry_time || "",
+              exit_time: pt.exit_time || "",
+              trade_duration: pt.trade_duration || "",
+              rr: pt.rr || 0,
+              stop_loss_size: pt.stop_loss_size || "",
+              setup_type: pt.setup_type || "",
+              entry_timing: pt.entry_timing || "",
+              entry_model: pt.entry_model || "",
+              target_timing: "",
+              speculation_hl_valid: false,
+              target_hl_valid: false,
+              news_day: false,
+              news_label: "",
+              screenshot_m15_m5: null,
+              screenshot_m1: null,
+            }))
+          : (isEarlyAccess ? dataGenerale : displayTrades);
+        return <DataAnalysisPage trades={dataAnalysisTrades} onNavigateToDatabase={handleNavigateToDatabase} isEarlyAccess={isEarlyAccess} isExpired={isEarlyAccessExpired} isPersoOnly={isRegularMember} />;
+      }
       case "videos":
         return <VideoSetup />;
       case "successes":
