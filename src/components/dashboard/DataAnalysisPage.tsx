@@ -51,7 +51,7 @@ const ExpiredOverlay = () => (
   </div>
 );
 
-export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess = false, isExpired = false }: DataAnalysisPageProps) => {
+export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess = false, isExpired = false, isPersoOnly = false }: DataAnalysisPageProps) => {
   const [isEntering, setIsEntering] = useState(true);
   const [expandedView, setExpandedView] = useState<ExpandedView>(null);
 
