@@ -250,7 +250,7 @@ const Dashboard = () => {
         setUser(session.user);
 
         if (["SIGNED_IN", "INITIAL_SESSION", "USER_UPDATED"].includes(event)) {
-          await checkUserAccess(session.user.id, session.user.user_metadata);
+          await checkUserAccess(session.user.id, session);
         }
 
         setLoading(false);
@@ -262,7 +262,7 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
-        await checkUserAccess(session.user.id, session.user.user_metadata);
+        await checkUserAccess(session.user.id, session);
       }
       setLoading(false);
     });
