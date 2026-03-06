@@ -361,8 +361,8 @@ export const PersonalTradeDialog = ({
   ) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast({ title: "Fichier trop volumineux", description: "La taille maximale est de 5 MB.", variant: "destructive" });
+      if (file.size > 10 * 1024 * 1024) {
+        toast({ title: "Fichier trop volumineux", description: "La taille maximale est de 10 MB.", variant: "destructive" });
         return;
       }
       setFile(file);

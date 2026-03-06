@@ -82,8 +82,8 @@ export const ProfileSettingsDialog = ({ onDisplayNameChange }: ProfileSettingsDi
       toast.error("Seules les images sont acceptées.");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("L'image ne doit pas dépasser 5 Mo.");
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("L'image ne doit pas dépasser 10 Mo.");
       return;
     }
 
