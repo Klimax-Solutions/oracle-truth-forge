@@ -607,7 +607,7 @@ const SuccessPage = () => {
           e.preventDefault();
           const file = item.getAsFile();
           if (!file) return;
-          if (file.size > 5 * 1024 * 1024) { toast.error("L'image dépasse 5 Mo."); return; }
+          if (file.size > 10 * 1024 * 1024) { toast.error("L'image dépasse 10 Mo."); return; }
           setSelectedFile(file);
           setFilePreview(URL.createObjectURL(file));
           toast.success("Image collée !");
