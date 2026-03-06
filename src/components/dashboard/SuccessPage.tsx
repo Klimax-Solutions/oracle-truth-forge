@@ -591,7 +591,7 @@ const SuccessPage = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) { toast.error("Seules les images sont acceptées."); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error("L'image dépasse 5 Mo."); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("L'image dépasse 10 Mo."); return; }
     setSelectedFile(file);
     setFilePreview(URL.createObjectURL(file));
   };

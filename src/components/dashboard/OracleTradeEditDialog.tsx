@@ -160,7 +160,7 @@ export const OracleTradeEditDialog = ({ isOpen, onClose, onSaved, trade }: Oracl
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, setFile: (f: File | null) => void, setPreview: (p: string | null) => void) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { toast({ title: "Fichier trop volumineux", variant: "destructive" }); return; }
+      if (file.size > 10 * 1024 * 1024) { toast({ title: "Fichier trop volumineux", description: "La taille maximale est de 10 MB.", variant: "destructive" }); return; }
       setFile(file);
       const reader = new FileReader();
       reader.onloadend = () => setPreview(reader.result as string);
