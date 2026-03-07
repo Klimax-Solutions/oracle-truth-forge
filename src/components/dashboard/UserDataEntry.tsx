@@ -411,30 +411,27 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     }
   };
 
-  // Upload a screenshot file
+  // Upload a screenshot file — returns { path, error }
   const uploadScreenshot = async (
     userId: string,
     tradeNumber: number,
     file: File | null,
     existingUrl: string | null,
     suffix: string
-  ): Promise<string | null> => {
-    if (!file) return existingUrl;
+  ): Promise<{ path: string | null; error: boolean }> => {
+    if (!file) return { path: existingUrl, error: false };
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/execution_${tradeNumber}_${suffix}_${Date.now()}.${fileExt}`;
+    console.log(`Uploading ${suffix} screenshot: ${fileName} (${file.size} bytes, type: ${file.type})`);
     const { data, error } = await supabase.storage
       .from('trade-screenshots')
       .upload(fileName, file, { upsert: true });
     if (error) {
       console.error(`Error uploading ${suffix} screenshot:`, error);
-      toast({
-        title: "Erreur d'upload",
-        description: `Impossible d'envoyer le screenshot ${suffix}.`,
-        variant: "destructive",
-      });
-      return existingUrl;
+      return { path: existingUrl, error: true };
     }
-    return data.path;
+    console.log(`Upload ${suffix} success:`, data.path);
+    return { path: data.path, error: false };
   };
 
   // Open dialog for new entry
