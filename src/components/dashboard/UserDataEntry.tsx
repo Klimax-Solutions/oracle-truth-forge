@@ -529,11 +529,25 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
 
     const tradeNum = parseInt(formData.trade_number);
     // Upload dual screenshots
-    const [contextUrl, entryUrl] = await Promise.all([
+    const [contextResult, entryResult] = await Promise.all([
       uploadScreenshot(user.id, tradeNum, contextFile, existingContextUrl, "context"),
       uploadScreenshot(user.id, tradeNum, entryFile, existingEntryUrl, "entry"),
     ]);
     setUploading(false);
+
+    // If any upload failed, block the save and show error
+    if (contextResult.error || entryResult.error) {
+      const failedParts = [];
+      if (contextResult.error) failedParts.push("Contexte");
+      if (entryResult.error) failedParts.push("Entrée");
+      toast({
+        title: "Erreur d'upload",
+        description: `Impossible d'envoyer le(s) screenshot(s) : ${failedParts.join(", ")}. Vérifie ta connexion et réessaie.`,
+        variant: "destructive",
+      });
+      setSaving(false);
+      return;
+    }
 
     const tradeDuration = calculateDuration(
       formData.trade_date, formData.entry_time,
@@ -560,8 +574,16 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       entry_timing: formData.entry_timing || null,
       entry_timeframe: formData.entry_timeframe || null,
       notes: formData.notes || null,
-      screenshot_url: contextUrl,
-      screenshot_entry_url: entryUrl,
+      screenshot_url: contextResult.path,
+      screenshot_entry_url: entryResult.path,
+      sl_placement: formData.sl_placement || null,
+      tp_placement: formData.tp_placement || null,
+      context_timeframe: formData.context_timeframe || null,
+      stop_loss_size: formData.stop_loss_size || null,
+      news_day: formData.news_day,
+      news_label: formData.news_day ? (formData.news_label || null) : null,
+      trade_duration: tradeDuration || null,
+    };
       sl_placement: formData.sl_placement || null,
       tp_placement: formData.tp_placement || null,
       context_timeframe: formData.context_timeframe || null,
