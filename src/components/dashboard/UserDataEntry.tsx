@@ -584,14 +584,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       news_label: formData.news_day ? (formData.news_label || null) : null,
       trade_duration: tradeDuration || null,
     };
-      sl_placement: formData.sl_placement || null,
-      tp_placement: formData.tp_placement || null,
-      context_timeframe: formData.context_timeframe || null,
-      stop_loss_size: formData.stop_loss_size || null,
-      news_day: formData.news_day,
-      news_label: formData.news_day ? (formData.news_label || null) : null,
-      trade_duration: tradeDuration || null,
-    };
 
     try {
       if (editingId) {
