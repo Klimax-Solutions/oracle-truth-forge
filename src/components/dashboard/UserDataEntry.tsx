@@ -411,30 +411,27 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     }
   };
 
-  // Upload a screenshot file
+  // Upload a screenshot file — returns { path, error }
   const uploadScreenshot = async (
     userId: string,
     tradeNumber: number,
     file: File | null,
     existingUrl: string | null,
     suffix: string
-  ): Promise<string | null> => {
-    if (!file) return existingUrl;
+  ): Promise<{ path: string | null; error: boolean }> => {
+    if (!file) return { path: existingUrl, error: false };
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/execution_${tradeNumber}_${suffix}_${Date.now()}.${fileExt}`;
+    console.log(`Uploading ${suffix} screenshot: ${fileName} (${file.size} bytes, type: ${file.type})`);
     const { data, error } = await supabase.storage
       .from('trade-screenshots')
       .upload(fileName, file, { upsert: true });
     if (error) {
       console.error(`Error uploading ${suffix} screenshot:`, error);
-      toast({
-        title: "Erreur d'upload",
-        description: `Impossible d'envoyer le screenshot ${suffix}.`,
-        variant: "destructive",
-      });
-      return existingUrl;
+      return { path: existingUrl, error: true };
     }
-    return data.path;
+    console.log(`Upload ${suffix} success:`, data.path);
+    return { path: data.path, error: false };
   };
 
   // Open dialog for new entry
@@ -532,11 +529,25 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
 
     const tradeNum = parseInt(formData.trade_number);
     // Upload dual screenshots
-    const [contextUrl, entryUrl] = await Promise.all([
+    const [contextResult, entryResult] = await Promise.all([
       uploadScreenshot(user.id, tradeNum, contextFile, existingContextUrl, "context"),
       uploadScreenshot(user.id, tradeNum, entryFile, existingEntryUrl, "entry"),
     ]);
     setUploading(false);
+
+    // If any upload failed, block the save and show error
+    if (contextResult.error || entryResult.error) {
+      const failedParts = [];
+      if (contextResult.error) failedParts.push("Contexte");
+      if (entryResult.error) failedParts.push("Entrée");
+      toast({
+        title: "Erreur d'upload",
+        description: `Impossible d'envoyer le(s) screenshot(s) : ${failedParts.join(", ")}. Vérifie ta connexion et réessaie.`,
+        variant: "destructive",
+      });
+      setSaving(false);
+      return;
+    }
 
     const tradeDuration = calculateDuration(
       formData.trade_date, formData.entry_time,
@@ -563,8 +574,8 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       entry_timing: formData.entry_timing || null,
       entry_timeframe: formData.entry_timeframe || null,
       notes: formData.notes || null,
-      screenshot_url: contextUrl,
-      screenshot_entry_url: entryUrl,
+      screenshot_url: contextResult.path,
+      screenshot_entry_url: entryResult.path,
       sl_placement: formData.sl_placement || null,
       tp_placement: formData.tp_placement || null,
       context_timeframe: formData.context_timeframe || null,
