@@ -247,7 +247,8 @@ const Dashboard = () => {
           return;
         }
 
-        setUser(session.user);
+        // Only update user state if the user ID actually changed to avoid unnecessary re-renders
+        setUser((prev: any) => prev?.id === session.user.id ? prev : session.user);
 
         if (["SIGNED_IN", "INITIAL_SESSION", "USER_UPDATED"].includes(event)) {
           await checkUserAccess(session.user.id, session);
@@ -270,7 +271,9 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  const userId = user?.id;
   useEffect(() => {
+    if (!userId) return;
     fetchTrades();
     
     const channel = supabase
@@ -283,7 +286,7 @@ const Dashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     const handleNavigateToOracleScreenshots = () => {

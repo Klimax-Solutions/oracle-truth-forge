@@ -54,9 +54,19 @@ interface TradeComparison {
 }
 
 export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAnalysisToggle }: OraclePageProps) => {
-  const [activeSubTab, setActiveSubTab] = useState("verification");
+  const [activeSubTab, setActiveSubTab] = useState(() => {
+    try {
+      const saved = localStorage.getItem("oracle_active_subtab");
+      return saved === "saisie" ? "saisie" : "verification";
+    } catch { return "verification"; }
+  });
   const [userExecutions, setUserExecutions] = useState<UserExecution[]>([]);
   const [loading, setLoading] = useState(true);
+  const handleSubTabChange = (value: string) => {
+    setActiveSubTab(value);
+    try { localStorage.setItem("oracle_active_subtab", value); } catch {}
+  };
+
 
   // Fetch user executions for comparison
   useEffect(() => {
@@ -142,7 +152,7 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
 
   return (
     <div className="flex flex-col min-h-full">
-      <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="flex-1 flex flex-col">
+      <Tabs value={activeSubTab} onValueChange={handleSubTabChange} className="flex-1 flex flex-col">
         {/* Sub-tabs header - responsive */}
         <div className="border-b border-border bg-card px-3 md:px-6 py-2 md:py-3">
           <div className="flex items-center justify-between gap-2">
