@@ -48,6 +48,44 @@ interface SetupPageProps {
 
 type ActiveView = "overview" | "oracle" | "perso" | "data-generale" | `custom-${string}`;
 
+const SETUP_VIEW_STATE_VERSION = 1;
+
+const getSetupViewStorageKey = () => {
+  try {
+    const sessionToken = localStorage.getItem("oracle_session_token") || "anonymous";
+    return `oracle_setup_view_${sessionToken}`;
+  } catch {
+    return "oracle_setup_view_anonymous";
+  }
+};
+
+const hasInitialFilters = (initialFilters?: any) =>
+  !!(initialFilters && Object.values(initialFilters).some((arr: any) => arr?.length > 0));
+
+const isActiveViewValid = (value: unknown): value is ActiveView => {
+  if (typeof value !== "string") return false;
+  return value === "overview" || value === "oracle" || value === "perso" || value === "data-generale" || value.startsWith("custom-");
+};
+
+const getDefaultSetupView = (initialFilters?: any): ActiveView =>
+  hasInitialFilters(initialFilters) ? "oracle" : "overview";
+
+const readPersistedSetupView = (initialFilters?: any): ActiveView => {
+  try {
+    const rawState = localStorage.getItem(getSetupViewStorageKey());
+    if (!rawState) return getDefaultSetupView(initialFilters);
+
+    const parsedState = JSON.parse(rawState);
+    if (parsedState?.version !== SETUP_VIEW_STATE_VERSION || !isActiveViewValid(parsedState?.activeView)) {
+      return getDefaultSetupView(initialFilters);
+    }
+
+    return parsedState.activeView;
+  } catch {
+    return getDefaultSetupView(initialFilters);
+  }
+};
+
 // Asset class configuration
 const ASSET_CLASSES: Record<string, string[]> = {
   "Indices US": ["NAS100", "US30", "US500", "SPX500", "NDX", "DJI"],
@@ -68,11 +106,7 @@ function getAssetClass(asset: string | null | undefined): string {
 }
 
 export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnalysisToggle, ebaucheComplete }: SetupPageProps) => {
-  const [activeView, setActiveView] = useState<ActiveView>(
-    initialFilters && Object.values(initialFilters).some((arr: any) => arr?.length > 0) 
-      ? "oracle" 
-      : "overview"
-  );
+  const [activeView, setActiveView] = useState<ActiveView>(() => readPersistedSetupView(initialFilters));
   const { trades: personalTrades } = usePersonalTrades();
   const { isAdmin, isSuperAdmin } = useSidebarRoles();
   const { isEarlyAccess } = useEarlyAccess();
@@ -85,10 +119,24 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
   const [renameValue, setRenameValue] = useState("");
 
   useEffect(() => {
-    if (initialFilters && Object.values(initialFilters).some((arr: any) => arr?.length > 0)) {
-      setActiveView("oracle");
+    if (hasInitialFilters(initialFilters)) {
+      setActiveView((prev) => (prev === "overview" ? "oracle" : prev));
     }
   }, [initialFilters]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        getSetupViewStorageKey(),
+        JSON.stringify({
+          version: SETUP_VIEW_STATE_VERSION,
+          activeView,
+        }),
+      );
+    } catch {
+      // noop
+    }
+  }, [activeView]);
 
   // Oracle stats
   const oracleStats = {
