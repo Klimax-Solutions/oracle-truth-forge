@@ -61,6 +61,7 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
     } catch { return "verification"; }
   });
   const [userExecutions, setUserExecutions] = useState<UserExecution[]>([]);
+  const [loading, setLoading] = useState(true);
   const handleSubTabChange = (value: string) => {
     setActiveSubTab(value);
     try { localStorage.setItem("oracle_active_subtab", value); } catch {}
