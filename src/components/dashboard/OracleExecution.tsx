@@ -157,10 +157,17 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
       if (verificationRequestsData) {
         const requestedIds = new Set(
           verificationRequestsData
-            .filter((request) => request.status !== "rejected")
-            .map((request) => request.cycle_id)
+            .filter((request: any) => request.status === "pending")
+            .map((request: any) => request.cycle_id)
         );
         setRequestedCycleIds(requestedIds);
+        
+        // Count attempts per cycle
+        const attempts: Record<string, number> = {};
+        verificationRequestsData.forEach((request: any) => {
+          attempts[request.cycle_id] = (attempts[request.cycle_id] || 0) + 1;
+        });
+        setVerificationAttempts(attempts);
       } else {
         setRequestedCycleIds(new Set());
       }
