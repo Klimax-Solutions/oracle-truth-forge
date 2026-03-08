@@ -435,6 +435,13 @@ export const AdminVerification = () => {
       return { execution: exec, oracleTrade, status, timeDiffHours };
     };
 
+    // Count attempts per user+cycle
+    const attemptCounts: Record<string, number> = {};
+    (allRequestsData || []).forEach((r: any) => {
+      const key = `${r.user_id}_${r.cycle_id}`;
+      attemptCounts[key] = (attemptCounts[key] || 0) + 1;
+    });
+
     // Combine data with comparisons
     const enrichedRequests: PendingRequest[] = requestsData.map(request => {
       const userCycle = userCyclesData?.find(uc => uc.id === request.user_cycle_id) || null;
@@ -452,6 +459,8 @@ export const AdminVerification = () => {
       // Create comparisons for each execution
       const comparisons = executions.map(exec => compareExecution(exec));
 
+      const attemptKey = `${request.user_id}_${request.cycle_id}`;
+
       return {
         ...request,
         cycle: cycle as Cycle | null,
@@ -459,6 +468,7 @@ export const AdminVerification = () => {
         executions,
         comparisons,
         userName: profile?.display_name || `Utilisateur ${request.user_id.slice(0, 8)}`,
+        attemptNumber: attemptCounts[attemptKey] || 1,
       };
     });
 
