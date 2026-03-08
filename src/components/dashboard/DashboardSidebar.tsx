@@ -243,14 +243,17 @@ export const useSidebarRoles = () => {
   useEffect(() => {
     checkRoles();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
         resetRoles();
         setLoadingRoles(false);
         return;
       }
-      setLoadingRoles(true);
-      checkRoles();
+
+      // Don't trigger a full loading cycle on token refresh / focus regain.
+      if (["SIGNED_IN", "INITIAL_SESSION", "USER_UPDATED"].includes(event)) {
+        checkRoles();
+      }
     });
 
     // Listen for realtime role changes to update instantly
