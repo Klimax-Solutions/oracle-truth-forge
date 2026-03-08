@@ -1769,8 +1769,13 @@ export const AdminVerification = () => {
                               <User className="w-5 h-5 text-orange-400" />
                             </div>
                             <div>
-                              <h4 className="font-semibold text-foreground">
+                              <h4 className="font-semibold text-foreground flex items-center gap-2">
                                 {request.userName} — {request.cycle?.name || "Cycle inconnu"}
+                                {request.attemptNumber > 1 && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 font-mono">
+                                    {request.attemptNumber}ème demande
+                                  </span>
+                                )}
                               </h4>
                               <p className="text-xs text-muted-foreground font-mono">
                                 Demandé le {new Date(request.requested_at).toLocaleDateString("fr-FR", {
