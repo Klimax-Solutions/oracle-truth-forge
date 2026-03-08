@@ -270,7 +270,9 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  const userId = user?.id;
   useEffect(() => {
+    if (!userId) return;
     fetchTrades();
     
     const channel = supabase
@@ -283,7 +285,7 @@ const Dashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     const handleNavigateToOracleScreenshots = () => {
