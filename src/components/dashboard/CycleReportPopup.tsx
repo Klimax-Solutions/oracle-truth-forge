@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, CheckCircle, XCircle, ChevronDown } from "lucide-react";
+import { X, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,6 @@ export const CycleReportPopup = () => {
   };
 
   const handleDismiss = async () => {
-    // Mark all displayed as read
     for (const n of notifications) {
       await markAsRead(n.id);
     }
@@ -65,7 +64,17 @@ export const CycleReportPopup = () => {
 
   const current = notifications[currentIndex];
   const isValidated = current.type === "cycle_validated";
+  const isRejected = current.type === "cycle_rejected";
   const lines = current.message.split("\n").filter(Boolean);
+
+  // Extract rejected trade numbers
+  const rejectedTradeNumbers: string[] = [];
+  lines.forEach(line => {
+    if (line.startsWith("•")) {
+      const match = line.match(/Trade #(\d+)/);
+      if (match) rejectedTradeNumbers.push(match[1]);
+    }
+  });
 
   return (
     <div className="fixed inset-0 z-[300] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto p-4"
@@ -128,6 +137,28 @@ export const CycleReportPopup = () => {
             }
             return <p key={i} className="text-sm text-muted-foreground">{line}</p>;
           })}
+
+          {/* Red bold re-verification message for rejected cycles */}
+          {isRejected && (
+            <div className="mt-4 p-4 bg-red-500/10 border-2 border-red-500/40 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  {rejectedTradeNumbers.length > 0 && (
+                    <p className="text-sm font-bold text-red-500 mb-2">
+                      Vous devez corriger les trades : {rejectedTradeNumbers.map(n => `#${n}`).join(", ")}
+                    </p>
+                  )}
+                  <p className="text-sm font-bold text-red-500">
+                    Modifiez les paramètres et/ou screenshots des trades incorrects, puis redemandez la vérification depuis la page Exécution d'Oracle.
+                  </p>
+                  <p className="text-xs text-red-400 mt-2 font-semibold">
+                    Tant que la vérification n'est pas validée, vous ne pourrez pas passer au cycle suivant.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

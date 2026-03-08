@@ -154,6 +154,7 @@ interface PendingRequest extends VerificationRequest {
   executions: UserExecution[];
   comparisons: ExecutionComparison[];
   userName: string;
+  attemptNumber: number;
 }
 
 interface PlatformUser {
@@ -364,6 +365,12 @@ export const AdminVerification = () => {
       .eq("status", "pending")
       .order("requested_at", { ascending: true });
 
+    // Fetch ALL verification requests (all statuses) to count attempts per user+cycle
+    const { data: allRequestsData } = await supabase
+      .from("verification_requests")
+      .select("user_id, cycle_id")
+      .order("requested_at", { ascending: true });
+
     if (requestsError) {
       console.error("Error fetching requests:", requestsError);
       setLoading(false);
@@ -428,6 +435,13 @@ export const AdminVerification = () => {
       return { execution: exec, oracleTrade, status, timeDiffHours };
     };
 
+    // Count attempts per user+cycle
+    const attemptCounts: Record<string, number> = {};
+    (allRequestsData || []).forEach((r: any) => {
+      const key = `${r.user_id}_${r.cycle_id}`;
+      attemptCounts[key] = (attemptCounts[key] || 0) + 1;
+    });
+
     // Combine data with comparisons
     const enrichedRequests: PendingRequest[] = requestsData.map(request => {
       const userCycle = userCyclesData?.find(uc => uc.id === request.user_cycle_id) || null;
@@ -445,6 +459,8 @@ export const AdminVerification = () => {
       // Create comparisons for each execution
       const comparisons = executions.map(exec => compareExecution(exec));
 
+      const attemptKey = `${request.user_id}_${request.cycle_id}`;
+
       return {
         ...request,
         cycle: cycle as Cycle | null,
@@ -452,6 +468,7 @@ export const AdminVerification = () => {
         executions,
         comparisons,
         userName: profile?.display_name || `Utilisateur ${request.user_id.slice(0, 8)}`,
+        attemptNumber: attemptCounts[attemptKey] || 1,
       };
     });
 
@@ -1700,8 +1717,13 @@ export const AdminVerification = () => {
                               <User className="w-4 h-4 text-orange-400" />
                             </div>
                             <div className="min-w-0">
-                              <h4 className="font-semibold text-foreground text-xs truncate">
+                              <h4 className="font-semibold text-foreground text-xs truncate flex items-center gap-1">
                                 {request.userName}
+                                {request.attemptNumber > 1 && (
+                                  <span className="text-[9px] px-1 py-0.5 rounded bg-orange-500/20 text-orange-400 font-mono flex-shrink-0">
+                                    ×{request.attemptNumber}
+                                  </span>
+                                )}
                               </h4>
                               <p className="text-[10px] text-muted-foreground font-mono truncate">
                                 {request.cycle?.name || "Cycle inconnu"}
@@ -1752,8 +1774,13 @@ export const AdminVerification = () => {
                               <User className="w-5 h-5 text-orange-400" />
                             </div>
                             <div>
-                              <h4 className="font-semibold text-foreground">
+                              <h4 className="font-semibold text-foreground flex items-center gap-2">
                                 {request.userName} — {request.cycle?.name || "Cycle inconnu"}
+                                {request.attemptNumber > 1 && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 font-mono">
+                                    {request.attemptNumber}ème demande
+                                  </span>
+                                )}
                               </h4>
                               <p className="text-xs text-muted-foreground font-mono">
                                 Demandé le {new Date(request.requested_at).toLocaleDateString("fr-FR", {

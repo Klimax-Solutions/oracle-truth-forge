@@ -32,6 +32,7 @@ import { SignedImageCard } from "./SignedImageCard";
 import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
 import { useEaFeaturedTrade, type EaFeaturedTrade } from "@/hooks/useEaFeaturedTrade";
 import { VerificationRequiredPopup } from "./VerificationRequiredPopup";
+import { CycleProgressBar } from "./CycleProgressBar";
 
 interface Trade {
   id: string;
@@ -111,6 +112,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   const [isAdmin, setIsAdmin] = useState(false);
   const [globalStats, setGlobalStats] = useState<{ totalData: number; totalRR: number; avgRR: number; totalUsers: number } | null>(null);
   const [requestedCycleIds, setRequestedCycleIds] = useState<Set<string>>(new Set());
+  const [verificationAttempts, setVerificationAttempts] = useState<Record<string, number>>({});
   const [verificationDismissed, setVerificationDismissed] = useState(false);
   const { toast } = useToast();
   const { isEarlyAccess, expiresAt, earlyAccessType } = useEarlyAccess();
@@ -155,10 +157,17 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
       if (verificationRequestsData) {
         const requestedIds = new Set(
           verificationRequestsData
-            .filter((request) => request.status !== "rejected")
-            .map((request) => request.cycle_id)
+            .filter((request: any) => request.status === "pending")
+            .map((request: any) => request.cycle_id)
         );
         setRequestedCycleIds(requestedIds);
+        
+        // Count attempts per cycle
+        const attempts: Record<string, number> = {};
+        verificationRequestsData.forEach((request: any) => {
+          attempts[request.cycle_id] = (attempts[request.cycle_id] || 0) + 1;
+        });
+        setVerificationAttempts(attempts);
       } else {
         setRequestedCycleIds(new Set());
       }
@@ -548,6 +557,49 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
           </div>
         </div>
       </div>
+
+      {/* Cycle Progress Bar - always visible for non-EA, non-staff */}
+      {!isEarlyAccess && !loading && (() => {
+        // Show ébauche progress if not yet validated
+        if (ebauche && ebauche.userCycle?.status !== 'validated') {
+          const ebaucheAnalyzed = questData?.ebaucheTradesAnalyzed || 0;
+          const ebaucheIsComplete = questData?.ebaucheComplete || false;
+          return (
+            <CycleProgressBar
+              cycleName="Phase d'ébauche"
+              cycleNumber={0}
+              progress={ebaucheAnalyzed}
+              total={ebauche.total_trades}
+              status={ebauche.userCycle?.status}
+              isComplete={ebaucheIsComplete}
+              canRequestVerification={ebauche.userCycle?.status === 'in_progress' || ebauche.userCycle?.status === 'rejected'}
+              alreadyRequested={requestedCycleIds.has(ebauche.id)}
+              submitting={submitting}
+              onRequestVerification={() => handleRequestVerification(ebauche)}
+              adminFeedback={ebauche.userCycle?.admin_feedback}
+            />
+          );
+        }
+        // Show current active cycle
+        if (currentCycle) {
+          return (
+            <CycleProgressBar
+              cycleName={currentCycle.name}
+              cycleNumber={currentCycle.cycle_number}
+              progress={currentCycle.userExecutions.length}
+              total={currentCycle.total_trades}
+              status={currentCycle.userCycle?.status}
+              isComplete={currentCycle.userExecutions.length >= currentCycle.total_trades}
+              canRequestVerification={currentCycle.userCycle?.status === 'in_progress' || currentCycle.userCycle?.status === 'rejected'}
+              alreadyRequested={requestedCycleIds.has(currentCycle.id)}
+              submitting={submitting}
+              onRequestVerification={() => handleRequestVerification(currentCycle)}
+              adminFeedback={currentCycle.userCycle?.admin_feedback}
+            />
+          );
+        }
+        return null;
+      })()}
 
       <div className="flex-1 p-4 md:p-6 overflow-auto space-y-6 md:space-y-8">
       {/* Admin Global Overview */}
