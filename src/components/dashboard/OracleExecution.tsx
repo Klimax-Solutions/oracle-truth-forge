@@ -32,6 +32,7 @@ import { SignedImageCard } from "./SignedImageCard";
 import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
 import { useEaFeaturedTrade, type EaFeaturedTrade } from "@/hooks/useEaFeaturedTrade";
 import { VerificationRequiredPopup } from "./VerificationRequiredPopup";
+import { CycleProgressBar } from "./CycleProgressBar";
 
 interface Trade {
   id: string;
