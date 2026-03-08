@@ -1717,8 +1717,13 @@ export const AdminVerification = () => {
                               <User className="w-4 h-4 text-orange-400" />
                             </div>
                             <div className="min-w-0">
-                              <h4 className="font-semibold text-foreground text-xs truncate">
+                              <h4 className="font-semibold text-foreground text-xs truncate flex items-center gap-1">
                                 {request.userName}
+                                {request.attemptNumber > 1 && (
+                                  <span className="text-[9px] px-1 py-0.5 rounded bg-orange-500/20 text-orange-400 font-mono flex-shrink-0">
+                                    ×{request.attemptNumber}
+                                  </span>
+                                )}
                               </h4>
                               <p className="text-[10px] text-muted-foreground font-mono truncate">
                                 {request.cycle?.name || "Cycle inconnu"}
