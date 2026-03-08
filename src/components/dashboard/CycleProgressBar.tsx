@@ -53,7 +53,7 @@ export const CycleProgressBar = ({
         isRejected
           ? "border-red-500/50 bg-red-500/5"
           : showVerificationButton
-          ? "border-orange-500/50 bg-orange-500/5 animate-pulse-subtle"
+          ? "border-orange-500/50 bg-orange-500/5"
           : isPendingReview
           ? "border-orange-500/40 bg-orange-500/5"
           : "border-primary/30 bg-primary/5"
