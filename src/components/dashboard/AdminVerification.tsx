@@ -365,6 +365,12 @@ export const AdminVerification = () => {
       .eq("status", "pending")
       .order("requested_at", { ascending: true });
 
+    // Fetch ALL verification requests (all statuses) to count attempts per user+cycle
+    const { data: allRequestsData } = await supabase
+      .from("verification_requests")
+      .select("user_id, cycle_id")
+      .order("requested_at", { ascending: true });
+
     if (requestsError) {
       console.error("Error fetching requests:", requestsError);
       setLoading(false);
