@@ -54,7 +54,12 @@ interface TradeComparison {
 }
 
 export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAnalysisToggle }: OraclePageProps) => {
-  const [activeSubTab, setActiveSubTab] = useState("verification");
+  const [activeSubTab, setActiveSubTab] = useState(() => {
+    try {
+      const saved = localStorage.getItem("oracle_active_subtab");
+      return saved === "saisie" ? "saisie" : "verification";
+    } catch { return "verification"; }
+  });
   const [userExecutions, setUserExecutions] = useState<UserExecution[]>([]);
   const [loading, setLoading] = useState(true);
 
