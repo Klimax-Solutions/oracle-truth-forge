@@ -154,6 +154,7 @@ interface PendingRequest extends VerificationRequest {
   executions: UserExecution[];
   comparisons: ExecutionComparison[];
   userName: string;
+  attemptNumber: number;
 }
 
 interface PlatformUser {
