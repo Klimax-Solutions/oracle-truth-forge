@@ -197,8 +197,8 @@ const VideoOracleContent = ({
                 {isVideoLocked(selectedVideo) ? (
                   <div className="absolute inset-0 bg-muted/80 backdrop-blur-xl flex flex-col items-center justify-center rounded-md gap-3">
                     <Lock className="w-8 h-8 text-muted-foreground" />
-                    <p className="text-sm font-semibold text-foreground">Contenu réservé</p>
-                    <p className="text-xs text-muted-foreground text-center px-4">Accès Early Access — vidéos bientôt disponibles</p>
+                    <p className="text-sm font-semibold text-foreground">{isEaExpired ? "Accès expiré" : "Contenu réservé"}</p>
+                    <p className="text-xs text-muted-foreground text-center px-4">{isEaExpired ? "Votre période d'accès anticipé est terminée." : "Accès Early Access — vidéos bientôt disponibles"}</p>
                     {unlockUrl && (
                       <a href={unlockUrl} target="_blank" rel="noopener noreferrer">
                         <Button size="sm" className="gap-1.5 mt-1">
