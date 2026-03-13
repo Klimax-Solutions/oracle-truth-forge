@@ -117,6 +117,7 @@ export const VideoSetup = () => {
             totalCount={totalCount}
             viewedCount={viewedCount}
             isEarlyAccess={isEarlyAccess}
+            isEaExpired={isEaExpired}
             eaSettings={eaSettings}
             onSelectVideo={handleSelectVideo}
             onToggleViewed={toggleViewed}
