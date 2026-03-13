@@ -98,9 +98,10 @@ interface BonusVideo {
 
 interface BonusVideoViewerProps {
   userRoles?: string[];
+  isEaExpired?: boolean;
 }
 
-export const BonusVideoViewer = ({ userRoles = [] }: BonusVideoViewerProps) => {
+export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false }: BonusVideoViewerProps) => {
   const [allVideos, setAllVideos] = useState<BonusVideo[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<BonusVideo | null>(null);
   const [loading, setLoading] = useState(true);
