@@ -124,7 +124,7 @@ export const VideoSetup = () => {
           />
         </TabsContent>
         <TabsContent value="bonus" className="flex-1 overflow-hidden flex flex-col m-0 data-[state=inactive]:hidden">
-          <BonusVideoViewer userRoles={userRoles} />
+          <BonusVideoViewer userRoles={userRoles} isEaExpired={isEaExpired} />
         </TabsContent>
         {isAdmin && (
           <TabsContent value="management" className="flex-1 overflow-hidden flex flex-col m-0 data-[state=inactive]:hidden">
