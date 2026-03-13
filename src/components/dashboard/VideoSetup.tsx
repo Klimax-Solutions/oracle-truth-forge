@@ -26,7 +26,7 @@ export const VideoSetup = () => {
   const [loading, setLoading] = useState(true);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
-  const { isEarlyAccess } = useEarlyAccess();
+  const { isEarlyAccess, isExpired: isEaExpired } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
 
   useEffect(() => {
