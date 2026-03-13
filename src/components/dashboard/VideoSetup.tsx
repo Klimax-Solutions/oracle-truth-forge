@@ -155,9 +155,10 @@ const VideoOracleContent = ({
   const unlockBtn = eaSettings.find(s => s.button_key === "acceder_a_oracle");
   const unlockUrl = unlockBtn?.button_url;
 
-  // For Early Access: only video with sort_order 5 is unlocked
+  // For Early Access: only video with sort_order 5 is unlocked, but if expired ALL are locked
   const isVideoLocked = (video: VideoData) => {
     if (!isEarlyAccess) return false;
+    if (isEaExpired) return true;
     return video.sort_order !== 5;
   };
 
