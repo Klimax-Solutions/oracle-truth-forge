@@ -26,7 +26,7 @@ export const VideoSetup = () => {
   const [loading, setLoading] = useState(true);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
-  const { isEarlyAccess } = useEarlyAccess();
+  const { isEarlyAccess, isExpired: isEaExpired } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
 
   useEffect(() => {
@@ -117,13 +117,14 @@ export const VideoSetup = () => {
             totalCount={totalCount}
             viewedCount={viewedCount}
             isEarlyAccess={isEarlyAccess}
+            isEaExpired={isEaExpired}
             eaSettings={eaSettings}
             onSelectVideo={handleSelectVideo}
             onToggleViewed={toggleViewed}
           />
         </TabsContent>
         <TabsContent value="bonus" className="flex-1 overflow-hidden flex flex-col m-0 data-[state=inactive]:hidden">
-          <BonusVideoViewer userRoles={userRoles} />
+          <BonusVideoViewer userRoles={userRoles} isEaExpired={isEaExpired} />
         </TabsContent>
         {isAdmin && (
           <TabsContent value="management" className="flex-1 overflow-hidden flex flex-col m-0 data-[state=inactive]:hidden">
@@ -143,6 +144,7 @@ interface VideoOracleContentProps {
   totalCount: number;
   viewedCount: number;
   isEarlyAccess: boolean;
+  isEaExpired: boolean;
   eaSettings: { button_key: string; button_url: string }[];
   onSelectVideo: (video: VideoData) => void;
   onToggleViewed: (videoId: string) => void;
@@ -150,14 +152,15 @@ interface VideoOracleContentProps {
 
 const VideoOracleContent = ({
   videos, selectedVideo, viewedIds, totalCount, viewedCount,
-  isEarlyAccess, eaSettings, onSelectVideo, onToggleViewed,
+  isEarlyAccess, isEaExpired, eaSettings, onSelectVideo, onToggleViewed,
 }: VideoOracleContentProps) => {
   const unlockBtn = eaSettings.find(s => s.button_key === "acceder_a_oracle");
   const unlockUrl = unlockBtn?.button_url;
 
-  // For Early Access: only video with sort_order 5 is unlocked
+  // For Early Access: only video with sort_order 5 is unlocked, but if expired ALL are locked
   const isVideoLocked = (video: VideoData) => {
     if (!isEarlyAccess) return false;
+    if (isEaExpired) return true;
     return video.sort_order !== 5;
   };
 
@@ -194,8 +197,8 @@ const VideoOracleContent = ({
                 {isVideoLocked(selectedVideo) ? (
                   <div className="absolute inset-0 bg-muted/80 backdrop-blur-xl flex flex-col items-center justify-center rounded-md gap-3">
                     <Lock className="w-8 h-8 text-muted-foreground" />
-                    <p className="text-sm font-semibold text-foreground">Contenu réservé</p>
-                    <p className="text-xs text-muted-foreground text-center px-4">Accès Early Access — vidéos bientôt disponibles</p>
+                    <p className="text-sm font-semibold text-foreground">{isEaExpired ? "Accès expiré" : "Contenu réservé"}</p>
+                    <p className="text-xs text-muted-foreground text-center px-4">{isEaExpired ? "Votre période d'accès anticipé est terminée." : "Accès Early Access — vidéos bientôt disponibles"}</p>
                     {unlockUrl && (
                       <a href={unlockUrl} target="_blank" rel="noopener noreferrer">
                         <Button size="sm" className="gap-1.5 mt-1">

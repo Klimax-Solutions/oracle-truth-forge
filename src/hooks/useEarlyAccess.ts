@@ -50,5 +50,7 @@ export const useEarlyAccess = () => {
     };
   }, []);
 
-  return { isEarlyAccess, expiresAt, earlyAccessType, loading };
+  const isExpired = !!(isEarlyAccess && expiresAt && new Date(expiresAt) <= new Date());
+
+  return { isEarlyAccess, isExpired, expiresAt, earlyAccessType, loading };
 };
