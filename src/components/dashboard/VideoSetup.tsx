@@ -144,6 +144,7 @@ interface VideoOracleContentProps {
   totalCount: number;
   viewedCount: number;
   isEarlyAccess: boolean;
+  isEaExpired: boolean;
   eaSettings: { button_key: string; button_url: string }[];
   onSelectVideo: (video: VideoData) => void;
   onToggleViewed: (videoId: string) => void;
@@ -151,7 +152,7 @@ interface VideoOracleContentProps {
 
 const VideoOracleContent = ({
   videos, selectedVideo, viewedIds, totalCount, viewedCount,
-  isEarlyAccess, eaSettings, onSelectVideo, onToggleViewed,
+  isEarlyAccess, isEaExpired, eaSettings, onSelectVideo, onToggleViewed,
 }: VideoOracleContentProps) => {
   const unlockBtn = eaSettings.find(s => s.button_key === "acceder_a_oracle");
   const unlockUrl = unlockBtn?.button_url;
