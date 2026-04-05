@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Save, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Save, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface BonusVideo {
   id: string;
@@ -28,11 +29,19 @@ const ROLE_OPTIONS = [
   { value: "super_admin", label: "Super Admin" },
 ];
 
-export const BonusVideoManager = () => {
+interface BonusVideoManagerProps {
+  collapsible?: boolean;
+}
+
+export const BonusVideoManager = ({ collapsible = false }: BonusVideoManagerProps) => {
   const [videos, setVideos] = useState<BonusVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<BonusVideo | null>(null);
+
+  // Drag state
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -82,7 +91,6 @@ export const BonusVideoManager = () => {
       return;
     }
 
-    // Auto-strip dimensions for responsive embedding
     const cleanedEmbed = embedCode.trim()
       .replace(/\s*width\s*=\s*["']\d+["']/gi, '')
       .replace(/\s*height\s*=\s*["']\d+["']/gi, '')
@@ -122,98 +130,101 @@ export const BonusVideoManager = () => {
     fetchVideos();
   };
 
-  const moveVideo = async (index: number, direction: "up" | "down") => {
+  // Drag and drop
+  const handleDragStart = (index: number) => setDragIndex(index);
+  const handleDragOver = (e: React.DragEvent, index: number) => { e.preventDefault(); setOverIndex(index); };
+
+  const handleDragEnd = async () => {
+    if (dragIndex === null || overIndex === null || dragIndex === overIndex) {
+      setDragIndex(null);
+      setOverIndex(null);
+      return;
+    }
+
     const newVideos = [...videos];
-    const swapIndex = direction === "up" ? index - 1 : index + 1;
-    if (swapIndex < 0 || swapIndex >= newVideos.length) return;
+    const [moved] = newVideos.splice(dragIndex, 1);
+    newVideos.splice(overIndex, 0, moved);
 
-    const tempOrder = newVideos[index].sort_order;
-    newVideos[index].sort_order = newVideos[swapIndex].sort_order;
-    newVideos[swapIndex].sort_order = tempOrder;
+    const updates = newVideos.map((v, i) => ({ ...v, sort_order: i + 1 }));
+    setVideos(updates);
+    setDragIndex(null);
+    setOverIndex(null);
 
-    await Promise.all([
-      supabase.from("bonus_videos").update({ sort_order: newVideos[index].sort_order } as any).eq("id", newVideos[index].id),
-      supabase.from("bonus_videos").update({ sort_order: newVideos[swapIndex].sort_order } as any).eq("id", newVideos[swapIndex].id),
-    ]);
-    fetchVideos();
-  };
-
-  const toggleRole = (role: string) => {
-    setSelectedRoles(prev =>
-      prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
+    await Promise.all(
+      updates.map(v =>
+        supabase.from("bonus_videos").update({ sort_order: v.sort_order } as any).eq("id", v.id)
+      )
     );
+    toast({ title: "Ordre mis à jour" });
   };
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="w-6 h-6 border border-foreground border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center py-8">
+        <div className="w-5 h-5 border border-foreground border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col">
-      {/* Sub-header */}
-      <div className="px-4 md:px-6 py-3 border-b border-border flex items-center justify-between">
-        <Badge variant="secondary" className="font-mono text-[10px] md:text-xs">
-          {videos.length} vidéos
-        </Badge>
+    <>
+      {/* Header inside collapsible */}
+      <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+        <Badge variant="secondary" className="font-mono text-[10px]">{videos.length} vidéos</Badge>
         <Button size="sm" onClick={openCreate} className="gap-1.5">
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
           Ajouter
         </Button>
       </div>
 
-      {/* Video list */}
-      <div className="flex-1 overflow-auto scrollbar-hide p-4 md:p-6">
-        <div className="max-w-3xl mx-auto space-y-2">
-          {videos.map((video, index) => (
-            <div
-              key={video.id}
-              className="flex items-center gap-3 p-3 md:p-4 border border-border bg-card rounded-lg"
-            >
-              <div className="flex flex-col gap-0.5 flex-shrink-0">
-                <button onClick={() => moveVideo(index, "up")} disabled={index === 0} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">▲</button>
-                <button onClick={() => moveVideo(index, "down")} disabled={index === videos.length - 1} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">▼</button>
+      <div className={cn("overflow-auto p-3 space-y-1.5", collapsible ? "max-h-[400px]" : "flex-1")}>
+        {videos.map((video, index) => (
+          <div
+            key={video.id}
+            draggable
+            onDragStart={() => handleDragStart(index)}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDragEnd={handleDragEnd}
+            className={cn(
+              "flex items-center gap-2 p-2.5 md:p-3 border border-border bg-card rounded-lg transition-all cursor-grab active:cursor-grabbing",
+              dragIndex === index && "opacity-50 scale-[0.98]",
+              overIndex === index && dragIndex !== null && dragIndex !== index && "border-primary border-2"
+            )}
+          >
+            <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-foreground truncate">{video.title}</p>
+                <Badge variant="outline" className="text-[9px] font-mono flex-shrink-0">
+                  {video.category === "live" ? "Live" : "Formation"}
+                </Badge>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-foreground truncate">{video.title}</p>
-                  <Badge variant="outline" className="text-[9px] font-mono flex-shrink-0">
-                    {video.category === "live" ? "Live" : "Formation"}
+              <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                {video.embed_code.substring(0, 80)}…
+              </p>
+              <div className="flex items-center gap-1 mt-1">
+                {(video.accessible_roles || []).map(role => (
+                  <Badge key={role} variant="secondary" className="text-[8px] px-1 py-0">
+                    {ROLE_OPTIONS.find(r => r.value === role)?.label || role}
                   </Badge>
-                </div>
-                <p className="text-[10px] text-muted-foreground truncate mt-0.5">
-                  {video.embed_code.substring(0, 80)}…
-                </p>
-                {video.description && (
-                  <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">{video.description}</p>
-                )}
-                <div className="flex items-center gap-1 mt-1">
-                  {(video.accessible_roles || []).map(role => (
-                    <Badge key={role} variant="secondary" className="text-[8px] px-1 py-0">
-                      {ROLE_OPTIONS.find(r => r.value === role)?.label || role}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => openEdit(video)}>
-                  <Pencil className="w-3.5 h-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="w-8 h-8 text-destructive hover:text-destructive" onClick={() => handleDelete(video.id)}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
+                ))}
               </div>
             </div>
-          ))}
-          {videos.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground text-sm">
-              Aucune vidéo bonus. Cliquez sur "Ajouter" pour commencer.
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => openEdit(video)}>
+                <Pencil className="w-3 h-3" />
+              </Button>
+              <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive hover:text-destructive" onClick={() => handleDelete(video.id)}>
+                <Trash2 className="w-3 h-3" />
+              </Button>
             </div>
-          )}
-        </div>
+          </div>
+        ))}
+        {videos.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            Aucune vidéo bonus. Cliquez sur "Ajouter".
+          </div>
+        )}
       </div>
 
       {/* Add/Edit Dialog */}
@@ -236,20 +247,15 @@ export const BonusVideoManager = () => {
               <Textarea
                 value={embedCode}
                 onChange={(e) => setEmbedCode(e.target.value)}
-                placeholder={'<iframe src="https://..." ...></iframe>\nou\n<script src="https://player.vdocipher.com/..." ...></script>\nou\nhttps://drive.google.com/file/d/.../view'}
+                placeholder={'<iframe src="https://..." ...></iframe>\nou\nhttps://drive.google.com/file/d/.../view'}
                 rows={5}
                 className="font-mono text-xs"
               />
-              <p className="text-[10px] text-muted-foreground">
-                Compatible : code embed iFrame, code Script (VDO Cipher), ou lien Google Drive (preview automatique)
-              </p>
             </div>
             <div className="space-y-2">
               <Label>Catégorie</Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="formation">Vidéo de formation</SelectItem>
                   <SelectItem value="live">Live</SelectItem>
@@ -263,7 +269,11 @@ export const BonusVideoManager = () => {
                   <label key={role.value} className="flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox
                       checked={selectedRoles.includes(role.value)}
-                      onCheckedChange={() => toggleRole(role.value)}
+                      onCheckedChange={(checked) => {
+                        setSelectedRoles(prev =>
+                          checked ? [...prev, role.value] : prev.filter(r => r !== role.value)
+                        );
+                      }}
                     />
                     {role.label}
                   </label>
@@ -280,6 +290,6 @@ export const BonusVideoManager = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
