@@ -32,6 +32,7 @@ import { QuestFloatingBubble } from "@/components/dashboard/QuestFloatingBubble"
 import { ResultsPage } from "@/components/dashboard/ResultsPage";
 import { AdminVerificationPopup } from "@/components/dashboard/AdminVerificationPopup";
 import { EarlyAccessManagement } from "@/components/dashboard/EarlyAccessManagement";
+import CRMDashboard from "@/components/dashboard/admin/CRMDashboard";
 import { CycleReportPopup } from "@/components/dashboard/CycleReportPopup";
 import { EarlyAccessLoginPopup } from "@/components/dashboard/EarlyAccessLoginPopup";
 import { EAPendingPopup } from "@/components/dashboard/EAPendingPopup";
@@ -268,7 +269,18 @@ const Dashboard = () => {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Safety timeout: if auth check hangs (AbortError in dev), force loading to false
+    const safetyTimeout = setTimeout(() => {
+      setLoading(prev => {
+        if (prev) console.warn("[Dashboard] Auth loading timeout — forcing render");
+        return false;
+      });
+    }, 3000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(safetyTimeout);
+    };
   }, [navigate]);
 
   const userId = user?.id;
@@ -453,6 +465,8 @@ const Dashboard = () => {
         return <AdminVerification />;
       case "roles":
         return <AdminVerification />;
+      case "crm":
+        return <CRMDashboard />;
       case "early-access-mgmt":
         return <EarlyAccessManagement />;
       default:

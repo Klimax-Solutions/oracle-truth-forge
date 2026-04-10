@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Database, BarChart3, ChevronRight, Crosshair, Video, ShieldCheck, Trophy, Award } from "lucide-react";
+import { Database, BarChart3, ChevronRight, Crosshair, Video, ShieldCheck, Trophy, Award, TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
@@ -33,6 +33,8 @@ const tabs = [
 const earlyAccessTabs = [
   { id: "results", label: "Résultats", icon: Award },
 ];
+
+const crmTab = { id: "crm", label: "CRM", icon: TrendingUp };
 
 const adminTabs = [
   { id: "admin", label: "Vérifications Admin", icon: ShieldCheck },
@@ -136,6 +138,9 @@ export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: Dash
     allTabs = [...allTabs, ...earlyAccessTabs];
   }
   
+  if (isAdmin || isSuperAdmin) {
+    allTabs = [...allTabs, crmTab];
+  }
   if (isAdmin) {
     allTabs = [...allTabs, ...adminTabs];
   }
@@ -221,23 +226,28 @@ export const useSidebarRoles = () => {
   };
 
   const checkRoles = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      resetRoles();
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        resetRoles();
+        setLoadingRoles(false);
+        return;
+      }
+
+      const [adminRes, superAdminRes, setterRes] = await Promise.all([
+        supabase.rpc('is_admin'),
+        supabase.rpc('is_super_admin'),
+        supabase.rpc('is_setter' as any),
+      ]);
+
+      setIsAdmin(!!adminRes.data);
+      setIsSuperAdmin(!!superAdminRes.data);
+      setIsSetter(!!setterRes.data);
+    } catch (err) {
+      console.warn("checkRoles aborted or failed, using defaults", err);
+    } finally {
       setLoadingRoles(false);
-      return;
     }
-
-    const [adminRes, superAdminRes, setterRes] = await Promise.all([
-      supabase.rpc('is_admin'),
-      supabase.rpc('is_super_admin'),
-      supabase.rpc('is_setter' as any),
-    ]);
-
-    setIsAdmin(!!adminRes.data);
-    setIsSuperAdmin(!!superAdminRes.data);
-    setIsSetter(!!setterRes.data);
-    setLoadingRoles(false);
   };
 
   useEffect(() => {
