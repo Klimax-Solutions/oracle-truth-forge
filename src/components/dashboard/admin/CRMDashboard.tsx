@@ -29,6 +29,8 @@ import { useToast } from "@/hooks/use-toast";
 import { CRMLead, StageFilter, getStage, mapRowToCRMLead } from "@/lib/admin/types";
 import { getSetterColor } from "@/lib/admin/setterColors";
 import AgendaTab from "./AgendaTab";
+import CockpitTab from "./CockpitTab";
+import ConversionsTab from "./ConversionsTab";
 
 // ── Types — CRMLead imported from @/lib/admin/types (source de verite unique) ──
 type PipelineLead = CRMLead; // Alias local pour compatibilite
@@ -548,8 +550,18 @@ export default function CRMDashboard() {
           <AgendaTab />
         </TabsContent>
 
+        {/* Cockpit Tab */}
+        <TabsContent value="cockpit" className="flex-1 mt-0 overflow-auto">
+          <CockpitTab leads={leads} />
+        </TabsContent>
+
+        {/* Conversions Tab */}
+        <TabsContent value="conversions" className="flex-1 mt-0 overflow-auto">
+          <ConversionsTab leads={leads} />
+        </TabsContent>
+
         {/* Placeholders */}
-        {["cockpit", "conversions", "objections"].map(tab => (
+        {["objections"].map(tab => (
           <TabsContent key={tab} value={tab} className="flex-1 flex items-center justify-center mt-0">
             <div className="text-center text-muted-foreground">
               <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-20" />
