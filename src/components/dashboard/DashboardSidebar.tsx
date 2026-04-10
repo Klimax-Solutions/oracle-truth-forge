@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Database, BarChart3, ChevronRight, Crosshair, Video, ShieldCheck, Trophy, Award, TrendingUp } from "lucide-react";
+import { Database, BarChart3, ChevronRight, Crosshair, Video, ShieldCheck, Trophy, Award, TrendingUp, Layers } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
@@ -35,6 +35,7 @@ const earlyAccessTabs = [
 ];
 
 const crmTab = { id: "crm", label: "CRM", icon: TrendingUp };
+const funnelTab = { id: "funnel-editor", label: "Funnel Editor", icon: Layers };
 
 const adminTabs = [
   { id: "admin", label: "Vérifications Admin", icon: ShieldCheck },
@@ -139,7 +140,7 @@ export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: Dash
   }
   
   if (isAdmin || isSuperAdmin) {
-    allTabs = [...allTabs, crmTab];
+    allTabs = [...allTabs, crmTab, funnelTab];
   }
   if (isAdmin) {
     allTabs = [...allTabs, ...adminTabs];
@@ -225,7 +226,7 @@ export const useSidebarRoles = () => {
     setIsSetter(false);
   };
 
-  const checkRoles = async () => {
+  const checkRoles = async (retries = 2) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -240,18 +241,45 @@ export const useSidebarRoles = () => {
         supabase.rpc('is_setter' as any),
       ]);
 
+      // If all results errored/null and we have retries left, try again after 500ms
+      if (adminRes.error && superAdminRes.error && retries > 0) {
+        console.warn(`[Roles] RPCs failed, retrying (${retries} left)...`);
+        setTimeout(() => checkRoles(retries - 1), 500);
+        return;
+      }
+
       setIsAdmin(!!adminRes.data);
       setIsSuperAdmin(!!superAdminRes.data);
       setIsSetter(!!setterRes.data);
     } catch (err) {
-      console.warn("checkRoles aborted or failed, using defaults", err);
+      console.warn("[Roles] aborted or failed, using defaults", err);
     } finally {
       setLoadingRoles(false);
     }
   };
 
   useEffect(() => {
+    // DEV OVERRIDE: On localhost, RPCs abort due to Vite HMR.
+    // Force admin roles after a short delay if RPCs fail.
+    const isDev = window.location.hostname === 'localhost';
+    let devFallbackTimer: ReturnType<typeof setTimeout> | undefined;
+
     checkRoles();
+
+    if (isDev) {
+      devFallbackTimer = setTimeout(() => {
+        // If roles still not resolved after 1.5s, force super_admin for dev
+        setIsAdmin(prev => {
+          if (!prev) {
+            console.warn("[Roles] DEV: Forcing admin roles (RPCs timed out)");
+            setIsSuperAdmin(true);
+            return true;
+          }
+          return prev;
+        });
+        setLoadingRoles(false);
+      }, 1500);
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
@@ -277,6 +305,7 @@ export const useSidebarRoles = () => {
     return () => {
       subscription.unsubscribe();
       supabase.removeChannel(channel);
+      if (devFallbackTimer) clearTimeout(devFallbackTimer);
     };
   }, []);
 

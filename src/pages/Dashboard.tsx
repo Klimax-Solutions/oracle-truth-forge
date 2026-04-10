@@ -33,6 +33,7 @@ import { ResultsPage } from "@/components/dashboard/ResultsPage";
 import { AdminVerificationPopup } from "@/components/dashboard/AdminVerificationPopup";
 import { EarlyAccessManagement } from "@/components/dashboard/EarlyAccessManagement";
 import CRMDashboard from "@/components/dashboard/admin/CRMDashboard";
+import FunnelEditorPage from "@/components/dashboard/admin/FunnelEditorPage";
 import { CycleReportPopup } from "@/components/dashboard/CycleReportPopup";
 import { EarlyAccessLoginPopup } from "@/components/dashboard/EarlyAccessLoginPopup";
 import { EAPendingPopup } from "@/components/dashboard/EAPendingPopup";
@@ -365,13 +366,8 @@ const Dashboard = () => {
     setActiveTab("setup");
   };
 
-  if (loading || loadingRoles) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-6 h-6 border border-foreground border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  // Loading gate removed — dashboard always renders.
+  // Individual tabs handle their own loading states.
 
 
 
@@ -467,6 +463,8 @@ const Dashboard = () => {
         return <AdminVerification />;
       case "crm":
         return <CRMDashboard />;
+      case "funnel-editor":
+        return <FunnelEditorPage />;
       case "early-access-mgmt":
         return <EarlyAccessManagement />;
       default:
