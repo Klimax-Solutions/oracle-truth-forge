@@ -268,7 +268,7 @@ export const useSidebarRoles = () => {
 
     if (isDev) {
       devFallbackTimer = setTimeout(() => {
-        // If roles still not resolved after 1.5s, force super_admin for dev
+        // If roles still not resolved after 300ms, force super_admin for dev
         setIsAdmin(prev => {
           if (!prev) {
             console.warn("[Roles] DEV: Forcing admin roles (RPCs timed out)");
@@ -278,7 +278,7 @@ export const useSidebarRoles = () => {
           return prev;
         });
         setLoadingRoles(false);
-      }, 1500);
+      }, 100);
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

@@ -263,20 +263,31 @@ const Dashboard = () => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
+        setLoading(false);
       } else {
         setUser(session.user);
-        await checkUserAccess(session.user.id, session);
+        // DEV: Don't let checkUserAccess hang forever — race with a short timeout
+        if (window.location.hostname === 'localhost') {
+          Promise.race([
+            checkUserAccess(session.user.id, session),
+            new Promise(resolve => setTimeout(resolve, 500)),
+          ]).then(() => setLoading(false));
+        } else {
+          await checkUserAccess(session.user.id, session);
+          setLoading(false);
+        }
       }
-      setLoading(false);
     });
 
     // Safety timeout: if auth check hangs (AbortError in dev), force loading to false
+    // DEV: 800ms — RPCs abort instantly in Vite HMR, no point waiting 3s
+    const devMode = window.location.hostname === 'localhost';
     const safetyTimeout = setTimeout(() => {
       setLoading(prev => {
         if (prev) console.warn("[Dashboard] Auth loading timeout — forcing render");
         return false;
       });
-    }, 3000);
+    }, devMode ? 200 : 3000);
 
     return () => {
       subscription.unsubscribe();

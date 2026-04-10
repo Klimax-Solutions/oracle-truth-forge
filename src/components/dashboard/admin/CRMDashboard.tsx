@@ -1,18 +1,19 @@
 // ============================================
-// CRM Dashboard — Pipeline spike-launch style
-// Reads from early_access_requests + profiles + user_roles
+// CRM Dashboard V2 — Spike-launch style pipeline
+// Adapted for Oracle EA flow
 // Branch: crm-integration
 // ============================================
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import LeadDetailModal from "./LeadDetailModal";
 import {
   Loader2, Search, Users, Phone, Mail, Copy, CheckCircle2,
   Circle, Clock, ArrowUpDown, Eye, PhoneCall, CreditCard,
-  X, Calendar, BarChart3, ChevronDown, ChevronRight,
-  MessageCircle, Timer, Wifi, UserCheck, PhoneForwarded,
-  ClipboardCheck, Target, Send, Lock, Unlock, DollarSign,
-  FileText, Headphones, Gift, Shield,
+  X, Calendar, BarChart3, ChevronDown, MessageCircle,
+  Timer, Wifi, PhoneForwarded, ClipboardCheck, Target,
+  Lock, Unlock, DollarSign, FileText, Headphones, Shield,
+  Send, UserCheck, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,206 +24,223 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { CRMLead, StageFilter, getStage, mapRowToCRMLead } from "@/lib/admin/types";
+import { getSetterColor } from "@/lib/admin/setterColors";
+import AgendaTab from "./AgendaTab";
 
-// ── Types ──
+// ── Types — CRMLead imported from @/lib/admin/types (source de verite unique) ──
+type PipelineLead = CRMLead; // Alias local pour compatibilite
 
-interface PipelineLead {
-  id: string;
-  first_name: string;
-  email: string;
-  phone: string;
-  status: string;
-  created_at: string;
-  reviewed_at: string | null;
-  user_id: string | null;
-  contacted: boolean;
-  contact_method: string | null;
-  form_submitted: boolean;
-  call_booked: boolean;
-  call_done: boolean;
-  is_online?: boolean;
-  active_tab?: string | null;
-  session_count?: number;
-  execution_count?: number;
-  expires_at?: string | null;
-  early_access_type?: string | null;
-}
-
-type StageFilter = "all" | "pending" | "approved" | "contacted" | "call_booked" | "call_done";
-type SortField = "date" | "name";
-
-// ── Helpers ──
-
-function getStage(lead: PipelineLead): StageFilter {
-  if (lead.call_done) return "call_done";
-  if (lead.call_booked) return "call_booked";
-  if (lead.contacted) return "contacted";
-  if (lead.status === "approuvée") return "approved";
-  return "pending";
-}
-
-function formatDate(d: string | null): string {
-  if (!d) return "—";
+function fmtDate(d: string | null): string {
+  if (!d) return "";
   const date = new Date(d);
-  return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) +
-    " " + date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function shortDate(d: string): string {
-  return new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+function fmtDateTime(d: string | null): string {
+  if (!d) return "";
+  const date = new Date(d);
+  return `${fmtDate(d)} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
-function expiresLabel(d: string | null): string | null {
-  if (!d) return null;
-  const ms = new Date(d).getTime() - Date.now();
-  if (ms <= 0) return "Expiré";
-  const h = Math.floor(ms / 3600000);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}j`;
+// ============================================
+// Design System — Couleurs coherentes
+//   primary: cyan (#19B7C9) — accent, actions
+//   emerald: paye, succes
+//   violet: contracte, closer
+//   amber: forms, warning
+//   blue: calls, upcoming
+//   red: no-show, echec
+//   white/50: neutre, inactif
+// ============================================
+
+// ============================================
+// Design System — spike-launch gamifie
+// ============================================
+
+function avatarColor(l: PipelineLead): string {
+  if (l.paid_at) return "bg-emerald-500 ring-emerald-500/40";
+  if (l.call_done) return "bg-blue-500 ring-blue-500/40";
+  if (l.call_booked) return "bg-blue-400 ring-blue-400/40";
+  if (l.contacted) return "bg-violet-500 ring-violet-500/40";
+  if (l.status === "approuvée") return "bg-cyan-500 ring-cyan-500/40";
+  return "bg-white/15 ring-white/10";
 }
 
-// ── Checkmark cell ──
+const Empty = () => <span className="text-white/[0.08] select-none">—</span>;
 
-function Check({ done, color = "emerald" }: { done: boolean; color?: string }) {
-  if (!done) return <span className="text-muted-foreground/20">—</span>;
-  const cls = color === "emerald" ? "text-emerald-500" :
-    color === "blue" ? "text-blue-500" :
-    color === "orange" ? "text-orange-500" :
-    color === "purple" ? "text-purple-500" :
-    color === "yellow" ? "text-yellow-500" : "text-emerald-500";
-  return <CheckCircle2 className={cn("w-4 h-4", cls)} />;
-}
-
-// ── Counter badge (top bar) ──
-
-function CounterBadge({ count, label, color, active, onClick }: {
-  count: number; label: string; color: string; active: boolean; onClick: () => void;
-}) {
+function DateBadge({ date, color = "amber" }: { date: string | null; color?: string }) {
+  if (!date) return <Empty />;
+  const styles: Record<string, string> = {
+    amber: "bg-amber-500/15 text-amber-400 border-amber-500/25",
+    cyan: "bg-cyan-500/15 text-cyan-400 border-cyan-500/25",
+    emerald: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
+    violet: "bg-violet-500/15 text-violet-400 border-violet-500/25",
+    blue: "bg-blue-500/15 text-blue-400 border-blue-500/25",
+    red: "bg-red-500/15 text-red-400 border-red-500/25",
+  };
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono uppercase tracking-wider transition-all",
-        active ? `${color} border-current/30 font-bold` : "text-muted-foreground border-border/50 hover:border-border"
-      )}
-    >
-      <span className="font-bold">{count}</span>
-      <span>{label}</span>
-    </button>
+    <span className={cn("inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium border tabular-nums", styles[color] || "bg-white/5 text-white/50 border-white/10")}>
+      {fmtDateTime(date)}
+    </span>
   );
 }
 
-// ── Lead Detail Panel (right side) ──
+function OutcomeBadge({ outcome }: { outcome: string | null }) {
+  if (!outcome) return null;
+  const cfg: Record<string, { label: string; cls: string }> = {
+    contracted: { label: "Contracte ✓", cls: "text-violet-300 bg-violet-500/20 border-violet-500/30" },
+    closing_in_progress: { label: "En cours", cls: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
+    not_closed: { label: "Non close", cls: "text-red-300 bg-red-500/20 border-red-500/30" },
+  };
+  const c = cfg[outcome];
+  if (!c) return null;
+  return <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-display font-semibold border", c.cls)}>{c.label}</span>;
+}
+
+function ContactBadge({ method, contacted }: { method: string | null; contacted: boolean }) {
+  if (!contacted) return <Empty />;
+  const cfg: Record<string, { icon: typeof Phone; cls: string }> = {
+    whatsapp: { icon: MessageCircle, cls: "text-emerald-400" },
+    email: { icon: Mail, cls: "text-amber-400" },
+    opt_in_call: { icon: PhoneCall, cls: "text-cyan-400" },
+  };
+  const c = cfg[method || ""] || { icon: CheckCircle2, cls: "text-violet-400" };
+  const Icon = c.icon;
+  return <Icon className={cn("w-4.5 h-4.5 mx-auto", c.cls)} />;
+}
+
+// ── Lead Detail Panel ──
 
 function LeadDetail({ lead, onClose }: { lead: PipelineLead; onClose: () => void }) {
   const { toast } = useToast();
-  const copy = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast({ title: `${label} copié` });
-  };
-  const exp = expiresLabel(lead.expires_at);
+  const copy = (t: string, l: string) => { navigator.clipboard.writeText(t); toast({ title: `${l} copié` }); };
+  const stage = getStage(lead);
+
+  const steps = [
+    { key: "form", label: "Form", icon: FileText, color: "amber", done: true, date: lead.created_at },
+    { key: "ea", label: "EA", icon: Shield, color: "cyan", done: lead.status === "approuvée", date: lead.reviewed_at },
+    { key: "setting", label: "Setting", icon: PhoneForwarded, color: "purple", done: lead.contacted, date: null },
+    { key: "call", label: "Call", icon: Headphones, color: "blue", done: lead.call_done, date: null },
+    { key: "paid", label: "Payé", icon: CheckCircle2, color: "emerald", done: !!lead.paid_at, date: lead.paid_at },
+  ];
 
   return (
-    <div className="h-full flex flex-col border-l border-border bg-card">
-      <div className="shrink-0 p-4 border-b border-border flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold">{lead.first_name || "Sans nom"}</h3>
-          <p className="text-[11px] text-muted-foreground font-mono">{lead.email}</p>
+    <div className="h-full flex flex-col border-l border-border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="shrink-0 p-4 border-b border-border">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white", avatarColor(lead))}>
+              {lead.first_name?.[0]?.toUpperCase() || "?"}
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold">{lead.first_name || "Sans nom"}</h3>
+              {lead.setter_name && (
+                <span className="text-[10px] font-mono uppercase text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded">
+                  Setter: {lead.setter_name}
+                </span>
+              )}
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7"><X className="w-4 h-4" /></Button>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
-          <X className="w-4 h-4" />
-        </Button>
+
+        {/* Pipeline visual */}
+        <div className="flex items-center justify-between px-2">
+          {steps.map((s, i) => {
+            const Icon = s.icon;
+            return (
+              <div key={s.key} className="flex items-center">
+                <div className="flex flex-col items-center gap-1">
+                  <div className={cn("w-8 h-8 rounded-full flex items-center justify-center border-2",
+                    s.done ? `border-${s.color}-500 bg-${s.color}-500/20` : "border-muted-foreground/20 bg-background"
+                  )}>
+                    <Icon className={cn("w-3.5 h-3.5", s.done ? `text-${s.color}-400` : "text-muted-foreground/30")} />
+                  </div>
+                  <span className={cn("text-[8px] font-mono uppercase", s.done ? "text-foreground" : "text-muted-foreground/40")}>{s.label}</span>
+                  {s.date && <span className="text-[8px] text-muted-foreground font-mono">{fmtDate(s.date)}</span>}
+                </div>
+                {i < steps.length - 1 && (
+                  <div className={cn("w-4 h-px mx-0.5 mt-[-12px]", s.done ? "bg-foreground/20" : "bg-muted-foreground/10")} />
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-4 space-y-5">
-        {/* Status row */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {lead.is_online && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-500 font-mono uppercase bg-emerald-500/10 px-2 py-0.5 rounded">
-              <Wifi className="w-3 h-3" /> Online
-            </span>
-          )}
-          {lead.early_access_type && (
-            <span className="text-[10px] font-mono uppercase text-muted-foreground bg-muted px-2 py-0.5 rounded">
-              {lead.early_access_type}
-            </span>
-          )}
-          {exp && (
-            <span className={cn("text-[10px] font-mono uppercase px-2 py-0.5 rounded",
-              exp === "Expiré" ? "bg-red-500/10 text-red-500" : "bg-muted text-muted-foreground"
-            )}>
-              <Timer className="w-3 h-3 inline mr-1" />{exp}
-            </span>
-          )}
-        </div>
-
+      {/* Body */}
+      <div className="flex-1 overflow-auto p-4 space-y-4">
         {/* Contact */}
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Contact</p>
           <button onClick={() => copy(lead.email, "Email")} className="flex items-center gap-2 text-xs hover:text-primary transition-colors w-full text-left">
-            <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <span className="truncate flex-1">{lead.email}</span>
-            <Copy className="w-3 h-3 text-muted-foreground shrink-0" />
+            <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" /><span className="truncate flex-1">{lead.email}</span><Copy className="w-3 h-3 text-muted-foreground shrink-0" />
           </button>
           {lead.phone && (
             <button onClick={() => copy(lead.phone, "Tel")} className="flex items-center gap-2 text-xs hover:text-primary transition-colors w-full text-left">
-              <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <span>{lead.phone}</span>
-              <Copy className="w-3 h-3 text-muted-foreground shrink-0" />
+              <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" /><span>{lead.phone}</span><Copy className="w-3 h-3 text-muted-foreground shrink-0" />
             </button>
           )}
         </div>
 
-        {/* Pipeline timeline */}
-        <div className="space-y-2">
-          <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Pipeline</p>
-          <div className="space-y-0">
-            {[
-              { done: true, label: "Formulaire soumis", date: lead.created_at, icon: FileText },
-              { done: lead.status === "approuvée", label: "EA approuvé", date: lead.reviewed_at, icon: Shield },
-              { done: lead.contacted, label: "Contacté", date: null, icon: PhoneForwarded },
-              { done: lead.call_booked, label: "Call booké", date: null, icon: Headphones },
-              { done: lead.call_done, label: "Call effectué", date: null, icon: ClipboardCheck },
-            ].map((step, i) => (
-              <div key={i} className="flex items-center gap-3 py-1.5">
-                <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
-                  step.done ? "border-primary bg-primary" : "border-muted-foreground/20 bg-background"
-                )}>
-                  {step.done && <step.icon className="w-2.5 h-2.5 text-primary-foreground" />}
-                </div>
-                <div className="flex-1">
-                  <span className={cn("text-xs", step.done ? "text-foreground" : "text-muted-foreground/40")}>{step.label}</span>
-                </div>
-                {step.date && <span className="text-[10px] text-muted-foreground font-mono">{shortDate(step.date)}</span>}
-              </div>
-            ))}
+        {/* Call outcome */}
+        {lead.call_done && (
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Issue du call</p>
+            <OutcomeBadge outcome={lead.call_outcome} />
+            {lead.call_debrief && (
+              <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2.5 leading-relaxed">{lead.call_debrief}</p>
+            )}
           </div>
-        </div>
+        )}
+
+        {/* Offre & Paiement */}
+        {(lead.offer_amount || lead.paid_at) && (
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Offre & Paiement</p>
+            {lead.offer_amount && (
+              <div className="flex items-center gap-2 text-xs">
+                <DollarSign className="w-3.5 h-3.5 text-violet-400" />
+                <span>Offre: <span className="text-violet-400 font-mono">{lead.offer_amount}</span></span>
+              </div>
+            )}
+            {lead.paid_at && (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <div>
+                  <span className="text-sm font-bold text-emerald-400">{lead.paid_amount}€ payé</span>
+                  <p className="text-[10px] text-muted-foreground">{fmtDateTime(lead.paid_at)}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Oracle Activity */}
         {lead.user_id && (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Activité Oracle</p>
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-muted/50 rounded-lg p-2.5 text-center">
+              <div className="bg-muted/50 rounded-lg p-2 text-center">
                 <p className="text-lg font-bold">{lead.session_count || 0}</p>
-                <p className="text-[10px] text-muted-foreground font-mono uppercase">Sessions</p>
+                <p className="text-[9px] text-muted-foreground font-mono uppercase">Sessions</p>
               </div>
-              <div className="bg-muted/50 rounded-lg p-2.5 text-center">
+              <div className="bg-muted/50 rounded-lg p-2 text-center">
                 <p className="text-lg font-bold">{lead.execution_count || 0}</p>
-                <p className="text-[10px] text-muted-foreground font-mono uppercase">Trades</p>
+                <p className="text-[9px] text-muted-foreground font-mono uppercase">Trades</p>
               </div>
             </div>
           </div>
         )}
 
         {/* Meta */}
-        <div className="space-y-1 text-[10px] text-muted-foreground font-mono">
-          <p>Soumis : {formatDate(lead.created_at)}</p>
-          {lead.reviewed_at && <p>Approuvé : {formatDate(lead.reviewed_at)}</p>}
+        <div className="space-y-1 text-[10px] text-muted-foreground font-mono pt-2 border-t border-border/50">
+          <p>Soumis: {fmtDateTime(lead.created_at)}</p>
+          {lead.reviewed_at && <p>Approuvé: {fmtDateTime(lead.reviewed_at)}</p>}
           <p>ID: {lead.id.slice(0, 8)}</p>
         </div>
       </div>
@@ -237,124 +255,80 @@ export default function CRMDashboard() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<StageFilter>("all");
-  const [sortField, setSortField] = useState<SortField>("date");
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedLead, setSelectedLead] = useState<PipelineLead | null>(null);
 
-  // ── Load ──
-
-  // Map raw request to PipelineLead (with optional enrichment)
-  const mapLead = useCallback((r: any, enrich?: { rolesMap: Record<string, any>; activityMap: Record<string, any>; sessionMap: Record<string, number>; execMap: Record<string, number> }): PipelineLead => ({
-    id: r.id, first_name: r.first_name || "", email: r.email || "", phone: r.phone || "",
-    status: r.status || "en_attente", created_at: r.created_at, reviewed_at: r.reviewed_at,
-    user_id: r.user_id, contacted: r.contacted || false, contact_method: r.contact_method,
-    form_submitted: r.form_submitted || false, call_booked: r.call_booked || false, call_done: r.call_done || false,
-    is_online: enrich && r.user_id ? enrich.activityMap[r.user_id]?.is_active || false : false,
-    active_tab: enrich && r.user_id ? enrich.activityMap[r.user_id]?.active_tab : null,
-    session_count: enrich && r.user_id ? enrich.sessionMap[r.user_id] || 0 : 0,
-    execution_count: enrich && r.user_id ? enrich.execMap[r.user_id] || 0 : 0,
-    expires_at: enrich && r.user_id ? enrich.rolesMap[r.user_id]?.expires_at : null,
-    early_access_type: enrich && r.user_id ? enrich.rolesMap[r.user_id]?.early_access_type : null,
-  }), []);
+  const mapLead = useCallback((r: any, enrich?: any): PipelineLead => mapRowToCRMLead(r, enrich ? {
+    activityMap: enrich.activityMap,
+    sessionMap: enrich.sessionMap,
+    execMap: enrich.execMap,
+    rolesMap: enrich.rolesMap,
+  } : undefined), []);
 
   const loadLeads = useCallback(async () => {
     try {
-      // 1. Single query — show leads INSTANTLY
       const { data: requests, error } = await supabase
-        .from("early_access_requests")
-        .select("*")
-        .order("created_at", { ascending: false });
-
+        .from("early_access_requests").select("*").order("created_at", { ascending: false });
       if (error || !requests) { setLoading(false); return; }
 
-      // Render immediately with basic data (no enrichment)
       setLeads(requests.map(r => mapLead(r)));
       setLoading(false);
 
-      // 2. Enrich in background (non-blocking, updates leads when ready)
+      // Enrich in background
       const userIds = requests.filter(r => r.user_id).map(r => r.user_id);
       if (userIds.length === 0) return;
-
       const [rolesRes, activityRes, sessionsRes, execsRes] = await Promise.all([
         supabase.from("user_roles").select("user_id, expires_at, early_access_type").in("user_id", userIds).eq("role", "early_access"),
         supabase.from("ea_activity_tracking").select("user_id, is_active, active_tab, last_heartbeat").in("user_id", userIds),
         supabase.from("user_sessions").select("user_id").in("user_id", userIds),
         supabase.from("user_executions").select("user_id").in("user_id", userIds),
       ]);
-
-      const rolesMap: Record<string, any> = {};
-      const activityMap: Record<string, any> = {};
-      const sessionMap: Record<string, number> = {};
-      const execMap: Record<string, number> = {};
-
+      const rolesMap: Record<string, any> = {}, activityMap: Record<string, any> = {}, sessionMap: Record<string, number> = {}, execMap: Record<string, number> = {};
       rolesRes.data?.forEach((r: any) => { rolesMap[r.user_id] = r; });
-      activityRes.data?.forEach((a: any) => {
-        const online = a.is_active && a.last_heartbeat && (Date.now() - new Date(a.last_heartbeat).getTime()) < 60000;
-        activityMap[a.user_id] = { is_active: online, active_tab: a.active_tab };
-      });
+      activityRes.data?.forEach((a: any) => { activityMap[a.user_id] = { is_active: a.is_active && a.last_heartbeat && (Date.now() - new Date(a.last_heartbeat).getTime()) < 60000, active_tab: a.active_tab }; });
       sessionsRes.data?.forEach((s: any) => { sessionMap[s.user_id] = (sessionMap[s.user_id] || 0) + 1; });
       execsRes.data?.forEach((e: any) => { execMap[e.user_id] = (execMap[e.user_id] || 0) + 1; });
-
-      // Re-render with enriched data
       setLeads(requests.map(r => mapLead(r, { rolesMap, activityMap, sessionMap, execMap })));
-    } catch (err) {
-      console.warn("[CRM] Load error:", err);
-      setLoading(false);
-    }
+    } catch (err) { console.warn("[CRM] Load error:", err); setLoading(false); }
   }, [mapLead]);
 
   useEffect(() => {
     loadLeads();
-    const channel = supabase.channel("crm-pipeline")
-      .on("postgres_changes", { event: "*", schema: "public", table: "early_access_requests" }, () => loadLeads())
-      .subscribe();
+    const channel = supabase.channel("crm-v2").on("postgres_changes", { event: "INSERT", schema: "public", table: "early_access_requests" }, () => loadLeads()).on("postgres_changes", { event: "UPDATE", schema: "public", table: "early_access_requests" }, () => loadLeads()).subscribe();
     const interval = setInterval(loadLeads, 30000);
     return () => { supabase.removeChannel(channel); clearInterval(interval); };
   }, [loadLeads]);
 
-  // ── Counts ──
-
   const counts = useMemo(() => {
-    const c = { form: 0, approved: 0, contacted: 0, call: 0, done: 0 };
+    const c = { form: leads.length, calls: 0, ea: 0, paid: 0 };
     leads.forEach(l => {
-      c.form++;
-      if (l.status === "approuvée") c.approved++;
-      if (l.contacted) c.contacted++;
-      if (l.call_booked) c.call++;
-      if (l.call_done) c.done++;
+      if (l.status === "approuvée") c.ea++;
+      if (l.call_booked || l.call_done) c.calls++;
+      if (l.paid_at) c.paid++;
     });
     return c;
   }, [leads]);
 
-  // ── Filter + Sort ──
-
   const filtered = useMemo(() => {
-    let result = [...leads];
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(l => l.first_name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q) || l.phone.includes(q));
-    }
-    if (stageFilter !== "all") result = result.filter(l => getStage(l) === stageFilter);
-    result.sort((a, b) => {
-      const cmp = sortField === "name"
-        ? a.first_name.localeCompare(b.first_name)
-        : new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      return sortAsc ? cmp : -cmp;
-    });
-    return result;
-  }, [leads, search, stageFilter, sortField, sortAsc]);
+    let r = [...leads];
+    if (search) { const q = search.toLowerCase(); r = r.filter(l => l.first_name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q) || l.phone.includes(q)); }
+    if (stageFilter !== "all") r = r.filter(l => getStage(l) === stageFilter);
+    r.sort((a, b) => sortAsc ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime() : new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return r;
+  }, [leads, search, stageFilter, sortAsc]);
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
+    </div>
+  );
 
   return (
     <div className="h-full overflow-auto">
-
-      {/* ══ TOP NAV (Cockpit | Pipeline | Conversions | Objections | Agenda) ══ */}
-      <Tabs defaultValue="pipeline" className="h-full flex flex-col overflow-hidden">
-        <div className="shrink-0 border-b border-border bg-card">
-          <div className="px-6 flex items-center justify-between h-12">
+      <Tabs defaultValue="pipeline" className="h-full flex flex-col">
+        {/* ── Tabs ── spike-launch style */}
+        <div className="shrink-0 border-b border-white/[0.06]">
+          <div className="px-6 flex items-center justify-between h-14">
             <TabsList className="bg-transparent border-none gap-1 p-0 h-auto">
               {[
                 { v: "cockpit", label: "Cockpit", icon: BarChart3 },
@@ -362,230 +336,228 @@ export default function CRMDashboard() {
                 { v: "conversions", label: "Conversions", icon: Target },
                 { v: "objections", label: "Objections", icon: MessageCircle },
                 { v: "agenda", label: "Agenda", icon: Calendar },
-              ].map(tab => (
-                <TabsTrigger
-                  key={tab.v}
-                  value={tab.v}
-                  className={cn(
-                    "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground",
-                    "rounded-lg px-3 py-1.5 text-xs font-mono uppercase tracking-wider",
-                    "text-muted-foreground"
-                  )}
-                >
-                  <tab.icon className="w-3.5 h-3.5 mr-1.5" />
-                  {tab.label}
+              ].map(t => (
+                <TabsTrigger key={t.v} value={t.v} className="data-[state=active]:bg-blue-500/20 data-[state=active]:text-white data-[state=active]:border-blue-500/30 data-[state=active]:shadow-[0_0_12px_rgba(59,130,246,0.15)] border border-transparent rounded-lg px-4 py-2 text-xs font-display uppercase tracking-wider text-white/40 hover:text-white/60 hover:bg-white/[0.04] transition-all">
+                  <t.icon className="w-4 h-4 mr-2 opacity-80" />{t.label}
                 </TabsTrigger>
               ))}
             </TabsList>
-
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {leads.filter(l => l.is_online).length > 0 && (
-                <span className="flex items-center gap-1 text-emerald-500 font-mono">
-                  <Wifi className="w-3 h-3" /> {leads.filter(l => l.is_online).length} online
-                </span>
-              )}
-            </div>
+            {leads.filter(l => l.is_online).length > 0 && (
+              <span className="text-[11px] text-emerald-400 font-display flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                {leads.filter(l => l.is_online).length} online
+              </span>
+            )}
           </div>
         </div>
 
-        {/* ══ PIPELINE TAB ══ */}
-        <TabsContent value="pipeline" className="mt-0">
+        {/* ── Pipeline ── */}
+        <TabsContent value="pipeline" className="mt-0 flex-1">
+          {/* Search */}
+          <div className="px-6 pt-5 pb-3">
+            <div className="relative max-w-lg">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+              <Input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Rechercher par nom, email ou telephone..."
+                className="pl-10 h-10 bg-white/[0.04] border-white/[0.08] rounded-xl text-sm text-white placeholder:text-white/30 focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
 
-          {/* Search bar */}
-          <div className="shrink-0 px-6 py-3 border-b border-border">
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input value={search} onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Rechercher par nom, email ou téléphone..."
-                  className="pl-9 h-9 text-sm" />
-                {search && (
-                  <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <X className="w-3.5 h-3.5 text-muted-foreground" />
-                  </button>
-                )}
+          {/* Filters + KPIs bar */}
+          <div className="px-6 pb-4 flex items-center justify-between gap-4 flex-wrap">
+            {/* Left: Filter */}
+            <Select value={stageFilter} onValueChange={v => setStageFilter(v as StageFilter)}>
+              <SelectTrigger className="w-48 h-10 bg-white/[0.04] border-white/[0.08] rounded-xl text-sm text-white/70 font-display hover:bg-white/[0.06] transition-all">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-[#111318] border-white/[0.10] rounded-xl shadow-2xl">
+                <SelectItem value="all" className="text-white/60 font-display text-sm">Tous les leads</SelectItem>
+                <SelectItem value="pending" className="text-white/50 font-display text-sm">En attente</SelectItem>
+                <SelectItem value="approved" className="text-cyan-400 font-display text-sm">EA Approuve</SelectItem>
+                <SelectItem value="contacted" className="text-violet-400 font-display text-sm">Contacte</SelectItem>
+                <SelectItem value="call_booked" className="text-blue-400 font-display text-sm">Call booke</SelectItem>
+                <SelectItem value="call_done" className="text-blue-400 font-display text-sm">Call fait</SelectItem>
+                <SelectItem value="paid" className="text-emerald-400 font-display text-sm">Paye</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Right: KPIs as pill badges — like spike-launch */}
+            <div className="flex items-center gap-2">
+              <button onClick={() => setStageFilter("all")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "all" ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-white/[0.03] border-white/[0.06] text-white/50 hover:border-white/[0.12]")}>
+                <span className="font-display font-bold">{counts.form}</span>
+                <span className="text-[10px] font-display uppercase">Forms</span>
+              </button>
+              <button onClick={() => setStageFilter("call_booked")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "call_booked" ? "bg-amber-500/15 border-amber-500/30 text-amber-400" : "bg-white/[0.03] border-white/[0.06] text-white/50 hover:border-white/[0.12]")}>
+                <span className="font-display font-bold">{counts.calls}</span>
+                <span className="text-[10px] font-display uppercase">Calls</span>
+              </button>
+              <button onClick={() => setStageFilter("approved")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "approved" ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400" : "bg-white/[0.03] border-white/[0.06] text-white/50 hover:border-white/[0.12]")}>
+                <span className="font-display font-bold">{counts.ea}</span>
+                <span className="text-[10px] font-display uppercase">EA</span>
+              </button>
+              <button onClick={() => setStageFilter("paid")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "paid" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "bg-white/[0.03] border-white/[0.06] text-white/50 hover:border-white/[0.12]")}>
+                <span className="font-display font-bold">{counts.paid}</span>
+                <span className="text-[10px] font-display uppercase">Paye</span>
+              </button>
+              <div className="flex items-center gap-1.5 ml-2">
+                <span className="text-lg font-display text-white font-bold tabular-nums">{leads.length}</span>
+                <span className="text-[10px] text-white/30 font-display uppercase">Total</span>
               </div>
             </div>
           </div>
 
-          {/* Filters + Counters row */}
-          <div className="shrink-0 px-6 py-2.5 border-b border-border/50 flex items-center justify-between flex-wrap gap-2">
-            {/* Left: filters */}
-            <div className="flex items-center gap-2">
-              <Select value={stageFilter} onValueChange={(v) => setStageFilter(v as StageFilter)}>
-                <SelectTrigger className="h-8 w-[160px] text-xs font-mono uppercase">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les leads</SelectItem>
-                  <SelectItem value="pending">En attente</SelectItem>
-                  <SelectItem value="approved">Approuvés</SelectItem>
-                  <SelectItem value="contacted">Contactés</SelectItem>
-                  <SelectItem value="call_booked">Call booké</SelectItem>
-                  <SelectItem value="call_done">Call fait</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Right: counters */}
-            <div className="flex items-center gap-1.5">
-              <CounterBadge count={counts.form} label="FORMS" color="text-red-500" active={stageFilter === "all"} onClick={() => setStageFilter("all")} />
-              <CounterBadge count={counts.call} label="CALLS" color="text-yellow-500" active={stageFilter === "call_booked"} onClick={() => setStageFilter("call_booked")} />
-              <CounterBadge count={counts.approved} label="EA" color="text-blue-500" active={stageFilter === "approved"} onClick={() => setStageFilter("approved")} />
-              <CounterBadge count={counts.done} label="DONE" color="text-emerald-500" active={stageFilter === "call_done"} onClick={() => setStageFilter("call_done")} />
-              <span className="text-xs font-mono text-muted-foreground ml-2">
-                <span className="font-bold">{leads.length}</span> TOTAL
-              </span>
-            </div>
-          </div>
-
-          {/* Table + Detail split */}
-          <div className="flex">
-            {/* Table */}
-            <div className="flex-1">
+          {/* Table */}
+          <div className="px-6 pb-6">
+            <div className="rounded-xl border border-white/[0.06] overflow-hidden bg-white/[0.01]">
               <Table>
-                <TableHeader className="sticky top-0 bg-card z-10">
-                  <TableRow className="border-border/50 hover:bg-transparent">
-                    <TableHead className="text-[10px] font-mono uppercase tracking-wider w-6"></TableHead>
-                    <TableHead className="text-[10px] font-mono uppercase tracking-wider cursor-pointer hover:text-foreground" onClick={() => { setSortField("name"); setSortAsc(sortField === "name" ? !sortAsc : true); }}>
-                      <div className="flex items-center gap-1"><Users className="w-3 h-3" /> Lead</div>
+                <TableHeader>
+                  <TableRow className="border-white/[0.06] hover:bg-transparent bg-white/[0.02]">
+                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 min-w-[200px] py-3 pl-5">
+                      <div className="flex items-center gap-2"><Users className="w-4 h-4 text-white/30" /> Lead</div>
                     </TableHead>
-                    <TableHead className="text-[10px] font-mono uppercase tracking-wider text-center">
-                      <div className="flex items-center justify-center gap-1"><FileText className="w-3 h-3 text-orange-400" /> Form</div>
+                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
+                      <div className="flex items-center justify-center gap-1.5"><FileText className="w-3.5 h-3.5 text-amber-400/70" /> Form</div>
                     </TableHead>
-                    <TableHead className="text-[10px] font-mono uppercase tracking-wider text-center">
-                      <div className="flex items-center justify-center gap-1"><Shield className="w-3 h-3 text-blue-400" /> EA</div>
+                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
+                      <div className="flex items-center justify-center gap-1.5"><Shield className="w-3.5 h-3.5 text-cyan-400/70" /> EA</div>
                     </TableHead>
-                    <TableHead className="text-[10px] font-mono uppercase tracking-wider text-center">
-                      <div className="flex items-center justify-center gap-1"><PhoneForwarded className="w-3 h-3 text-purple-400" /> Contact</div>
+                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
+                      <div className="flex items-center justify-center gap-1.5"><PhoneForwarded className="w-3.5 h-3.5 text-violet-400/70" /> Contact</div>
                     </TableHead>
-                    <TableHead className="text-[10px] font-mono uppercase tracking-wider text-center">
-                      <div className="flex items-center justify-center gap-1"><Headphones className="w-3 h-3 text-yellow-400" /> Call</div>
+                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
+                      <div className="flex items-center justify-center gap-1.5"><Headphones className="w-3.5 h-3.5 text-blue-400/70" /> Call</div>
                     </TableHead>
-                    <TableHead className="text-[10px] font-mono uppercase tracking-wider text-center">
-                      <div className="flex items-center justify-center gap-1"><Send className="w-3 h-3 text-muted-foreground" /> Mail</div>
+                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
+                      <div className="flex items-center justify-center gap-1.5"><Mail className="w-3.5 h-3.5 text-white/25" /> Mail</div>
                     </TableHead>
-                    <TableHead className="text-[10px] font-mono uppercase tracking-wider text-center">
-                      <div className="flex items-center justify-center gap-1"><Unlock className="w-3 h-3 text-muted-foreground" /> Accès</div>
+                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
+                      <div className="flex items-center justify-center gap-1.5"><DollarSign className="w-3.5 h-3.5 text-violet-400/70" /> Offre</div>
                     </TableHead>
-                    <TableHead className="text-[10px] font-mono uppercase tracking-wider text-center">
-                      <div className="flex items-center justify-center gap-1"><ClipboardCheck className="w-3 h-3 text-emerald-400" /> Done</div>
+                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
+                      <div className="flex items-center justify-center gap-1.5"><Lock className="w-3.5 h-3.5 text-white/25" /> Acces</div>
                     </TableHead>
-                    <TableHead className="text-[10px] font-mono uppercase tracking-wider cursor-pointer hover:text-foreground" onClick={() => { setSortField("date"); setSortAsc(sortField === "date" ? !sortAsc : false); }}>
-                      <div className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Date</div>
+                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
+                      <div className="flex items-center justify-center gap-1.5"><CreditCard className="w-3.5 h-3.5 text-emerald-400/70" /> Paye</div>
+                    </TableHead>
+                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 py-3 cursor-pointer hover:text-white/60 transition-colors" onClick={() => setSortAsc(!sortAsc)}>
+                      <div className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-white/25" /> Date {sortAsc ? "↑" : "↓"}</div>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={10} className="text-center py-16 text-muted-foreground">
-                        Aucun lead trouvé
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filtered.slice(0, 100).map(lead => (
-                      <TableRow
-                        key={lead.id}
-                        onClick={() => setSelectedLead(lead)}
-                        className={cn(
-                          "cursor-pointer transition-colors border-border/30 group",
-                          selectedLead?.id === lead.id ? "bg-primary/5" : "hover:bg-accent/50"
-                        )}
-                      >
-                        {/* Online dot */}
-                        <TableCell className="px-2 py-2">
-                          {lead.is_online ? (
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                          ) : lead.user_id ? (
-                            <div className="w-2 h-2 rounded-full bg-muted-foreground/15" />
-                          ) : <div className="w-2" />}
-                        </TableCell>
-
-                        {/* Lead name + email */}
-                        <TableCell className="py-2">
-                          <div>
-                            <p className="text-sm font-medium truncate max-w-[160px]">{lead.first_name || "—"}</p>
-                            <p className="text-[10px] text-muted-foreground truncate max-w-[160px]">{lead.email}</p>
+                    <TableRow><TableCell colSpan={10} className="text-center py-20 text-white/30 text-sm">Aucun lead</TableCell></TableRow>
+                  ) : filtered.slice(0, 100).map(lead => {
+                    const sc = lead.setter_name ? getSetterColor(lead.setter_name) : null;
+                    return (
+                    <TableRow
+                      key={lead.id}
+                      onClick={() => setSelectedLead(lead)}
+                      className={cn(
+                        "cursor-pointer transition-colors border-white/[0.04]",
+                        selectedLead?.id === lead.id ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"
+                      )}
+                    >
+                      {/* LEAD — round avatar with ring */}
+                      <TableCell className="py-3.5 pl-5">
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <div className={cn("w-10 h-10 rounded-full ring-2 flex items-center justify-center text-xs font-bold text-white", avatarColor(lead))}>
+                              {lead.first_name?.[0]?.toUpperCase() || "?"}
+                            </div>
+                            {lead.is_online && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#0c0d12]" />}
                           </div>
-                        </TableCell>
-
-                        {/* Form */}
-                        <TableCell className="text-center py-2"><Check done={true} color="orange" /></TableCell>
-
-                        {/* EA approved */}
-                        <TableCell className="text-center py-2"><Check done={lead.status === "approuvée"} color="blue" /></TableCell>
-
-                        {/* Contacted */}
-                        <TableCell className="text-center py-2"><Check done={lead.contacted} color="purple" /></TableCell>
-
-                        {/* Call booked */}
-                        <TableCell className="text-center py-2"><Check done={lead.call_booked} color="yellow" /></TableCell>
-
-                        {/* Mail (contact_method includes email) */}
-                        <TableCell className="text-center py-2"><Check done={lead.contact_method === "email"} /></TableCell>
-
-                        {/* Access (has user_id = account created) */}
-                        <TableCell className="text-center py-2"><Check done={!!lead.user_id} color="blue" /></TableCell>
-
-                        {/* Done */}
-                        <TableCell className="text-center py-2"><Check done={lead.call_done} color="emerald" /></TableCell>
-
-                        {/* Date */}
-                        <TableCell className="py-2">
-                          <span className="text-[11px] text-muted-foreground font-mono">{shortDate(lead.created_at)}</span>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                          <div>
+                            <p className="text-sm font-display text-white font-medium">{lead.first_name || "—"}</p>
+                            {lead.setter_name && sc && (
+                              <span className={`text-[10px] font-display ${sc.text}`}>Setter : {lead.setter_name}</span>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      {/* FORM */}
+                      <TableCell className="text-center py-3.5"><DateBadge date={lead.created_at} color="amber" /></TableCell>
+                      {/* EA */}
+                      <TableCell className="text-center py-3.5">
+                        {lead.status === "approuvée" ? <DateBadge date={lead.reviewed_at} color="cyan" /> : <Empty />}
+                      </TableCell>
+                      {/* CONTACT */}
+                      <TableCell className="text-center py-3.5"><ContactBadge method={lead.contact_method} contacted={lead.contacted} /></TableCell>
+                      {/* CALL */}
+                      <TableCell className="text-center py-3.5">
+                        {lead.call_no_show ? (
+                          <span className="text-[10px] font-display text-red-400 bg-red-500/15 px-2 py-0.5 rounded-md border border-dashed border-red-500/30">No-show</span>
+                        ) : lead.call_done ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <CheckCircle2 className="w-4 h-4 text-blue-400" />
+                            <OutcomeBadge outcome={lead.call_outcome} />
+                          </div>
+                        ) : lead.call_booked ? (
+                          <div className="flex items-center justify-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                            <span className="text-[10px] font-display text-blue-400">A venir</span>
+                          </div>
+                        ) : <Empty />}
+                      </TableCell>
+                      {/* MAIL */}
+                      <TableCell className="text-center py-3.5">
+                        {lead.contact_method === "email" ? <Mail className="w-4 h-4 text-amber-400 mx-auto" /> : <Empty />}
+                      </TableCell>
+                      {/* OFFRE */}
+                      <TableCell className="text-center py-3.5">
+                        {lead.offer_amount ? (
+                          <span className="text-xs font-display text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-md border border-violet-500/20">{lead.offer_amount}</span>
+                        ) : <Empty />}
+                      </TableCell>
+                      {/* ACCES */}
+                      <TableCell className="text-center py-3.5">
+                        {lead.checkout_unlocked ? <Unlock className="w-4 h-4 text-emerald-400 mx-auto" /> : lead.offer_amount ? <Lock className="w-4 h-4 text-white/15 mx-auto" /> : <Empty />}
+                      </TableCell>
+                      {/* PAYE */}
+                      <TableCell className="text-center py-3.5">
+                        {lead.paid_at ? (
+                          <span className="text-sm font-display font-bold text-emerald-400 bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-500/25">{lead.paid_amount}€</span>
+                        ) : <Empty />}
+                      </TableCell>
+                      {/* DATE */}
+                      <TableCell className="py-3.5"><span className="text-[11px] text-white/30 font-mono tabular-nums">{fmtDate(lead.created_at)}</span></TableCell>
+                    </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
-
-            {/* Detail panel */}
-            {selectedLead && (
-              <div className="hidden lg:block w-80 xl:w-96 shrink-0 overflow-hidden">
-                <LeadDetail lead={selectedLead} onClose={() => setSelectedLead(null)} />
-              </div>
-            )}
           </div>
+
+          {/* Full-screen modal */}
+          {selectedLead && (
+            <LeadDetailModal lead={selectedLead} onClose={() => setSelectedLead(null)} onLeadUpdated={loadLeads} />
+          )}
         </TabsContent>
 
-        {/* ══ COCKPIT TAB (placeholder) ══ */}
-        <TabsContent value="cockpit" className="flex-1 flex items-center justify-center mt-0">
-          <div className="text-center text-muted-foreground">
-            <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-20" />
-            <p className="text-sm font-medium">Cockpit</p>
-            <p className="text-xs opacity-60">Revenue, conversions, activité — bientôt</p>
-          </div>
+        {/* Agenda Tab — Full implementation */}
+        <TabsContent value="agenda" className="flex-1 mt-0">
+          <AgendaTab />
         </TabsContent>
 
-        {/* ══ CONVERSIONS TAB (placeholder) ══ */}
-        <TabsContent value="conversions" className="flex-1 flex items-center justify-center mt-0">
-          <div className="text-center text-muted-foreground">
-            <Target className="w-12 h-12 mx-auto mb-3 opacity-20" />
-            <p className="text-sm font-medium">Conversions</p>
-            <p className="text-xs opacity-60">Funnel analysis, attribution — bientôt</p>
-          </div>
-        </TabsContent>
-
-        {/* ══ OBJECTIONS TAB (placeholder) ══ */}
-        <TabsContent value="objections" className="flex-1 flex items-center justify-center mt-0">
-          <div className="text-center text-muted-foreground">
-            <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-20" />
-            <p className="text-sm font-medium">Objections</p>
-            <p className="text-xs opacity-60">Notes de calls, objections fréquentes — bientôt</p>
-          </div>
-        </TabsContent>
-
-        {/* ══ AGENDA TAB (placeholder) ══ */}
-        <TabsContent value="agenda" className="flex-1 flex items-center justify-center mt-0">
-          <div className="text-center text-muted-foreground">
-            <Calendar className="w-12 h-12 mx-auto mb-3 opacity-20" />
-            <p className="text-sm font-medium">Agenda</p>
-            <p className="text-xs opacity-60">Bookings Cal.com — bientôt connecté</p>
-          </div>
-        </TabsContent>
+        {/* Placeholders */}
+        {["cockpit", "conversions", "objections"].map(tab => (
+          <TabsContent key={tab} value={tab} className="flex-1 flex items-center justify-center mt-0">
+            <div className="text-center text-muted-foreground">
+              <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-20" />
+              <p className="text-base font-medium capitalize">{tab}</p>
+              <p className="text-xs opacity-60">Bientôt disponible</p>
+            </div>
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );
