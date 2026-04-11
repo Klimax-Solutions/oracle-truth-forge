@@ -99,7 +99,7 @@ export default function CockpitTab({ leads }: CockpitTabProps) {
       <div className="grid grid-cols-2 gap-4">
 
         {/* Call outcomes */}
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+        <div className="rounded-xl border border-white/[0.10] bg-white/[0.02] p-5">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[10px] font-display uppercase tracking-widest text-white/30">Issues des calls</span>
             {callStats.closeRate > 0 && (
@@ -150,11 +150,11 @@ export default function CockpitTab({ leads }: CockpitTabProps) {
       </div>
 
       {/* ── Row 3: Setter performance ── */}
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+      <div className="rounded-xl border border-white/[0.10] bg-white/[0.02] p-5">
         <span className="text-[10px] font-display uppercase tracking-widest text-white/30">Performance par setter</span>
         <div className="mt-4">
           {/* Header */}
-          <div className="grid grid-cols-6 gap-2 pb-2 border-b border-white/[0.06] text-[10px] font-display uppercase tracking-widest text-white/25">
+          <div className="grid grid-cols-6 gap-2 pb-2 border-b border-white/[0.10] text-[10px] font-display uppercase tracking-widest text-white/25">
             <span className="col-span-1">Setter</span>
             <span className="text-center">Leads</span>
             <span className="text-center">Contactes</span>

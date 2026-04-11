@@ -59,32 +59,44 @@ function fmtDateTime(d: string | null): string {
 // ============================================
 
 // ============================================
-// Design System — spike-launch gamifie
+// Design System — Exact spike-launch CRM style
+// bg: hsl(220,15%,8%) = #12141a
+// borders: white/10 visible (pas white/6)
+// icons in colored boxes
 // ============================================
 
-function avatarColor(l: PipelineLead): string {
-  if (l.paid_at) return "bg-emerald-500 ring-emerald-500/40";
-  if (l.call_done) return "bg-blue-500 ring-blue-500/40";
-  if (l.call_booked) return "bg-blue-400 ring-blue-400/40";
-  if (l.contacted) return "bg-violet-500 ring-violet-500/40";
-  if (l.status === "approuvée") return "bg-cyan-500 ring-cyan-500/40";
-  return "bg-white/15 ring-white/10";
+const BG = "bg-[hsl(220,15%,8%)]";
+
+function avatarClasses(l: PipelineLead): { bg: string; text: string; dot?: string } {
+  if (l.paid_at) return { bg: "bg-gradient-to-br from-emerald-500/30 to-emerald-600/10 border-emerald-500/30", text: "text-emerald-400", dot: "bg-emerald-500" };
+  if (l.call_done || l.call_booked) return { bg: "bg-gradient-to-br from-blue-500/30 to-blue-600/10 border-blue-500/30", text: "text-blue-400", dot: "bg-blue-500" };
+  if (l.contacted) return { bg: "bg-gradient-to-br from-violet-500/25 to-violet-600/10 border-violet-500/30", text: "text-violet-400" };
+  if (l.status === "approuvée") return { bg: "bg-gradient-to-br from-cyan-500/25 to-cyan-600/10 border-cyan-500/25", text: "text-cyan-400" };
+  return { bg: "bg-gradient-to-br from-white/10 to-white/5 border-white/10", text: "text-white/60" };
 }
 
 const Empty = () => <span className="text-white/[0.08] select-none">—</span>;
 
+function IconBox({ children, color }: { children: React.ReactNode; color: string }) {
+  const bg: Record<string, string> = {
+    white: "bg-white/[0.06]", amber: "bg-amber-500/[0.12]", cyan: "bg-cyan-500/[0.12]",
+    violet: "bg-violet-500/[0.12]", blue: "bg-primary/[0.12]", orange: "bg-orange-500/[0.12]",
+    emerald: "bg-emerald-500/[0.12]", fuchsia: "bg-fuchsia-500/[0.12]",
+  };
+  return <div className={`w-5 h-5 rounded-md ${bg[color] || bg.white} flex items-center justify-center`}>{children}</div>;
+}
+
 function DateBadge({ date, color = "amber" }: { date: string | null; color?: string }) {
   if (!date) return <Empty />;
   const styles: Record<string, string> = {
-    amber: "bg-amber-500/15 text-amber-400 border-amber-500/25",
-    cyan: "bg-cyan-500/15 text-cyan-400 border-cyan-500/25",
-    emerald: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
-    violet: "bg-violet-500/15 text-violet-400 border-violet-500/25",
-    blue: "bg-blue-500/15 text-blue-400 border-blue-500/25",
-    red: "bg-red-500/15 text-red-400 border-red-500/25",
+    amber: "bg-amber-500/15 text-amber-300 border-amber-500/25",
+    cyan: "bg-cyan-500/15 text-cyan-300 border-cyan-500/25",
+    emerald: "bg-emerald-500/15 text-emerald-300 border-emerald-500/25",
+    violet: "bg-violet-500/15 text-violet-300 border-violet-500/25",
+    blue: "bg-blue-500/15 text-blue-300 border-blue-500/25",
   };
   return (
-    <span className={cn("inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium border tabular-nums", styles[color] || "bg-white/5 text-white/50 border-white/10")}>
+    <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-medium border tabular-nums", styles[color] || "bg-white/5 text-white/50 border-white/10")}>
       {fmtDateTime(date)}
     </span>
   );
@@ -111,7 +123,7 @@ function ContactBadge({ method, contacted }: { method: string | null; contacted:
   };
   const c = cfg[method || ""] || { icon: CheckCircle2, cls: "text-violet-400" };
   const Icon = c.icon;
-  return <Icon className={cn("w-4.5 h-4.5 mx-auto", c.cls)} />;
+  return <Icon className={cn("w-4 h-4 mx-auto", c.cls)} />;
 }
 
 // ── Lead Detail Panel ──
@@ -329,7 +341,7 @@ export default function CRMDashboard() {
     <div className="h-full overflow-auto">
       <Tabs defaultValue="pipeline" className="h-full flex flex-col">
         {/* ── Tabs ── spike-launch style */}
-        <div className="shrink-0 border-b border-white/[0.06]">
+        <div className="shrink-0 border-b border-white/[0.10]">
           <div className="px-6 flex items-center justify-between h-14">
             <TabsList className="bg-transparent border-none gap-1 p-0 h-auto">
               {[
@@ -393,19 +405,19 @@ export default function CRMDashboard() {
 
             {/* Right: KPIs as pill badges — like spike-launch */}
             <div className="flex items-center gap-2">
-              <button onClick={() => setStageFilter("all")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "all" ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-white/[0.03] border-white/[0.06] text-white/50 hover:border-white/[0.12]")}>
+              <button onClick={() => setStageFilter("all")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "all" ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-white/[0.03] border-white/[0.10] text-white/50 hover:border-white/[0.12]")}>
                 <span className="font-display font-bold">{counts.form}</span>
                 <span className="text-[10px] font-display uppercase">Forms</span>
               </button>
-              <button onClick={() => setStageFilter("call_booked")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "call_booked" ? "bg-amber-500/15 border-amber-500/30 text-amber-400" : "bg-white/[0.03] border-white/[0.06] text-white/50 hover:border-white/[0.12]")}>
+              <button onClick={() => setStageFilter("call_booked")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "call_booked" ? "bg-amber-500/15 border-amber-500/30 text-amber-400" : "bg-white/[0.03] border-white/[0.10] text-white/50 hover:border-white/[0.12]")}>
                 <span className="font-display font-bold">{counts.calls}</span>
                 <span className="text-[10px] font-display uppercase">Calls</span>
               </button>
-              <button onClick={() => setStageFilter("approved")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "approved" ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400" : "bg-white/[0.03] border-white/[0.06] text-white/50 hover:border-white/[0.12]")}>
+              <button onClick={() => setStageFilter("approved")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "approved" ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400" : "bg-white/[0.03] border-white/[0.10] text-white/50 hover:border-white/[0.12]")}>
                 <span className="font-display font-bold">{counts.ea}</span>
                 <span className="text-[10px] font-display uppercase">EA</span>
               </button>
-              <button onClick={() => setStageFilter("paid")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "paid" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "bg-white/[0.03] border-white/[0.06] text-white/50 hover:border-white/[0.12]")}>
+              <button onClick={() => setStageFilter("paid")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "paid" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "bg-white/[0.03] border-white/[0.10] text-white/50 hover:border-white/[0.12]")}>
                 <span className="font-display font-bold">{counts.paid}</span>
                 <span className="text-[10px] font-display uppercase">Paye</span>
               </button>
@@ -416,87 +428,124 @@ export default function CRMDashboard() {
             </div>
           </div>
 
-          {/* Table */}
+          {/* Table — spike-launch exact pattern */}
           <div className="px-6 pb-6">
-            <div className="rounded-xl border border-white/[0.06] overflow-hidden bg-white/[0.01]">
+            <div className={`rounded-xl border border-white/[0.10] overflow-hidden ${BG}`}>
               <Table>
-                <TableHeader>
-                  <TableRow className="border-white/[0.06] hover:bg-transparent bg-white/[0.02]">
-                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 min-w-[200px] py-3 pl-5">
-                      <div className="flex items-center gap-2"><Users className="w-4 h-4 text-white/30" /> Lead</div>
+                <TableHeader className={`sticky top-0 z-20 ${BG} shadow-[0_1px_0_0_rgba(255,255,255,0.08)]`}>
+                  <TableRow className={`border-white/[0.08] hover:bg-transparent ${BG}`}>
+                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider min-w-[180px] py-4 pl-5">
+                      <div className="flex items-center gap-2">
+                        <IconBox color="white"><Users className="w-3 h-3 text-white/50" /></IconBox>
+                        <span>LEAD</span>
+                      </div>
                     </TableHead>
-                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
-                      <div className="flex items-center justify-center gap-1.5"><FileText className="w-3.5 h-3.5 text-amber-400/70" /> Form</div>
+                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <IconBox color="amber"><Target className="w-3 h-3 text-amber-400/80" /></IconBox>
+                        <span>FORM</span>
+                      </div>
                     </TableHead>
-                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
-                      <div className="flex items-center justify-center gap-1.5"><Shield className="w-3.5 h-3.5 text-cyan-400/70" /> EA</div>
+                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <IconBox color="cyan"><Shield className="w-3 h-3 text-cyan-400/80" /></IconBox>
+                        <span>EA</span>
+                      </div>
                     </TableHead>
-                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
-                      <div className="flex items-center justify-center gap-1.5"><PhoneForwarded className="w-3.5 h-3.5 text-violet-400/70" /> Contact</div>
+                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <IconBox color="violet"><Phone className="w-3 h-3 text-violet-400/80" /></IconBox>
+                        <span>CONTACT</span>
+                      </div>
                     </TableHead>
-                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
-                      <div className="flex items-center justify-center gap-1.5"><Headphones className="w-3.5 h-3.5 text-blue-400/70" /> Call</div>
+                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <IconBox color="blue"><Calendar className="w-3 h-3 text-primary/80" /></IconBox>
+                        <span>CALL</span>
+                      </div>
                     </TableHead>
-                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
-                      <div className="flex items-center justify-center gap-1.5"><Mail className="w-3.5 h-3.5 text-white/25" /> Mail</div>
+                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <IconBox color="orange"><Mail className="w-3 h-3 text-orange-400/80" /></IconBox>
+                        <span>MAIL</span>
+                      </div>
                     </TableHead>
-                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
-                      <div className="flex items-center justify-center gap-1.5"><DollarSign className="w-3.5 h-3.5 text-violet-400/70" /> Offre</div>
+                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <IconBox color="violet"><DollarSign className="w-3 h-3 text-violet-400/80" /></IconBox>
+                        <span>OFFRE</span>
+                      </div>
                     </TableHead>
-                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
-                      <div className="flex items-center justify-center gap-1.5"><Lock className="w-3.5 h-3.5 text-white/25" /> Acces</div>
+                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <IconBox color="fuchsia"><Lock className="w-3 h-3 text-fuchsia-400/80" /></IconBox>
+                        <span>ACCES</span>
+                      </div>
                     </TableHead>
-                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 text-center py-3">
-                      <div className="flex items-center justify-center gap-1.5"><CreditCard className="w-3.5 h-3.5 text-emerald-400/70" /> Paye</div>
+                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center cursor-pointer hover:text-white transition-colors" onClick={() => setSortAsc(!sortAsc)}>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <IconBox color="emerald"><CreditCard className="w-3 h-3 text-emerald-400/80" /></IconBox>
+                        <span>PAYE {sortAsc ? "↑" : "↓"}</span>
+                      </div>
                     </TableHead>
-                    <TableHead className="text-[11px] font-display uppercase tracking-widest text-white/40 py-3 cursor-pointer hover:text-white/60 transition-colors" onClick={() => setSortAsc(!sortAsc)}>
-                      <div className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-white/25" /> Date {sortAsc ? "↑" : "↓"}</div>
+                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 cursor-pointer hover:text-white transition-colors" onClick={() => setSortAsc(!sortAsc)}>
+                      <div className="flex items-center gap-1.5">
+                        <IconBox color="white"><Calendar className="w-3 h-3 text-white/40" /></IconBox>
+                        <span>DATE</span>
+                      </div>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
                     <TableRow><TableCell colSpan={10} className="text-center py-20 text-white/30 text-sm">Aucun lead</TableCell></TableRow>
-                  ) : filtered.slice(0, 100).map(lead => {
+                  ) : filtered.slice(0, 100).map((lead, idx) => {
                     const sc = lead.setter_name ? getSetterColor(lead.setter_name) : null;
+                    const av = avatarClasses(lead);
                     return (
                     <TableRow
                       key={lead.id}
                       onClick={() => setSelectedLead(lead)}
                       className={cn(
-                        "cursor-pointer transition-colors border-white/[0.04]",
-                        selectedLead?.id === lead.id ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"
+                        "group cursor-pointer transition-all duration-200 border-white/[0.04] hover:bg-white/[0.04]",
+                        selectedLead?.id === lead.id && "bg-white/[0.06]"
                       )}
                     >
-                      {/* LEAD — round avatar with ring */}
-                      <TableCell className="py-3.5 pl-5">
+                      {/* LEAD */}
+                      <TableCell className="py-3 pl-5">
                         <div className="flex items-center gap-3">
                           <div className="relative">
-                            <div className={cn("w-10 h-10 rounded-full ring-2 flex items-center justify-center text-xs font-bold text-white", avatarColor(lead))}>
-                              {lead.first_name?.[0]?.toUpperCase() || "?"}
+                            <div className={cn("w-9 h-9 rounded-full border flex items-center justify-center transition-all duration-200", av.bg)}>
+                              <span className={cn("font-display text-sm", av.text)}>
+                                {(lead.first_name?.[0] || "?").toUpperCase()}
+                              </span>
                             </div>
-                            {lead.is_online && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#0c0d12]" />}
+                            {av.dot && <div className={cn("absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[hsl(220,15%,8%)]", av.dot)} />}
+                            {lead.is_online && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[hsl(220,15%,8%)] animate-pulse" />}
                           </div>
-                          <div>
-                            <p className="text-sm font-display text-white font-medium">{lead.first_name || "—"}</p>
+                          <div className="flex flex-col">
+                            <p className="text-white font-display text-base group-hover:text-white transition-colors">{lead.first_name || "—"}</p>
                             {lead.setter_name && sc && (
-                              <span className={`text-[10px] font-display ${sc.text}`}>Setter : {lead.setter_name}</span>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span className={`text-[9px] ${sc.textMuted} font-display`}>Setter :</span>
+                                <span className={`text-[9px] ${sc.text} font-display`}>{lead.setter_name}</span>
+                              </div>
                             )}
                           </div>
                         </div>
                       </TableCell>
                       {/* FORM */}
-                      <TableCell className="text-center py-3.5"><DateBadge date={lead.created_at} color="amber" /></TableCell>
+                      <TableCell className="text-center py-3"><DateBadge date={lead.created_at} color="amber" /></TableCell>
                       {/* EA */}
-                      <TableCell className="text-center py-3.5">
+                      <TableCell className="text-center py-3">
                         {lead.status === "approuvée" ? <DateBadge date={lead.reviewed_at} color="cyan" /> : <Empty />}
                       </TableCell>
                       {/* CONTACT */}
-                      <TableCell className="text-center py-3.5"><ContactBadge method={lead.contact_method} contacted={lead.contacted} /></TableCell>
+                      <TableCell className="text-center py-3"><ContactBadge method={lead.contact_method} contacted={lead.contacted} /></TableCell>
                       {/* CALL */}
-                      <TableCell className="text-center py-3.5">
+                      <TableCell className="text-center py-3">
                         {lead.call_no_show ? (
-                          <span className="text-[10px] font-display text-red-400 bg-red-500/15 px-2 py-0.5 rounded-md border border-dashed border-red-500/30">No-show</span>
+                          <span className="text-[10px] font-display text-red-300 bg-red-500/10 px-2 py-0.5 rounded-md border border-dashed border-red-500/40">No-show</span>
                         ) : lead.call_done ? (
                           <div className="flex flex-col items-center gap-1">
                             <CheckCircle2 className="w-4 h-4 text-blue-400" />
@@ -505,32 +554,32 @@ export default function CRMDashboard() {
                         ) : lead.call_booked ? (
                           <div className="flex items-center justify-center gap-1.5">
                             <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-                            <span className="text-[10px] font-display text-blue-400">A venir</span>
+                            <span className="text-[10px] font-display text-blue-300">A venir</span>
                           </div>
                         ) : <Empty />}
                       </TableCell>
                       {/* MAIL */}
-                      <TableCell className="text-center py-3.5">
+                      <TableCell className="text-center py-3">
                         {lead.contact_method === "email" ? <Mail className="w-4 h-4 text-amber-400 mx-auto" /> : <Empty />}
                       </TableCell>
                       {/* OFFRE */}
-                      <TableCell className="text-center py-3.5">
+                      <TableCell className="text-center py-3">
                         {lead.offer_amount ? (
-                          <span className="text-xs font-display text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-md border border-violet-500/20">{lead.offer_amount}</span>
+                          <span className="text-xs font-display text-violet-300 bg-violet-500/15 px-2 py-0.5 rounded-md border border-violet-500/25">{lead.offer_amount}</span>
                         ) : <Empty />}
                       </TableCell>
                       {/* ACCES */}
-                      <TableCell className="text-center py-3.5">
+                      <TableCell className="text-center py-3">
                         {lead.checkout_unlocked ? <Unlock className="w-4 h-4 text-emerald-400 mx-auto" /> : lead.offer_amount ? <Lock className="w-4 h-4 text-white/15 mx-auto" /> : <Empty />}
                       </TableCell>
                       {/* PAYE */}
-                      <TableCell className="text-center py-3.5">
+                      <TableCell className="text-center py-3">
                         {lead.paid_at ? (
                           <span className="text-sm font-display font-bold text-emerald-400 bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-500/25">{lead.paid_amount}€</span>
                         ) : <Empty />}
                       </TableCell>
                       {/* DATE */}
-                      <TableCell className="py-3.5"><span className="text-[11px] text-white/30 font-mono tabular-nums">{fmtDate(lead.created_at)}</span></TableCell>
+                      <TableCell className="py-3"><span className="text-[11px] text-white/30 font-mono tabular-nums">{fmtDate(lead.created_at)}</span></TableCell>
                     </TableRow>
                     );
                   })}

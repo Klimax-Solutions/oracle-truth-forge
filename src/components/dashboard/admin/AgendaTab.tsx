@@ -281,7 +281,7 @@ export default function AgendaTab() {
               <Calendar className="w-3 h-3 text-blue-400" />
               <span className="text-xs font-display text-blue-400 font-bold">{stats.total}</span>
             </div>
-            <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+            <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/[0.03] border border-white/[0.10]">
               <CheckCircle2 className="w-3 h-3 text-emerald-400/70" />
               <span className="text-[11px] font-mono text-emerald-400/80">{stats.completed}</span>
               <span className="text-[10px] text-white/20">/</span>
@@ -443,7 +443,7 @@ export default function AgendaTab() {
               return (
                 <div
                   key={day.toISOString()}
-                  className={`p-3 text-center border-r border-white/[0.06] last:border-r-0 transition-all ${
+                  className={`p-3 text-center border-r border-white/[0.10] last:border-r-0 transition-all ${
                     today ? 'bg-gradient-to-b from-blue-500/15 to-blue-500/5 border-b-2 border-b-blue-500/50' : ''
                   }`}
                 >

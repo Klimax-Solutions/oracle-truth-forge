@@ -99,7 +99,7 @@ export default function ConversionsTab({ leads }: ConversionsTabProps) {
       </div>
 
       {/* Main Funnel — horizontal bars */}
-      <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-6">
+      <div className="bg-white/[0.02] border border-white/[0.10] rounded-xl p-6">
         <div className="flex items-end gap-4">
           <FunnelBar label="Forms" count={stats.forms} maxCount={stats.forms} color="amber" />
           <ConversionRate from={stats.forms} to={stats.calls} label="→ Call" />
@@ -135,8 +135,8 @@ export default function ConversionsTab({ leads }: ConversionsTabProps) {
       </button>
 
       {showDaily && (
-        <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden">
-          <div className="grid grid-cols-5 gap-0 text-[10px] font-display uppercase tracking-widest text-white/30 border-b border-white/[0.06] bg-white/[0.02]">
+        <div className="bg-white/[0.02] border border-white/[0.10] rounded-xl overflow-hidden">
+          <div className="grid grid-cols-5 gap-0 text-[10px] font-display uppercase tracking-widest text-white/30 border-b border-white/[0.10] bg-white/[0.02]">
             <div className="py-2.5 px-4">Jour</div>
             <div className="py-2.5 px-3 text-center text-amber-400/60">Forms</div>
             <div className="py-2.5 px-3 text-center text-blue-400/60">Calls</div>
