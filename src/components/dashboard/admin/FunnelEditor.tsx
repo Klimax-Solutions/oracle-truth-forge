@@ -696,19 +696,10 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
 
   const canEdit = true; // Oracle: admins can always edit
 
-  // Load Cal.com events from API (disabled for now — no tenant-integrations function)
+  // Cal.com events — disabled (no tenant-integrations edge function in Oracle)
   useEffect(() => {
-    // Disabled: tenant-integrations edge function not ported yet
     setCalEventsLoading(false);
-    return;
-    if (false) setCalEventsLoading(true);
-    supabase.functions.invoke('tenant-integrations', {
-      body: { action: 'get_cal_events', tenant_id: currentTenantId }
-    }).then(({ data }) => {
-      if (data?.events) setCalEvents(data.events);
-      setCalEventsLoading(false);
-    }).catch(() => setCalEventsLoading(false));
-  }, [currentTenantId]);
+  }, []);
 
   
 
