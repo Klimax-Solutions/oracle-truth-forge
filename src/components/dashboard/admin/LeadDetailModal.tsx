@@ -212,11 +212,11 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                 {pipelineSteps.map((s, i) => {
                   const Icon = s.icon;
                   const colors: Record<string, { active: string; glow: string }> = {
-                    amber: { active: "bg-amber-500/15 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.15)]", glow: "from-amber-500/40" },
-                    cyan: { active: "bg-cyan-500/15 border-cyan-500/40 shadow-[0_0_20px_rgba(34,211,238,0.15)]", glow: "from-cyan-500/40" },
-                    purple: { active: "bg-purple-500/15 border-purple-500/40 shadow-[0_0_20px_rgba(168,85,247,0.15)]", glow: "from-purple-500/40" },
-                    blue: { active: "bg-blue-500/15 border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.15)]", glow: "from-blue-500/40" },
-                    emerald: { active: "bg-emerald-500/15 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.15)]", glow: "from-emerald-500/40" },
+                    amber: { active: "bg-amber-500/20 border-amber-500/50 shadow-[0_0_25px_rgba(245,158,11,0.2)]", glow: "from-amber-500/50" },
+                    cyan: { active: "bg-cyan-500/20 border-cyan-500/50 shadow-[0_0_25px_rgba(34,211,238,0.2)]", glow: "from-cyan-500/50" },
+                    purple: { active: "bg-purple-500/20 border-purple-500/50 shadow-[0_0_25px_rgba(168,85,247,0.2)]", glow: "from-purple-500/50" },
+                    blue: { active: "bg-blue-500/20 border-blue-500/50 shadow-[0_0_25px_rgba(59,130,246,0.2)]", glow: "from-blue-500/50" },
+                    emerald: { active: "bg-emerald-500/20 border-emerald-500/50 shadow-[0_0_25px_rgba(16,185,129,0.2)]", glow: "from-emerald-500/50" },
                   };
                   const c = colors[s.color] || colors.blue;
                   const nextDone = i < pipelineSteps.length - 1 && pipelineSteps[i + 1].done;
@@ -224,20 +224,20 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
 
                   return (
                     <div key={s.key} className="flex items-center">
-                      <button onClick={() => setView(s.view)} className="flex flex-col items-center gap-1.5 group/step">
-                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-all group-hover/step:scale-110",
-                          s.done ? c.active : "bg-white/[0.03] border-white/[0.08] group-hover/step:border-white/[0.15]"
+                      <button onClick={() => setView(s.view)} className="flex flex-col items-center gap-2 group/step">
+                        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all group-hover/step:scale-110",
+                          s.done ? c.active : "bg-white/[0.03] border-white/[0.10] group-hover/step:border-white/[0.20]"
                         )}>
-                          <Icon className={cn("w-5 h-5", s.done ? "" : "text-white/20")} />
+                          <Icon className={cn("w-6 h-6", s.done ? "" : "text-white/20")} />
                         </div>
-                        <span className={cn("text-xs font-display font-medium", s.done ? "text-white/80" : "text-white/25")}>{s.label}</span>
-                        {s.date && <span className="text-[10px] font-mono text-white/40">{fmtShort(s.date)}</span>}
+                        <span className={cn("text-sm font-display font-semibold", s.done ? "text-white" : "text-white/25")}>{s.label}</span>
+                        {s.date && <span className="text-[11px] font-mono text-white/50">{fmtShort(s.date)}</span>}
                       </button>
                       {i < pipelineSteps.length - 1 && (
-                        <div className={cn("flex-1 h-0.5 mx-2 rounded-full mt-[-20px]",
-                          s.done && nextDone ? `bg-gradient-to-r ${c.glow} ${nextColor ? "to-" + pipelineSteps[i+1].color + "-500/40" : "to-white/10"}` :
+                        <div className={cn("flex-1 h-[3px] mx-3 rounded-full mt-[-24px]",
+                          s.done && nextDone ? `bg-gradient-to-r ${c.glow} ${nextColor ? "to-" + pipelineSteps[i+1].color + "-500/50" : "to-white/10"}` :
                           s.done ? `bg-gradient-to-r ${c.glow} to-white/10` : "bg-white/[0.06]"
-                        )} style={{ minWidth: 40 }} />
+                        )} style={{ minWidth: 50 }} />
                       )}
                     </div>
                   );
