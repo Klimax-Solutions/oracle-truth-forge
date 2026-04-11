@@ -13,7 +13,7 @@ import {
   X, Calendar, BarChart3, ChevronDown, MessageCircle,
   Timer, Wifi, PhoneForwarded, ClipboardCheck, Target,
   Lock, Unlock, DollarSign, FileText, Headphones, Shield,
-  Send, UserCheck, Sparkles,
+  Send, UserCheck, Sparkles, UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
