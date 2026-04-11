@@ -191,115 +191,165 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated }: Props)
 
           {/* LEFT — Content switches by view */}
           {view === "lead" ? (
-          /* ── FICHE LEAD VIEW ── */
-          <div className="flex-1 overflow-auto p-6 space-y-5">
-            {/* Pipeline visual */}
-            <div className="flex items-center justify-between px-4 py-4 bg-[#111318] border border-white/[0.12] rounded-xl">
-              {pipelineSteps.map((s, i) => {
-                const Icon = s.icon;
-                return (
-                  <div key={s.key} className="flex items-center">
-                    <div className="flex flex-col items-center gap-1.5">
-                      <div className={cn("w-12 h-12 rounded-full flex items-center justify-center border-2",
-                        s.done ? s.color : "border-white/10 bg-[#0c0d12] text-white/15"
-                      )}>
-                        <Icon className="w-5 h-5" />
+          /* ── FICHE LEAD — Level 5 spike-launch style ── */
+          <div className="flex-1 overflow-auto">
+            {/* Premium header with gradient glow */}
+            <div className="relative p-6 pb-5 border-b border-white/[0.08] overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-violet-500/5 pointer-events-none" />
+              <div className="absolute top-0 right-0 w-40 h-40 bg-primary/8 rounded-full blur-3xl pointer-events-none" />
+
+              {/* Pipeline visual — premium icons with glow connectors */}
+              <div className="relative flex items-center justify-between px-2 mt-2">
+                {pipelineSteps.map((s, i) => {
+                  const Icon = s.icon;
+                  const colors: Record<string, { active: string; glow: string }> = {
+                    amber: { active: "bg-amber-500/15 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.15)]", glow: "from-amber-500/40" },
+                    cyan: { active: "bg-cyan-500/15 border-cyan-500/40 shadow-[0_0_20px_rgba(34,211,238,0.15)]", glow: "from-cyan-500/40" },
+                    purple: { active: "bg-purple-500/15 border-purple-500/40 shadow-[0_0_20px_rgba(168,85,247,0.15)]", glow: "from-purple-500/40" },
+                    blue: { active: "bg-blue-500/15 border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.15)]", glow: "from-blue-500/40" },
+                    emerald: { active: "bg-emerald-500/15 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.15)]", glow: "from-emerald-500/40" },
+                  };
+                  const c = colors[s.color.split("-")[1]] || colors.blue;
+                  const nextDone = i < pipelineSteps.length - 1 && pipelineSteps[i + 1].done;
+                  const nextColor = i < pipelineSteps.length - 1 ? (colors[pipelineSteps[i + 1].color.split("-")[1]] || colors.blue) : null;
+
+                  return (
+                    <div key={s.key} className="flex items-center">
+                      <div className="flex flex-col items-center gap-1.5">
+                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-all",
+                          s.done ? c.active : "bg-white/[0.03] border-white/[0.08]"
+                        )}>
+                          <Icon className={cn("w-5 h-5", s.done ? "" : "text-white/20")} />
+                        </div>
+                        <span className={cn("text-xs font-display font-medium", s.done ? "text-white/80" : "text-white/25")}>{s.label}</span>
+                        {s.date && <span className="text-[10px] font-mono text-white/40">{fmtShort(s.date)}</span>}
                       </div>
-                      <span className={cn("text-[10px] font-display uppercase tracking-wider", s.done ? "text-white/80" : "text-white/20")}>{s.label}</span>
-                      {s.date && <span className="text-[9px] font-mono text-white/30">{fmtShort(s.date)}</span>}
+                      {i < pipelineSteps.length - 1 && (
+                        <div className={cn("flex-1 h-0.5 mx-2 rounded-full mt-[-20px]",
+                          s.done && nextDone ? `bg-gradient-to-r ${c.glow} ${nextColor ? "to-" + pipelineSteps[i+1].color.split("-")[1] + "-500/40" : "to-white/10"}` :
+                          s.done ? `bg-gradient-to-r ${c.glow} to-white/10` : "bg-white/[0.06]"
+                        )} style={{ minWidth: 40 }} />
+                      )}
                     </div>
-                    {i < pipelineSteps.length - 1 && (
-                      <div className={cn("w-10 h-[2px] mx-1 mt-[-16px]", s.done ? "bg-white/15" : "bg-white/5")} />
+                  );
+                })}
+              </div>
+
+              {/* Setting + Call clickable cards */}
+              <div className="grid grid-cols-2 gap-3 mt-5">
+                {/* Setting card */}
+                <button onClick={() => setView("setting")} className={cn("p-4 rounded-xl text-left transition-all border",
+                  lead.contacted
+                    ? "bg-gradient-to-br from-cyan-500/12 to-cyan-500/5 border-cyan-500/30 hover:border-cyan-500/50"
+                    : "bg-white/[0.03] border-white/[0.08] hover:border-white/[0.15]"
+                )}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", lead.contacted ? "bg-cyan-500/20" : "bg-white/[0.05]")}>
+                      <Phone className={cn("w-4 h-4", lead.contacted ? "text-cyan-400" : "text-white/30")} />
+                    </div>
+                    {lead.contacted ? (
+                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-medium">✓ Rempli</span>
+                    ) : (
+                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/[0.06] text-white/40">A faire</span>
                     )}
                   </div>
-                );
-              })}
+                  <p className={cn("text-sm font-display font-semibold", lead.contacted ? "text-cyan-300" : "text-white/50")}>Setting</p>
+                  {lead.setter_name && <p className="text-[10px] text-white/30 mt-0.5">{lead.setter_name}</p>}
+                  <p className="text-[10px] text-cyan-400/60 mt-1.5 flex items-center gap-1"><ExternalLink className="w-3 h-3" /> Ouvrir fiche</p>
+                </button>
+
+                {/* Call card */}
+                <button onClick={() => setView("call")} className={cn("p-4 rounded-xl text-left transition-all border",
+                  lead.call_outcome === "contracted" ? "bg-gradient-to-br from-violet-500/12 to-violet-500/5 border-violet-500/30 hover:border-violet-500/50" :
+                  lead.call_booked ? "bg-gradient-to-br from-blue-500/12 to-blue-500/5 border-blue-500/30 hover:border-blue-500/50" :
+                  "bg-white/[0.03] border-white/[0.08] hover:border-white/[0.15]"
+                )}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", lead.call_booked ? "bg-blue-500/20" : "bg-white/[0.05]")}>
+                      <Calendar className={cn("w-4 h-4", lead.call_booked ? "text-blue-400" : "text-white/30")} />
+                    </div>
+                    {lead.call_outcome === "contracted" ? (
+                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-medium">Close</span>
+                    ) : lead.call_booked ? (
+                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-medium">Reserve</span>
+                    ) : (
+                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/[0.06] text-white/40">-</span>
+                    )}
+                  </div>
+                  <p className={cn("text-sm font-display font-semibold", lead.call_booked ? "text-blue-300" : "text-white/50")}>Call</p>
+                  {lead.call_scheduled_at && <p className="text-[10px] text-white/30 mt-0.5">{fmtDate(lead.call_scheduled_at)}</p>}
+                  <p className="text-[10px] text-blue-400/60 mt-1.5 flex items-center gap-1"><ExternalLink className="w-3 h-3" /> Ouvrir fiche</p>
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              {/* Contact */}
-              <div className="bg-[#111318] border border-white/[0.12] rounded-xl p-5 space-y-3">
-                <h3 className="text-[10px] font-display uppercase tracking-widest text-white/40">Coordonnees</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <Mail className="w-4 h-4 text-white/30" />
-                    <span className="text-sm text-white/80">{lead.email}</span>
-                  </div>
-                  {lead.phone && (
-                    <div className="flex items-center gap-3">
-                      <Phone className="w-4 h-4 text-white/30" />
-                      <span className="text-sm text-white/80">{lead.phone}</span>
+            {/* Body — premium sections */}
+            <div className="p-6 space-y-4">
+
+              {/* Budget + Engagement cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.10] hover:border-white/[0.15] transition-all">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+                      <DollarSign className="w-4 h-4 text-emerald-400" />
                     </div>
-                  )}
+                    <p className="text-white/40 text-[10px] font-display tracking-wider uppercase">Budget</p>
+                  </div>
+                  <p className="text-emerald-400 text-lg font-display font-semibold">{lead.offer_amount || "Non renseigne"}</p>
+                </div>
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.10] hover:border-white/[0.15] transition-all">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
+                      <Eye className="w-4 h-4 text-blue-400" />
+                    </div>
+                    <p className="text-white/40 text-[10px] font-display tracking-wider uppercase">Activite</p>
+                  </div>
+                  <p className="text-blue-400 text-lg font-display font-semibold">{(lead.session_count || 0) + (lead.execution_count || 0)} actions</p>
                 </div>
               </div>
 
-              {/* Status */}
-              <div className="bg-[#111318] border border-white/[0.12] rounded-xl p-5 space-y-3">
-                <h3 className="text-[10px] font-display uppercase tracking-widest text-white/40">Statut</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/40">Status EA</span>
-                    <span className={lead.status === "approuvée" ? "text-cyan-400 font-display" : "text-white/60"}>{lead.status}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/40">Setter</span>
-                    <span className="text-cyan-400 font-display">{lead.setter_name || "—"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/40">Closer</span>
-                    <span className="text-violet-400 font-display">{lead.closer_name || "—"}</span>
-                  </div>
-                  {lead.early_access_type && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/40">Type</span>
-                      <span className="text-violet-400 font-display">{lead.early_access_type}</span>
+              {/* Payment banner */}
+              {lead.paid_at && (
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/30">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                      <CheckCircle2 className="w-6 h-6 text-emerald-400" />
                     </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Offre & Paiement */}
-              <div className="bg-[#111318] border border-white/[0.12] rounded-xl p-5 space-y-3">
-                <h3 className="text-[10px] font-display uppercase tracking-widest text-white/40">Offre & Paiement</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/40">Offre</span>
-                    <span className="text-violet-400 font-display font-semibold">{lead.offer_amount || "—"}</span>
+                    <div>
+                      <p className="text-emerald-400 font-display text-2xl font-bold">{lead.paid_amount?.toLocaleString()}€ paye</p>
+                      <p className="text-emerald-400/60 text-xs mt-0.5">Le {fmtDate(lead.paid_at)}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
+                </div>
+              )}
+
+              {/* Status details */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white/40">Status EA</span>
+                  <span className={lead.status === "approuvée" ? "text-cyan-400 font-display font-medium" : "text-white/60"}>{lead.status}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white/40">Setter</span>
+                  <span className="text-cyan-400 font-display font-medium">{lead.setter_name || "—"}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white/40">Closer</span>
+                  <span className="text-violet-400 font-display font-medium">{lead.closer_name || "—"}</span>
+                </div>
+                {lead.checkout_unlocked && (
+                  <div className="flex items-center justify-between text-sm">
                     <span className="text-white/40">Checkout</span>
-                    <span className={lead.checkout_unlocked ? "text-emerald-400" : "text-white/25"}>{lead.checkout_unlocked ? "Debloque" : "Verrouille"}</span>
+                    <span className="text-emerald-400 font-display">✓ Debloque</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/40">Paye</span>
-                    <span className="text-emerald-400 font-display font-bold text-lg">{lead.paid_amount ? `${lead.paid_amount}€` : "—"}</span>
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* Activite */}
-              <div className="bg-[#111318] border border-white/[0.12] rounded-xl p-5 space-y-3">
-                <h3 className="text-[10px] font-display uppercase tracking-widest text-white/40">Activite Oracle</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="text-center">
-                    <p className="text-3xl font-display font-bold text-white">{lead.session_count || 0}</p>
-                    <p className="text-[9px] text-white/30 font-display uppercase">Sessions</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-3xl font-display font-bold text-white">{lead.execution_count || 0}</p>
-                    <p className="text-[9px] text-white/30 font-display uppercase">Trades</p>
-                  </div>
-                </div>
+              {/* Meta */}
+              <div className="text-[10px] text-white/15 font-mono space-y-0.5 pt-1">
+                <p>{lead.id}</p>
+                <p>Soumis: {fmtDate(lead.created_at)}</p>
               </div>
-            </div>
-
-            {/* Meta */}
-            <div className="text-[10px] text-white/20 font-mono space-y-1 pt-2">
-              <p>ID: {lead.id}</p>
-              <p>Soumis: {fmtDate(lead.created_at)}</p>
-              {lead.reviewed_at && <p>Approuve: {fmtDate(lead.reviewed_at)}</p>}
-              {lead.user_id && <p>Oracle User: {lead.user_id}</p>}
             </div>
           </div>
         ) : view === "setting" ? (
