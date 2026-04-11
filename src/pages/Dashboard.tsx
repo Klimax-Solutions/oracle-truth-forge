@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { LogOut, ExternalLink } from "lucide-react";
@@ -115,7 +115,8 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [activeTab, setActiveTab] = useState(() => persistedState.activeTab || DASHBOARD_DEFAULT_TAB);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || persistedState.activeTab || DASHBOARD_DEFAULT_TAB);
   const [databaseFilters, setDatabaseFilters] = useState<any>(() => persistedState.databaseFilters ?? null);
   const [dataSource, setDataSource] = useState<DataSource>(() => persistedState.dataSource || "all");
   const [displayName, setDisplayName] = useState<string>("");
@@ -132,6 +133,14 @@ const Dashboard = () => {
   const { effectiveIsAdmin, effectiveIsSuperAdmin, effectiveIsEarlyAccess, effectiveIsSetter } = 
     getEffectiveRoles(realIsSuperAdmin, simulatedRole, realIsSetter);
   
+  // Sync activeTab → URL (?tab=crm, ?tab=agenda, etc.)
+  useEffect(() => {
+    const current = searchParams.get('tab');
+    if (current !== activeTab) {
+      setSearchParams({ tab: activeTab }, { replace: true });
+    }
+  }, [activeTab, searchParams, setSearchParams]);
+
   // Use effective roles throughout the dashboard
   const isAdmin = effectiveIsAdmin;
   const isSuperAdmin = effectiveIsSuperAdmin;
