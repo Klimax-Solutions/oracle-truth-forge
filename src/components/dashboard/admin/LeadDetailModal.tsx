@@ -114,12 +114,13 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
   const hasChanges = outcome !== (lead.call_outcome || "") || debrief !== (lead.call_debrief || "") || offerAmount !== (lead.offer_amount || "");
   const exp = expiresIn(lead.expires_at);
 
+  // Pipeline: Form → EA (trial access) → Setting (setter contact) → Call (closing) → Payé
   const pipelineSteps = [
-    { key: "form", label: "Form", icon: FileText, color: "text-amber-400 border-amber-500 bg-amber-500/20", done: true, date: lead.created_at },
-    { key: "ea", label: "EA", icon: Shield, color: "text-cyan-400 border-cyan-500 bg-cyan-500/20", done: lead.status === "approuvée", date: lead.reviewed_at },
-    { key: "setting", label: "Setting", icon: PhoneForwarded, color: "text-purple-400 border-purple-500 bg-purple-500/20", done: lead.contacted, date: null },
-    { key: "call", label: "Call", icon: Headphones, color: "text-blue-400 border-blue-500 bg-blue-500/20", done: lead.call_done || lead.call_booked, date: null },
-    { key: "paid", label: "Payé", icon: CheckCircle2, color: "text-emerald-400 border-emerald-500 bg-emerald-500/20", done: !!lead.paid_at, date: lead.paid_at },
+    { key: "form", label: "Form", icon: FileText, color: "amber", done: true, date: lead.created_at, view: "lead" as LeadModalView },
+    { key: "ea", label: "EA", icon: Shield, color: "cyan", done: lead.status === "approuvée", date: lead.reviewed_at, view: "lead" as LeadModalView },
+    { key: "setting", label: "Setting", icon: PhoneForwarded, color: "purple", done: lead.contacted, date: null, view: "setting" as LeadModalView },
+    { key: "call", label: "Call", icon: Headphones, color: "blue", done: lead.call_done || lead.call_booked, date: lead.call_scheduled_at, view: "call" as LeadModalView },
+    { key: "paid", label: "Paye", icon: CheckCircle2, color: "emerald", done: !!lead.paid_at, date: lead.paid_at, view: "lead" as LeadModalView },
   ];
 
   return (
@@ -129,12 +130,16 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
         {/* ── Header — compact with inline view switcher ── */}
         <div className="shrink-0 px-6 py-4 border-b border-white/[0.08]">
           <div className="flex items-center gap-4">
-            {/* Avatar */}
-            <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold text-white shrink-0",
-              lead.paid_at ? "bg-emerald-500" : lead.call_outcome === "contracted" ? "bg-violet-500" : lead.call_done ? "bg-blue-500" : lead.contacted ? "bg-purple-500" : lead.status === "approuvée" ? "bg-cyan-500" : "bg-white/20"
-            )}>
+            {/* Avatar — click to go back to Lead view */}
+            <button
+              onClick={() => setView("lead")}
+              className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold text-white shrink-0 transition-all hover:scale-105 hover:ring-2 hover:ring-white/20",
+                lead.paid_at ? "bg-emerald-500" : lead.call_outcome === "contracted" ? "bg-violet-500" : lead.call_done ? "bg-blue-500" : lead.contacted ? "bg-purple-500" : lead.status === "approuvée" ? "bg-cyan-500" : "bg-white/20"
+              )}
+              title="Voir fiche lead"
+            >
               {lead.first_name?.[0]?.toUpperCase() || "?"}
-            </div>
+            </button>
 
             {/* Name + sub info */}
             <div className="min-w-0">
@@ -157,9 +162,9 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
             {/* View switcher — inline pills */}
             <div className="flex items-center gap-0.5 bg-white/[0.03] border border-white/[0.08] rounded-lg p-0.5 ml-auto shrink-0">
               {([
-                { key: "lead" as LeadModalView, label: "Lead", icon: Eye },
-                { key: "call" as LeadModalView, label: "Call", icon: Headphones },
+                { key: "lead" as LeadModalView, label: "Profil", icon: Eye },
                 { key: "setting" as LeadModalView, label: "Setting", icon: PhoneForwarded },
+                { key: "call" as LeadModalView, label: "Call", icon: Headphones },
               ]).map(t => (
                 <button
                   key={t.key}
@@ -213,24 +218,24 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                     blue: { active: "bg-blue-500/15 border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.15)]", glow: "from-blue-500/40" },
                     emerald: { active: "bg-emerald-500/15 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.15)]", glow: "from-emerald-500/40" },
                   };
-                  const c = colors[s.color.split("-")[1]] || colors.blue;
+                  const c = colors[s.color] || colors.blue;
                   const nextDone = i < pipelineSteps.length - 1 && pipelineSteps[i + 1].done;
-                  const nextColor = i < pipelineSteps.length - 1 ? (colors[pipelineSteps[i + 1].color.split("-")[1]] || colors.blue) : null;
+                  const nextColor = i < pipelineSteps.length - 1 ? (colors[pipelineSteps[i + 1].color] || colors.blue) : null;
 
                   return (
                     <div key={s.key} className="flex items-center">
-                      <div className="flex flex-col items-center gap-1.5">
-                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-all",
-                          s.done ? c.active : "bg-white/[0.03] border-white/[0.08]"
+                      <button onClick={() => setView(s.view)} className="flex flex-col items-center gap-1.5 group/step">
+                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-all group-hover/step:scale-110",
+                          s.done ? c.active : "bg-white/[0.03] border-white/[0.08] group-hover/step:border-white/[0.15]"
                         )}>
                           <Icon className={cn("w-5 h-5", s.done ? "" : "text-white/20")} />
                         </div>
                         <span className={cn("text-xs font-display font-medium", s.done ? "text-white/80" : "text-white/25")}>{s.label}</span>
                         {s.date && <span className="text-[10px] font-mono text-white/40">{fmtShort(s.date)}</span>}
-                      </div>
+                      </button>
                       {i < pipelineSteps.length - 1 && (
                         <div className={cn("flex-1 h-0.5 mx-2 rounded-full mt-[-20px]",
-                          s.done && nextDone ? `bg-gradient-to-r ${c.glow} ${nextColor ? "to-" + pipelineSteps[i+1].color.split("-")[1] + "-500/40" : "to-white/10"}` :
+                          s.done && nextDone ? `bg-gradient-to-r ${c.glow} ${nextColor ? "to-" + pipelineSteps[i+1].color + "-500/40" : "to-white/10"}` :
                           s.done ? `bg-gradient-to-r ${c.glow} to-white/10` : "bg-white/[0.06]"
                         )} style={{ minWidth: 40 }} />
                       )}
