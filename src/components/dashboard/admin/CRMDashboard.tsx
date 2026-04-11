@@ -561,13 +561,14 @@ export default function CRMDashboard() {
                             {av.dot && <div className={cn("absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[hsl(220,15%,8%)]", av.dot)} />}
                             {lead.is_online && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[hsl(220,15%,8%)] animate-pulse" />}
                           </div>
-                          <div className="flex flex-col">
-                            <p className="text-white font-display text-base group-hover:text-white transition-colors">{lead.first_name || "—"}</p>
+                          <div className="flex flex-col gap-1">
+                            <p className="text-white font-display text-base font-medium group-hover:text-white transition-colors">{lead.first_name || "—"}</p>
                             {lead.setter_name && sc && (
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <span className={`text-[9px] ${sc.textMuted} font-display`}>Setter :</span>
-                                <span className={`text-[9px] ${sc.text} font-display`}>{lead.setter_name}</span>
-                              </div>
+                              <span className={`inline-flex items-center gap-1 text-[10px] font-display ${sc.text} ${sc.bg} ${sc.border} border px-2 py-0.5 rounded-md w-fit cursor-pointer hover:opacity-80 transition-opacity`}
+                                onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}
+                              >
+                                Setter : {lead.setter_name} <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+                              </span>
                             )}
                           </div>
                         </div>
@@ -578,9 +579,29 @@ export default function CRMDashboard() {
                       <TableCell className="text-center py-3">
                         {lead.status === "approuvée" ? <DateBadge date={lead.reviewed_at} color="cyan" /> : <Empty />}
                       </TableCell>
-                      {/* CONTACT → fiche setting */}
+                      {/* CONTACT → fiche setting (date + icon like spike-launch) */}
                       <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}>
-                        <ContactBadge method={lead.contact_method} contacted={lead.contacted} />
+                        {lead.contacted && lead.contact_method ? (
+                          <div className="inline-flex items-center gap-1.5">
+                            {lead.contact_method === "whatsapp" ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-300 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/25">
+                                <CheckCircle2 className="w-3 h-3" /> {fmtDate(lead.created_at)}
+                              </span>
+                            ) : lead.contact_method === "email" ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-amber-300 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/25">
+                                <Mail className="w-3 h-3" /> {fmtDate(lead.created_at)}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-cyan-300 bg-cyan-500/10 px-2 py-1 rounded-md border border-cyan-500/25">
+                                <Phone className="w-3 h-3" /> SET
+                              </span>
+                            )}
+                          </div>
+                        ) : lead.contacted ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-purple-300 bg-purple-500/10 px-2 py-1 rounded-md border border-purple-500/25">
+                            <CheckCircle2 className="w-3 h-3" /> SET
+                          </span>
+                        ) : <Empty />}
                       </TableCell>
                       {/* CALL → fiche call (avec date+heure+code couleur) */}
                       <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "call"); }}>
