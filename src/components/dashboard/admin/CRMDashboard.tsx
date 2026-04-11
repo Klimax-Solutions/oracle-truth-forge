@@ -32,6 +32,7 @@ import AgendaTab from "./AgendaTab";
 import CockpitTab from "./CockpitTab";
 import ConversionsTab from "./ConversionsTab";
 import PeriodSelector, { type PeriodMode } from "./PeriodSelector";
+import type { LeadModalView } from "./LeadDetailModal";
 
 // ── Types — CRMLead imported from @/lib/admin/types (source de verite unique) ──
 type PipelineLead = CRMLead; // Alias local pour compatibilite
@@ -275,6 +276,12 @@ export default function CRMDashboard() {
   const [setterFilter, setSetterFilter] = useState("all");
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedLead, setSelectedLead] = useState<PipelineLead | null>(null);
+  const [modalView, setModalView] = useState<LeadModalView>("lead");
+
+  const openLead = (lead: PipelineLead, view: LeadModalView = "lead") => {
+    setSelectedLead(lead);
+    setModalView(view);
+  };
 
   const mapLead = useCallback((r: any, enrich?: any): PipelineLead => mapRowToCRMLead(r, enrich ? {
     activityMap: enrich.activityMap,
@@ -536,13 +543,13 @@ export default function CRMDashboard() {
                     return (
                     <TableRow
                       key={lead.id}
-                      onClick={() => setSelectedLead(lead)}
+                      onClick={() => openLead(lead, "lead")}
                       className={cn(
                         "group cursor-pointer transition-all duration-200 border-white/[0.04] hover:bg-white/[0.04]",
                         selectedLead?.id === lead.id && "bg-white/[0.06]"
                       )}
                     >
-                      {/* LEAD */}
+                      {/* LEAD → fiche lead */}
                       <TableCell className="py-3 pl-5">
                         <div className="flex items-center gap-3">
                           <div className="relative">
@@ -565,20 +572,46 @@ export default function CRMDashboard() {
                           </div>
                         </div>
                       </TableCell>
-                      {/* FORM */}
+                      {/* FORM → fiche lead */}
                       <TableCell className="text-center py-3"><DateBadge date={lead.created_at} color="amber" /></TableCell>
-                      {/* EA */}
+                      {/* EA → fiche lead */}
                       <TableCell className="text-center py-3">
                         {lead.status === "approuvée" ? <DateBadge date={lead.reviewed_at} color="cyan" /> : <Empty />}
                       </TableCell>
-                      {/* CONTACT */}
-                      <TableCell className="text-center py-3"><ContactBadge method={lead.contact_method} contacted={lead.contacted} /></TableCell>
-                      {/* CALL */}
-                      <TableCell className="text-center py-3">
+                      {/* CONTACT → fiche setting */}
+                      <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}>
+                        <ContactBadge method={lead.contact_method} contacted={lead.contacted} />
+                      </TableCell>
+                      {/* CALL → fiche call (avec date+heure+code couleur) */}
+                      <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "call"); }}>
                         {lead.call_no_show ? (
-                          <span className="text-[10px] font-display text-red-300 bg-red-500/10 px-2 py-0.5 rounded-md border border-dashed border-red-500/40">No-show</span>
-                        ) : lead.call_done ? (
-                          <OutcomeBadge outcome={lead.call_outcome} />
+                          <span className="inline-flex items-center gap-1 text-[10px] font-display text-red-300 bg-red-500/10 px-2 py-1 rounded-md border-2 border-dashed border-red-500/40">
+                            <UserX className="w-3 h-3" /> No-show
+                          </span>
+                        ) : lead.call_outcome === "contracted" ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-violet-300 bg-violet-500/15 px-2 py-1 rounded-md border border-violet-500/30">
+                            <CheckCircle2 className="w-3 h-3" />
+                            {lead.call_scheduled_at ? fmtDateTime(lead.call_scheduled_at) : "Close"}
+                          </span>
+                        ) : lead.call_outcome === "closing_in_progress" ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-amber-300 bg-amber-500/15 px-2 py-1 rounded-md border border-amber-500/30">
+                            <Clock className="w-3 h-3" />
+                            {lead.call_scheduled_at ? fmtDateTime(lead.call_scheduled_at) : "En cours"}
+                          </span>
+                        ) : lead.call_outcome === "not_closed" ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-red-300 bg-red-500/10 px-2 py-1 rounded-md border border-red-500/25">
+                            <X className="w-3 h-3" />
+                            {lead.call_scheduled_at ? fmtDateTime(lead.call_scheduled_at) : "Non close"}
+                          </span>
+                        ) : lead.call_rescheduled_at ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-pink-300 bg-pink-500/10 px-2 py-1 rounded-md border border-dashed border-pink-500/30">
+                            {fmtDateTime(lead.call_scheduled_at)} ANNULE
+                          </span>
+                        ) : lead.call_booked && lead.call_scheduled_at ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-blue-300 bg-blue-500/10 px-2 py-1 rounded-md border border-blue-500/25">
+                            <Clock className="w-3 h-3 text-blue-400" />
+                            {fmtDateTime(lead.call_scheduled_at)}
+                          </span>
                         ) : lead.call_booked ? (
                           <div className="flex items-center justify-center gap-1.5">
                             <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
@@ -586,21 +619,21 @@ export default function CRMDashboard() {
                           </div>
                         ) : <Empty />}
                       </TableCell>
-                      {/* MAIL */}
+                      {/* MAIL → fiche lead */}
                       <TableCell className="text-center py-3">
                         {lead.contact_method === "email" ? <Mail className="w-4 h-4 text-amber-400 mx-auto" /> : <Empty />}
                       </TableCell>
-                      {/* OFFRE */}
-                      <TableCell className="text-center py-3">
+                      {/* OFFRE → fiche call */}
+                      <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "call"); }}>
                         {lead.offer_amount ? (
                           <span className="text-xs font-display text-violet-300 bg-violet-500/15 px-2 py-0.5 rounded-md border border-violet-500/25">{lead.offer_amount}</span>
                         ) : <Empty />}
                       </TableCell>
-                      {/* ACCES */}
-                      <TableCell className="text-center py-3">
+                      {/* ACCES → fiche call */}
+                      <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "call"); }}>
                         {lead.checkout_unlocked ? <Unlock className="w-4 h-4 text-emerald-400 mx-auto" /> : lead.offer_amount ? <Lock className="w-4 h-4 text-white/15 mx-auto" /> : <Empty />}
                       </TableCell>
-                      {/* PAYE */}
+                      {/* PAYE → fiche lead */}
                       <TableCell className="text-center py-3">
                         {lead.paid_at ? (
                           <span className="text-sm font-display font-bold text-emerald-400 bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-500/25">{lead.paid_amount}€</span>
@@ -618,7 +651,7 @@ export default function CRMDashboard() {
 
           {/* Full-screen modal */}
           {selectedLead && (
-            <LeadDetailModal lead={selectedLead} onClose={() => setSelectedLead(null)} onLeadUpdated={loadLeads} />
+            <LeadDetailModal lead={selectedLead} onClose={() => setSelectedLead(null)} onLeadUpdated={loadLeads} initialView={modalView} />
           )}
         </TabsContent>
 

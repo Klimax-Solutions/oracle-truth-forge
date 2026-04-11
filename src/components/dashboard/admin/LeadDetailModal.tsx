@@ -27,10 +27,13 @@ interface LeadNote {
   author_id: string;
 }
 
+export type LeadModalView = "call" | "lead" | "setting";
+
 interface Props {
   lead: PipelineLead;
   onClose: () => void;
   onLeadUpdated?: () => void;
+  initialView?: LeadModalView;
 }
 
 function fmtDate(d: string | null) {
@@ -60,11 +63,9 @@ const OUTCOMES = [
   { value: "contracted", label: "Contracté ✓", cls: "bg-violet-500/15 text-violet-400 border-violet-500/25 hover:bg-violet-500/25" },
 ];
 
-type ModalView = "call" | "lead" | "setting";
-
-export default function LeadDetailModal({ lead, onClose, onLeadUpdated }: Props) {
+export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialView = "lead" }: Props) {
   const { toast } = useToast();
-  const [view, setView] = useState<ModalView>("call");
+  const [view, setView] = useState<LeadModalView>(initialView);
   const [notes, setNotes] = useState<LeadNote[]>([]);
   const [newNote, setNewNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
