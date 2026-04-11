@@ -99,7 +99,7 @@ function DateBadge({ date, color = "amber" }: { date: string | null; color?: str
     blue: "bg-blue-500/15 text-blue-300 border-blue-500/25",
   };
   return (
-    <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-medium border tabular-nums", styles[color] || "bg-white/5 text-white/50 border-white/10")}>
+    <span className={cn("inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-semibold border tabular-nums", styles[color] || "bg-white/5 text-white/50 border-white/10")}>
       {fmtDateTime(date)}
     </span>
   );
@@ -112,10 +112,10 @@ function OutcomeBadge({ outcome }: { outcome: string | null }) {
     not_closed: { label: "Non close", cls: "text-red-300 bg-red-500/20 border-red-500/30" },
   };
   if (!outcome || !cfg[outcome]) {
-    return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-display font-medium border text-white/40 bg-white/[0.04] border-white/[0.10]">Call fait</span>;
+    return <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-display font-semibold border text-white/40 bg-white/[0.04] border-white/[0.10]">Call fait</span>;
   }
   const c = cfg[outcome];
-  return <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-display font-semibold border", c.cls)}>{c.label}</span>;
+  return <span className={cn("inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-display font-bold border", c.cls)}>{c.label}</span>;
 }
 
 function ContactBadge({ method, contacted }: { method: string | null; contacted: boolean }) {
@@ -478,55 +478,55 @@ export default function CRMDashboard() {
                         <span>LEAD</span>
                       </div>
                     </TableHead>
-                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center">
+                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <IconBox color="amber"><Target className="w-3 h-3 text-amber-400/80" /></IconBox>
                         <span>FORM</span>
                       </div>
                     </TableHead>
-                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center">
+                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <IconBox color="cyan"><Shield className="w-3 h-3 text-cyan-400/80" /></IconBox>
                         <span>EA</span>
                       </div>
                     </TableHead>
-                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center">
+                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <IconBox color="violet"><Phone className="w-3 h-3 text-violet-400/80" /></IconBox>
                         <span>CONTACT</span>
                       </div>
                     </TableHead>
-                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center">
+                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <IconBox color="blue"><Calendar className="w-3 h-3 text-primary/80" /></IconBox>
                         <span>CALL</span>
                       </div>
                     </TableHead>
-                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center">
+                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <IconBox color="orange"><Mail className="w-3 h-3 text-orange-400/80" /></IconBox>
                         <span>MAIL</span>
                       </div>
                     </TableHead>
-                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center">
+                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <IconBox color="violet"><DollarSign className="w-3 h-3 text-violet-400/80" /></IconBox>
                         <span>OFFRE</span>
                       </div>
                     </TableHead>
-                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center">
+                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <IconBox color="fuchsia"><Lock className="w-3 h-3 text-fuchsia-400/80" /></IconBox>
                         <span>ACCES</span>
                       </div>
                     </TableHead>
-                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 text-center cursor-pointer hover:text-white transition-colors" onClick={() => setSortAsc(!sortAsc)}>
+                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center cursor-pointer hover:text-white transition-colors" onClick={() => setSortAsc(!sortAsc)}>
                       <div className="flex items-center justify-center gap-1.5">
                         <IconBox color="emerald"><CreditCard className="w-3 h-3 text-emerald-400/80" /></IconBox>
                         <span>PAYE {sortAsc ? "↑" : "↓"}</span>
                       </div>
                     </TableHead>
-                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider py-4 cursor-pointer hover:text-white transition-colors" onClick={() => setSortAsc(!sortAsc)}>
+                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 cursor-pointer hover:text-white transition-colors" onClick={() => setSortAsc(!sortAsc)}>
                       <div className="flex items-center gap-1.5">
                         <IconBox color="white"><Calendar className="w-3 h-3 text-white/40" /></IconBox>
                         <span>DATE</span>
@@ -553,16 +553,16 @@ export default function CRMDashboard() {
                       <TableCell className="py-3 pl-5">
                         <div className="flex items-center gap-3">
                           <div className="relative">
-                            <div className={cn("w-9 h-9 rounded-full border flex items-center justify-center transition-all duration-200", av.bg)}>
-                              <span className={cn("font-display text-sm", av.text)}>
+                            <div className={cn("w-10 h-10 rounded-xl border flex items-center justify-center transition-all duration-200 shadow-lg", av.bg)}>
+                              <span className={cn("font-display text-base font-bold", av.text)}>
                                 {(lead.first_name?.[0] || "?").toUpperCase()}
                               </span>
                             </div>
-                            {av.dot && <div className={cn("absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[hsl(220,15%,8%)]", av.dot)} />}
-                            {lead.is_online && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[hsl(220,15%,8%)] animate-pulse" />}
+                            {av.dot && <div className={cn("absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[hsl(220,15%,8%)] shadow-lg", av.dot)} />}
+                            {lead.is_online && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[hsl(220,15%,8%)] animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.5)]" />}
                           </div>
                           <div className="flex flex-col gap-1">
-                            <p className="text-white font-display text-base font-medium group-hover:text-white transition-colors">{lead.first_name || "—"}</p>
+                            <p className="text-white font-display text-[15px] font-semibold group-hover:text-white transition-colors">{lead.first_name || "—"}</p>
                             {lead.setter_name && sc && (
                               <span className={`inline-flex items-center gap-1 text-[10px] font-display ${sc.text} ${sc.bg} ${sc.border} border px-2 py-0.5 rounded-md w-fit cursor-pointer hover:opacity-80 transition-opacity`}
                                 onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}
@@ -606,30 +606,30 @@ export default function CRMDashboard() {
                       {/* CALL → fiche call (avec date+heure+code couleur) */}
                       <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "call"); }}>
                         {lead.call_no_show ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-display text-red-300 bg-red-500/10 px-2 py-1 rounded-md border-2 border-dashed border-red-500/40">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-display font-semibold text-red-300 bg-red-500/10 px-2.5 py-1 rounded-lg border-2 border-dashed border-red-500/40">
                             <UserX className="w-3 h-3" /> No-show
                           </span>
                         ) : lead.call_outcome === "contracted" ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-violet-300 bg-violet-500/15 px-2 py-1 rounded-md border border-violet-500/30">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-violet-300 bg-violet-500/15 px-2.5 py-1 rounded-lg border border-violet-500/30">
                             <CheckCircle2 className="w-3 h-3" />
                             {lead.call_scheduled_at ? fmtDateTime(lead.call_scheduled_at) : "Close"}
                           </span>
                         ) : lead.call_outcome === "closing_in_progress" ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-amber-300 bg-amber-500/15 px-2 py-1 rounded-md border border-amber-500/30">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-amber-300 bg-amber-500/15 px-2.5 py-1 rounded-lg border border-amber-500/30">
                             <Clock className="w-3 h-3" />
                             {lead.call_scheduled_at ? fmtDateTime(lead.call_scheduled_at) : "En cours"}
                           </span>
                         ) : lead.call_outcome === "not_closed" ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-red-300 bg-red-500/10 px-2 py-1 rounded-md border border-red-500/25">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-red-300 bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/25">
                             <X className="w-3 h-3" />
                             {lead.call_scheduled_at ? fmtDateTime(lead.call_scheduled_at) : "Non close"}
                           </span>
                         ) : lead.call_rescheduled_at ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-pink-300 bg-pink-500/10 px-2 py-1 rounded-md border border-dashed border-pink-500/30">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-pink-300 bg-pink-500/10 px-2.5 py-1 rounded-lg border border-dashed border-pink-500/30">
                             {fmtDateTime(lead.call_scheduled_at)} ANNULE
                           </span>
                         ) : lead.call_booked && lead.call_scheduled_at ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-blue-300 bg-blue-500/10 px-2 py-1 rounded-md border border-blue-500/25">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-blue-300 bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/25">
                             <Clock className="w-3 h-3 text-blue-400" />
                             {fmtDateTime(lead.call_scheduled_at)}
                           </span>
@@ -647,7 +647,7 @@ export default function CRMDashboard() {
                       {/* OFFRE → fiche call */}
                       <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "call"); }}>
                         {lead.offer_amount ? (
-                          <span className="text-xs font-display text-violet-300 bg-violet-500/15 px-2 py-0.5 rounded-md border border-violet-500/25">{lead.offer_amount}</span>
+                          <span className="text-sm font-display font-semibold text-violet-300 bg-violet-500/15 px-2.5 py-1 rounded-lg border border-violet-500/25">{lead.offer_amount}</span>
                         ) : <Empty />}
                       </TableCell>
                       {/* ACCES → fiche call */}
@@ -657,7 +657,7 @@ export default function CRMDashboard() {
                       {/* PAYE → fiche lead */}
                       <TableCell className="text-center py-3">
                         {lead.paid_at ? (
-                          <span className="text-sm font-display font-bold text-emerald-400 bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-500/25">{lead.paid_amount}€</span>
+                          <span className="text-base font-display font-bold text-emerald-400 bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)]">{lead.paid_amount}€</span>
                         ) : <Empty />}
                       </TableCell>
                       {/* DATE */}
