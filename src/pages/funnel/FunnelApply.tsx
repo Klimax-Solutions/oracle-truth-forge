@@ -18,7 +18,7 @@ export default function FunnelApply() {
 
   const [step, setStep] = useState(0); // 0..N = questions, N+1 = contact info
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [contact, setContact] = useState({ first_name: '', phone: '', email: '' });
+  const [contact, setContact] = useState({ first_name: '', phone: '', email: '', countryCode: '+33' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
@@ -52,7 +52,7 @@ export default function FunnelApply() {
         .insert({
           first_name: contact.first_name.trim(),
           email: contact.email.trim().toLowerCase(),
-          phone: contact.phone.trim() || null,
+          phone: contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : null,
           status: 'en_attente',
           form_submitted: true,
         });
@@ -141,13 +141,43 @@ export default function FunnelApply() {
                   <label className="text-xs text-white/40 font-display uppercase tracking-wider mb-1.5 block">
                     {config.apply_form_phone_label || 'Telephone'}
                   </label>
-                  <input
-                    type="tel"
-                    value={contact.phone}
-                    onChange={e => setContact(c => ({ ...c, phone: e.target.value }))}
-                    className="w-full h-12 px-4 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white placeholder:text-white/25 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all"
-                    placeholder="+33 6 12 34 56 78"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={contact.countryCode}
+                      onChange={e => setContact(c => ({ ...c, countryCode: e.target.value }))}
+                      className="h-12 px-3 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white text-sm focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="+33">🇫🇷 +33</option>
+                      <option value="+32">🇧🇪 +32</option>
+                      <option value="+41">🇨🇭 +41</option>
+                      <option value="+44">🇬🇧 +44</option>
+                      <option value="+1">🇺🇸 +1</option>
+                      <option value="+49">🇩🇪 +49</option>
+                      <option value="+34">🇪🇸 +34</option>
+                      <option value="+39">🇮🇹 +39</option>
+                      <option value="+351">🇵🇹 +351</option>
+                      <option value="+212">🇲🇦 +212</option>
+                      <option value="+213">🇩🇿 +213</option>
+                      <option value="+216">🇹🇳 +216</option>
+                      <option value="+225">🇨🇮 +225</option>
+                      <option value="+221">🇸🇳 +221</option>
+                      <option value="+237">🇨🇲 +237</option>
+                      <option value="+243">🇨🇩 +243</option>
+                      <option value="+352">🇱🇺 +352</option>
+                      <option value="+377">🇲🇨 +377</option>
+                    </select>
+                    <input
+                      type="tel"
+                      value={contact.phone}
+                      onChange={e => {
+                        const val = e.target.value.replace(/[^\d\s]/g, '');
+                        const formatted = val.replace(/(\d{1})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1 $2 $3 $4 $5');
+                        setContact(c => ({ ...c, phone: formatted }));
+                      }}
+                      className="flex-1 h-12 px-4 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white placeholder:text-white/25 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all font-mono tracking-wider"
+                      placeholder="6 12 34 56 78"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-white/40 font-display uppercase tracking-wider mb-1.5 block">

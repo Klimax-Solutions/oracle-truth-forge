@@ -277,6 +277,39 @@ export default function CRMDashboard() {
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedLead, setSelectedLead] = useState<PipelineLead | null>(null);
   const [modalView, setModalView] = useState<LeadModalView>("lead");
+  const [isSetterOnly, setIsSetterOnly] = useState(false);
+  const [currentSetterName, setCurrentSetterName] = useState<string | null>(null);
+
+  // Detect if current user is a setter (not admin/superadmin) → auto-filter
+  useEffect(() => {
+    (async () => {
+      try {
+        const [setterRes, adminRes, superRes] = await Promise.all([
+          supabase.rpc("is_setter"),
+          supabase.rpc("is_admin"),
+          supabase.rpc("is_super_admin"),
+        ]);
+        const isSetter = setterRes.data === true;
+        const isAdmin = adminRes.data === true;
+        const isSuperAdmin = superRes.data === true;
+        if (isSetter && !isAdmin && !isSuperAdmin) {
+          setIsSetterOnly(true);
+          // Get setter's display name for filtering
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("display_name, first_name")
+              .eq("user_id", user.id)
+              .single();
+            if (profile) {
+              setCurrentSetterName(profile.display_name || profile.first_name || null);
+            }
+          }
+        }
+      } catch { /* admin/superadmin by default */ }
+    })();
+  }, []);
 
   const openLead = (lead: PipelineLead, view: LeadModalView = "lead") => {
     setSelectedLead(lead);
@@ -339,12 +372,14 @@ export default function CRMDashboard() {
 
   const filtered = useMemo(() => {
     let r = [...leads];
+    // Setter auto-filter: setter only sees their own leads
+    if (isSetterOnly && currentSetterName) r = r.filter(l => l.setter_name === currentSetterName);
     if (search) { const q = search.toLowerCase(); r = r.filter(l => l.first_name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q) || l.phone.includes(q)); }
     if (stageFilter !== "all") r = r.filter(l => getStage(l) === stageFilter);
     if (setterFilter !== "all") r = r.filter(l => l.setter_name === setterFilter);
     r.sort((a, b) => sortAsc ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime() : new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     return r;
-  }, [leads, search, stageFilter, setterFilter, sortAsc]);
+  }, [leads, search, stageFilter, setterFilter, sortAsc, isSetterOnly, currentSetterName]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">

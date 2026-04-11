@@ -81,9 +81,9 @@ export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: Dash
     };
   }, []);
 
-  // Setter role: only Early Access tab
+  // Setter role: Early Access + CRM (filtered to their leads)
   if (isSetter && !isSuperAdmin && !isAdmin) {
-    const setterTabs = [eaMgmtTab];
+    const setterTabs = [eaMgmtTab, crmTab];
     return (
       <aside
         className={cn(

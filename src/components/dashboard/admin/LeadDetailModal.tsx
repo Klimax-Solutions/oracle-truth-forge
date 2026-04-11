@@ -4,19 +4,24 @@
 // Branch: crm-integration
 // ============================================
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   X, Mail, Phone, Copy, CheckCircle2, Clock, Calendar,
   FileText, Shield, PhoneForwarded, Headphones, CreditCard,
   DollarSign, MessageCircle, Send, ExternalLink, Lock, Unlock,
-  UserX, RotateCcw, Sparkles, Timer, Wifi, Eye,
+  UserX, RotateCcw, Sparkles, Timer, Wifi, Eye, Users,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { CRMLead } from "@/lib/admin/types";
+import { getSetterColor } from "@/lib/admin/setterColors";
 
 type PipelineLead = CRMLead; // Alias local pour compatibilite
 
@@ -73,14 +78,56 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
   const [debrief, setDebrief] = useState(lead.call_debrief || "");
   const [offerAmount, setOfferAmount] = useState(lead.offer_amount || "");
   const [saving, setSaving] = useState(false);
+  const [settersList, setSettersList] = useState<string[]>([]);
+  const [callDone, setCallDone] = useState(lead.call_done);
+  const [paidAmount, setPaidAmount] = useState(lead.paid_amount?.toString() || "");
+  const [paidAt, setPaidAt] = useState(lead.paid_at ? new Date(lead.paid_at).toISOString().slice(0, 16) : "");
 
   const copy = (t: string, l: string) => { navigator.clipboard.writeText(t); toast({ title: `${l} copié` }); };
+
+  // Load setters list (from user_roles + profiles, fallback to existing leads)
+  useEffect(() => {
+    (async () => {
+      // Try getting setters from user_roles + profiles
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "setter");
+      if (roleData && roleData.length > 0) {
+        const userIds = roleData.map(r => r.user_id);
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("first_name, display_name")
+          .in("user_id", userIds);
+        if (profiles && profiles.length > 0) {
+          const names = profiles.map(p => p.display_name || p.first_name).filter(Boolean).sort();
+          if (names.length > 0) { setSettersList(names as string[]); return; }
+        }
+      }
+      // Fallback: derive from all leads with a setter_name
+      const { data: leads } = await supabase
+        .from("early_access_requests")
+        .select("setter_name")
+        .not("setter_name", "is", null);
+      if (leads) {
+        const names = [...new Set(leads.map(l => l.setter_name).filter(Boolean))].sort() as string[];
+        setSettersList(names);
+      }
+    })();
+  }, []);
 
   // Load notes
   useEffect(() => {
     supabase.from("ea_lead_notes").select("*").eq("request_id", lead.id).order("created_at", { ascending: true })
       .then(({ data }) => { if (data) setNotes(data as LeadNote[]); });
   }, [lead.id]);
+
+  // Quick field update — single field, instant save
+  const updateField = useCallback(async (fields: Record<string, any>) => {
+    const { error } = await supabase.from("early_access_requests").update(fields).eq("id", lead.id);
+    if (error) toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    else { toast({ title: "Sauvegardé" }); onLeadUpdated?.(); }
+  }, [lead.id, toast, onLeadUpdated]);
 
   // Submit note
   const submitNote = async () => {
@@ -98,20 +145,25 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
     setSubmitting(false);
   };
 
-  // Save call data
+  // Save call data (includes call_done auto-set when outcome chosen)
   const saveCallData = async () => {
     setSaving(true);
     const { error } = await supabase.from("early_access_requests").update({
       call_outcome: outcome || null,
       call_debrief: debrief || null,
       offer_amount: offerAmount || null,
+      call_done: outcome ? true : callDone,
     }).eq("id", lead.id);
     if (error) toast({ title: "Erreur", description: error.message, variant: "destructive" });
-    else { toast({ title: "Sauvegardé" }); onLeadUpdated?.(); }
+    else {
+      toast({ title: "Sauvegardé" });
+      if (outcome) setCallDone(true);
+      onLeadUpdated?.();
+    }
     setSaving(false);
   };
 
-  const hasChanges = outcome !== (lead.call_outcome || "") || debrief !== (lead.call_debrief || "") || offerAmount !== (lead.offer_amount || "");
+  const hasChanges = outcome !== (lead.call_outcome || "") || debrief !== (lead.call_debrief || "") || offerAmount !== (lead.offer_amount || "") || callDone !== lead.call_done;
   const exp = expiresIn(lead.expires_at);
 
   // Pipeline: Form → EA (trial access) → Setting (setter contact) → Call (closing) → Payé
@@ -141,7 +193,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
               {lead.first_name?.[0]?.toUpperCase() || "?"}
             </button>
 
-            {/* Name + sub info */}
+            {/* Name + email + sub info */}
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-display font-bold text-white truncate">{lead.first_name || "Sans nom"}</h2>
@@ -149,6 +201,22 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                   <span className="text-[9px] font-display uppercase px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-400 border border-violet-500/25 shrink-0">
                     <Sparkles className="w-2.5 h-2.5 inline mr-0.5" />{lead.early_access_type}
                   </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3 mt-0.5">
+                {lead.email && (
+                  <button onClick={() => copy(lead.email, "Email")} className="flex items-center gap-1 text-[12px] text-white/50 hover:text-white/80 transition-colors group">
+                    <Mail className="w-3 h-3" />
+                    <span className="truncate max-w-[200px]">{lead.email}</span>
+                    <Copy className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                )}
+                {lead.phone && (
+                  <button onClick={() => copy(lead.phone, "Tel")} className="flex items-center gap-1 text-[12px] text-white/50 hover:text-white/80 transition-colors group">
+                    <Phone className="w-3 h-3" />
+                    <span>{lead.phone}</span>
+                    <Copy className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
                 )}
               </div>
               {lead.call_scheduled_at && (
@@ -382,7 +450,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
               )}
             </div>
 
-            {/* Setter attire — card cyan */}
+            {/* Setter attire — card cyan avec dropdown */}
             <div className="bg-[#111318] border border-cyan-500/25 rounded-xl p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -391,13 +459,79 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                   </div>
                   <div>
                     <p className="text-[10px] font-display uppercase tracking-widest text-cyan-400/60">Setter attire</p>
-                    <p className="text-lg font-display text-cyan-400 font-bold">{lead.setter_name || "Non assigne"}</p>
+                    <Select
+                      value={lead.setter_name || ""}
+                      onValueChange={async (v) => {
+                        const name = v === "__none__" ? null : v;
+                        await updateField({ setter_name: name });
+                      }}
+                    >
+                      <SelectTrigger className="w-48 h-9 bg-transparent border-none text-lg font-display text-cyan-400 font-bold p-0 focus:ring-0 hover:bg-cyan-500/10 rounded-lg transition-colors">
+                        <SelectValue placeholder="Non assigne" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[hsl(220,13%,8%)] border-white/[0.10] rounded-xl shadow-2xl backdrop-blur-xl p-1">
+                        <SelectItem value="__none__" className="text-white/40 font-display text-sm">Non assigne</SelectItem>
+                        {settersList.map(s => {
+                          const sc = getSetterColor(s);
+                          return <SelectItem key={s} value={s} className={`${sc.text} font-display text-sm`}>{s}</SelectItem>;
+                        })}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-                <div className="text-right text-[11px] text-white/30">
-                  <p>Assigne le</p>
-                  <p className="font-mono">{fmtDate(lead.created_at)}</p>
-                </div>
+              </div>
+            </div>
+
+            {/* Marquer comme contacte */}
+            <div className="bg-[#111318] border border-white/[0.12] rounded-xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-white/[0.08] flex items-center gap-2">
+                <PhoneForwarded className="w-4 h-4 text-purple-400" />
+                <span className="text-sm font-display text-purple-400 font-semibold">Contact</span>
+              </div>
+              <div className="p-4">
+                {lead.contacted ? (
+                  <div className="space-y-3">
+                    <div className={cn("rounded-xl p-3 border-2 flex items-center gap-3",
+                      lead.contact_method === "whatsapp" ? "bg-emerald-500/10 border-emerald-500/30" : "bg-amber-500/10 border-amber-500/30"
+                    )}>
+                      <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center",
+                        lead.contact_method === "whatsapp" ? "bg-emerald-500/20" : "bg-amber-500/20"
+                      )}>
+                        {lead.contact_method === "whatsapp" ? <MessageCircle className="w-5 h-5 text-emerald-400" /> : <Mail className="w-5 h-5 text-amber-400" />}
+                      </div>
+                      <div>
+                        <p className={cn("text-base font-display font-semibold", lead.contact_method === "whatsapp" ? "text-emerald-400" : "text-amber-400")}>
+                          {lead.contact_method === "whatsapp" ? "WhatsApp" : "Email"}
+                        </p>
+                        <p className="text-[10px] text-emerald-400/60">Contacte</p>
+                      </div>
+                      <div className="ml-auto w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => updateField({ contacted: false, contact_method: null })}
+                      className="w-full text-[11px] text-white/30 hover:text-white/60 font-display py-1.5 transition-colors"
+                    >
+                      Reinitialiser le contact
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => updateField({ contacted: true, contact_method: "whatsapp" })}
+                      className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all font-display text-sm font-semibold"
+                    >
+                      <MessageCircle className="w-4 h-4" /> WhatsApp
+                    </button>
+                    <button
+                      onClick={() => updateField({ contacted: true, contact_method: "email" })}
+                      className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all font-display text-sm font-semibold"
+                    >
+                      <Mail className="w-4 h-4" /> Email
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -416,11 +550,6 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                 </button>
               )}
             </div>
-
-            {/* Tout remettre a zero */}
-            <button className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.10] text-white/40 hover:text-white/70 hover:bg-white/[0.06] hover:border-white/[0.15] transition-all font-display text-sm">
-              <Clock className="w-4 h-4" /> Tout remettre a zero
-            </button>
 
             {/* Compte-rendu Setting */}
             <div className="bg-[#111318] border border-cyan-500/25 rounded-xl overflow-hidden">
@@ -599,6 +728,28 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
               </div>
             </div>
 
+            {/* Call effectue toggle */}
+            <div className="rounded-xl bg-[#111318] border border-white/[0.12] overflow-hidden">
+              <div className="px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Headphones className="w-4 h-4 text-white/40" />
+                  <span className="text-sm font-display text-white/70">Call effectue</span>
+                </div>
+                <button
+                  onClick={() => {
+                    const next = !callDone;
+                    setCallDone(next);
+                    updateField({ call_done: next });
+                  }}
+                  className={cn("w-10 h-5 rounded-full transition-colors cursor-pointer flex items-center px-0.5",
+                    callDone ? "bg-blue-500 justify-end" : "bg-white/10 justify-start"
+                  )}
+                >
+                  <div className="w-4 h-4 rounded-full bg-white shadow-sm transition-all" />
+                </button>
+              </div>
+            </div>
+
             {/* Issue du Call card */}
             <div className="rounded-xl bg-[#111318] border border-white/[0.12] overflow-hidden">
               <div className="px-4 py-2.5 border-b border-white/[0.08] flex items-center justify-between">
@@ -638,34 +789,66 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                     className="w-full px-4 py-3 rounded-xl bg-[#0c0d12] border border-white/[0.12] text-base text-white font-mono placeholder:text-white/15 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
                   />
                 </div>
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg">
-                  {lead.checkout_unlocked ? (
-                    <><CheckCircle2 className="w-4 h-4 text-emerald-400" /><span className="text-xs text-emerald-400 font-display">✓ Acces checkout debloque automatiquement</span></>
-                  ) : (
-                    <><Lock className="w-4 h-4 text-white/20" /><span className="text-xs text-white/30 font-display">Checkout verrouille</span></>
+                <button
+                  onClick={() => updateField({ checkout_unlocked: !lead.checkout_unlocked })}
+                  className={cn("flex items-center gap-2 px-3 py-2.5 rounded-lg w-full transition-all",
+                    lead.checkout_unlocked
+                      ? "bg-emerald-500/10 border border-emerald-500/25 hover:bg-emerald-500/15"
+                      : "bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06]"
                   )}
-                </div>
+                >
+                  {lead.checkout_unlocked ? (
+                    <><Unlock className="w-4 h-4 text-emerald-400" /><span className="text-xs text-emerald-400 font-display font-semibold">Checkout debloque</span></>
+                  ) : (
+                    <><Lock className="w-4 h-4 text-white/20" /><span className="text-xs text-white/30 font-display">Cliquer pour debloquer le checkout</span></>
+                  )}
+                </button>
               </div>
             </div>
 
-            {/* Payment card */}
-            {lead.paid_at && (
-              <div className="rounded-xl bg-[#111318] border border-emerald-500/30 overflow-hidden">
-                <div className="px-4 py-2.5 border-b border-emerald-500/20 flex items-center gap-2">
-                  <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-[10px] font-display uppercase tracking-widest text-emerald-400/70">Paiement collecte</span>
-                </div>
-                <div className="p-4 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
-                    <CreditCard className="w-6 h-6 text-emerald-400" />
+            {/* Payment card — editable manually
+               PAIEMENT: Actuellement manuel (admin set paid_amount + paid_at directement).
+               Pas d'integration Stripe/checkout pour l'instant.
+               Flow prevu : contracte → checkout_unlocked → lien paiement → webhook → auto-set paid_at/paid_amount */}
+            <div className={cn("rounded-xl bg-[#111318] border overflow-hidden", lead.paid_at ? "border-emerald-500/30" : "border-white/[0.12]")}>
+              <div className={cn("px-4 py-2.5 border-b flex items-center gap-2", lead.paid_at ? "border-emerald-500/20" : "border-white/[0.08]")}>
+                <CreditCard className={cn("w-3.5 h-3.5", lead.paid_at ? "text-emerald-400" : "text-white/30")} />
+                <span className={cn("text-[10px] font-display uppercase tracking-widest", lead.paid_at ? "text-emerald-400/70" : "text-white/40")}>Paiement</span>
+                <span className="text-[9px] text-white/20 ml-auto font-display">Manuel</span>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[10px] text-white/30 font-display uppercase mb-1.5">Montant (€)</p>
+                    <input
+                      value={paidAmount} onChange={e => setPaidAmount(e.target.value)}
+                      placeholder="0"
+                      type="number"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#0c0d12] border border-white/[0.12] text-sm text-white font-mono placeholder:text-white/15 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all"
+                    />
                   </div>
                   <div>
-                    <p className="text-3xl font-display font-bold text-emerald-400">{lead.paid_amount}€</p>
-                    <p className="text-[10px] text-white/30 mt-0.5">{fmtDate(lead.paid_at)}</p>
+                    <p className="text-[10px] text-white/30 font-display uppercase mb-1.5">Date paiement</p>
+                    <input
+                      value={paidAt} onChange={e => setPaidAt(e.target.value)}
+                      type="datetime-local"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#0c0d12] border border-white/[0.12] text-sm text-white font-mono focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all [color-scheme:dark]"
+                    />
                   </div>
                 </div>
+                {(paidAmount !== (lead.paid_amount?.toString() || "") || paidAt !== (lead.paid_at ? new Date(lead.paid_at).toISOString().slice(0, 16) : "")) && (
+                  <Button
+                    onClick={() => updateField({
+                      paid_amount: paidAmount ? parseFloat(paidAmount) : null,
+                      paid_at: paidAt ? new Date(paidAt).toISOString() : null,
+                    })}
+                    className="w-full h-9 bg-emerald-500 hover:bg-emerald-500/90 text-white font-display text-sm rounded-xl"
+                  >
+                    Enregistrer le paiement
+                  </Button>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Save button */}
             {hasChanges && (
