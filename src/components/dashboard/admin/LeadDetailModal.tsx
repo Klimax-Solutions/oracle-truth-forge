@@ -168,6 +168,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated }: Props)
             {([
               { key: "call" as ModalView, label: "Gestion Call", icon: Headphones },
               { key: "lead" as ModalView, label: "Fiche Lead", icon: Eye },
+              { key: "setting" as ModalView, label: "Setting", icon: PhoneForwarded },
             ]).map(t => (
               <button
                 key={t.key}
@@ -185,8 +186,11 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated }: Props)
           </div>
         </div>
 
-        {/* ── Body ── */}
-        {view === "lead" ? (
+        {/* ── Body: Left (switches by view) + Right (Timeline always visible) ── */}
+        <div className="flex-1 flex overflow-hidden">
+
+          {/* LEFT — Content switches by view */}
+          {view === "lead" ? (
           /* ── FICHE LEAD VIEW ── */
           <div className="flex-1 overflow-auto p-6 space-y-5">
             {/* Pipeline visual */}
@@ -298,8 +302,119 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated }: Props)
               {lead.user_id && <p>Oracle User: {lead.user_id}</p>}
             </div>
           </div>
+        ) : view === "setting" ? (
+          /* ── SETTING VIEW ── */
+          <div className="flex-1 overflow-auto p-6 space-y-5">
+            {/* Setting header */}
+            <div className="bg-[#111318] border border-emerald-500/25 rounded-xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-emerald-500/15 bg-emerald-500/[0.05]">
+                <div className="flex items-center gap-2">
+                  <PhoneForwarded className="w-4 h-4 text-emerald-400" />
+                  <span className="text-sm font-display uppercase tracking-widest text-emerald-400">Setting</span>
+                </div>
+              </div>
+              <div className="p-5 space-y-4">
+                {/* Setter info */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-white/40">Setter assigne</span>
+                  <span className="text-base font-display text-cyan-400 font-semibold">{lead.setter_name || "Non assigne"}</span>
+                </div>
+
+                {/* Contact method */}
+                <div>
+                  <p className="text-[10px] font-display uppercase tracking-widest text-white/30 mb-2">Methode de contact</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { method: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "emerald" },
+                      { method: "email", label: "Email", icon: Mail, color: "amber" },
+                      { method: "opt_in_call", label: "Telephone", icon: Phone, color: "cyan" },
+                    ].map(m => {
+                      const isActive = lead.contact_method === m.method;
+                      const colors: Record<string, string> = {
+                        emerald: isActive ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400" : "",
+                        amber: isActive ? "bg-amber-500/15 border-amber-500/40 text-amber-400" : "",
+                        cyan: isActive ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-400" : "",
+                      };
+                      return (
+                        <div key={m.method} className={cn("rounded-xl border-2 p-3 text-center transition-all",
+                          isActive ? colors[m.color] : "border-white/[0.08] text-white/25"
+                        )}>
+                          <m.icon className={cn("w-6 h-6 mx-auto mb-1", isActive ? "" : "opacity-30")} />
+                          <p className="text-xs font-display">{m.label}</p>
+                          {isActive && lead.contacted && (
+                            <p className="text-[9px] mt-1 opacity-70">✓ Contacte</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Setting status */}
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+                  {lead.contacted ? (
+                    <>
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                      <div>
+                        <p className="text-sm font-display text-emerald-400 font-semibold">Setting effectue</p>
+                        <p className="text-[10px] text-white/30">Le lead a ete contacte avec succes</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="w-5 h-5 text-amber-400" />
+                      <div>
+                        <p className="text-sm font-display text-amber-400 font-semibold">En attente de setting</p>
+                        <p className="text-[10px] text-white/30">Le lead n'a pas encore ete contacte</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Debrief setting */}
+            <div className="bg-[#111318] border border-white/[0.12] rounded-xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-white/[0.08]">
+                <span className="text-[10px] font-display uppercase tracking-widest text-red-400/70">Debrief setting</span>
+              </div>
+              <div className="p-5">
+                <Textarea
+                  value={debrief} onChange={e => setDebrief(e.target.value)}
+                  placeholder="Notes du setting call... Ex: S'interesse au trading depuis 3 ans, pret a investir dans sa fourchette de prix..."
+                  className="min-h-[140px] bg-[#0c0d12] border-white/[0.10] text-sm text-white placeholder:text-white/15 resize-none rounded-xl"
+                />
+              </div>
+            </div>
+
+            {/* Contact info */}
+            <div className="bg-[#111318] border border-white/[0.12] rounded-xl p-5 space-y-3">
+              <h3 className="text-[10px] font-display uppercase tracking-widest text-white/30">Coordonnees du lead</h3>
+              <div className="space-y-2">
+                <button onClick={() => copy(lead.email, "Email")} className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-lg border border-white/[0.08] hover:border-white/[0.15] transition-all group">
+                  <Mail className="w-4 h-4 text-white/30" />
+                  <span className="text-sm text-white/80 flex-1 truncate">{lead.email}</span>
+                  <Copy className="w-3.5 h-3.5 text-white/15 group-hover:text-white/40" />
+                </button>
+                {lead.phone && (
+                  <button onClick={() => copy(lead.phone, "Tel")} className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-lg border border-white/[0.08] hover:border-white/[0.15] transition-all group">
+                    <Phone className="w-4 h-4 text-white/30" />
+                    <span className="text-sm text-white/80 flex-1">{lead.phone}</span>
+                    <Copy className="w-3.5 h-3.5 text-white/15 group-hover:text-white/40" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Save */}
+            {hasChanges && (
+              <Button onClick={saveCallData} disabled={saving} className="w-full h-11 bg-primary hover:bg-primary/90 font-display text-sm tracking-wide shadow-[0_0_20px_rgba(25,183,201,0.2)] rounded-xl">
+                {saving ? "Sauvegarde..." : "Sauvegarder"}
+              </Button>
+            )}
+          </div>
         ) : (
-        /* ── CALL VIEW (3 columns) ── */
+        /* ── CALL VIEW — 2 columns (Info+Closing | ) ── */
         <div className="flex-1 flex overflow-hidden">
 
           {/* COL 1 — Informations + Setting (spike-launch exact) */}
@@ -518,8 +633,11 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated }: Props)
             )}
           </div>
 
-          {/* COL 3 — Timeline + Notes */}
-          <div className="w-[340px] shrink-0 flex flex-col overflow-hidden bg-[#0a0b10]">
+        </div>
+        )}
+
+          {/* TIMELINE — Always visible on the right, all views */}
+          <div className="w-[340px] shrink-0 flex flex-col overflow-hidden bg-[#0a0b10] border-l border-white/[0.08]">
             <div className="shrink-0 px-5 py-3.5 border-b border-white/[0.08] flex items-center gap-2.5">
               <MessageCircle className="w-4 h-4 text-white/30" />
               <h3 className="text-sm font-display text-white/80 font-medium">Timeline</h3>
@@ -588,7 +706,6 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated }: Props)
             </div>
           </div>
         </div>
-        )}
       </div>
     </div>
   );
