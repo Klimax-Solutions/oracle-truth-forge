@@ -138,16 +138,13 @@ export default function AdminFunnelList({ onEditFunnel }: { onEditFunnel?: (id: 
 
   if (loading) {
     return (
-      
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   return (
-    
       <div className="min-h-screen bg-[#08080d]">
         {/* Header */}
         <header className="border-b border-white/[0.05] bg-black/60 backdrop-blur-xl sticky top-0 z-50">
@@ -339,6 +336,5 @@ export default function AdminFunnelList({ onEditFunnel }: { onEditFunnel?: (id: 
           )}
         </main>
       </div>
-    
   );
 }
