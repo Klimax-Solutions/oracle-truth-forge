@@ -759,8 +759,7 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
   }[saveStatus];
 
   return (
-    
-      <div className="h-screen flex flex-col bg-[#08080d] overflow-hidden">
+      <div className="h-full flex flex-col bg-[#08080d] overflow-hidden">
 
         {/* Header */}
         <header className="relative border-b border-white/[0.05] bg-black/60 backdrop-blur-xl shrink-0 z-50">
@@ -1056,6 +1055,5 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
           </div>
         </div>
       </div>
-    
   );
 }
