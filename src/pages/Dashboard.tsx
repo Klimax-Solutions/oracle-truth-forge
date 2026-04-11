@@ -134,12 +134,14 @@ const Dashboard = () => {
     getEffectiveRoles(realIsSuperAdmin, simulatedRole, realIsSetter);
   
   // Sync activeTab → URL (?tab=crm, ?tab=agenda, etc.)
+  // Only depend on activeTab — not searchParams (would cause infinite loop)
   useEffect(() => {
-    const current = searchParams.get('tab');
-    if (current !== activeTab) {
-      setSearchParams({ tab: activeTab }, { replace: true });
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') !== activeTab) {
+      params.set('tab', activeTab);
+      window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
     }
-  }, [activeTab, searchParams, setSearchParams]);
+  }, [activeTab]);
 
   // Use effective roles throughout the dashboard
   const isAdmin = effectiveIsAdmin;
