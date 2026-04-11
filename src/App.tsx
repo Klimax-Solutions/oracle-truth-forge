@@ -13,6 +13,9 @@ import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import EarlyAccess from "./pages/EarlyAccess";
 import SetupPasswordPage from "./pages/SetupPasswordPage";
+import FunnelApply from "./pages/funnel/FunnelApply";
+import FunnelDiscovery from "./pages/funnel/FunnelDiscovery";
+import FunnelFinal from "./pages/funnel/FunnelFinal";
 import { SuccessNotification } from "./components/dashboard/SuccessNotification";
 
 const queryClient = new QueryClient({
@@ -40,6 +43,9 @@ const App = () => (
           <Route path="/early-access" element={<EarlyAccess />} />
           <Route path="/setup-password" element={<SetupPasswordPage />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/:slug/apply" element={<FunnelApply />} />
+          <Route path="/:slug/discovery" element={<FunnelDiscovery />} />
+          <Route path="/:slug/final" element={<FunnelFinal />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <SuccessNotification />
