@@ -32,6 +32,7 @@ interface Funnel {
 
 export default function AdminFunnelList({ onEditFunnel }: { onEditFunnel?: (id: string) => void }) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -69,9 +70,9 @@ export default function AdminFunnelList({ onEditFunnel }: { onEditFunnel?: (id: 
       .single();
 
     if (error) {
-      // toast.error(error.message.includes('unique') ? 'Ce slug existe déjà' : error.message);
+      toast({ title: 'Erreur', description: error.message.includes('unique') ? 'Ce slug existe deja' : error.message, variant: 'destructive' });
     } else {
-      // toast.success('Funnel créé');
+      toast({ title: 'Funnel cree' });
       setShowCreate(false);
       setNewName('');
       setNewSlug('');
@@ -93,7 +94,7 @@ export default function AdminFunnelList({ onEditFunnel }: { onEditFunnel?: (id: 
       .single();
 
     if (error || !newFunnel) {
-      // toast.error(error?.message || 'Erreur');
+      toast({ title: 'Erreur', description: error?.message || 'Erreur', variant: 'destructive' });
       return;
     }
 
@@ -113,7 +114,7 @@ export default function AdminFunnelList({ onEditFunnel }: { onEditFunnel?: (id: 
       });
     }
 
-    // toast.success('Funnel dupliqué avec sa configuration');
+    toast({ title: 'Funnel duplique avec sa configuration' });
     loadFunnels();
   };
 
@@ -131,7 +132,7 @@ export default function AdminFunnelList({ onEditFunnel }: { onEditFunnel?: (id: 
     const { error } = await supabase.from('funnels').delete().eq('id', funnel.id);
     if (error) { console.warn(error.message); }
     else {
-      // toast.success('Funnel supprimé');
+      toast({ title: 'Funnel supprime' });
       loadFunnels();
     }
   };
@@ -145,15 +146,15 @@ export default function AdminFunnelList({ onEditFunnel }: { onEditFunnel?: (id: 
   }
 
   return (
-      <div className="min-h-screen bg-[#08080d]">
+      <div className="min-h-full bg-[#08080d]">
         {/* Header */}
-        <header className="border-b border-white/[0.05] bg-black/60 backdrop-blur-xl sticky top-0 z-50">
+        <header className="border-b border-white/[0.10] bg-black/60 backdrop-blur-xl sticky top-0 z-50">
           <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
           <div className="container max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="hover:bg-white/[0.04] text-white/50 hover:text-white h-8 w-8">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
+              <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                <Layers className="h-4 w-4 text-primary" />
+              </div>
               <div>
                 <h1 className="font-display text-lg tracking-[0.2em] text-white uppercase">Funnels</h1>
                 <p className="text-[10px] text-primary/50 tracking-wider">{funnels.length} funnel{funnels.length !== 1 ? 's' : ''}</p>
@@ -252,7 +253,7 @@ export default function AdminFunnelList({ onEditFunnel }: { onEditFunnel?: (id: 
                       : "bg-white/[0.01] border-white/[0.04] opacity-60"
                   )}
                 >
-                  <div className="p-5 flex items-center gap-5">
+                  <div className="p-5 flex items-center gap-5 cursor-pointer" onClick={() => onEditFunnel?.(funnel.id)}>
                     {/* Icon */}
                     <div className={cn(
                       "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border",

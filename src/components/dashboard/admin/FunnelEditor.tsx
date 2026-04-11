@@ -63,7 +63,7 @@ function Section({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-5 pb-5 space-y-4 border-t border-white/[0.05] pt-4">
+            <div className="px-5 pb-5 space-y-4 border-t border-white/[0.10] pt-4">
               {children}
             </div>
           </motion.div>
@@ -193,7 +193,7 @@ function QuestionCard({
                         }}
                         disabled={!canEdit}
                         className={cn(
-                          "bg-white/[0.02] border-white/[0.05] text-white text-xs h-8 rounded-lg flex-1 transition-all",
+                          "bg-white/[0.02] border-white/[0.10] text-white text-xs h-8 rounded-lg flex-1 transition-all",
                           opt.disqualifying && "border-amber-500/20 bg-amber-500/[0.03]"
                         )}
                       />
@@ -408,7 +408,7 @@ function PreviewFinal({ c }: { c: any }) {
             <span className="text-xs text-white/25">/2</span>
             <span className="text-sm font-display text-white">{c.final_step2_title || 'Une question ?'}</span>
           </div>
-          <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
+          <div className="bg-white/[0.02] border border-white/[0.10] rounded-xl p-4">
             <div className="h-20 rounded-lg bg-white/[0.02] border border-white/[0.04] mb-3 flex items-start p-3">
               <span className="text-xs text-white/15">{c.final_step2_placeholder || 'Écris ta question...'}</span>
             </div>
@@ -673,6 +673,7 @@ function BlockEditor({
 
 export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; onBack?: () => void }) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   // Oracle: no tenant context, use null (hook handles fallback)
   const { config, loading, saving, saveStatus, save, setConfig } = useAdminFunnelConfig(null, funnelId);
   const [activeTab, setActiveTab] = useState('landing');
@@ -718,9 +719,9 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
   const handleSave = async () => {
     try {
       await save(config);
-      // toast.success('Configuration sauvegardée');
+      toast({ title: 'Configuration sauvegardee' });
     } catch (err: any) {
-      // toast.error(err.message || 'Erreur lors de la sauvegarde');
+      toast({ title: 'Erreur', description: err.message || 'Erreur lors de la sauvegarde', variant: 'destructive' });
     }
   };
 
@@ -762,7 +763,7 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
       <div className="h-full flex flex-col bg-[#08080d] overflow-hidden">
 
         {/* Header */}
-        <header className="relative border-b border-white/[0.05] bg-black/60 backdrop-blur-xl shrink-0 z-50">
+        <header className="relative border-b border-white/[0.10] bg-black/60 backdrop-blur-xl shrink-0 z-50">
           <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
           <div className="px-5 h-14 flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -815,9 +816,9 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
         <div className="flex-1 flex overflow-hidden">
 
           {/* LEFT — Config (380px) */}
-          <div className="w-[380px] shrink-0 border-r border-white/[0.05] flex flex-col overflow-hidden bg-[#0a0a10]">
+          <div className="w-[380px] shrink-0 border-r border-white/[0.10] flex flex-col overflow-hidden bg-[#0a0a10]">
             {/* Tabs */}
-            <div className="shrink-0 px-4 py-3 border-b border-white/[0.05] flex flex-wrap gap-1.5">
+            <div className="shrink-0 px-4 py-3 border-b border-white/[0.10] flex flex-wrap gap-1.5">
               {tabs.map((t) => (
                 <TabButton key={t.value} active={activeTab === t.value} icon={t.icon} label={t.label} onClick={() => setActiveTab(t.value)} />
               ))}
@@ -828,7 +829,7 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
 
               {/* Page slug + external link */}
               {activeTabInfo?.slug && (
-                <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.02] border border-white/[0.10]">
                   <div className="flex items-center gap-2">
                     <code className="text-[11px] text-primary/70 font-mono">{activeTabInfo.slug}</code>
                   </div>
@@ -1038,7 +1039,7 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
 
           {/* RIGHT — Preview (flex-1) */}
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="shrink-0 px-5 py-2.5 border-b border-white/[0.05] bg-black/30 flex items-center justify-between">
+            <div className="shrink-0 px-5 py-2.5 border-b border-white/[0.10] bg-black/30 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Eye className="h-3.5 w-3.5 text-white/25" />
                 <span className="font-display text-[10px] tracking-[0.2em] uppercase text-white/25">Aperçu en direct</span>
