@@ -31,6 +31,7 @@ import { getSetterColor } from "@/lib/admin/setterColors";
 import AgendaTab from "./AgendaTab";
 import CockpitTab from "./CockpitTab";
 import ConversionsTab from "./ConversionsTab";
+import PeriodSelector, { type PeriodMode } from "./PeriodSelector";
 
 // ── Types — CRMLead imported from @/lib/admin/types (source de verite unique) ──
 type PipelineLead = CRMLead; // Alias local pour compatibilite
@@ -69,8 +70,9 @@ const BG = "bg-[hsl(220,15%,8%)]";
 
 function avatarClasses(l: PipelineLead): { bg: string; text: string; dot?: string } {
   if (l.paid_at) return { bg: "bg-gradient-to-br from-emerald-500/30 to-emerald-600/10 border-emerald-500/30", text: "text-emerald-400", dot: "bg-emerald-500" };
+  if (l.call_outcome === "contracted") return { bg: "bg-gradient-to-br from-violet-500/30 to-violet-600/10 border-violet-500/30", text: "text-violet-400", dot: "bg-violet-500" };
   if (l.call_done || l.call_booked) return { bg: "bg-gradient-to-br from-blue-500/30 to-blue-600/10 border-blue-500/30", text: "text-blue-400", dot: "bg-blue-500" };
-  if (l.contacted) return { bg: "bg-gradient-to-br from-violet-500/25 to-violet-600/10 border-violet-500/30", text: "text-violet-400" };
+  if (l.contacted) return { bg: "bg-gradient-to-br from-purple-500/25 to-purple-600/10 border-purple-500/30", text: "text-purple-400" };
   if (l.status === "approuvée") return { bg: "bg-gradient-to-br from-cyan-500/25 to-cyan-600/10 border-cyan-500/25", text: "text-cyan-400" };
   return { bg: "bg-gradient-to-br from-white/10 to-white/5 border-white/10", text: "text-white/60" };
 }
@@ -103,14 +105,15 @@ function DateBadge({ date, color = "amber" }: { date: string | null; color?: str
 }
 
 function OutcomeBadge({ outcome }: { outcome: string | null }) {
-  if (!outcome) return null;
   const cfg: Record<string, { label: string; cls: string }> = {
     contracted: { label: "Contracte ✓", cls: "text-violet-300 bg-violet-500/20 border-violet-500/30" },
     closing_in_progress: { label: "En cours", cls: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
     not_closed: { label: "Non close", cls: "text-red-300 bg-red-500/20 border-red-500/30" },
   };
+  if (!outcome || !cfg[outcome]) {
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-display font-medium border text-white/40 bg-white/[0.04] border-white/[0.10]">Call fait</span>;
+  }
   const c = cfg[outcome];
-  if (!c) return null;
   return <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-display font-semibold border", c.cls)}>{c.label}</span>;
 }
 
@@ -269,6 +272,7 @@ export default function CRMDashboard() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<StageFilter>("all");
+  const [setterFilter, setSetterFilter] = useState("all");
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedLead, setSelectedLead] = useState<PipelineLead | null>(null);
 
@@ -323,13 +327,17 @@ export default function CRMDashboard() {
     return c;
   }, [leads]);
 
+  // Unique setters list for filter dropdown
+  const settersList = useMemo(() => [...new Set(leads.map(l => l.setter_name).filter(Boolean))].sort() as string[], [leads]);
+
   const filtered = useMemo(() => {
     let r = [...leads];
     if (search) { const q = search.toLowerCase(); r = r.filter(l => l.first_name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q) || l.phone.includes(q)); }
     if (stageFilter !== "all") r = r.filter(l => getStage(l) === stageFilter);
+    if (setterFilter !== "all") r = r.filter(l => l.setter_name === setterFilter);
     r.sort((a, b) => sortAsc ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime() : new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     return r;
-  }, [leads, search, stageFilter, sortAsc]);
+  }, [leads, search, stageFilter, setterFilter, sortAsc]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -385,45 +393,68 @@ export default function CRMDashboard() {
             </div>
           </div>
 
-          {/* Filters + KPIs bar */}
-          <div className="px-6 pb-4 flex items-center justify-between gap-4 flex-wrap">
-            {/* Left: Filter */}
-            <Select value={stageFilter} onValueChange={v => setStageFilter(v as StageFilter)}>
-              <SelectTrigger className="w-48 h-10 bg-white/[0.04] border-white/[0.08] rounded-xl text-sm text-white/70 font-display hover:bg-white/[0.06] transition-all">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-[#111318] border-white/[0.10] rounded-xl shadow-2xl">
-                <SelectItem value="all" className="text-white/60 font-display text-sm">Tous les leads</SelectItem>
-                <SelectItem value="pending" className="text-white/50 font-display text-sm">En attente</SelectItem>
-                <SelectItem value="approved" className="text-cyan-400 font-display text-sm">EA Approuve</SelectItem>
-                <SelectItem value="contacted" className="text-violet-400 font-display text-sm">Contacte</SelectItem>
-                <SelectItem value="call_booked" className="text-blue-400 font-display text-sm">Call booke</SelectItem>
-                <SelectItem value="call_done" className="text-blue-400 font-display text-sm">Call fait</SelectItem>
-                <SelectItem value="paid" className="text-emerald-400 font-display text-sm">Paye</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Filters + KPIs bar — spike-launch exact layout */}
+          <div className="px-6 pb-3 flex items-center justify-between h-12 rounded-xl bg-white/[0.03] border border-white/[0.08] mx-6 mb-4 px-4">
+            {/* Left: Filters */}
+            <div className="flex items-center gap-3">
+              <Select value={stageFilter} onValueChange={v => setStageFilter(v as StageFilter)}>
+                <SelectTrigger className="w-44 h-9 bg-white/[0.04] border-white/[0.08] rounded-xl text-white/80 text-sm font-display tracking-wide hover:bg-white/[0.06] hover:border-white/[0.12] transition-all">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[hsl(220,13%,8%)] border-white/[0.10] rounded-xl shadow-2xl backdrop-blur-xl p-1">
+                  <SelectItem value="all" className="text-white/70 font-display text-sm">Tous les leads</SelectItem>
+                  <SelectItem value="pending" className="text-white/50 font-display text-sm">En attente</SelectItem>
+                  <SelectItem value="approved" className="text-cyan-400/80 font-display text-sm">EA Approuve</SelectItem>
+                  <SelectItem value="contacted" className="text-purple-400/80 font-display text-sm">Contacte</SelectItem>
+                  <SelectItem value="call_booked" className="text-blue-400/80 font-display text-sm">Calls</SelectItem>
+                  <SelectItem value="call_done" className="text-blue-400/80 font-display text-sm">Call fait</SelectItem>
+                  <SelectItem value="paid" className="text-emerald-400/80 font-display text-sm">Paye</SelectItem>
+                </SelectContent>
+              </Select>
 
-            {/* Right: KPIs as pill badges — like spike-launch */}
-            <div className="flex items-center gap-2">
-              <button onClick={() => setStageFilter("all")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "all" ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-white/[0.03] border-white/[0.10] text-white/50 hover:border-white/[0.12]")}>
-                <span className="font-display font-bold">{counts.form}</span>
-                <span className="text-[10px] font-display uppercase">Forms</span>
-              </button>
-              <button onClick={() => setStageFilter("call_booked")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "call_booked" ? "bg-amber-500/15 border-amber-500/30 text-amber-400" : "bg-white/[0.03] border-white/[0.10] text-white/50 hover:border-white/[0.12]")}>
-                <span className="font-display font-bold">{counts.calls}</span>
-                <span className="text-[10px] font-display uppercase">Calls</span>
-              </button>
-              <button onClick={() => setStageFilter("approved")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "approved" ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400" : "bg-white/[0.03] border-white/[0.10] text-white/50 hover:border-white/[0.12]")}>
-                <span className="font-display font-bold">{counts.ea}</span>
-                <span className="text-[10px] font-display uppercase">EA</span>
-              </button>
-              <button onClick={() => setStageFilter("paid")} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm", stageFilter === "paid" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "bg-white/[0.03] border-white/[0.10] text-white/50 hover:border-white/[0.12]")}>
-                <span className="font-display font-bold">{counts.paid}</span>
-                <span className="text-[10px] font-display uppercase">Paye</span>
-              </button>
-              <div className="flex items-center gap-1.5 ml-2">
+              {/* Setter filter */}
+              {settersList.length > 0 && (() => {
+                const activeColor = setterFilter !== 'all' ? getSetterColor(setterFilter) : null;
+                return (
+                  <Select value={setterFilter} onValueChange={setSetterFilter}>
+                    <SelectTrigger className={cn("w-44 h-9 rounded-xl text-sm font-display tracking-wide transition-all",
+                      activeColor
+                        ? `${activeColor.filterGradient} ${activeColor.border} ${activeColor.text} shadow-lg ${activeColor.shadow}`
+                        : "bg-white/[0.04] border-white/[0.08] text-white/80 hover:bg-white/[0.06] hover:border-white/[0.12]"
+                    )}>
+                      <Users className={cn("w-3.5 h-3.5 mr-2", activeColor ? activeColor.icon : "text-white/40")} />
+                      <SelectValue placeholder="Tous setters" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[hsl(220,13%,8%)] border-white/[0.10] rounded-xl shadow-2xl backdrop-blur-xl p-1">
+                      <SelectItem value="all" className="text-white/70 font-display text-sm">Tous setters</SelectItem>
+                      {settersList.map(s => {
+                        const sc = getSetterColor(s);
+                        return <SelectItem key={s} value={s} className={`${sc.text} font-display text-sm`}>{s}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
+            </div>
+
+            {/* Right: KPIs */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <span className="text-base font-display text-amber-400">{counts.form}</span>
+                <span className="text-amber-400/60 text-[10px] font-medium uppercase">Forms</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <span className="text-base font-display text-blue-400">{counts.calls}</span>
+                <span className="text-blue-400/60 text-[10px] font-medium uppercase">Calls</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <span className="text-base font-display text-emerald-400">{counts.paid}</span>
+                <span className="text-emerald-400/60 text-[10px] font-medium uppercase">Paye</span>
+              </div>
+              <div className="w-px h-6 bg-white/10 mx-1" />
+              <div className="flex items-center gap-1.5">
                 <span className="text-lg font-display text-white font-bold tabular-nums">{leads.length}</span>
-                <span className="text-[10px] text-white/30 font-display uppercase">Total</span>
+                <span className="text-white/30 text-[10px] uppercase tracking-wider">total</span>
               </div>
             </div>
           </div>
@@ -547,10 +578,7 @@ export default function CRMDashboard() {
                         {lead.call_no_show ? (
                           <span className="text-[10px] font-display text-red-300 bg-red-500/10 px-2 py-0.5 rounded-md border border-dashed border-red-500/40">No-show</span>
                         ) : lead.call_done ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <CheckCircle2 className="w-4 h-4 text-blue-400" />
-                            <OutcomeBadge outcome={lead.call_outcome} />
-                          </div>
+                          <OutcomeBadge outcome={lead.call_outcome} />
                         ) : lead.call_booked ? (
                           <div className="flex items-center justify-center gap-1.5">
                             <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
