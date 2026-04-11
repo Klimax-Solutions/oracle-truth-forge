@@ -164,244 +164,289 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated }: Props)
         {/* ── Body: 3 columns (Info | Gestion Call | Timeline) ── */}
         <div className="flex-1 flex overflow-hidden">
 
-          {/* COL 1 — Informations + Setting */}
-          <div className="w-[280px] shrink-0 overflow-auto p-5 space-y-5 border-r border-white/[0.08]">
+          {/* COL 1 — Informations + Setting (spike-launch exact) */}
+          <div className="w-[320px] shrink-0 overflow-auto p-5 space-y-4 border-r border-white/[0.08]">
 
-            {/* Contact */}
-            <section>
-              <h3 className="text-[10px] font-display uppercase tracking-widest text-white/30 mb-3">Informations</h3>
-              <div className="space-y-2">
-                <button onClick={() => copy(lead.email, "Email")} className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-lg border border-white/[0.08] hover:border-white/[0.15] hover:bg-white/[0.03] transition-all">
-                  <Mail className="w-4 h-4 text-white/30 shrink-0" />
-                  <span className="text-sm text-white/80 flex-1 truncate">{lead.email}</span>
-                  <Copy className="w-3.5 h-3.5 text-white/20 shrink-0" />
+            {/* Contact cards */}
+            <div className="space-y-2">
+              <button onClick={() => copy(lead.email, "Email")} className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl bg-[#111318] border border-white/[0.12] hover:border-white/[0.20] hover:bg-[#151820] transition-all group">
+                <Mail className="w-4 h-4 text-white/40 shrink-0" />
+                <span className="text-sm text-white/90 flex-1 truncate">{lead.email}</span>
+                <Copy className="w-3.5 h-3.5 text-white/20 group-hover:text-white/50 shrink-0 transition-colors" />
+              </button>
+              {lead.phone && (
+                <button onClick={() => copy(lead.phone, "Tel")} className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl bg-[#111318] border border-white/[0.12] hover:border-white/[0.20] hover:bg-[#151820] transition-all group">
+                  <Phone className="w-4 h-4 text-white/40 shrink-0" />
+                  <span className="text-sm text-white/90 flex-1">{lead.phone}</span>
+                  <Copy className="w-3.5 h-3.5 text-white/20 group-hover:text-white/50 shrink-0 transition-colors" />
                 </button>
-                {lead.phone && (
-                  <button onClick={() => copy(lead.phone, "Tel")} className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-lg border border-white/[0.08] hover:border-white/[0.15] hover:bg-white/[0.03] transition-all">
-                    <Phone className="w-4 h-4 text-white/30 shrink-0" />
-                    <span className="text-sm text-white/80 flex-1">{lead.phone}</span>
-                    <Copy className="w-3.5 h-3.5 text-white/20 shrink-0" />
-                  </button>
-                )}
-              </div>
-            </section>
+              )}
+            </div>
 
-            {/* No-show toggle */}
-            {(lead.call_booked || lead.call_done) && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-white/[0.08]">
-                <UserX className="w-4 h-4 text-white/30" />
-                <span className="text-xs text-white/50 font-display">No-show</span>
-                <div className={cn("ml-auto w-8 h-4 rounded-full transition-colors cursor-pointer", lead.call_no_show ? "bg-red-500" : "bg-white/10")} />
+            {/* Call date */}
+            {lead.call_scheduled_at && (
+              <div className="text-xs text-white/40 flex items-center gap-1.5 px-1">
+                <Clock className="w-3 h-3" />
+                Call reserve le {fmtDate(lead.call_scheduled_at)}
               </div>
             )}
 
-            {/* Setting */}
-            <section>
-              <h3 className="text-[10px] font-display uppercase tracking-widest text-emerald-400/60 mb-3">Setting</h3>
-              {lead.setter_name ? (
-                <div className="rounded-lg border border-white/[0.08] p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-white/40">par</span>
-                    <span className="text-sm font-display text-cyan-400">{lead.setter_name}</span>
-                  </div>
-                  {lead.contacted && lead.contact_method && (
-                    <div className={cn("rounded-lg p-2.5 border flex items-center gap-2",
-                      lead.contact_method === "whatsapp" ? "bg-emerald-500/10 border-emerald-500/25" : "bg-amber-500/10 border-amber-500/25"
-                    )}>
-                      {lead.contact_method === "whatsapp" ? (
-                        <>
-                          <MessageCircle className="w-5 h-5 text-emerald-400" />
-                          <span className="text-sm font-display text-emerald-400">WhatsApp</span>
-                        </>
-                      ) : (
-                        <>
-                          <Mail className="w-5 h-5 text-amber-400" />
-                          <span className="text-sm font-display text-amber-400">Email</span>
-                        </>
-                      )}
+            {/* Setting card */}
+            <div className="rounded-xl bg-[#111318] border border-white/[0.12] overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-white/[0.08] flex items-center gap-2">
+                <PhoneForwarded className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-[10px] font-display uppercase tracking-widest text-emerald-400">Setting</span>
+              </div>
+              <div className="p-4 space-y-3">
+                {lead.setter_name ? (
+                  <>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-white/40">par</span>
+                      <span className="font-display text-cyan-400 font-medium">{lead.setter_name}</span>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-white/20">Non assigne</p>
-              )}
-            </section>
+                    {lead.contacted && lead.contact_method && (
+                      <div className={cn("rounded-xl p-3 border-2 flex items-center gap-3",
+                        lead.contact_method === "whatsapp"
+                          ? "bg-emerald-500/10 border-emerald-500/30"
+                          : "bg-amber-500/10 border-amber-500/30"
+                      )}>
+                        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center",
+                          lead.contact_method === "whatsapp" ? "bg-emerald-500/20" : "bg-amber-500/20"
+                        )}>
+                          {lead.contact_method === "whatsapp"
+                            ? <MessageCircle className="w-5 h-5 text-emerald-400" />
+                            : <Mail className="w-5 h-5 text-amber-400" />
+                          }
+                        </div>
+                        <div>
+                          <p className={cn("text-base font-display font-semibold",
+                            lead.contact_method === "whatsapp" ? "text-emerald-400" : "text-amber-400"
+                          )}>
+                            {lead.contact_method === "whatsapp" ? "WhatsApp" : "Email"}
+                          </p>
+                          {lead.contacted && (
+                            <p className="text-[10px] text-emerald-400/60">✓ A repondu</p>
+                          )}
+                        </div>
+                        {lead.contacted && (
+                          <div className="ml-auto w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {lead.call_debrief && (
+                      <div>
+                        <p className="text-[10px] font-display uppercase tracking-widest text-red-400/70 mb-1.5">Debrief setting</p>
+                        <div className="bg-white/[0.03] border border-white/[0.08] rounded-lg p-3">
+                          <p className="text-xs text-white/70 leading-relaxed">{lead.call_debrief}</p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-white/25 py-2">Non assigne</p>
+                )}
+              </div>
+            </div>
 
-            {/* Oracle Activity */}
-            {lead.user_id && (
-              <section>
-                <h3 className="text-[10px] font-display uppercase tracking-widest text-white/30 mb-3">Activite Oracle</h3>
+            {/* Bottom buttons */}
+            <div className="space-y-2 pt-2">
+              {/* No-show */}
+              {(lead.call_booked || lead.call_done) && (
+                <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#111318] border border-white/[0.12]">
+                  <UserX className="w-4 h-4 text-white/40" />
+                  <span className="text-sm text-white/60 font-display">No-show</span>
+                  <div className={cn("ml-auto w-9 h-5 rounded-full transition-colors cursor-pointer flex items-center px-0.5",
+                    lead.call_no_show ? "bg-red-500 justify-end" : "bg-white/10 justify-start"
+                  )}>
+                    <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                  </div>
+                </div>
+              )}
+
+              {/* Oracle Activity */}
+              {lead.user_id && (
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-white/[0.03] border border-white/[0.08] rounded-lg p-2.5 text-center">
-                    <p className="text-xl font-display font-bold text-white">{lead.session_count || 0}</p>
+                  <div className="bg-[#111318] border border-white/[0.12] rounded-xl p-3 text-center">
+                    <p className="text-2xl font-display font-bold text-white">{lead.session_count || 0}</p>
                     <p className="text-[9px] text-white/30 font-display uppercase">Sessions</p>
                   </div>
-                  <div className="bg-white/[0.03] border border-white/[0.08] rounded-lg p-2.5 text-center">
-                    <p className="text-xl font-display font-bold text-white">{lead.execution_count || 0}</p>
+                  <div className="bg-[#111318] border border-white/[0.12] rounded-xl p-3 text-center">
+                    <p className="text-2xl font-display font-bold text-white">{lead.execution_count || 0}</p>
                     <p className="text-[9px] text-white/30 font-display uppercase">Trades</p>
                   </div>
                 </div>
-              </section>
-            )}
+              )}
+            </div>
           </div>
 
           {/* COL 2 — Gestion du Call + Offre & Closing */}
           <div className="flex-1 overflow-auto p-5 space-y-5 border-r border-white/[0.08]">
 
-            {/* Closer */}
-            {lead.closer_name && (
-              <section>
-                <h3 className="text-[10px] font-display uppercase tracking-widest text-white/30 mb-3">Closer assigne</h3>
-                <div className="bg-violet-500/10 border border-violet-500/25 rounded-lg px-4 py-3 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center">
-                    <Headphones className="w-4 h-4 text-violet-400" />
-                  </div>
-                  <span className="text-base font-display text-violet-300">{lead.closer_name}</span>
-                </div>
-              </section>
-            )}
-
-            {/* Issue du Call */}
-            <section>
-              <h3 className="text-[10px] font-display uppercase tracking-widest text-white/30 mb-3">Issue du call</h3>
-              <div className="flex gap-2">
-                {OUTCOMES.map(o => (
-                  <button key={o.value} onClick={() => setOutcome(o.value)}
-                    className={cn("flex-1 px-3 py-3 rounded-xl text-sm font-display font-medium border transition-all text-center",
-                      outcome === o.value ? o.cls : "bg-white/[0.03] text-white/40 border-white/[0.08] hover:border-white/[0.15] hover:bg-white/[0.05]"
-                    )}>
-                    {o.label}
-                  </button>
-                ))}
+            {/* Closer card */}
+            <div className="rounded-xl bg-[#111318] border border-white/[0.12] overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-white/[0.08] flex items-center gap-2">
+                <Headphones className="w-3.5 h-3.5 text-white/30" />
+                <span className="text-[10px] font-display uppercase tracking-widest text-white/40">Closer assigne</span>
               </div>
-            </section>
+              <div className="p-4">
+                {lead.closer_name ? (
+                  <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl px-4 py-3 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+                      <span className="text-sm font-display text-violet-400 font-bold">{lead.closer_name[0]?.toUpperCase()}</span>
+                    </div>
+                    <span className="text-base font-display text-violet-300 font-medium">{lead.closer_name}</span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/25">Non assigne</p>
+                )}
+              </div>
+            </div>
 
-            {/* Offre & Closing */}
-            <section>
-              <h3 className="text-[10px] font-display uppercase tracking-widest text-white/30 mb-3">Offre & Closing</h3>
-              <div className="space-y-3">
+            {/* Issue du Call card */}
+            <div className="rounded-xl bg-[#111318] border border-white/[0.12] overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-white/[0.08] flex items-center justify-between">
+                <span className="text-[10px] font-display uppercase tracking-widest text-white/40">Issue du call</span>
+                {outcome && (
+                  <button onClick={() => setOutcome("")} className="text-[10px] font-display text-white/30 hover:text-white/60 px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.08] transition-colors">
+                    Reinitialiser
+                  </button>
+                )}
+              </div>
+              <div className="p-4">
+                <div className="flex gap-2">
+                  {OUTCOMES.map(o => (
+                    <button key={o.value} onClick={() => setOutcome(o.value)}
+                      className={cn("flex-1 px-3 py-3 rounded-xl text-sm font-display font-semibold border-2 transition-all text-center",
+                        outcome === o.value ? o.cls : "bg-[#0c0d12] text-white/40 border-white/[0.10] hover:border-white/[0.20] hover:bg-white/[0.03]"
+                      )}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Offre & Closing card */}
+            <div className="rounded-xl bg-[#111318] border border-white/[0.12] overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-white/[0.08] flex items-center gap-2">
+                <DollarSign className="w-3.5 h-3.5 text-white/30" />
+                <span className="text-[10px] font-display uppercase tracking-widest text-white/40">Offre & Closing</span>
+              </div>
+              <div className="p-4 space-y-3">
                 <div>
-                  <p className="text-[10px] text-white/25 font-display uppercase mb-1.5">Montant offre (€)</p>
+                  <p className="text-[10px] text-white/30 font-display uppercase mb-1.5">Montant demande (€)</p>
                   <input
                     value={offerAmount} onChange={e => setOfferAmount(e.target.value)}
-                    placeholder="ex: 2997€"
-                    className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-sm text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                    placeholder="1500"
+                    className="w-full px-4 py-3 rounded-xl bg-[#0c0d12] border border-white/[0.12] text-base text-white font-mono placeholder:text-white/15 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
                   />
                 </div>
-
-                {/* Checkout access */}
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg">
                   {lead.checkout_unlocked ? (
-                    <>
-                      <Unlock className="w-4 h-4 text-emerald-400" />
-                      <span className="text-xs text-emerald-400 font-display">Acces checkout debloque</span>
-                    </>
+                    <><CheckCircle2 className="w-4 h-4 text-emerald-400" /><span className="text-xs text-emerald-400 font-display">✓ Acces checkout debloque automatiquement</span></>
                   ) : (
-                    <>
-                      <Lock className="w-4 h-4 text-white/20" />
-                      <span className="text-xs text-white/30 font-display">Checkout verrouille</span>
-                    </>
+                    <><Lock className="w-4 h-4 text-white/20" /><span className="text-xs text-white/30 font-display">Checkout verrouille</span></>
                   )}
                 </div>
               </div>
-            </section>
-
-            {/* Debrief */}
-            <section>
-              <h3 className="text-[10px] font-display uppercase tracking-widest text-white/30 mb-3">Debrief</h3>
-              <Textarea
-                value={debrief} onChange={e => setDebrief(e.target.value)}
-                placeholder="Notes du call..."
-                className="min-h-[120px] bg-white/[0.04] border-white/[0.10] text-sm text-white placeholder:text-white/20 resize-none"
-              />
-            </section>
-
-            {/* Save */}
-            {hasChanges && (
-              <Button onClick={saveCallData} disabled={saving} className="w-full bg-primary hover:bg-primary/90 font-display text-sm shadow-[0_0_20px_rgba(25,183,201,0.2)]">
-                {saving ? "Sauvegarde..." : "Sauvegarder les modifications"}
-              </Button>
-            )}
+            </div>
 
             {/* Payment card */}
             {lead.paid_at && (
-              <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-emerald-400" />
+              <div className="rounded-xl bg-[#111318] border border-emerald-500/30 overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-emerald-500/20 flex items-center gap-2">
+                  <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-[10px] font-display uppercase tracking-widest text-emerald-400/70">Paiement collecte</span>
                 </div>
-                <div>
-                  <p className="text-sm font-display text-emerald-400 uppercase font-semibold">Paiement recu</p>
-                  <p className="text-2xl font-display font-bold text-emerald-400">{lead.paid_amount}€</p>
-                  <p className="text-[10px] text-white/30">{fmtDate(lead.paid_at)}</p>
+                <div className="p-4 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+                    <CreditCard className="w-6 h-6 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-3xl font-display font-bold text-emerald-400">{lead.paid_amount}€</p>
+                    <p className="text-[10px] text-white/30 mt-0.5">{fmtDate(lead.paid_at)}</p>
+                  </div>
                 </div>
               </div>
+            )}
+
+            {/* Save button */}
+            {hasChanges && (
+              <Button onClick={saveCallData} disabled={saving} className="w-full h-11 bg-primary hover:bg-primary/90 font-display text-sm tracking-wide shadow-[0_0_20px_rgba(25,183,201,0.2)] rounded-xl">
+                {saving ? "Sauvegarde..." : "Sauvegarder les modifications"}
+              </Button>
             )}
           </div>
 
           {/* COL 3 — Timeline + Notes */}
-          <div className="w-[320px] shrink-0 flex flex-col overflow-hidden bg-[#0a0b10]">
-            <div className="shrink-0 px-4 py-3 border-b border-white/[0.08] flex items-center gap-2">
+          <div className="w-[340px] shrink-0 flex flex-col overflow-hidden bg-[#0a0b10]">
+            <div className="shrink-0 px-5 py-3.5 border-b border-white/[0.08] flex items-center gap-2.5">
               <MessageCircle className="w-4 h-4 text-white/30" />
-              <h3 className="text-sm font-display text-white/70">Timeline</h3>
-              <span className="text-[10px] font-mono text-white/30 bg-white/[0.04] px-1.5 py-0.5 rounded">{notes.length} notes</span>
+              <h3 className="text-sm font-display text-white/80 font-medium">Timeline</h3>
+              <span className="text-[10px] font-mono text-white/30 bg-white/[0.06] px-2 py-0.5 rounded-md">{notes.length} notes</span>
+              <span className="text-[10px] font-mono text-white/30 bg-white/[0.06] px-2 py-0.5 rounded-md">{(lead.contacted ? 1 : 0) + (lead.call_booked ? 1 : 0) + (lead.paid_at ? 1 : 0)} events</span>
             </div>
 
-            <div className="flex-1 overflow-auto p-4 space-y-2.5">
-              {/* Event cards */}
-              {lead.contacted && (
-                <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 text-center">
-                  <p className="text-[11px] font-display text-purple-400 uppercase font-semibold">Contacte</p>
-                  <p className="text-[10px] text-white/30 mt-0.5">
-                    {lead.contact_method === "whatsapp" ? "WhatsApp" : "Email"}
-                    {lead.setter_name && ` · ${lead.setter_name}`}
-                  </p>
+            <div className="flex-1 overflow-auto p-4 space-y-3">
+              {/* Notes (most recent first) */}
+              {notes.slice().reverse().map(n => (
+                <div key={n.id} className="bg-[#111318] border border-white/[0.10] rounded-xl p-3.5">
+                  <p className="text-sm text-white/80 leading-relaxed">{n.note}</p>
+                  <p className="text-[10px] text-white/25 mt-2 font-mono text-right">{fmtDate(n.created_at)}</p>
+                </div>
+              ))}
+
+              {/* Event: Call reserve */}
+              {lead.call_scheduled_at && (
+                <div className="bg-blue-500/10 border border-blue-500/25 rounded-xl p-4 text-center">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <Clock className="w-4 h-4 text-blue-400" />
+                    <p className="text-sm font-display text-blue-400 font-bold uppercase">Call reserve</p>
+                  </div>
+                  <p className="text-base font-display text-blue-300">{fmtDate(lead.call_scheduled_at)}</p>
                 </div>
               )}
 
+              {/* Event: Contracte */}
               {lead.call_outcome === "contracted" && (
-                <div className="bg-violet-500/15 border border-violet-500/25 rounded-xl p-3 text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <CreditCard className="w-4 h-4 text-violet-400" />
+                <div className="bg-violet-500/15 border border-violet-500/30 rounded-xl p-4 text-center">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <CheckCircle2 className="w-4 h-4 text-violet-400" />
                     <p className="text-sm font-display text-violet-400 font-bold uppercase">Contracte ✓</p>
                   </div>
-                  <p className="text-[10px] text-white/30 mt-1">Contrat signe</p>
+                  <p className="text-[11px] text-white/30">Contrat signe · En attente du paiement</p>
                 </div>
               )}
 
+              {/* Event: Paiement */}
               {lead.paid_at && (
-                <div className="bg-emerald-500/15 border border-emerald-500/25 rounded-xl p-3 text-center">
-                  <div className="flex items-center justify-center gap-2">
+                <div className="bg-emerald-500/15 border border-emerald-500/30 rounded-xl p-4 text-center">
+                  <div className="flex items-center justify-center gap-2 mb-1">
                     <CreditCard className="w-4 h-4 text-emerald-400" />
                     <p className="text-sm font-display text-emerald-400 font-bold uppercase">Paiement recu</p>
                   </div>
-                  <p className="text-lg font-display font-bold text-emerald-400 mt-1">{lead.paid_amount}€</p>
-                  <p className="text-[10px] text-white/30">{fmtDate(lead.paid_at)}</p>
+                  <p className="text-2xl font-display font-bold text-emerald-400 mt-1">{lead.paid_amount}€</p>
+                  <p className="text-[10px] text-white/30 mt-0.5">{fmtDate(lead.paid_at)}</p>
                 </div>
               )}
-
-              {/* Notes */}
-              {notes.map(n => (
-                <div key={n.id} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3">
-                  <p className="text-xs text-white/70 leading-relaxed">{n.note}</p>
-                  <p className="text-[9px] text-white/25 mt-2 font-mono">{fmtDate(n.created_at)}</p>
-                </div>
-              ))}
             </div>
 
             {/* Add note input */}
-            <div className="shrink-0 p-3 border-t border-white/[0.08]">
+            <div className="shrink-0 p-4 border-t border-white/[0.08]">
               <div className="flex gap-2">
                 <Textarea
                   value={newNote} onChange={e => setNewNote(e.target.value)}
                   placeholder="Ecrire un message..."
-                  className="min-h-[36px] max-h-[70px] text-xs bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 resize-none flex-1"
+                  className="min-h-[38px] max-h-[80px] text-sm bg-[#111318] border-white/[0.10] text-white placeholder:text-white/25 resize-none flex-1 rounded-xl"
                   onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitNote(); }}
                 />
-                <Button variant="ghost" size="icon" onClick={submitNote} disabled={submitting || !newNote.trim()} className="shrink-0 h-9 w-9 text-white/30 hover:text-primary">
+                <Button variant="ghost" size="icon" onClick={submitNote} disabled={submitting || !newNote.trim()} className="shrink-0 h-10 w-10 text-white/30 hover:text-primary rounded-xl">
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
-              <p className="text-[9px] text-white/15 mt-1">⌘ + Entree pour envoyer</p>
+              <p className="text-[9px] text-white/20 mt-1.5">⌘ + Entree pour envoyer</p>
             </div>
           </div>
         </div>
