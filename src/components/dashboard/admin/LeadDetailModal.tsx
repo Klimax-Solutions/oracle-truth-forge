@@ -60,8 +60,11 @@ const OUTCOMES = [
   { value: "contracted", label: "Contracté ✓", cls: "bg-violet-500/15 text-violet-400 border-violet-500/25 hover:bg-violet-500/25" },
 ];
 
+type ModalView = "call" | "lead" | "setting";
+
 export default function LeadDetailModal({ lead, onClose, onLeadUpdated }: Props) {
   const { toast } = useToast();
+  const [view, setView] = useState<ModalView>("call");
   const [notes, setNotes] = useState<LeadNote[]>([]);
   const [newNote, setNewNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -159,9 +162,144 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated }: Props)
               </button>
             </div>
           </div>
+
+          {/* View tabs */}
+          <div className="flex items-center gap-1 mt-4">
+            {([
+              { key: "call" as ModalView, label: "Gestion Call", icon: Headphones },
+              { key: "lead" as ModalView, label: "Fiche Lead", icon: Eye },
+            ]).map(t => (
+              <button
+                key={t.key}
+                onClick={() => setView(t.key)}
+                className={cn("flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-display uppercase tracking-wider transition-all",
+                  view === t.key
+                    ? "bg-white/[0.08] text-white border border-white/[0.15]"
+                    : "text-white/35 hover:text-white/60 hover:bg-white/[0.03]"
+                )}
+              >
+                <t.icon className="w-3.5 h-3.5" />
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* ── Body: 3 columns (Info | Gestion Call | Timeline) ── */}
+        {/* ── Body ── */}
+        {view === "lead" ? (
+          /* ── FICHE LEAD VIEW ── */
+          <div className="flex-1 overflow-auto p-6 space-y-5">
+            {/* Pipeline visual */}
+            <div className="flex items-center justify-between px-4 py-4 bg-[#111318] border border-white/[0.12] rounded-xl">
+              {pipelineSteps.map((s, i) => {
+                const Icon = s.icon;
+                return (
+                  <div key={s.key} className="flex items-center">
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className={cn("w-12 h-12 rounded-full flex items-center justify-center border-2",
+                        s.done ? s.color : "border-white/10 bg-[#0c0d12] text-white/15"
+                      )}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <span className={cn("text-[10px] font-display uppercase tracking-wider", s.done ? "text-white/80" : "text-white/20")}>{s.label}</span>
+                      {s.date && <span className="text-[9px] font-mono text-white/30">{fmtShort(s.date)}</span>}
+                    </div>
+                    {i < pipelineSteps.length - 1 && (
+                      <div className={cn("w-10 h-[2px] mx-1 mt-[-16px]", s.done ? "bg-white/15" : "bg-white/5")} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Contact */}
+              <div className="bg-[#111318] border border-white/[0.12] rounded-xl p-5 space-y-3">
+                <h3 className="text-[10px] font-display uppercase tracking-widest text-white/40">Coordonnees</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <Mail className="w-4 h-4 text-white/30" />
+                    <span className="text-sm text-white/80">{lead.email}</span>
+                  </div>
+                  {lead.phone && (
+                    <div className="flex items-center gap-3">
+                      <Phone className="w-4 h-4 text-white/30" />
+                      <span className="text-sm text-white/80">{lead.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className="bg-[#111318] border border-white/[0.12] rounded-xl p-5 space-y-3">
+                <h3 className="text-[10px] font-display uppercase tracking-widest text-white/40">Statut</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/40">Status EA</span>
+                    <span className={lead.status === "approuvée" ? "text-cyan-400 font-display" : "text-white/60"}>{lead.status}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/40">Setter</span>
+                    <span className="text-cyan-400 font-display">{lead.setter_name || "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/40">Closer</span>
+                    <span className="text-violet-400 font-display">{lead.closer_name || "—"}</span>
+                  </div>
+                  {lead.early_access_type && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/40">Type</span>
+                      <span className="text-violet-400 font-display">{lead.early_access_type}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Offre & Paiement */}
+              <div className="bg-[#111318] border border-white/[0.12] rounded-xl p-5 space-y-3">
+                <h3 className="text-[10px] font-display uppercase tracking-widest text-white/40">Offre & Paiement</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/40">Offre</span>
+                    <span className="text-violet-400 font-display font-semibold">{lead.offer_amount || "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/40">Checkout</span>
+                    <span className={lead.checkout_unlocked ? "text-emerald-400" : "text-white/25"}>{lead.checkout_unlocked ? "Debloque" : "Verrouille"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/40">Paye</span>
+                    <span className="text-emerald-400 font-display font-bold text-lg">{lead.paid_amount ? `${lead.paid_amount}€` : "—"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Activite */}
+              <div className="bg-[#111318] border border-white/[0.12] rounded-xl p-5 space-y-3">
+                <h3 className="text-[10px] font-display uppercase tracking-widest text-white/40">Activite Oracle</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="text-center">
+                    <p className="text-3xl font-display font-bold text-white">{lead.session_count || 0}</p>
+                    <p className="text-[9px] text-white/30 font-display uppercase">Sessions</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-display font-bold text-white">{lead.execution_count || 0}</p>
+                    <p className="text-[9px] text-white/30 font-display uppercase">Trades</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Meta */}
+            <div className="text-[10px] text-white/20 font-mono space-y-1 pt-2">
+              <p>ID: {lead.id}</p>
+              <p>Soumis: {fmtDate(lead.created_at)}</p>
+              {lead.reviewed_at && <p>Approuve: {fmtDate(lead.reviewed_at)}</p>}
+              {lead.user_id && <p>Oracle User: {lead.user_id}</p>}
+            </div>
+          </div>
+        ) : (
+        /* ── CALL VIEW (3 columns) ── */
         <div className="flex-1 flex overflow-hidden">
 
           {/* COL 1 — Informations + Setting (spike-launch exact) */}
@@ -450,6 +588,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated }: Props)
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   );
