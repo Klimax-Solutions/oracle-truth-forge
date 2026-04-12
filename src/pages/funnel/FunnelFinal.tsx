@@ -1,10 +1,12 @@
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
-import { Loader2, CheckCircle2, AlertTriangle, Calendar } from 'lucide-react';
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2, CheckCircle2, AlertTriangle, Calendar, Send } from 'lucide-react';
 
 // ============================================
-// Funnel Final Page — Booking confirmation
-// Route: /:slug/final
+// Funnel Final Page — Booking confirmation + pre-call question
+// Route: /:slug/final?date=...&email=...
 // ============================================
 
 export default function FunnelFinal() {
@@ -13,6 +15,27 @@ export default function FunnelFinal() {
   const { config, loading } = useFunnelConfig(slug);
 
   const bookingDate = searchParams.get('date') || null;
+  const leadEmail = searchParams.get('email') || null;
+
+  const [question, setQuestion] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmitQuestion = async () => {
+    if (!question.trim() || !leadEmail) return;
+    setSubmitting(true);
+    try {
+      await supabase
+        .from('early_access_requests')
+        .update({ precall_question: question.trim() } as any)
+        .eq('email', leadEmail.toLowerCase().trim());
+      setSubmitted(true);
+    } catch {
+      // Silent fail — not critical
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -25,7 +48,7 @@ export default function FunnelFinal() {
   if (!config) {
     return (
       <div className="min-h-screen bg-[#08080d] flex items-center justify-center text-white/40">
-        Funnel non trouve
+        Funnel non trouvé
       </div>
     );
   }
@@ -48,7 +71,7 @@ export default function FunnelFinal() {
           <h1 className="text-3xl font-display font-bold">
             {config.final_headline_personalized || 'Bravo'},{' '}
             <span className="text-white/60">{config.final_headline_confirmation || 'ton appel est'}</span>{' '}
-            <span className="text-primary">{config.final_headline_accent || 'reserve'}</span>
+            <span className="text-primary">{config.final_headline_accent || 'réservé'}</span>
           </h1>
         </div>
 
@@ -66,7 +89,10 @@ export default function FunnelFinal() {
             <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
               <CheckCircle2 className="w-5 h-5 text-emerald-400" />
             </div>
-            <h3 className="font-display font-semibold">{config.final_step1_title || 'Confirme ta presence'}</h3>
+            <div>
+              <p className="text-[10px] text-white/30 font-display uppercase tracking-wider">Étape 1/2</p>
+              <h3 className="font-display font-semibold">{config.final_step1_title || 'Confirme ta présence'}</h3>
+            </div>
           </div>
 
           <div className="space-y-2 text-sm text-white/60 leading-relaxed">
@@ -83,11 +109,56 @@ export default function FunnelFinal() {
               <AlertTriangle className="w-4 h-4 text-amber-400" />
               <h4 className="text-sm font-display font-semibold text-amber-400">{config.final_step1_warning_title}</h4>
             </div>
-            {config.final_step1_warning_text && (
-              <p className="text-sm text-white/50">{config.final_step1_warning_text}</p>
+            {config.final_step1_warning_text && <p className="text-sm text-white/50">{config.final_step1_warning_text}</p>}
+            {config.final_step1_warning_consequence && <p className="text-sm text-amber-400/70 font-medium">{config.final_step1_warning_consequence}</p>}
+          </div>
+        )}
+
+        {/* Step 2 — Pre-call question */}
+        {(config.final_step2_title || config.final_step2_placeholder) && (
+          <div className="bg-white/[0.04] border border-white/[0.10] rounded-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center">
+                <Send className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-[10px] text-white/30 font-display uppercase tracking-wider">Étape 2/2</p>
+                <h3 className="font-display font-semibold">{config.final_step2_title || 'Une question avant l\'appel ?'}</h3>
+              </div>
+            </div>
+
+            {config.final_step2_subtext && (
+              <p className="text-sm text-white/50">{config.final_step2_subtext}</p>
             )}
-            {config.final_step1_warning_consequence && (
-              <p className="text-sm text-amber-400/70 font-medium">{config.final_step1_warning_consequence}</p>
+
+            {submitted ? (
+              <div className="flex items-center gap-2 text-emerald-400 text-sm">
+                <CheckCircle2 className="w-4 h-4" />
+                <span className="font-display">Merci, ta question a été envoyée !</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <textarea
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  placeholder={config.final_step2_placeholder || 'Écris ta question ici...'}
+                  className="w-full h-24 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/25 resize-none focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+                  maxLength={500}
+                />
+                <button
+                  onClick={handleSubmitQuestion}
+                  disabled={!question.trim() || !leadEmail || submitting}
+                  className="w-full py-3 rounded-xl bg-primary text-white font-display text-sm tracking-wider disabled:opacity-30 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(25,183,201,0.25)] transition-all flex items-center justify-center gap-2"
+                >
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  Envoyer
+                </button>
+                {!leadEmail && (
+                  <p className="text-[10px] text-amber-400/60 text-center">
+                    Lien incomplet — l'email n'a pas été transmis depuis la page de réservation.
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}

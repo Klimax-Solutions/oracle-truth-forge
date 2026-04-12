@@ -358,11 +358,12 @@ export default function CRMDashboard() {
   }, [loadLeads]);
 
   const counts = useMemo(() => {
-    const c = { form: leads.length, calls: 0, ea: 0, paid: 0 };
+    const c = { form: leads.length, calls: 0, ea: 0, paid: 0, ghosts: 0 };
     leads.forEach(l => {
       if (l.status === "approuvée") c.ea++;
       if (l.call_booked || l.call_done) c.calls++;
       if (l.paid_at) c.paid++;
+      if (l.status === "approuvée" && !l.contacted && (l.session_count || 0) === 0) c.ghosts++;
     });
     return c;
   }, [leads]);
@@ -491,8 +492,14 @@ export default function CRMDashboard() {
               </div>
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                 <span className="text-base font-display text-emerald-400">{counts.paid}</span>
-                <span className="text-emerald-400/60 text-[10px] font-medium uppercase">Paye</span>
+                <span className="text-emerald-400/60 text-[10px] font-medium uppercase">Payé</span>
               </div>
+              {counts.ghosts > 0 && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 animate-pulse">
+                  <span className="text-base font-display text-amber-400">{counts.ghosts}</span>
+                  <span className="text-amber-400/60 text-[10px] font-medium uppercase">Inactifs</span>
+                </div>
+              )}
               <div className="w-px h-6 bg-white/10 mx-1" />
               <div className="flex items-center gap-1.5">
                 <span className="text-lg font-display text-white font-bold tabular-nums">{leads.length}</span>
@@ -597,7 +604,14 @@ export default function CRMDashboard() {
                             {lead.is_online && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[hsl(220,15%,8%)] animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.5)]" />}
                           </div>
                           <div className="flex flex-col gap-1">
-                            <p className="text-white font-display text-[15px] font-semibold group-hover:text-white transition-colors">{lead.first_name || "—"}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-white font-display text-[15px] font-semibold group-hover:text-white transition-colors">{lead.first_name || "—"}</p>
+                              {lead.status === "approuvée" && !lead.contacted && (lead.session_count || 0) === 0 && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-mono bg-amber-500/15 text-amber-400 border border-amber-500/25 animate-pulse">
+                                  Inactif
+                                </span>
+                              )}
+                            </div>
                             {lead.setter_name && sc && (
                               <span className={`inline-flex items-center gap-1 text-[10px] font-display ${sc.text} ${sc.bg} ${sc.border} border px-2 py-0.5 rounded-md w-fit cursor-pointer hover:opacity-80 transition-opacity`}
                                 onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}

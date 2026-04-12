@@ -21,6 +21,7 @@ export default function FunnelApply() {
   const [contact, setContact] = useState({ first_name: '', phone: '', email: '', countryCode: '+33' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [disqualified, setDisqualified] = useState(false);
   const [error, setError] = useState('');
 
   const questions = useMemo(() => config?.apply_form_questions || [], [config]);
@@ -32,8 +33,12 @@ export default function FunnelApply() {
   // Check if current answer is selected
   const hasAnswer = currentQuestion ? !!answers[currentQuestion.id] : (contact.first_name && contact.email);
 
-  const handleAnswer = (questionId: string, optionLabel: string) => {
+  const handleAnswer = (questionId: string, optionLabel: string, isDisqualifying?: boolean) => {
     setAnswers(prev => ({ ...prev, [questionId]: optionLabel }));
+    if (isDisqualifying) {
+      setDisqualified(true);
+      return;
+    }
     // Auto-advance after 300ms
     setTimeout(() => setStep(s => Math.min(s + 1, totalSteps - 1)), 300);
   };
@@ -118,13 +123,24 @@ export default function FunnelApply() {
       <div className="flex-1 flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-lg">
 
-          {submitted ? (
+          {disqualified ? (
+            /* ── Disqualified ── */
+            <div className="text-center animate-fade-in space-y-4">
+              <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mx-auto">
+                <span className="text-3xl">🙏</span>
+              </div>
+              <h2 className="text-2xl font-display font-bold">Merci pour ton honnêteté</h2>
+              <p className="text-white/50 text-sm leading-relaxed max-w-sm mx-auto">
+                Malheureusement, ton profil ne correspond pas aux critères requis pour le moment. On te souhaite le meilleur pour la suite.
+              </p>
+            </div>
+          ) : submitted ? (
             /* ── Success ── */
             <div className="text-center animate-fade-in">
               <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mx-auto mb-6">
                 <Check className="w-8 h-8 text-emerald-400" />
               </div>
-              <h2 className="text-2xl font-display font-bold mb-2">Candidature envoyee !</h2>
+              <h2 className="text-2xl font-display font-bold mb-2">Candidature envoyée !</h2>
               <p className="text-white/50">Redirection en cours...</p>
             </div>
           ) : isContactStep ? (
@@ -243,7 +259,7 @@ export default function FunnelApply() {
                   return (
                     <button
                       key={i}
-                      onClick={() => handleAnswer(currentQuestion!.id, opt.label)}
+                      onClick={() => handleAnswer(currentQuestion!.id, opt.label, opt.disqualifying)}
                       className={`w-full text-left px-5 py-4 rounded-xl border transition-all duration-200 ${
                         selected
                           ? 'bg-primary/15 border-primary/40 text-white shadow-[0_0_15px_rgba(25,183,201,0.1)]'

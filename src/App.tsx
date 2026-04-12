@@ -13,6 +13,7 @@ import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import EarlyAccess from "./pages/EarlyAccess";
 import SetupPasswordPage from "./pages/SetupPasswordPage";
+import FunnelLanding from "./pages/funnel/FunnelLanding";
 import FunnelApply from "./pages/funnel/FunnelApply";
 import FunnelDiscovery from "./pages/funnel/FunnelDiscovery";
 import FunnelFinal from "./pages/funnel/FunnelFinal";
@@ -43,6 +44,7 @@ const App = () => (
           <Route path="/early-access" element={<EarlyAccess />} />
           <Route path="/setup-password" element={<SetupPasswordPage />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/:slug/landing" element={<FunnelLanding />} />
           <Route path="/:slug/apply" element={<FunnelApply />} />
           <Route path="/:slug/discovery" element={<FunnelDiscovery />} />
           <Route path="/:slug/final" element={<FunnelFinal />} />

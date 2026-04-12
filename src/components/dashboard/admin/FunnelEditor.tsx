@@ -396,26 +396,59 @@ function PreviewApply({ c }: { c: any }) {
 }
 
 function PreviewDiscovery({ c }: { c: any }) {
+  // Build Cal.com embed URL if link is configured
+  const calLink = c.discovery_cal_link?.trim();
+  let embedUrl: string | null = null;
+  if (calLink) {
+    try {
+      let calPath: string;
+      if (calLink.includes('cal.com')) {
+        const url = new URL(calLink.startsWith('http') ? calLink : `https://${calLink}`);
+        calPath = url.pathname.replace(/^\//, '').replace(/\/$/, '');
+      } else if (calLink.includes('/')) {
+        calPath = calLink.replace(/^\//, '').replace(/\/$/, '');
+      } else {
+        calPath = '';
+      }
+      if (calPath) embedUrl = `https://cal.com/${calPath}?embed=true&theme=dark&layout=month_view`;
+    } catch { /* ignore */ }
+  }
+
   return (
-    <div className="min-h-full bg-[#0a0a0f] p-8">
-      <div className="max-w-md mx-auto space-y-8 pt-8 text-center">
+    <div className="min-h-full bg-[#0a0a0f] p-6">
+      <div className="max-w-md mx-auto space-y-6 pt-4 text-center">
         <span className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-xs text-emerald-400">
           <CheckCircle2 className="w-3.5 h-3.5" />
           {c.discovery_badge_text || 'Candidature acceptée'}
         </span>
-        <h1 className="font-display text-3xl text-white leading-tight">
+        <h1 className="font-display text-2xl text-white leading-tight">
           {c.discovery_headline_personalized || 'Bienvenue'} Charles
         </h1>
-        <p className="text-sm text-white/45 leading-relaxed">{c.discovery_subtitle || 'Sous-titre'}</p>
-        <div className="w-16 h-px bg-gradient-to-r from-transparent via-[#19B7C9]/40 to-transparent mx-auto" />
-        <div className="space-y-3">
-          <h2 className="font-display text-lg text-white">{c.discovery_cta_title || 'Choisis ton créneau'}</h2>
-          <p className="text-xs text-white/35">{c.discovery_cta_subtitle || 'Appel de 30 min'}</p>
-        </div>
-        <div className="inline-flex px-10 py-4 bg-[#19B7C9] rounded-xl text-white font-display text-base uppercase tracking-wider shadow-[0_0_40px_rgba(25,183,201,0.3)]">
-          {c.discovery_cta_button || 'Réserver mon appel'}
-        </div>
+        {c.discovery_subtitle && <p className="text-sm text-white/45">{c.discovery_subtitle}</p>}
       </div>
+
+      {/* Cal.com embed preview or CTA fallback */}
+      {embedUrl ? (
+        <div className="max-w-md mx-auto mt-6">
+          <iframe
+            src={embedUrl}
+            title="Aperçu Cal.com"
+            className="w-full rounded-xl border border-white/[0.08]"
+            style={{ height: 450, border: 'none', colorScheme: 'dark' }}
+            loading="lazy"
+          />
+        </div>
+      ) : (
+        <div className="max-w-md mx-auto mt-6 space-y-4 text-center">
+          <div className="space-y-2">
+            <h2 className="font-display text-lg text-white">{c.discovery_cta_title || 'Choisis ton créneau'}</h2>
+            <p className="text-xs text-white/35">{c.discovery_cta_subtitle || 'Appel de 30 min'}</p>
+          </div>
+          <div className="rounded-xl border border-dashed border-white/[0.10] bg-white/[0.02] p-8 text-sm text-white/25">
+            Configure le lien Cal.com pour voir l'embed ici
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -988,40 +1021,82 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
                     <Field label="Sous-titre" value={config.discovery_subtitle || ''} onChange={(v) => updateField('discovery_subtitle', v)} multiline disabled={!canEdit} />
                   </Section>
                   <Section title="Réservation Cal.com" icon={Calendar}>
-                    {/* Cal.com link — the main config */}
-                    <div className="space-y-2">
+                    {/* Connection status banner */}
+                    <div className={cn(
+                      "rounded-xl border p-4 space-y-3",
+                      config.discovery_cal_link
+                        ? "bg-emerald-500/[0.04] border-emerald-500/20"
+                        : "bg-red-500/[0.04] border-red-500/15"
+                    )}>
                       <div className="flex items-center justify-between">
-                        <Label className="font-display text-[10px] tracking-[0.15em] uppercase text-white/40">Lien Cal.com</Label>
-                        {config.discovery_cal_link ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-[9px] text-emerald-400 font-display">
-                            <CheckCircle2 className="w-2.5 h-2.5" /> Connecté
+                        <div className="flex items-center gap-2">
+                          <div className={cn("w-2 h-2 rounded-full", config.discovery_cal_link ? "bg-emerald-400" : "bg-red-400 animate-pulse")} />
+                          <span className={cn("text-xs font-display font-semibold", config.discovery_cal_link ? "text-emerald-400" : "text-red-400")}>
+                            {config.discovery_cal_link ? "Cal.com connecté" : "Cal.com non connecté"}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-[9px] text-red-400/70 font-display">
-                            <AlertTriangle className="w-2.5 h-2.5" /> Non configuré
+                        </div>
+                        {config.discovery_cal_link && (
+                          <span className="text-[9px] text-white/30 font-mono truncate max-w-[200px]">
+                            {config.discovery_cal_link.replace('https://', '').replace('http://', '')}
                           </span>
                         )}
                       </div>
-                      <Input
-                        value={config.discovery_cal_link || ''}
-                        onChange={(e) => updateField('discovery_cal_link', e.target.value)}
-                        disabled={!canEdit}
-                        placeholder="https://cal.com/ton-nom/oracle"
-                        className={cn(
-                          "bg-white/[0.03] border text-white placeholder:text-white/20 text-sm h-10 rounded-xl transition-all duration-200 hover:bg-white/[0.05]",
-                          config.discovery_cal_link
-                            ? "border-emerald-500/20 focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/15"
-                            : "border-white/[0.06] focus:border-primary/40 focus:ring-1 focus:ring-primary/15"
-                        )}
-                      />
-                      <p className="text-[10px] text-white/25 leading-relaxed">
-                        Colle l'URL de ton événement Cal.com. Le webhook est déjà configuré — quand un lead réserve, le CRM se met à jour automatiquement.
-                      </p>
+
+                      {/* Cal link input */}
+                      <div className="space-y-1.5">
+                        <Label className="font-display text-[10px] tracking-[0.15em] uppercase text-white/40">URL de l'événement</Label>
+                        <Input
+                          value={config.discovery_cal_link || ''}
+                          onChange={(e) => updateField('discovery_cal_link', e.target.value)}
+                          disabled={!canEdit}
+                          placeholder="https://cal.com/ton-nom/oracle"
+                          className={cn(
+                            "bg-white/[0.04] border text-white placeholder:text-white/20 text-sm h-10 rounded-xl",
+                            config.discovery_cal_link ? "border-emerald-500/20" : "border-white/[0.08]"
+                          )}
+                        />
+                      </div>
+
+                      {/* How it works */}
+                      <div className="space-y-2 pt-1">
+                        <p className="text-[10px] font-display text-white/40 uppercase tracking-wider">Comment ça marche</p>
+                        <div className="grid gap-1.5">
+                          {[
+                            { step: "1", text: "Le lead voit le calendrier Cal.com embedé sur la page Discovery", ok: !!config.discovery_cal_link },
+                            { step: "2", text: "Il réserve un créneau → Cal.com envoie un webhook", ok: !!config.discovery_cal_link },
+                            { step: "3", text: "Le webhook met à jour le CRM automatiquement (call_booked + date)", ok: !!config.discovery_cal_link },
+                          ].map((s) => (
+                            <div key={s.step} className="flex items-start gap-2">
+                              <div className={cn("w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[8px] font-bold",
+                                s.ok ? "bg-emerald-500/20 text-emerald-400" : "bg-white/[0.06] text-white/30"
+                              )}>{s.step}</div>
+                              <span className={cn("text-[10px] leading-relaxed", s.ok ? "text-white/50" : "text-white/25")}>{s.text}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Webhook setup guide (collapsible) */}
+                    <details className="group">
+                      <summary className="flex items-center gap-2 text-[10px] text-white/30 hover:text-white/50 cursor-pointer font-display uppercase tracking-wider py-1">
+                        <ChevronDown className="w-3 h-3 transition-transform group-open:rotate-180" />
+                        Configuration du webhook Cal.com
+                      </summary>
+                      <div className="mt-2 p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] space-y-2 text-[10px] text-white/40 leading-relaxed">
+                        <p><b className="text-white/60">1.</b> Va sur <span className="font-mono text-primary/80">cal.com/settings/developer/webhooks</span></p>
+                        <p><b className="text-white/60">2.</b> Crée un webhook avec l'URL :</p>
+                        <div className="font-mono text-[9px] text-primary/70 bg-white/[0.03] rounded px-2 py-1.5 break-all select-all">
+                          https://mkogljvoqqcnqrgcnfau.supabase.co/functions/v1/cal-webhook
+                        </div>
+                        <p><b className="text-white/60">3.</b> Active les événements : <span className="font-mono">BOOKING_CREATED</span>, <span className="font-mono">BOOKING_CANCELLED</span>, <span className="font-mono">BOOKING_RESCHEDULED</span></p>
+                        <p><b className="text-white/60">4.</b> Copie le secret du webhook et ajoute-le dans les Supabase Edge Function secrets comme <span className="font-mono text-amber-400/70">CAL_WEBHOOK_SECRET</span></p>
+                      </div>
+                    </details>
 
                     <div className="w-full h-px bg-white/[0.06] my-1" />
 
-                    {/* CTA texts */}
+                    {/* CTA texts (fallback when no Cal link) */}
                     <Field label="Titre section" value={config.discovery_cta_title || ''} onChange={(v) => updateField('discovery_cta_title', v)} disabled={!canEdit} placeholder="Choisis ton créneau" />
                     <Field label="Sous-titre" value={config.discovery_cta_subtitle || ''} onChange={(v) => updateField('discovery_cta_subtitle', v)} disabled={!canEdit} placeholder="Appel stratégique de 30 min" />
                     <Field label="Texte du bouton" value={config.discovery_cta_button || ''} onChange={(v) => updateField('discovery_cta_button', v)} disabled={!canEdit} placeholder="Réserver mon appel" />
