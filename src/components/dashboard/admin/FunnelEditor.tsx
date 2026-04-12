@@ -868,8 +868,8 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
         {/* Split */}
         <div className="flex-1 flex overflow-hidden">
 
-          {/* LEFT — Config (450px) */}
-          <div className="w-[450px] shrink-0 border-r border-white/[0.10] flex flex-col overflow-hidden bg-[#0a0a10]">
+          {/* LEFT — Config (1/3 of screen) */}
+          <div className="w-1/3 min-w-[400px] shrink-0 border-r border-white/[0.10] flex flex-col overflow-hidden bg-[#0a0a10]">
             {/* Tabs */}
             <div className="shrink-0 px-4 py-3 border-b border-white/[0.10] flex flex-wrap gap-1.5">
               {tabs.map((t) => (
