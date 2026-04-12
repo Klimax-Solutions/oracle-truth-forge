@@ -47,24 +47,36 @@ export default function FunnelApply() {
     setError('');
 
     try {
+      const emailNormalized = contact.email.trim().toLowerCase();
+      const phoneFormatted = contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : null;
+
+      // Try insert first
       const { error: dbError } = await supabase
         .from('early_access_requests')
         .insert({
           first_name: contact.first_name.trim(),
-          email: contact.email.trim().toLowerCase(),
-          phone: contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : null,
+          email: emailNormalized,
+          phone: phoneFormatted,
           status: 'en_attente',
           form_submitted: true,
         });
 
       if (dbError) {
         if (dbError.message.includes('duplicate') || dbError.message.includes('unique')) {
-          setError('Tu as deja soumis une candidature avec cet email.');
+          // Lead exists — update their info and continue the funnel
+          await supabase
+            .from('early_access_requests')
+            .update({
+              first_name: contact.first_name.trim(),
+              phone: phoneFormatted || undefined,
+              form_submitted: true,
+            })
+            .eq('email', emailNormalized);
         } else {
           setError(dbError.message);
+          setSubmitting(false);
+          return;
         }
-        setSubmitting(false);
-        return;
       }
 
       setSubmitted(true);
