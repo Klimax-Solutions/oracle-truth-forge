@@ -1,23 +1,17 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
+import { useEffect } from 'react';
 import { Loader2, Calendar, CheckCircle2 } from 'lucide-react';
 
 // ============================================
 // Funnel Discovery Page — Cal.com iframe embed
 // Route: /:slug/discovery
-// Uses iframe (reliable) instead of JS SDK (buggy with React SPAs)
+// On booking success → redirect to /:slug/final
 // ============================================
 
-/**
- * Builds a Cal.com embed URL from various input formats:
- *   https://cal.com/username/event → https://cal.com/username/event
- *   cal.com/username/event → https://cal.com/username/event
- *   username/event → https://cal.com/username/event
- */
 function buildCalEmbedUrl(link: string): string | null {
   if (!link?.trim()) return null;
   const trimmed = link.trim();
-
   let calPath: string;
   try {
     if (trimmed.includes('cal.com')) {
@@ -31,16 +25,59 @@ function buildCalEmbedUrl(link: string): string | null {
   } catch {
     calPath = trimmed.replace(/^\//, '').replace(/\/$/, '');
   }
-
   if (!calPath) return null;
   return `https://cal.com/${calPath}?embed=true&theme=dark&layout=month_view`;
 }
 
 export default function FunnelDiscovery() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { config, loading } = useFunnelConfig(slug);
 
   const embedUrl = config?.discovery_cal_link ? buildCalEmbedUrl(config.discovery_cal_link) : null;
+
+  // Listen for Cal.com booking success via postMessage
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Cal.com iframe sends postMessage on booking
+      // Format varies: { type: "CAL:booking_successful", data: { ... } }
+      // or: { action: "booking_successful", ... }
+      if (!event.data) return;
+
+      const data = typeof event.data === 'string' ? (() => { try { return JSON.parse(event.data); } catch { return null; } })() : event.data;
+      if (!data) return;
+
+      const isBooking =
+        data.type === 'CAL:booking_successful' ||
+        data.type === '__cal_booking_successful' ||
+        (data.Cal && data.Cal.action === 'bookingSuccessful') ||
+        data.action === 'bookingSuccessful';
+
+      if (isBooking) {
+        // Extract booking info if available
+        const bookingData = data.data || data.Cal?.data || {};
+        const date = bookingData.date || bookingData.startTime || '';
+        const email = bookingData.attendees?.[0]?.email || bookingData.email || '';
+
+        // Format date for display
+        let dateLabel = '';
+        if (date) {
+          try {
+            dateLabel = new Date(date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+          } catch { dateLabel = date; }
+        }
+
+        const params = new URLSearchParams();
+        if (dateLabel) params.set('date', dateLabel);
+        if (email) params.set('email', email);
+
+        navigate(`/${slug}/final${params.toString() ? `?${params}` : ''}`);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [slug, navigate]);
 
   if (loading) {
     return (
@@ -79,7 +116,7 @@ export default function FunnelDiscovery() {
         )}
       </div>
 
-      {/* Cal.com embed (iframe — reliable, works everywhere) */}
+      {/* Cal.com embed */}
       {embedUrl ? (
         <div className="flex-1 w-full max-w-3xl mx-auto px-4 pb-8">
           <iframe
@@ -102,7 +139,7 @@ export default function FunnelDiscovery() {
               <p className="text-sm text-white/40 mt-1">{config.discovery_cta_subtitle || '30 minutes'}</p>
             </div>
             <div className="text-sm text-white/30 bg-white/[0.03] rounded-xl p-4 border border-dashed border-white/[0.10]">
-              Lien Cal.com non configuré. Ajoute-le dans le Funnel Editor → Discovery → Réservation Cal.com
+              Lien Cal.com non configuré. Ajoute-le dans le Funnel Editor.
             </div>
           </div>
         </div>
