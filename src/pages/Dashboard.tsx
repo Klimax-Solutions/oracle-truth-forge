@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -489,6 +489,14 @@ const Dashboard = () => {
         return <FunnelEditorPage />;
       case "early-access-mgmt":
         return <EarlyAccessManagement />;
+      case "gestion": {
+        const GestionPanel = React.lazy(() => import("@/components/dashboard/admin/GestionPanel"));
+        return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><GestionPanel /></React.Suspense>;
+      }
+      case "config": {
+        const ConfigPanel = React.lazy(() => import("@/components/dashboard/admin/ConfigPanel"));
+        return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><ConfigPanel /></React.Suspense>;
+      }
       default:
         return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
     }

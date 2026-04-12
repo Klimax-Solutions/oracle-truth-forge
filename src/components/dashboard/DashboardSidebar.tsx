@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Database, BarChart3, ChevronRight, Crosshair, Video, ShieldCheck, Trophy, Award, TrendingUp, Layers } from "lucide-react";
+import { Database, BarChart3, ChevronRight, Crosshair, Video, ShieldCheck, Trophy, Award, TrendingUp, Settings, Users as UsersIcon, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
@@ -16,13 +16,21 @@ const useHasInstitute = () => {
   return hasInstitute;
 };
 
+interface SidebarTab {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  deprecated?: boolean;
+  section?: string;
+}
+
 interface DashboardSidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   overrideRoles?: { isAdmin: boolean; isSuperAdmin: boolean; isSetter: boolean; isEarlyAccess: boolean };
 }
 
-const tabs = [
+const tabs: SidebarTab[] = [
   { id: "execution", label: "Exécution d'Oracle", icon: Crosshair },
   { id: "setup", label: "Setup", icon: Database },
   { id: "data-analysis", label: "Data Analysis", icon: BarChart3 },
@@ -30,19 +38,18 @@ const tabs = [
   { id: "successes", label: "Chat", icon: Trophy },
 ];
 
-const earlyAccessTabs = [
+const earlyAccessTabs: SidebarTab[] = [
   { id: "results", label: "Résultats", icon: Award },
 ];
 
-const crmTab = { id: "crm", label: "CRM", icon: TrendingUp };
-const funnelTab = { id: "funnel-editor", label: "Funnel Editor", icon: Layers };
+// ── NEW admin tabs (V2) ──
+const crmTab: SidebarTab = { id: "crm", label: "CRM", icon: TrendingUp, section: "admin" };
+const gestionTab: SidebarTab = { id: "gestion", label: "Gestion", icon: UsersIcon, section: "admin" };
+const configTab: SidebarTab = { id: "config", label: "Configuration", icon: Settings, section: "admin" };
 
-const adminTabs = [
-  { id: "admin", label: "Vérifications Admin", icon: ShieldCheck },
-];
-import { Users as UsersIcon } from "lucide-react";
-
-const eaMgmtTab = { id: "early-access-mgmt", label: "Early Access", icon: UsersIcon };
+// ── DEPRECATED admin tabs (still accessible, with warning) ──
+const adminTab: SidebarTab = { id: "admin", label: "Vérif. Admin", icon: ShieldCheck, deprecated: true, section: "admin" };
+const eaMgmtTab: SidebarTab = { id: "early-access-mgmt", label: "Early Access", icon: UsersIcon, deprecated: true, section: "admin" };
 
 export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: DashboardSidebarProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -81,9 +88,9 @@ export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: Dash
     };
   }, []);
 
-  // Setter role: Early Access + CRM (filtered to their leads)
+  // Setter role: CRM only (filtered to their leads)
   if (isSetter && !isSuperAdmin && !isAdmin) {
-    const setterTabs = [eaMgmtTab, crmTab];
+    const setterTabs: SidebarTab[] = [crmTab];
     return (
       <aside
         className={cn(
@@ -131,22 +138,17 @@ export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: Dash
   }
 
   // Filter tabs based on role
-  let allTabs = (isEarlyAccess || (!hasInstitute && !isAdmin && !isSuperAdmin))
-    ? tabs.filter(t => t.id !== "successes") 
+  let allTabs: SidebarTab[] = (isEarlyAccess || (!hasInstitute && !isAdmin && !isSuperAdmin))
+    ? tabs.filter(t => t.id !== "successes")
     : [...tabs];
-  
+
   if (isEarlyAccess || isAdmin || isSuperAdmin) {
     allTabs = [...allTabs, ...earlyAccessTabs];
   }
-  
+
+  // Admin V2: CRM + Gestion + Config + deprecated tabs
   if (isAdmin || isSuperAdmin) {
-    allTabs = [...allTabs, crmTab, funnelTab];
-  }
-  if (isAdmin) {
-    allTabs = [...allTabs, ...adminTabs];
-  }
-  if (isSuperAdmin) {
-    allTabs = [...allTabs, eaMgmtTab];
+    allTabs = [...allTabs, crmTab, gestionTab, configTab, adminTab, eaMgmtTab];
   }
 
   return (
@@ -173,25 +175,54 @@ export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: Dash
       </div>
 
       {/* Tabs */}
-      <nav className="flex-1 p-2 space-y-1">
-        {allTabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => onTabChange(tab.id)}
-            className={cn(
-              "w-full flex items-center gap-3 transition-all",
-              "text-sm font-mono uppercase tracking-wider",
-              isExpanded ? "px-4 py-3" : "px-0 py-3 justify-center",
-              activeTab === tab.id
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent",
-              tab.id === "batch-import" && "border-t border-border/40 mt-2 pt-4"
-            )}
-          >
-            <tab.icon className="w-4 h-4 flex-shrink-0" />
-            {isExpanded && <span className="truncate text-left">{tab.label}</span>}
-          </button>
-        ))}
+      <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+        {(() => {
+          let adminSectionShown = false;
+          return allTabs.map((tab) => {
+            // Show admin section divider before first admin tab
+            const showAdminHeader = tab.section === "admin" && !adminSectionShown;
+            if (showAdminHeader) adminSectionShown = true;
+
+            return (
+              <div key={tab.id}>
+                {showAdminHeader && (
+                  <div className={cn("border-t border-border/40 mt-3 pt-3", isExpanded ? "px-4 pb-1" : "pb-1")}>
+                    {isExpanded && (
+                      <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/50">
+                        Admin
+                      </span>
+                    )}
+                  </div>
+                )}
+                <button
+                  onClick={() => onTabChange(tab.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 transition-all",
+                    "text-sm font-mono uppercase tracking-wider",
+                    isExpanded ? "px-4 py-3" : "px-0 py-3 justify-center",
+                    activeTab === tab.id
+                      ? tab.deprecated
+                        ? "bg-amber-500/15 text-amber-400 border border-amber-500/20"
+                        : "bg-primary text-primary-foreground"
+                      : tab.deprecated
+                        ? "text-muted-foreground/40 hover:text-amber-400/60 hover:bg-amber-500/5"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                  )}
+                >
+                  <tab.icon className={cn("w-4 h-4 flex-shrink-0", tab.deprecated && "opacity-50")} />
+                  {isExpanded && (
+                    <span className={cn("truncate text-left flex-1", tab.deprecated && "opacity-60")}>
+                      {tab.label}
+                    </span>
+                  )}
+                  {isExpanded && tab.deprecated && (
+                    <AlertTriangle className="w-3 h-3 text-amber-500/60 flex-shrink-0" />
+                  )}
+                </button>
+              </div>
+            );
+          });
+        })()}
       </nav>
 
       {/* Expand indicator */}
