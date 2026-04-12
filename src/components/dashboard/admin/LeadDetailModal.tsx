@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { CRMLead } from "@/lib/admin/types";
 import { getSetterColor } from "@/lib/admin/setterColors";
+import LeadThreadPanel from "./LeadThreadPanel";
 
 type PipelineLead = CRMLead; // Alias local pour compatibilite
 
@@ -123,6 +124,17 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
   }, [lead.id]);
 
   // Quick field update — single field, instant save
+  const emitEvent = useCallback(async (eventType: string, metadata?: Record<string, any>) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("lead_events").insert({
+      request_id: lead.id,
+      event_type: eventType,
+      source: "admin",
+      metadata: metadata || {},
+      created_by: user?.id || null,
+    });
+  }, [lead.id]);
+
   const updateField = useCallback(async (fields: Record<string, any>) => {
     const { error } = await supabase.from("early_access_requests").update(fields).eq("id", lead.id);
     if (error) toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -157,7 +169,15 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
     if (error) toast({ title: "Erreur", description: error.message, variant: "destructive" });
     else {
       toast({ title: "Sauvegardé" });
-      if (outcome) setCallDone(true);
+      if (outcome) {
+        setCallDone(true);
+        const evtType = outcome === "contracted" ? "outcome_contracted" : outcome === "closing_in_progress" ? "outcome_closing_in_progress" : outcome === "not_closed" ? "outcome_not_closed" : null;
+        if (evtType && outcome !== lead.call_outcome) {
+          if (lead.call_outcome) emitEvent("outcome_changed", { previous_outcome: lead.call_outcome, new_outcome: outcome });
+          else emitEvent(evtType);
+        }
+      }
+      if ((outcome ? true : callDone) && !lead.call_done) emitEvent("call_done");
       onLeadUpdated?.();
     }
     setSaving(false);
@@ -464,6 +484,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                       onValueChange={async (v) => {
                         const name = v === "__none__" ? null : v;
                         await updateField({ setter_name: name });
+                        if (name) emitEvent("lead_assigned_setter", { setter_name: name });
                       }}
                     >
                       <SelectTrigger className="w-48 h-9 bg-transparent border-none text-lg font-display text-cyan-400 font-bold p-0 focus:ring-0 hover:bg-cyan-500/10 rounded-lg transition-colors">
@@ -510,7 +531,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                       </div>
                     </div>
                     <button
-                      onClick={() => updateField({ contacted: false, contact_method: null })}
+                      onClick={() => { updateField({ contacted: false, contact_method: null }); emitEvent("setting_contact_reset"); }}
                       className="w-full text-[11px] text-white/30 hover:text-white/60 font-display py-1.5 transition-colors"
                     >
                       Reinitialiser le contact
@@ -519,13 +540,13 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
                     <button
-                      onClick={() => updateField({ contacted: true, contact_method: "whatsapp", contacted_at: new Date().toISOString() })}
+                      onClick={() => { updateField({ contacted: true, contact_method: "whatsapp", contacted_at: new Date().toISOString() }); emitEvent("setting_contacted_whatsapp"); }}
                       className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all font-display text-sm font-semibold"
                     >
                       <MessageCircle className="w-4 h-4" /> WhatsApp
                     </button>
                     <button
-                      onClick={() => updateField({ contacted: true, contact_method: "email", contacted_at: new Date().toISOString() })}
+                      onClick={() => { updateField({ contacted: true, contact_method: "email", contacted_at: new Date().toISOString() }); emitEvent("setting_contacted_email"); }}
                       className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all font-display text-sm font-semibold"
                     >
                       <Mail className="w-4 h-4" /> Email
@@ -862,73 +883,8 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
         )}
 
           {/* TIMELINE — Always visible on the right, all views */}
-          <div className="w-[340px] shrink-0 flex flex-col overflow-hidden bg-[#0a0b10] border-l border-white/[0.08]">
-            <div className="shrink-0 px-5 py-3.5 border-b border-white/[0.08] flex items-center gap-2.5">
-              <MessageCircle className="w-4 h-4 text-white/30" />
-              <h3 className="text-sm font-display text-white/80 font-medium">Timeline</h3>
-              <span className="text-[10px] font-mono text-white/30 bg-white/[0.06] px-2 py-0.5 rounded-md">{notes.length} notes</span>
-              <span className="text-[10px] font-mono text-white/30 bg-white/[0.06] px-2 py-0.5 rounded-md">{(lead.contacted ? 1 : 0) + (lead.call_booked ? 1 : 0) + (lead.paid_at ? 1 : 0)} events</span>
-            </div>
-
-            <div className="flex-1 overflow-auto p-4 space-y-3">
-              {/* Notes (most recent first) */}
-              {notes.slice().reverse().map(n => (
-                <div key={n.id} className="bg-[#111318] border border-white/[0.10] rounded-xl p-3.5">
-                  <p className="text-sm text-white/80 leading-relaxed">{n.note}</p>
-                  <p className="text-[10px] text-white/25 mt-2 font-mono text-right">{fmtDate(n.created_at)}</p>
-                </div>
-              ))}
-
-              {/* Event: Call reserve */}
-              {lead.call_scheduled_at && (
-                <div className="bg-blue-500/10 border border-blue-500/25 rounded-xl p-4 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <Clock className="w-4 h-4 text-blue-400" />
-                    <p className="text-sm font-display text-blue-400 font-bold uppercase">Call reserve</p>
-                  </div>
-                  <p className="text-base font-display text-blue-300">{fmtDate(lead.call_scheduled_at)}</p>
-                </div>
-              )}
-
-              {/* Event: Contracte */}
-              {lead.call_outcome === "contracted" && (
-                <div className="bg-violet-500/15 border border-violet-500/30 rounded-xl p-4 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <CheckCircle2 className="w-4 h-4 text-violet-400" />
-                    <p className="text-sm font-display text-violet-400 font-bold uppercase">Contracte ✓</p>
-                  </div>
-                  <p className="text-[11px] text-white/30">Contrat signe · En attente du paiement</p>
-                </div>
-              )}
-
-              {/* Event: Paiement */}
-              {lead.paid_at && (
-                <div className="bg-emerald-500/15 border border-emerald-500/30 rounded-xl p-4 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <CreditCard className="w-4 h-4 text-emerald-400" />
-                    <p className="text-sm font-display text-emerald-400 font-bold uppercase">Paiement recu</p>
-                  </div>
-                  <p className="text-2xl font-display font-bold text-emerald-400 mt-1">{lead.paid_amount}€</p>
-                  <p className="text-[10px] text-white/30 mt-0.5">{fmtDate(lead.paid_at)}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Add note input */}
-            <div className="shrink-0 p-4 border-t border-white/[0.08]">
-              <div className="flex gap-2">
-                <Textarea
-                  value={newNote} onChange={e => setNewNote(e.target.value)}
-                  placeholder="Ecrire un message..."
-                  className="min-h-[38px] max-h-[80px] text-sm bg-[#111318] border-white/[0.10] text-white placeholder:text-white/25 resize-none flex-1 rounded-xl"
-                  onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitNote(); }}
-                />
-                <Button variant="ghost" size="icon" onClick={submitNote} disabled={submitting || !newNote.trim()} className="shrink-0 h-10 w-10 text-white/30 hover:text-primary rounded-xl">
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-              <p className="text-[9px] text-white/20 mt-1.5">⌘ + Entree pour envoyer</p>
-            </div>
+          <div className="w-[360px] shrink-0 overflow-hidden bg-[#0a0b10] border-l border-white/[0.08]">
+            <LeadThreadPanel lead={lead} />
           </div>
         </div>
       </div>
