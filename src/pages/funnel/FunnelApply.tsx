@@ -157,7 +157,7 @@ export default function FunnelApply() {
                     <select
                       value={contact.countryCode}
                       onChange={e => setContact(c => ({ ...c, countryCode: e.target.value }))}
-                      className="h-12 px-3 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white text-sm focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
+                      className="h-12 px-3 rounded-xl bg-[#111318] border border-white/[0.10] text-white text-sm focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all appearance-none cursor-pointer [&>option]:bg-[#111318] [&>option]:text-white"
                     >
                       <option value="+33">🇫🇷 +33</option>
                       <option value="+32">🇧🇪 +32</option>
