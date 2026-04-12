@@ -263,7 +263,7 @@ function PreviewLanding({ c }: { c: any }) {
   return (
     <div className="min-h-full bg-[#0a0a0f] flex items-center justify-center p-8">
       <div className="text-center space-y-8 max-w-md">
-        <div className="font-display text-xs tracking-[0.4em] uppercase text-white/40">SPIKE</div>
+        <div className="font-display text-xs tracking-[0.4em] uppercase text-white/40">{c.brand_name || 'Oracle'}</div>
         <h1 className="font-display text-3xl text-white leading-tight">
           {c.landing_headline || 'Titre principal'}{' '}
           <span className="text-[#19B7C9]">{c.landing_headline_accent || 'Accroche'}</span>
@@ -287,7 +287,11 @@ function PreviewLanding({ c }: { c: any }) {
 
 function PreviewApply({ c }: { c: any }) {
   const questions = c.apply_form_questions || [];
-  const firstQ = questions[0];
+  const [previewStep, setPreviewStep] = useState(0);
+  const totalSteps = questions.length + 1; // questions + contact info
+  const isContactStep = previewStep >= questions.length;
+  const currentQ = questions[previewStep];
+
   return (
     <div className="min-h-full bg-[#0a0a0f] p-8">
       <div className="max-w-md mx-auto space-y-8 pt-6">
@@ -295,14 +299,38 @@ function PreviewApply({ c }: { c: any }) {
           {c.apply_headline || 'Dépose ta candidature'}
         </h1>
         <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 space-y-5 backdrop-blur-sm">
+          {/* Progress bar */}
           <div className="w-full h-1 bg-white/[0.06] rounded-full overflow-hidden">
-            <div className="h-full bg-[#19B7C9] rounded-full w-[12%]" />
+            <div className="h-full bg-[#19B7C9] rounded-full transition-all duration-300" style={{ width: `${((previewStep + 1) / totalSteps) * 100}%` }} />
           </div>
-          {firstQ ? (
+
+          {isContactStep ? (
+            /* Contact info step preview */
+            <div className="space-y-4">
+              <p className="text-lg text-white font-display leading-snug">Tes coordonnées</p>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-white/40 font-display uppercase tracking-wider">{c.apply_form_name_label || 'Comment tu t\'appelles ?'}</label>
+                  <div className="h-12 rounded-xl bg-white/[0.06] border border-white/[0.10]" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-white/40 font-display uppercase tracking-wider">{c.apply_form_phone_label || 'Sur quel numéro te joindre ?'}</label>
+                  <div className="h-12 rounded-xl bg-white/[0.06] border border-white/[0.10] flex items-center px-3 gap-2">
+                    <span className="text-sm text-white/40">🇫🇷 +33</span>
+                    <div className="w-px h-6 bg-white/10" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-white/40 font-display uppercase tracking-wider">{c.apply_form_email_label || 'Quelle est ton adresse email ?'}</label>
+                  <div className="h-12 rounded-xl bg-white/[0.06] border border-white/[0.10]" />
+                </div>
+              </div>
+            </div>
+          ) : currentQ ? (
             <>
-              <p className="text-lg text-white font-display leading-snug">{firstQ.title}</p>
+              <p className="text-lg text-white font-display leading-snug">{currentQ.title}</p>
               <div className="space-y-2.5">
-                {(firstQ.options || []).slice(0, 5).map((opt: any, i: number) => (
+                {(currentQ.options || []).slice(0, 6).map((opt: any, i: number) => (
                   <div key={i} className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-xl border text-sm transition-all",
                     i === 0
@@ -326,15 +354,38 @@ function PreviewApply({ c }: { c: any }) {
           )}
         </div>
 
-        {questions.length > 1 && (
-          <div className="space-y-2 px-2">
-            <p className="text-[10px] text-white/25 font-display tracking-wider uppercase">Parcours ({questions.length} questions)</p>
+        {/* Step navigation */}
+        {totalSteps > 1 && (
+          <div className="space-y-3 px-2">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setPreviewStep(Math.max(0, previewStep - 1))}
+                disabled={previewStep === 0}
+                className="text-[10px] font-display text-white/30 hover:text-white/60 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-2 py-1"
+              >
+                ← Précédent
+              </button>
+              <span className="text-[10px] font-display text-white/30">
+                {previewStep + 1} / {totalSteps} {isContactStep ? '(Contact)' : ''}
+              </span>
+              <button
+                onClick={() => setPreviewStep(Math.min(totalSteps - 1, previewStep + 1))}
+                disabled={previewStep >= totalSteps - 1}
+                className="text-[10px] font-display text-primary/60 hover:text-primary disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-2 py-1"
+              >
+                Suivant →
+              </button>
+            </div>
             <div className="flex gap-1">
-              {questions.map((_: any, i: number) => (
-                <div key={i} className={cn(
-                  "h-1 rounded-full flex-1",
-                  i === 0 ? "bg-[#19B7C9]" : "bg-white/[0.06]"
-                )} />
+              {Array.from({ length: totalSteps }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPreviewStep(i)}
+                  className={cn(
+                    "h-1.5 rounded-full flex-1 transition-all cursor-pointer hover:opacity-80",
+                    i <= previewStep ? "bg-[#19B7C9]" : "bg-white/[0.06]"
+                  )}
+                />
               ))}
             </div>
           </div>
@@ -779,15 +830,26 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
                 </span>
               </div>
               {funnelSlug && (
-                <a
-                  href={`/${funnelSlug}/apply`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-display tracking-wider uppercase text-white/40 hover:text-primary border border-white/[0.06] hover:border-primary/30 transition-all"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  Voir en live
-                </a>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`/${funnelSlug}/apply`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-display tracking-wider uppercase text-white/40 hover:text-primary border border-white/[0.06] hover:border-primary/30 transition-all"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Voir en live
+                  </a>
+                  <a
+                    href={`/${funnelSlug}/apply`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-display tracking-wider uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25 transition-all"
+                  >
+                    <Send className="h-3 w-3" />
+                    Tester le funnel
+                  </a>
+                </div>
               )}
               
               {canEdit && (
@@ -806,8 +868,8 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
         {/* Split */}
         <div className="flex-1 flex overflow-hidden">
 
-          {/* LEFT — Config (380px) */}
-          <div className="w-[380px] shrink-0 border-r border-white/[0.10] flex flex-col overflow-hidden bg-[#0a0a10]">
+          {/* LEFT — Config (450px) */}
+          <div className="w-[450px] shrink-0 border-r border-white/[0.10] flex flex-col overflow-hidden bg-[#0a0a10]">
             {/* Tabs */}
             <div className="shrink-0 px-4 py-3 border-b border-white/[0.10] flex flex-wrap gap-1.5">
               {tabs.map((t) => (
@@ -900,7 +962,7 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
                     </div>
                   </Section>
 
-                  <Section title="Labels contact" icon={Phone} defaultOpen={false}>
+                  <Section title="Labels contact" icon={Phone} defaultOpen={true}>
                     <Field label="Nom" value={config.apply_form_name_label || ''} onChange={(v) => updateField('apply_form_name_label', v)} disabled={!canEdit} />
                     <Field label="Téléphone" value={config.apply_form_phone_label || ''} onChange={(v) => updateField('apply_form_phone_label', v)} disabled={!canEdit} />
                     <Field label="Email" value={config.apply_form_email_label || ''} onChange={(v) => updateField('apply_form_email_label', v)} disabled={!canEdit} />
@@ -925,37 +987,44 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
                     <Field label="Titre personnalisé" value={config.discovery_headline_personalized || ''} onChange={(v) => updateField('discovery_headline_personalized', v)} disabled={!canEdit} hint="Suivi du prénom du lead" />
                     <Field label="Sous-titre" value={config.discovery_subtitle || ''} onChange={(v) => updateField('discovery_subtitle', v)} multiline disabled={!canEdit} />
                   </Section>
-                  <Section title="Réservation" icon={Calendar}>
-                    <Field label="Titre" value={config.discovery_cta_title || ''} onChange={(v) => updateField('discovery_cta_title', v)} disabled={!canEdit} />
-                    <Field label="Sous-titre" value={config.discovery_cta_subtitle || ''} onChange={(v) => updateField('discovery_cta_subtitle', v)} disabled={!canEdit} />
-                    <Field label="Bouton" value={config.discovery_cta_button || ''} onChange={(v) => updateField('discovery_cta_button', v)} disabled={!canEdit} />
+                  <Section title="Réservation Cal.com" icon={Calendar}>
+                    {/* Cal.com link — the main config */}
                     <div className="space-y-2">
-                      <Label className="font-display text-[10px] tracking-[0.15em] uppercase text-white/40">Événement Cal.com</Label>
-                      {calEvents.length > 0 ? (
-                        <select
-                          value={config.discovery_cal_link || ''}
-                          onChange={(e) => updateField('discovery_cal_link', e.target.value)}
-                          disabled={!canEdit}
-                          className="w-full h-10 bg-white/[0.03] border border-white/[0.06] text-white text-sm rounded-xl px-3 focus:border-primary/40"
-                        >
-                          <option value="">Sélectionner un événement...</option>
-                          {calEvents.map((ev) => (
-                            <option key={ev.id} value={ev.link}>
-                              {ev.title} ({ev.length}min)
-                            </option>
-                          ))}
-                        </select>
-                      ) : calEventsLoading ? (
-                        <p className="text-[10px] text-white/30">Chargement des événements Cal.com...</p>
-                      ) : (
-                        <>
-                          <Field label="" value={config.discovery_cal_link || ''} onChange={(v) => updateField('discovery_cal_link', v)} disabled={!canEdit} hint="username/event-type" />
-                          <p className="text-[10px] text-white/25">
-                            <a href="/admin/integrations" className="text-primary/60 hover:text-primary underline">Connecter Cal.com</a> pour voir les événements disponibles
-                          </p>
-                        </>
-                      )}
+                      <div className="flex items-center justify-between">
+                        <Label className="font-display text-[10px] tracking-[0.15em] uppercase text-white/40">Lien Cal.com</Label>
+                        {config.discovery_cal_link ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-[9px] text-emerald-400 font-display">
+                            <CheckCircle2 className="w-2.5 h-2.5" /> Connecté
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-[9px] text-red-400/70 font-display">
+                            <AlertTriangle className="w-2.5 h-2.5" /> Non configuré
+                          </span>
+                        )}
+                      </div>
+                      <Input
+                        value={config.discovery_cal_link || ''}
+                        onChange={(e) => updateField('discovery_cal_link', e.target.value)}
+                        disabled={!canEdit}
+                        placeholder="https://cal.com/ton-nom/oracle"
+                        className={cn(
+                          "bg-white/[0.03] border text-white placeholder:text-white/20 text-sm h-10 rounded-xl transition-all duration-200 hover:bg-white/[0.05]",
+                          config.discovery_cal_link
+                            ? "border-emerald-500/20 focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/15"
+                            : "border-white/[0.06] focus:border-primary/40 focus:ring-1 focus:ring-primary/15"
+                        )}
+                      />
+                      <p className="text-[10px] text-white/25 leading-relaxed">
+                        Colle l'URL de ton événement Cal.com. Le webhook est déjà configuré — quand un lead réserve, le CRM se met à jour automatiquement.
+                      </p>
                     </div>
+
+                    <div className="w-full h-px bg-white/[0.06] my-1" />
+
+                    {/* CTA texts */}
+                    <Field label="Titre section" value={config.discovery_cta_title || ''} onChange={(v) => updateField('discovery_cta_title', v)} disabled={!canEdit} placeholder="Choisis ton créneau" />
+                    <Field label="Sous-titre" value={config.discovery_cta_subtitle || ''} onChange={(v) => updateField('discovery_cta_subtitle', v)} disabled={!canEdit} placeholder="Appel stratégique de 30 min" />
+                    <Field label="Texte du bouton" value={config.discovery_cta_button || ''} onChange={(v) => updateField('discovery_cta_button', v)} disabled={!canEdit} placeholder="Réserver mon appel" />
                   </Section>
                   <BlockEditor blocks={config.discovery_blocks || []} onChange={(b) => updateField('discovery_blocks', b)} canEdit={canEdit} calEvents={calEvents} calEventsLoading={calEventsLoading} />
                 </>
