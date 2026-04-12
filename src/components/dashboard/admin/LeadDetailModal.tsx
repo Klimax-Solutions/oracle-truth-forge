@@ -170,8 +170,8 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
   const pipelineSteps = [
     { key: "form", label: "Form", icon: FileText, color: "amber", done: true, date: lead.created_at, view: "lead" as LeadModalView },
     { key: "ea", label: "EA", icon: Shield, color: "cyan", done: lead.status === "approuvée", date: lead.reviewed_at, view: "lead" as LeadModalView },
-    { key: "setting", label: "Setting", icon: PhoneForwarded, color: "purple", done: lead.contacted, date: null, view: "setting" as LeadModalView },
-    { key: "call", label: "Call", icon: Headphones, color: "blue", done: lead.call_done || lead.call_booked, date: lead.call_scheduled_at, view: "call" as LeadModalView },
+    { key: "setting", label: "Setting", icon: PhoneForwarded, color: "purple", done: lead.contacted, date: (lead as any).contacted_at || null, view: "setting" as LeadModalView },
+    { key: "call", label: "Call", icon: Headphones, color: "blue", done: lead.call_done || lead.call_booked, date: lead.call_scheduled_at || (lead as any).call_done_at || null, view: "call" as LeadModalView },
     { key: "paid", label: "Paye", icon: CheckCircle2, color: "emerald", done: !!lead.paid_at, date: lead.paid_at, view: "lead" as LeadModalView },
   ];
 
@@ -519,13 +519,13 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
                     <button
-                      onClick={() => updateField({ contacted: true, contact_method: "whatsapp" })}
+                      onClick={() => updateField({ contacted: true, contact_method: "whatsapp", contacted_at: new Date().toISOString() })}
                       className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all font-display text-sm font-semibold"
                     >
                       <MessageCircle className="w-4 h-4" /> WhatsApp
                     </button>
                     <button
-                      onClick={() => updateField({ contacted: true, contact_method: "email" })}
+                      onClick={() => updateField({ contacted: true, contact_method: "email", contacted_at: new Date().toISOString() })}
                       className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all font-display text-sm font-semibold"
                     >
                       <Mail className="w-4 h-4" /> Email

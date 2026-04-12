@@ -497,8 +497,11 @@ export default function AgendaTab() {
 
                 const top = (startHour - dayStart) * hourHeight;
                 const height = Math.max(duration * hourHeight, 44);
-                const leftPercent = ((dayIndex + 1) / 8) * 100;
-                const widthPercent = (1 / 8) * 100;
+                // Grid is "70px repeat(7, 1fr)" — first col is fixed 70px, remaining 7 cols split the rest
+                // So each day column = (100% - 70px) / 7, offset by 70px + dayIndex * colWidth
+                const colExpr = `(100% - 70px) / 7`;
+                const leftCalc = `70px + ${dayIndex} * ${colExpr}`;
+                const widthCalc = colExpr;
 
                 const color = getCallStatusColor(lead);
                 const setterColor = lead.setter_name ? getSetterColor(lead.setter_name) : null;
@@ -521,8 +524,8 @@ export default function AgendaTab() {
                     style={{
                       top: `${top}px`,
                       height: `${height}px`,
-                      left: `calc(${leftPercent}% + 4px)`,
-                      width: `calc(${widthPercent}% - 8px)`,
+                      left: `calc(${leftCalc} + 4px)`,
+                      width: `calc(${widthCalc} - 8px)`,
                     }}
                   >
                     {/* No-show badge */}
