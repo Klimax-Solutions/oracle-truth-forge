@@ -54,7 +54,8 @@ export default function FunnelApply() {
   const navigate = useNavigate();
   const { config, loading } = useFunnelConfig(slug);
 
-  const hasVSL = config?.vsl_enabled && config?.vsl_page === 'apply' && config?.vsl_embed_code;
+  const hasVSL = config?.vsl_enabled && config?.vsl_page === 'apply';
+  const hasVSLEmbed = hasVSL && !!config?.vsl_embed_code;
   const [showForm, setShowForm] = useState(false);
 
   const [step, setStep] = useState(0);
@@ -167,7 +168,11 @@ export default function FunnelApply() {
               <div className="w-full">
                 <div className="relative pt-4 md:pt-8 pb-4 md:pb-6 px-2 md:px-8">
                   <div className="relative z-10 rounded-lg md:rounded-xl overflow-hidden border border-primary/30 md:border-2 md:border-primary/40 shadow-[0_0_8px_0px_rgba(25,183,201,0.3)] md:shadow-[0_0_12px_0px_rgba(25,183,201,0.4),0_0_25px_5px_rgba(25,183,201,0.25),0_0_50px_10px_rgba(25,183,201,0.15),0_0_80px_20px_rgba(25,183,201,0.08)]">
-                    {renderEmbed()}
+                    {hasVSLEmbed ? renderEmbed() : (
+                      <div className="w-full aspect-video bg-white/[0.02] flex items-center justify-center">
+                        <p className="text-sm text-white/20 font-display">VSL — coller le code Vidalytics dans la config</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

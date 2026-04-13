@@ -316,7 +316,7 @@ function PreviewApply({ c }: { c: any }) {
   const totalSteps = questions.length + 1;
   const isContactStep = previewStep >= questions.length;
   const currentQ = questions[previewStep];
-  const hasVSL = c.vsl_enabled && c.vsl_page === 'apply' && c.vsl_embed_code;
+  const hasVSL = c.vsl_enabled && c.vsl_page === 'apply';
 
   // ── VSL phase (same layout as real page, scaled down) ──
   if (hasVSL && !previewShowForm) {
