@@ -1,9 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Russo+One&family=DM+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Russo+One&family=DM+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap');
+/* Force font-display — Russo One exact match */
+.font-display {
+  font-family: "Russo One", Satoshi, "DM Sans", sans-serif !important;
+}
 
 @layer base {
   :root {
