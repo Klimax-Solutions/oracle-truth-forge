@@ -4,6 +4,46 @@ import { supabase } from '@/integrations/supabase/client';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
 import { Loader2, ChevronLeft, Check, ArrowRight } from 'lucide-react';
 
+/**
+ * Renders text with <u>...</u> tags as spike-launch style accent underlines.
+ * "hello <u>world</u> foo" → ["hello ", <AccentSpan>world</AccentSpan>, " foo"]
+ */
+/**
+ * Renders text with <u>...</u> as spike-launch accent underlines.
+ * Uses absolute-positioned bar (not CSS text-decoration) for the accent effect.
+ */
+function AccentText({ html, className, as: Tag = 'h1' }: { html: string; className?: string; as?: 'h1' | 'p' | 'span' }) {
+  const parts = useMemo(() => {
+    if (!html) return [{ text: '', accent: false }];
+    const result: { text: string; accent: boolean }[] = [];
+    const regex = /<u>(.*?)<\/u>/gi;
+    let lastIndex = 0;
+    let match;
+    while ((match = regex.exec(html)) !== null) {
+      if (match.index > lastIndex) result.push({ text: html.slice(lastIndex, match.index), accent: false });
+      result.push({ text: match[1], accent: true });
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < html.length) result.push({ text: html.slice(lastIndex), accent: false });
+    return result;
+  }, [html]);
+
+  return (
+    <Tag className={className}>
+      {parts.map((p, i) =>
+        p.accent ? (
+          <span key={i} className="relative inline-block">
+            <span className="relative z-10 text-primary font-semibold">{p.text}</span>
+            <span className="absolute bottom-0 left-0 w-full h-[4px] md:h-[6px] bg-primary/30 -z-0" />
+          </span>
+        ) : (
+          <span key={i}>{p.text}</span>
+        )
+      )}
+    </Tag>
+  );
+}
+
 // ============================================
 // Funnel Apply Page — VSL + Multi-step form
 // Style: spike-launch exact (wide headline, glowing VSL, premium CTA)
@@ -110,14 +150,16 @@ export default function FunnelApply() {
 
               {/* Headline — wide, punchy */}
               <div className="text-center space-y-6 max-w-4xl mx-auto">
-                <h1
-                  className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-display text-white leading-[1.5] md:leading-[1.8] max-w-4xl mx-auto px-2 [&>u]:no-underline [&>u]:text-primary [&>u]:font-semibold [&>u]:decoration-primary/30 [&>u]:underline [&>u]:decoration-[4px] [&>u]:md:decoration-[6px] [&>u]:underline-offset-4"
-                  dangerouslySetInnerHTML={{ __html: config.apply_headline || 'Découvre la méthode' }}
+                <AccentText
+                  html={config.apply_headline || 'Découvre la méthode'}
+                  className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-display text-white leading-[1.5] md:leading-[1.8] max-w-4xl mx-auto px-2"
                 />
                 {config.landing_subtitle && (
-                  <p className="text-lg sm:text-xl md:text-2xl font-display text-white/90 max-w-xl mx-auto mt-16 md:mt-10 px-4 leading-relaxed">
-                    {config.landing_subtitle}
-                  </p>
+                  <AccentText
+                    html={config.landing_subtitle}
+                    as="p"
+                    className="text-lg sm:text-xl md:text-2xl font-display text-white/90 max-w-xl mx-auto mt-6 md:mt-10 px-4 leading-relaxed"
+                  />
                 )}
               </div>
 
