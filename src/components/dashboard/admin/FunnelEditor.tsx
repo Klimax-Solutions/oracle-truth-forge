@@ -288,13 +288,72 @@ function PreviewLanding({ c }: { c: any }) {
 function PreviewApply({ c }: { c: any }) {
   const questions = c.apply_form_questions || [];
   const [previewStep, setPreviewStep] = useState(0);
+  const [previewShowForm, setPreviewShowForm] = useState(false);
   const totalSteps = questions.length + 1; // questions + contact info
   const isContactStep = previewStep >= questions.length;
   const currentQ = questions[previewStep];
+  const hasVSL = c.vsl_enabled && c.vsl_page === 'apply' && c.vsl_embed_code;
+
+  // VSL phase preview
+  if (hasVSL && !previewShowForm) {
+    return (
+      <div className="min-h-full bg-[#0a0a0f] p-6">
+        <div className="max-w-md mx-auto space-y-6 pt-4 text-center">
+          <h1 className="font-display text-xl text-white leading-relaxed px-2">
+            {c.apply_headline || 'Découvre la méthode'}
+          </h1>
+          {c.landing_subtitle && (
+            <p className="text-sm text-white/45 leading-relaxed">{c.landing_subtitle}</p>
+          )}
+
+          {/* VSL placeholder / embed */}
+          <div className="rounded-2xl border border-white/[0.08] bg-black overflow-hidden" style={{ minHeight: 200 }}>
+            {c.vsl_provider === 'youtube' || c.vsl_provider === 'vimeo' ? (
+              <div className="w-full aspect-video bg-white/[0.03] flex items-center justify-center">
+                <div className="text-center space-y-2">
+                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mx-auto">
+                    <Video className="w-6 h-6 text-white/40" />
+                  </div>
+                  <p className="text-[10px] text-white/30 font-mono">{c.vsl_provider} embed</p>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full aspect-video bg-gradient-to-br from-white/[0.03] to-transparent flex items-center justify-center">
+                <div className="text-center space-y-2">
+                  <div className="w-14 h-14 rounded-full bg-primary/15 border border-primary/25 flex items-center justify-center mx-auto">
+                    <Video className="w-7 h-7 text-primary/60" />
+                  </div>
+                  <p className="text-[10px] text-white/30 font-display">Vidalytics VSL</p>
+                  <p className="text-[9px] text-white/15 font-mono max-w-[200px] truncate">{c.vsl_embed_code?.substring(0, 50)}...</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => setPreviewShowForm(true)}
+            className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#19B7C9] rounded-xl text-white font-display text-sm tracking-wider shadow-[0_0_30px_rgba(25,183,201,0.3)]"
+          >
+            {c.landing_cta_text || 'Déposer ma candidature'}
+            <ArrowRight className="w-4 h-4" />
+          </button>
+          {c.landing_cta_subtext && (
+            <p className="text-[10px] text-white/20">{c.landing_cta_subtext}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full bg-[#0a0a0f] p-8">
       <div className="max-w-md mx-auto space-y-8 pt-6">
+        {/* Back to VSL button if VSL is enabled */}
+        {hasVSL && previewShowForm && (
+          <button onClick={() => { setPreviewShowForm(false); setPreviewStep(0); }} className="text-[10px] text-white/30 hover:text-white/50 font-display">
+            ← Retour à la VSL
+          </button>
+        )}
         <h1 className="font-display text-2xl text-white text-center leading-relaxed">
           {c.apply_headline || 'Dépose ta candidature'}
         </h1>
