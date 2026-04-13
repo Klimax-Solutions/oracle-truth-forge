@@ -299,7 +299,7 @@ export const useSidebarRoles = () => {
 
     if (isDev) {
       devFallbackTimer = setTimeout(() => {
-        // If roles still not resolved after 300ms, force super_admin for dev
+        // If roles still not resolved after 100ms, force super_admin for dev
         setIsAdmin(prev => {
           if (!prev) {
             console.warn("[Roles] DEV: Forcing admin roles (RPCs timed out)");
@@ -311,6 +311,15 @@ export const useSidebarRoles = () => {
         setLoadingRoles(false);
       }, 100);
     }
+
+    // Safety timeout for ALL environments (including Vercel preview)
+    // If RPCs haven't resolved after 4s, stop loading to avoid infinite spinner
+    const safetyTimer = setTimeout(() => {
+      setLoadingRoles(prev => {
+        if (prev) console.warn("[Roles] Safety timeout — forcing loadingRoles to false");
+        return false;
+      });
+    }, 4000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
@@ -337,6 +346,7 @@ export const useSidebarRoles = () => {
       subscription.unsubscribe();
       supabase.removeChannel(channel);
       if (devFallbackTimer) clearTimeout(devFallbackTimer);
+      clearTimeout(safetyTimer);
     };
   }, []);
 
