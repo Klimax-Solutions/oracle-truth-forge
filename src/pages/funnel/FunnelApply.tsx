@@ -74,7 +74,12 @@ export default function FunnelApply() {
   const progress = ((step + 1) / totalSteps) * 100;
   const hasAnswer = currentQuestion ? !!answers[currentQuestion.id] : (contact.first_name && contact.email);
 
-  useEffect(() => { if (!hasVSL) setShowForm(true); }, [hasVSL]);
+  // Show form directly if no VSL. Reset to VSL phase if VSL gets enabled.
+  useEffect(() => {
+    if (config && !loading) {
+      setShowForm(!hasVSL);
+    }
+  }, [hasVSL, config, loading]);
 
   // Execute Vidalytics scripts
   useEffect(() => {
