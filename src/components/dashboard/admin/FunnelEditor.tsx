@@ -285,79 +285,103 @@ function PreviewLanding({ c }: { c: any }) {
   );
 }
 
+// AccentText — renders <u> tags as spike-launch accent underlines in previews
+function PreviewAccentText({ html, className, tag: Tag = 'h1' }: { html: string; className?: string; tag?: 'h1' | 'p' }) {
+  const parts: { text: string; accent: boolean }[] = [];
+  const regex = /<u>(.*?)<\/u>/gi;
+  let lastIndex = 0, match;
+  while ((match = regex.exec(html)) !== null) {
+    if (match.index > lastIndex) parts.push({ text: html.slice(lastIndex, match.index), accent: false });
+    parts.push({ text: match[1], accent: true });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < html.length) parts.push({ text: html.slice(lastIndex), accent: false });
+  if (parts.length === 0) parts.push({ text: html, accent: false });
+  return (
+    <Tag className={className}>
+      {parts.map((p, i) => p.accent ? (
+        <span key={i} className="relative inline-block">
+          <span className="relative z-10 text-[#19B7C9] font-semibold">{p.text}</span>
+          <span className="absolute bottom-0 left-0 w-full h-[3px] bg-[#19B7C9]/30 -z-0" />
+        </span>
+      ) : <span key={i}>{p.text}</span>)}
+    </Tag>
+  );
+}
+
 function PreviewApply({ c }: { c: any }) {
   const questions = c.apply_form_questions || [];
   const [previewStep, setPreviewStep] = useState(0);
   const [previewShowForm, setPreviewShowForm] = useState(false);
-  const totalSteps = questions.length + 1; // questions + contact info
+  const totalSteps = questions.length + 1;
   const isContactStep = previewStep >= questions.length;
   const currentQ = questions[previewStep];
   const hasVSL = c.vsl_enabled && c.vsl_page === 'apply' && c.vsl_embed_code;
 
-  // VSL phase preview
+  // ── VSL phase (same layout as real page, scaled down) ──
   if (hasVSL && !previewShowForm) {
     return (
-      <div className="min-h-full bg-[#0a0a0f] p-6">
-        <div className="max-w-md mx-auto space-y-6 pt-4 text-center">
-          <h1 className="font-display text-xl text-white leading-relaxed px-2">
-            {c.apply_headline || 'Découvre la méthode'}
-          </h1>
-          {c.landing_subtitle && (
-            <p className="text-sm text-white/45 leading-relaxed">{c.landing_subtitle}</p>
-          )}
-
-          {/* VSL placeholder / embed */}
-          <div className="rounded-2xl border border-white/[0.08] bg-black overflow-hidden" style={{ minHeight: 200 }}>
-            {c.vsl_provider === 'youtube' || c.vsl_provider === 'vimeo' ? (
-              <div className="w-full aspect-video bg-white/[0.03] flex items-center justify-center">
-                <div className="text-center space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mx-auto">
-                    <Video className="w-6 h-6 text-white/40" />
-                  </div>
-                  <p className="text-[10px] text-white/30 font-mono">{c.vsl_provider} embed</p>
-                </div>
-              </div>
-            ) : (
-              <div className="w-full aspect-video bg-gradient-to-br from-white/[0.03] to-transparent flex items-center justify-center">
-                <div className="text-center space-y-2">
-                  <div className="w-14 h-14 rounded-full bg-primary/15 border border-primary/25 flex items-center justify-center mx-auto">
-                    <Video className="w-7 h-7 text-primary/60" />
-                  </div>
-                  <p className="text-[10px] text-white/30 font-display">Vidalytics VSL</p>
-                  <p className="text-[9px] text-white/15 font-mono max-w-[200px] truncate">{c.vsl_embed_code?.substring(0, 50)}...</p>
-                </div>
-              </div>
+      <div className="min-h-full bg-[#08080d] p-4">
+        <div className="mx-auto space-y-6 pt-6">
+          {/* Headline — spike-launch style with accent underlines */}
+          <div className="text-center space-y-4">
+            <PreviewAccentText
+              html={c.apply_headline || 'Découvre la méthode'}
+              className="text-xl font-display text-white leading-[1.6] px-2"
+            />
+            {c.landing_subtitle && (
+              <PreviewAccentText
+                html={c.landing_subtitle}
+                tag="p"
+                className="text-sm font-display text-white/80 max-w-[320px] mx-auto leading-relaxed"
+              />
             )}
           </div>
 
-          <button
-            onClick={() => setPreviewShowForm(true)}
-            className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#19B7C9] rounded-xl text-white font-display text-sm tracking-wider shadow-[0_0_30px_rgba(25,183,201,0.3)]"
-          >
-            {c.landing_cta_text || 'Déposer ma candidature'}
-            <ArrowRight className="w-4 h-4" />
-          </button>
-          {c.landing_cta_subtext && (
-            <p className="text-[10px] text-white/20">{c.landing_cta_subtext}</p>
-          )}
+          {/* VSL container — glowing border like real page */}
+          <div className="px-2">
+            <div className="rounded-xl overflow-hidden border border-[#19B7C9]/30 shadow-[0_0_12px_0px_rgba(25,183,201,0.3),0_0_25px_5px_rgba(25,183,201,0.15)]">
+              <div className="w-full aspect-video bg-gradient-to-br from-white/[0.04] to-black flex items-center justify-center">
+                <div className="text-center space-y-2">
+                  <div className="w-12 h-12 rounded-full bg-[#19B7C9]/15 border border-[#19B7C9]/25 flex items-center justify-center mx-auto">
+                    <Video className="w-6 h-6 text-[#19B7C9]/60" />
+                  </div>
+                  <p className="text-[10px] text-white/30 font-display">{c.vsl_provider || 'Vidalytics'} VSL</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA — spike-launch style */}
+          <div className="text-center">
+            <button
+              onClick={() => setPreviewShowForm(true)}
+              className="group relative px-8 py-4 bg-[#19B7C9] text-white font-display text-sm uppercase tracking-wider rounded-xl shadow-[0_0_30px_rgba(25,183,201,0.3)] hover:scale-105 transition-all"
+            >
+              {c.landing_cta_text || 'Candidater'}
+              <ArrowRight className="w-4 h-4 inline ml-2" />
+            </button>
+            {c.landing_cta_subtext && (
+              <p className="text-[9px] text-white/20 mt-3">{c.landing_cta_subtext}</p>
+            )}
+          </div>
         </div>
       </div>
     );
   }
 
+  // ── Form phase ──
   return (
-    <div className="min-h-full bg-[#0a0a0f] p-8">
-      <div className="max-w-md mx-auto space-y-8 pt-6">
-        {/* Back to VSL button if VSL is enabled */}
+    <div className="min-h-full bg-[#08080d] p-6">
+      <div className="max-w-md mx-auto space-y-6 pt-4">
         {hasVSL && previewShowForm && (
-          <button onClick={() => { setPreviewShowForm(false); setPreviewStep(0); }} className="text-[10px] text-white/30 hover:text-white/50 font-display">
-            ← Retour à la VSL
-          </button>
+          <button onClick={() => { setPreviewShowForm(false); setPreviewStep(0); }} className="text-[10px] text-white/30 hover:text-white/50 font-display">← Retour à la VSL</button>
         )}
-        <h1 className="font-display text-2xl text-white text-center leading-relaxed">
-          {c.apply_headline || 'Dépose ta candidature'}
-        </h1>
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 space-y-5 backdrop-blur-sm">
+        <PreviewAccentText
+          html={c.apply_headline || 'Dépose ta candidature'}
+          className="font-display text-xl text-white text-center leading-relaxed"
+        />
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 space-y-4 backdrop-blur-sm">
           {/* Progress bar */}
           <div className="w-full h-1 bg-white/[0.06] rounded-full overflow-hidden">
             <div className="h-full bg-[#19B7C9] rounded-full transition-all duration-300" style={{ width: `${((previewStep + 1) / totalSteps) * 100}%` }} />
