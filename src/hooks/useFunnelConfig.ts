@@ -13,6 +13,7 @@ export interface FunnelConfig {
   landing_footer_text: string;
   // Apply
   apply_headline: string;
+  apply_subtitle: string;
   apply_social_proof_enabled: boolean;
   apply_social_proof_text: string;
   apply_form_questions: any[];
@@ -66,6 +67,7 @@ const DEFAULT_CONFIG: Omit<FunnelConfig, 'id' | 'tenant_id'> = {
   landing_cta_subtext: 'Sous-texte CTA',
   landing_footer_text: 'Description footer',
   apply_headline: 'Dépose ta candidature pour accéder au protocole.',
+  apply_subtitle: '',
   apply_social_proof_enabled: false,
   apply_social_proof_text: '',
   apply_form_questions: [

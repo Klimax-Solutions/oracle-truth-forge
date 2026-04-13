@@ -81,7 +81,7 @@ export default function FunnelDiscovery() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#08080d] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0A0B10] flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -89,14 +89,14 @@ export default function FunnelDiscovery() {
 
   if (!config) {
     return (
-      <div className="min-h-screen bg-[#08080d] flex items-center justify-center text-white/40">
+      <div className="min-h-screen bg-[#0A0B10] flex items-center justify-center text-white/40">
         Funnel non trouvé
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#08080d] text-white flex flex-col">
+    <div className="min-h-screen bg-[#0A0B10] text-white flex flex-col">
       {/* Header */}
       <div className="text-center px-4 pt-10 pb-6">
         {config.discovery_badge_text && (

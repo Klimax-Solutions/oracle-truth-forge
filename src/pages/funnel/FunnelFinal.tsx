@@ -39,7 +39,7 @@ export default function FunnelFinal() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#08080d] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0A0B10] flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -47,14 +47,14 @@ export default function FunnelFinal() {
 
   if (!config) {
     return (
-      <div className="min-h-screen bg-[#08080d] flex items-center justify-center text-white/40">
+      <div className="min-h-screen bg-[#0A0B10] flex items-center justify-center text-white/40">
         Funnel non trouvé
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#08080d] text-white flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-[#0A0B10] text-white flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-lg space-y-8">
 
         {/* Badge */}

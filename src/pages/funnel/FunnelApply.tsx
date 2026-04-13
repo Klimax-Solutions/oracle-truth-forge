@@ -134,11 +134,11 @@ export default function FunnelApply() {
     return <div ref={vslRef} className="w-full" dangerouslySetInnerHTML={{ __html: config.vsl_embed_code }} />;
   };
 
-  if (loading) return <div className="min-h-screen bg-[#08080d] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-  if (!config) return <div className="min-h-screen bg-[#08080d] flex items-center justify-center text-white/40">Funnel non trouvé</div>;
+  if (loading) return <div className="min-h-screen bg-[#0A0B10] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (!config) return <div className="min-h-screen bg-[#0A0B10] flex items-center justify-center text-white/40">Funnel non trouvé</div>;
 
   return (
-    <div className="min-h-screen bg-[#08080d] text-white">
+    <div className="min-h-screen bg-[#0A0B10] text-white">
 
       {/* ═══════════════════════════════════════════════ */}
       {/* PHASE 1: VSL — spike-launch exact style         */}
@@ -154,9 +154,9 @@ export default function FunnelApply() {
                   html={config.apply_headline || 'Découvre la méthode'}
                   className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-display text-white leading-[1.5] md:leading-[1.8] max-w-4xl mx-auto px-2"
                 />
-                {config.landing_subtitle && (
+                {(config.apply_subtitle || config.landing_subtitle) && (
                   <AccentText
-                    html={config.landing_subtitle}
+                    html={config.apply_subtitle || config.landing_subtitle}
                     as="p"
                     className="text-lg sm:text-xl md:text-2xl font-display text-white/90 max-w-xl mx-auto mt-6 md:mt-10 px-4 leading-relaxed"
                   />

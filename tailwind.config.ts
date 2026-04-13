@@ -15,7 +15,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
-        display: ["'Satoshi'", "'DM Sans'", "Inter", "sans-serif"],
+        display: ["'Russo One'", "'Satoshi'", "'DM Sans'", "sans-serif"],
         mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {

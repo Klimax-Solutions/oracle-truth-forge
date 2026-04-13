@@ -321,7 +321,7 @@ function PreviewApply({ c }: { c: any }) {
   // ── VSL phase (same layout as real page, scaled down) ──
   if (hasVSL && !previewShowForm) {
     return (
-      <div className="min-h-full bg-[#08080d] p-4">
+      <div className="min-h-full bg-[#0A0B10] p-4">
         <div className="mx-auto space-y-6 pt-6">
           {/* Headline — spike-launch style with accent underlines */}
           <div className="text-center space-y-4">
@@ -329,9 +329,9 @@ function PreviewApply({ c }: { c: any }) {
               html={c.apply_headline || 'Découvre la méthode'}
               className="text-xl font-display text-white leading-[1.6] px-2"
             />
-            {c.landing_subtitle && (
+            {(c.apply_subtitle || c.landing_subtitle) && (
               <PreviewAccentText
-                html={c.landing_subtitle}
+                html={c.apply_subtitle || c.landing_subtitle}
                 tag="p"
                 className="text-sm font-display text-white/80 max-w-[320px] mx-auto leading-relaxed"
               />
@@ -372,7 +372,7 @@ function PreviewApply({ c }: { c: any }) {
 
   // ── Form phase ──
   return (
-    <div className="min-h-full bg-[#08080d] p-6">
+    <div className="min-h-full bg-[#0A0B10] p-6">
       <div className="max-w-md mx-auto space-y-6 pt-4">
         {hasVSL && previewShowForm && (
           <button onClick={() => { setPreviewShowForm(false); setPreviewStep(0); }} className="text-[10px] text-white/30 hover:text-white/50 font-display">← Retour à la VSL</button>
@@ -918,7 +918,7 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
   }[saveStatus];
 
   return (
-      <div className="h-full flex flex-col bg-[#08080d] overflow-hidden">
+      <div className="h-full flex flex-col bg-[#0A0B10] overflow-hidden">
 
         {/* Header */}
         <header className="relative border-b border-white/[0.10] bg-black/60 backdrop-blur-xl shrink-0 z-50">
@@ -1036,7 +1036,8 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
               {activeTab === 'apply' && (
                 <>
                   <Section title="Titre de la page" icon={Type}>
-                    <Field label="Headline" value={config.apply_headline || ''} onChange={(v) => updateField('apply_headline', v)} disabled={!canEdit} />
+                    <Field label="Headline" value={config.apply_headline || ''} onChange={(v) => updateField('apply_headline', v)} multiline disabled={!canEdit} hint="Utilise <u>mot</u> pour souligner en accent" />
+                    <Field label="Sous-titre" value={config.apply_subtitle || ''} onChange={(v) => updateField('apply_subtitle', v)} disabled={!canEdit} hint="Affiché sous le headline (avant la VSL)" />
                   </Section>
 
                   <Section title="Questions du formulaire" icon={MessageSquare} badge={`${(config.apply_form_questions || []).length}`}>
