@@ -1269,8 +1269,20 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
                 <div className="w-2.5 h-2.5 rounded-full bg-green-500/50" />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto bg-[#0a0a0f]">
-              {previewMap[activeTab]}
+            <div className="flex-1 overflow-hidden bg-[#0A0B10] relative">
+              {activeTabInfo?.path ? (
+                <iframe
+                  key={activeTab}
+                  src={activeTabInfo.path}
+                  title={`Preview ${activeTab}`}
+                  className="absolute inset-0 w-[200%] h-[200%] border-none origin-top-left"
+                  style={{ transform: 'scale(0.5)' }}
+                />
+              ) : (
+                <div className="flex-1 overflow-y-auto">
+                  {previewMap[activeTab]}
+                </div>
+              )}
             </div>
           </div>
         </div>
