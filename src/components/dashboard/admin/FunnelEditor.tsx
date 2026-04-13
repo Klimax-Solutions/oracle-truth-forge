@@ -907,7 +907,7 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
 
   const s = funnelSlug || 'vip';
   const tabs = [
-    { value: 'landing', label: 'Landing', icon: Globe, slug: '/', path: '/' },
+    { value: 'landing', label: 'Landing', icon: Globe, slug: `/${s}/landing`, path: `/${s}/landing` },
     { value: 'apply', label: 'Apply', icon: FileText, slug: `/${s}/apply`, path: `/${s}/apply` },
     { value: 'discovery', label: 'Discovery', icon: Calendar, slug: `/${s}/discovery`, path: `/${s}/discovery` },
     { value: 'final', label: 'Final', icon: MessageSquare, slug: `/${s}/final`, path: `/${s}/final` },
