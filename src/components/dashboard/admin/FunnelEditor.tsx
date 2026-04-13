@@ -883,6 +883,12 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
     }
   };
 
+  // Refresh iframe preview after each save (must be before any early return)
+  const [previewKey, setPreviewKey] = useState(0);
+  useEffect(() => {
+    if (saveStatus === 'saved') setPreviewKey(k => k + 1);
+  }, [saveStatus]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -909,12 +915,6 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
   ];
 
   const activeTabInfo = tabs.find(t => t.value === activeTab);
-
-  // Refresh iframe preview after each save
-  const [previewKey, setPreviewKey] = useState(0);
-  useEffect(() => {
-    if (saveStatus === 'saved') setPreviewKey(k => k + 1);
-  }, [saveStatus]);
 
   const statusIndicator = {
     saved: { color: 'bg-emerald-400', text: 'Sauvegardé', textColor: 'text-emerald-400/70' },
