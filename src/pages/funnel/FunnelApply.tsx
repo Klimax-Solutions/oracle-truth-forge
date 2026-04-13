@@ -155,16 +155,16 @@ export default function FunnelApply() {
             <div className="max-w-4xl mx-auto space-y-10 md:space-y-16">
 
               {/* Headline — wide, punchy */}
-              <div className="text-center space-y-6 max-w-4xl mx-auto">
+              <div className="text-center space-y-6">
                 <AccentText
                   html={config.apply_headline || 'Découvre la méthode'}
-                  className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-display text-white leading-[1.5] md:leading-[1.8] max-w-4xl mx-auto px-2"
+                  className="text-2xl sm:text-3xl md:text-[2.75rem] lg:text-5xl font-display text-white leading-[1.4] md:leading-[1.6] px-2"
                 />
                 {(config.apply_subtitle || config.landing_subtitle) && (
                   <AccentText
                     html={config.apply_subtitle || config.landing_subtitle}
                     as="p"
-                    className="text-lg sm:text-xl md:text-2xl font-display text-white/90 max-w-xl mx-auto mt-6 md:mt-10 px-4 leading-relaxed"
+                    className="text-xl sm:text-2xl md:text-3xl font-display text-white/90 max-w-2xl mx-auto mt-6 md:mt-10 px-4 leading-relaxed"
                   />
                 )}
               </div>
@@ -186,7 +186,7 @@ export default function FunnelApply() {
               <div className="w-full text-center">
                 <button
                   onClick={() => setShowForm(true)}
-                  className="group relative px-12 py-5 bg-primary text-white font-display text-lg uppercase tracking-wider rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(25,183,201,0.3)]"
+                  className="group relative px-12 py-5 bg-[#19B7C9] text-[#0A0B10] font-display text-lg font-bold uppercase tracking-wider rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(25,183,201,0.3)]"
                 >
                   <span className="absolute inset-0 rounded-xl bg-primary/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
                   <span className="relative flex items-center gap-3 justify-center">
