@@ -910,6 +910,12 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
 
   const activeTabInfo = tabs.find(t => t.value === activeTab);
 
+  // Refresh iframe preview after each save
+  const [previewKey, setPreviewKey] = useState(0);
+  useEffect(() => {
+    if (saveStatus === 'saved') setPreviewKey(k => k + 1);
+  }, [saveStatus]);
+
   const statusIndicator = {
     saved: { color: 'bg-emerald-400', text: 'Sauvegardé', textColor: 'text-emerald-400/70' },
     unsaved: { color: 'bg-amber-400', text: 'Non sauvegardé', textColor: 'text-amber-400/70' },
@@ -1272,7 +1278,7 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
             <div className="flex-1 overflow-hidden bg-[#0A0B10] relative">
               {activeTabInfo?.path ? (
                 <iframe
-                  key={activeTab}
+                  key={`${activeTab}-${previewKey}`}
                   src={activeTabInfo.path}
                   title={`Preview ${activeTab}`}
                   className="absolute inset-0 w-[200%] h-[200%] border-none origin-top-left"
