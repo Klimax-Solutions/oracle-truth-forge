@@ -1041,9 +1041,45 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
               {/* APPLY */}
               {activeTab === 'apply' && (
                 <>
-                  <Section title="Titre de la page" icon={Type}>
-                    <Field label="Headline" value={config.apply_headline || ''} onChange={(v) => updateField('apply_headline', v)} multiline disabled={!canEdit} hint="Utilise <u>mot</u> pour souligner en accent" />
-                    <Field label="Sous-titre" value={config.apply_subtitle || ''} onChange={(v) => updateField('apply_subtitle', v)} disabled={!canEdit} hint="Affiché sous le headline (avant la VSL)" />
+                  <Section title="Headline & Sous-titre" icon={Type}>
+                    <Field label="Headline" value={config.apply_headline || ''} onChange={(v) => updateField('apply_headline', v)} multiline disabled={!canEdit} hint="Utilise <u>mot</u> pour souligner en accent cyan" />
+                    <Field label="Sous-titre" value={config.apply_subtitle || ''} onChange={(v) => updateField('apply_subtitle', v)} multiline disabled={!canEdit} hint="Affiché sous le headline" />
+                  </Section>
+
+                  <Section title="VSL / Vidéo" icon={Video} defaultOpen={true}>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="font-display text-[10px] tracking-[0.15em] uppercase text-white/40">Activer la VSL</Label>
+                        <button
+                          onClick={() => { updateField('vsl_enabled', !config.vsl_enabled); if (!config.vsl_enabled) updateField('vsl_page', 'apply'); }}
+                          disabled={!canEdit}
+                          className={cn("w-10 h-5 rounded-full transition-colors flex items-center px-0.5",
+                            config.vsl_enabled ? "bg-[#19B7C9] justify-end" : "bg-white/10 justify-start"
+                          )}
+                        >
+                          <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                        </button>
+                      </div>
+                      {config.vsl_enabled && (
+                        <>
+                          <div className="space-y-1.5">
+                            <Label className="font-display text-[10px] tracking-[0.15em] uppercase text-white/40">Provider</Label>
+                            <select value={config.vsl_provider || 'vidalytics'} onChange={(e) => updateField('vsl_provider', e.target.value)} disabled={!canEdit}
+                              className="w-full h-9 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white px-3 focus:border-[#19B7C9]/40">
+                              <option value="vidalytics">Vidalytics</option>
+                              <option value="youtube">YouTube</option>
+                              <option value="vimeo">Vimeo</option>
+                            </select>
+                          </div>
+                          <Field label="Code embed / URL" value={config.vsl_embed_code || ''} onChange={(v) => updateField('vsl_embed_code', v)} multiline disabled={!canEdit} hint="Colle le code Vidalytics complet ou l'URL YouTube/Vimeo" />
+                        </>
+                      )}
+                    </div>
+                  </Section>
+
+                  <Section title="CTA (bouton sous la VSL)" icon={Send}>
+                    <Field label="Texte du bouton" value={config.landing_cta_text || ''} onChange={(v) => updateField('landing_cta_text', v)} disabled={!canEdit} hint="Ex: Candidater, Commencer, Déposer ma candidature" />
+                    <Field label="Sous-texte" value={config.landing_cta_subtext || ''} onChange={(v) => updateField('landing_cta_subtext', v)} disabled={!canEdit} hint="Petit texte sous le bouton (optionnel)" />
                   </Section>
 
                   <Section title="Questions du formulaire" icon={MessageSquare} badge={`${(config.apply_form_questions || []).length}`}>
