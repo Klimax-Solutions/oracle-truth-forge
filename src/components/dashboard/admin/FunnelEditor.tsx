@@ -1080,6 +1080,7 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
                   <Section title="CTA (bouton sous la VSL)" icon={Send}>
                     <Field label="Texte du bouton" value={config.landing_cta_text || ''} onChange={(v) => updateField('landing_cta_text', v)} disabled={!canEdit} hint="Ex: Candidater, Commencer, Déposer ma candidature" />
                     <Field label="Sous-texte" value={config.landing_cta_subtext || ''} onChange={(v) => updateField('landing_cta_subtext', v)} disabled={!canEdit} hint="Petit texte sous le bouton (optionnel)" />
+                    <Field label="Délai avant affichage (secondes)" value={String(config.vsl_cta_delay_seconds || 0)} onChange={(v) => updateField('vsl_cta_delay_seconds', parseInt(v) || 0)} disabled={!canEdit} hint="0 = immédiat. Ex: 300 = le CTA apparaît après 5 min de vidéo" />
                   </Section>
 
                   <Section title="Questions du formulaire" icon={MessageSquare} badge={`${(config.apply_form_questions || []).length}`}>

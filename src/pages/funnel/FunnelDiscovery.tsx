@@ -1,6 +1,6 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, Calendar, CheckCircle2 } from 'lucide-react';
 
 // ============================================
@@ -29,37 +29,62 @@ function buildCalEmbedUrl(link: string): string | null {
   return `https://cal.com/${calPath}?embed=true&theme=dark&layout=month_view`;
 }
 
+function appendCalPrefill(url: string, name?: string, email?: string, phone?: string): string {
+  if (!url) return url;
+  const parts: string[] = [];
+  if (name) parts.push(`name=${encodeURIComponent(name)}`);
+  if (email) parts.push(`email=${encodeURIComponent(email)}`);
+  if (phone) parts.push(`phone=${encodeURIComponent(phone)}`);
+  if (!parts.length) return url;
+  return `${url}&${parts.join('&')}`;
+}
+
 export default function FunnelDiscovery() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { config, loading } = useFunnelConfig(slug);
 
-  const embedUrl = config?.discovery_cal_link ? buildCalEmbedUrl(config.discovery_cal_link) : null;
+  const prefillName = searchParams.get('name') || undefined;
+  const prefillEmail = searchParams.get('email') || undefined;
+  const prefillPhone = searchParams.get('phone') || undefined;
+  const embedUrl = config?.discovery_cal_link
+    ? appendCalPrefill(buildCalEmbedUrl(config.discovery_cal_link)!, prefillName, prefillEmail, prefillPhone)
+    : null;
 
   // Listen for Cal.com booking success via postMessage
+  // Cal.com sends messages in various formats — catch them all
+  const [booked, setBooked] = useState(false);
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Cal.com iframe sends postMessage on booking
-      // Format varies: { type: "CAL:booking_successful", data: { ... } }
-      // or: { action: "booking_successful", ... }
-      if (!event.data) return;
+      if (!event.data || booked) return;
 
-      const data = typeof event.data === 'string' ? (() => { try { return JSON.parse(event.data); } catch { return null; } })() : event.data;
+      const data = typeof event.data === 'string'
+        ? (() => { try { return JSON.parse(event.data); } catch { return null; } })()
+        : event.data;
       if (!data) return;
 
+      // Log all Cal messages for debug
+      const calAction = data?.Cal?.action || data?.action || data?.type || '';
+      if (calAction || data?.Cal) {
+        console.log('[Discovery] Cal.com message:', calAction, data);
+      }
+
       const isBooking =
+        calAction === 'bookingSuccessful' ||
+        calAction === 'bookingSuccessfulV2' ||
         data.type === 'CAL:booking_successful' ||
         data.type === '__cal_booking_successful' ||
-        (data.Cal && data.Cal.action === 'bookingSuccessful') ||
-        data.action === 'bookingSuccessful';
+        data.action === 'bookingSuccessful' ||
+        // Cal.com v2 also sends __routeChanged to /booking/... after success
+        (calAction === '__routeChanged' && typeof data?.Cal?.data?.url === 'string' && data.Cal.data.url.includes('/booking/'));
 
       if (isBooking) {
-        // Extract booking info if available
-        const bookingData = data.data || data.Cal?.data || {};
-        const date = bookingData.date || bookingData.startTime || '';
-        const email = bookingData.attendees?.[0]?.email || bookingData.email || '';
+        setBooked(true);
+        const bookingData = data.Cal?.data || data.data || {};
+        const date = bookingData.date || bookingData.startTime || bookingData.booking?.startTime || '';
+        const email = bookingData.attendees?.[0]?.email || bookingData.email || prefillEmail || '';
 
-        // Format date for display
         let dateLabel = '';
         if (date) {
           try {
@@ -70,6 +95,7 @@ export default function FunnelDiscovery() {
         const params = new URLSearchParams();
         if (dateLabel) params.set('date', dateLabel);
         if (email) params.set('email', email);
+        if (prefillName) params.set('name', prefillName);
 
         navigate(`/${slug}/final${params.toString() ? `?${params}` : ''}`);
       }
@@ -77,7 +103,7 @@ export default function FunnelDiscovery() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [slug, navigate]);
+  }, [slug, navigate, prefillName, prefillEmail, booked]);
 
   if (loading) {
     return (

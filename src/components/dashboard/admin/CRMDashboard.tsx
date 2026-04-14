@@ -13,7 +13,7 @@ import {
   X, Calendar, BarChart3, ChevronDown, MessageCircle,
   Timer, Wifi, PhoneForwarded, ClipboardCheck, Target,
   Lock, Unlock, DollarSign, FileText, Headphones, Shield,
-  Send, UserCheck, Sparkles, UserX,
+  Send, UserCheck, Sparkles, UserX, Trash2, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { CRMLead, StageFilter, getStage, mapRowToCRMLead } from "@/lib/admin/types";
+import { getTrialDay, getTrialColor, getChecklistStep } from "@/lib/admin/trialStatus";
 import { getSetterColor } from "@/lib/admin/setterColors";
 import AgendaTab from "./AgendaTab";
 import CockpitTab from "./CockpitTab";
@@ -43,10 +44,15 @@ function fmtDate(d: string | null): string {
   return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function fmtDateTime(d: string | null): string {
+function fmtTime(d: string | null): string {
   if (!d) return "";
   const date = new Date(d);
-  return `${fmtDate(d)} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function fmtDateTime(d: string | null): string {
+  if (!d) return "";
+  return `${fmtDate(d)} ${fmtTime(d)}`;
 }
 
 // ============================================
@@ -274,10 +280,13 @@ export default function CRMDashboard() {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<StageFilter>("all");
   const [setterFilter, setSetterFilter] = useState("all");
+  const [prioFilter, setPrioFilter] = useState("all");
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedLead, setSelectedLead] = useState<PipelineLead | null>(null);
   const [modalView, setModalView] = useState<LeadModalView>("lead");
+  const [refreshing, setRefreshing] = useState(false);
   const [isSetterOnly, setIsSetterOnly] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [currentSetterName, setCurrentSetterName] = useState<string | null>(null);
 
   // Detect if current user is a setter (not admin/superadmin) → auto-filter
@@ -291,8 +300,9 @@ export default function CRMDashboard() {
         ]);
         const isSetter = setterRes.data === true;
         const isAdmin = adminRes.data === true;
-        const isSuperAdmin = superRes.data === true;
-        if (isSetter && !isAdmin && !isSuperAdmin) {
+        const superAdmin = superRes.data === true;
+        setIsSuperAdmin(superAdmin);
+        if (isSetter && !isAdmin && !superAdmin) {
           setIsSetterOnly(true);
           // Get setter's display name for filtering
           const { data: { user } } = await supabase.auth.getUser();
@@ -316,6 +326,21 @@ export default function CRMDashboard() {
     setModalView(view);
   };
 
+  const quickUpdate = async (e: React.MouseEvent, leadId: string, fields: Record<string, any>) => {
+    e.stopPropagation();
+    await supabase.from("early_access_requests").update(fields).eq("id", leadId);
+    loadLeads();
+  };
+
+  const deleteLead = async (e: React.MouseEvent, lead: PipelineLead) => {
+    e.stopPropagation();
+    if (!confirm(`Supprimer ${lead.first_name} (${lead.email}) ? Cette action est irréversible.`)) return;
+    const { error } = await supabase.from("early_access_requests").delete().eq("id", lead.id);
+    if (error) { console.error("[CRM] Delete error:", error); return; }
+    setLeads(prev => prev.filter(l => l.id !== lead.id));
+    if (selectedLead?.id === lead.id) setSelectedLead(null);
+  };
+
   const mapLead = useCallback((r: any, enrich?: any): PipelineLead => mapRowToCRMLead(r, enrich ? {
     activityMap: enrich.activityMap,
     sessionMap: enrich.sessionMap,
@@ -335,27 +360,35 @@ export default function CRMDashboard() {
       // Enrich in background
       const userIds = requests.filter(r => r.user_id).map(r => r.user_id);
       if (userIds.length === 0) return;
-      const [rolesRes, activityRes, sessionsRes, execsRes] = await Promise.all([
+      const [rolesRes, activityRes, sessionsRes, execsRes, videoViewsRes] = await Promise.all([
         supabase.from("user_roles").select("user_id, expires_at, early_access_type").in("user_id", userIds).eq("role", "early_access"),
         supabase.from("ea_activity_tracking").select("user_id, is_active, active_tab, last_heartbeat").in("user_id", userIds),
         supabase.from("user_sessions").select("user_id").in("user_id", userIds),
         supabase.from("user_executions").select("user_id").in("user_id", userIds),
+        supabase.from("user_video_views").select("user_id").in("user_id", userIds),
       ]);
-      const rolesMap: Record<string, any> = {}, activityMap: Record<string, any> = {}, sessionMap: Record<string, number> = {}, execMap: Record<string, number> = {};
+      const rolesMap: Record<string, any> = {}, activityMap: Record<string, any> = {}, sessionMap: Record<string, number> = {}, execMap: Record<string, number> = {}, videoViewMap: Record<string, number> = {};
       rolesRes.data?.forEach((r: any) => { rolesMap[r.user_id] = r; });
       activityRes.data?.forEach((a: any) => { activityMap[a.user_id] = { is_active: a.is_active && a.last_heartbeat && (Date.now() - new Date(a.last_heartbeat).getTime()) < 60000, active_tab: a.active_tab }; });
       sessionsRes.data?.forEach((s: any) => { sessionMap[s.user_id] = (sessionMap[s.user_id] || 0) + 1; });
       execsRes.data?.forEach((e: any) => { execMap[e.user_id] = (execMap[e.user_id] || 0) + 1; });
-      setLeads(requests.map(r => mapLead(r, { rolesMap, activityMap, sessionMap, execMap })));
+      videoViewsRes.data?.forEach((v: any) => { videoViewMap[v.user_id] = (videoViewMap[v.user_id] || 0) + 1; });
+      setLeads(requests.map(r => mapLead(r, { rolesMap, activityMap, sessionMap, execMap, videoViewMap })));
     } catch (err) { console.warn("[CRM] Load error:", err); setLoading(false); }
   }, [mapLead]);
 
   useEffect(() => {
     loadLeads();
     const channel = supabase.channel("crm-v2").on("postgres_changes", { event: "INSERT", schema: "public", table: "early_access_requests" }, () => loadLeads()).on("postgres_changes", { event: "UPDATE", schema: "public", table: "early_access_requests" }, () => loadLeads()).subscribe();
-    const interval = setInterval(loadLeads, 30000);
+    const interval = setInterval(loadLeads, 10000);
     return () => { supabase.removeChannel(channel); clearInterval(interval); };
   }, [loadLeads]);
+
+  const manualRefresh = async () => {
+    setRefreshing(true);
+    await loadLeads();
+    setTimeout(() => setRefreshing(false), 500);
+  };
 
   const counts = useMemo(() => {
     const c = { form: leads.length, calls: 0, ea: 0, paid: 0, ghosts: 0 };
@@ -371,16 +404,35 @@ export default function CRMDashboard() {
   // Unique setters list for filter dropdown
   const settersList = useMemo(() => [...new Set(leads.map(l => l.setter_name).filter(Boolean))].sort() as string[], [leads]);
 
+  const colorOrder = { red: 0, orange: 1, green: 2 };
+
   const filtered = useMemo(() => {
     let r = [...leads];
-    // Setter auto-filter: setter only sees their own leads
+    // Setter auto-filter
     if (isSetterOnly && currentSetterName) r = r.filter(l => l.setter_name === currentSetterName);
     if (search) { const q = search.toLowerCase(); r = r.filter(l => l.first_name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q) || l.phone.includes(q)); }
-    if (stageFilter !== "all") r = r.filter(l => getStage(l) === stageFilter);
+    // Vue filter
+    if (stageFilter === "a_contacter") r = r.filter(l => l.statut_trial === 'actif' && getTrialDay(l).day <= 7);
+    else if (stageFilter === "expirent") r = r.filter(l => getTrialDay(l).day >= 5 && l.statut_trial === 'actif');
+    else if (stageFilter === "expires") r = r.filter(l => l.statut_trial === 'expire' || getTrialDay(l).day > 7);
+    else if (stageFilter !== "all") r = r.filter(l => getStage(l) === stageFilter);
+    // Manual filters
     if (setterFilter !== "all") r = r.filter(l => l.setter_name === setterFilter);
-    r.sort((a, b) => sortAsc ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime() : new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    if (prioFilter !== "all") r = r.filter(l => l.priorite === prioFilter);
+    // Tri spec: non contactés en haut > rouge > orange > vert > par expiration
+    r.sort((a, b) => {
+      const aContacted = a.contacte_aujourdhui ? 1 : 0;
+      const bContacted = b.contacte_aujourdhui ? 1 : 0;
+      if (aContacted !== bContacted) return aContacted - bContacted;
+      const aColor = colorOrder[getTrialColor(a).color] ?? 2;
+      const bColor = colorOrder[getTrialColor(b).color] ?? 2;
+      if (aColor !== bColor) return aColor - bColor;
+      const aDay = getTrialDay(a).day;
+      const bDay = getTrialDay(b).day;
+      return bDay - aDay; // plus urgent (plus de jours) en haut
+    });
     return r;
-  }, [leads, search, stageFilter, setterFilter, sortAsc, isSetterOnly, currentSetterName]);
+  }, [leads, search, stageFilter, setterFilter, prioFilter, isSetterOnly, currentSetterName]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -407,12 +459,17 @@ export default function CRMDashboard() {
                 </TabsTrigger>
               ))}
             </TabsList>
-            {leads.filter(l => l.is_online).length > 0 && (
-              <span className="text-[11px] text-emerald-400 font-display flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                {leads.filter(l => l.is_online).length} online
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              {leads.filter(l => l.is_online).length > 0 && (
+                <span className="text-[11px] text-emerald-400 font-display flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  {leads.filter(l => l.is_online).length} online
+                </span>
+              )}
+              <button onClick={manualRefresh} className="p-1.5 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-all" title="Rafraîchir">
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -436,75 +493,52 @@ export default function CRMDashboard() {
             </div>
           </div>
 
-          {/* Filters + KPIs bar — spike-launch exact layout */}
+          {/* Vues + Filters bar */}
           <div className="px-6 pb-3 flex items-center justify-between h-12 rounded-xl bg-white/[0.03] border border-white/[0.08] mx-6 mb-4 px-4">
-            {/* Left: Filters */}
-            <div className="flex items-center gap-3">
-              <Select value={stageFilter} onValueChange={v => setStageFilter(v as StageFilter)}>
-                <SelectTrigger className="w-44 h-9 bg-white/[0.04] border-white/[0.08] rounded-xl text-white/80 text-sm font-display tracking-wide hover:bg-white/[0.06] hover:border-white/[0.12] transition-all">
-                  <SelectValue />
+            {/* Left: Vues + Filters */}
+            <div className="flex items-center gap-2">
+              {/* Vues pré-configurées */}
+              {[
+                { v: "a_contacter", label: "À contacter" },
+                { v: "expirent", label: "Expirent" },
+                { v: "expires", label: "Expirés" },
+                { v: "all", label: "Tous" },
+              ].map(vue => (
+                <button key={vue.v} onClick={() => setStageFilter(vue.v as StageFilter)}
+                  className={cn("px-3 py-1.5 rounded-lg text-[10px] font-display font-semibold uppercase tracking-wider transition-all border",
+                    stageFilter === vue.v ? "bg-white/[0.08] border-white/[0.15] text-white" : "border-transparent text-white/30 hover:text-white/60"
+                  )}>
+                  {vue.label}
+                </button>
+              ))}
+              <div className="w-px h-5 bg-white/10 mx-1" />
+              {/* Setter filter */}
+              <Select value={setterFilter} onValueChange={setSetterFilter}>
+                <SelectTrigger className="w-28 h-8 bg-white/[0.04] border-white/[0.08] rounded-lg text-xs font-display text-white/60">
+                  <SelectValue placeholder="Setter" />
                 </SelectTrigger>
-                <SelectContent className="bg-[hsl(220,13%,8%)] border-white/[0.10] rounded-xl shadow-2xl backdrop-blur-xl p-1">
-                  <SelectItem value="all" className="text-white/70 font-display text-sm">Tous les leads</SelectItem>
-                  <SelectItem value="pending" className="text-white/50 font-display text-sm">En attente</SelectItem>
-                  <SelectItem value="approved" className="text-cyan-400/80 font-display text-sm">EA Approuve</SelectItem>
-                  <SelectItem value="contacted" className="text-purple-400/80 font-display text-sm">Contacte</SelectItem>
-                  <SelectItem value="call_booked" className="text-blue-400/80 font-display text-sm">Calls</SelectItem>
-                  <SelectItem value="call_done" className="text-blue-400/80 font-display text-sm">Call fait</SelectItem>
-                  <SelectItem value="paid" className="text-emerald-400/80 font-display text-sm">Paye</SelectItem>
+                <SelectContent className="bg-[hsl(220,13%,8%)] border-white/[0.10] rounded-xl shadow-2xl p-1">
+                  <SelectItem value="all" className="text-white/50 font-display text-xs">Tous setters</SelectItem>
+                  {settersList.map(s => <SelectItem key={s} value={s} className="font-display text-xs">{s}</SelectItem>)}
                 </SelectContent>
               </Select>
-
-              {/* Setter filter */}
-              {settersList.length > 0 && (() => {
-                const activeColor = setterFilter !== 'all' ? getSetterColor(setterFilter) : null;
-                return (
-                  <Select value={setterFilter} onValueChange={setSetterFilter}>
-                    <SelectTrigger className={cn("w-44 h-9 rounded-xl text-sm font-display tracking-wide transition-all",
-                      activeColor
-                        ? `${activeColor.filterGradient} ${activeColor.border} ${activeColor.text} shadow-lg ${activeColor.shadow}`
-                        : "bg-white/[0.04] border-white/[0.08] text-white/80 hover:bg-white/[0.06] hover:border-white/[0.12]"
-                    )}>
-                      <Users className={cn("w-3.5 h-3.5 mr-2", activeColor ? activeColor.icon : "text-white/40")} />
-                      <SelectValue placeholder="Tous setters" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[hsl(220,13%,8%)] border-white/[0.10] rounded-xl shadow-2xl backdrop-blur-xl p-1">
-                      <SelectItem value="all" className="text-white/70 font-display text-sm">Tous setters</SelectItem>
-                      {settersList.map(s => {
-                        const sc = getSetterColor(s);
-                        return <SelectItem key={s} value={s} className={`${sc.text} font-display text-sm`}>{s}</SelectItem>;
-                      })}
-                    </SelectContent>
-                  </Select>
-                );
-              })()}
+              <Select value={prioFilter} onValueChange={setPrioFilter}>
+                <SelectTrigger className="w-20 h-8 bg-white/[0.04] border-white/[0.08] rounded-lg text-xs font-display text-white/60">
+                  <SelectValue placeholder="Prio" />
+                </SelectTrigger>
+                <SelectContent className="bg-[hsl(220,13%,8%)] border-white/[0.10] rounded-xl shadow-2xl p-1">
+                  <SelectItem value="all" className="text-white/50 font-display text-xs">Toutes</SelectItem>
+                  <SelectItem value="P1" className="text-emerald-400 font-display text-xs font-bold">P1</SelectItem>
+                  <SelectItem value="P2" className="text-amber-400 font-display text-xs font-bold">P2</SelectItem>
+                  <SelectItem value="P3" className="text-red-400 font-display text-xs font-bold">P3</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Right: KPIs */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <span className="text-base font-display text-amber-400">{counts.form}</span>
-                <span className="text-amber-400/60 text-[10px] font-medium uppercase">Forms</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                <span className="text-base font-display text-blue-400">{counts.calls}</span>
-                <span className="text-blue-400/60 text-[10px] font-medium uppercase">Calls</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                <span className="text-base font-display text-emerald-400">{counts.paid}</span>
-                <span className="text-emerald-400/60 text-[10px] font-medium uppercase">Payé</span>
-              </div>
-              {counts.ghosts > 0 && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 animate-pulse">
-                  <span className="text-base font-display text-amber-400">{counts.ghosts}</span>
-                  <span className="text-amber-400/60 text-[10px] font-medium uppercase">Inactifs</span>
-                </div>
-              )}
-              <div className="w-px h-6 bg-white/10 mx-1" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-lg font-display text-white font-bold tabular-nums">{leads.length}</span>
-                <span className="text-white/30 text-[10px] uppercase tracking-wider">total</span>
-              </div>
+            {/* Right: Count */}
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-display text-white font-bold tabular-nums">{filtered.length}</span>
+              <span className="text-white/30 text-[10px] uppercase tracking-wider">leads</span>
             </div>
           </div>
 
@@ -514,203 +548,144 @@ export default function CRMDashboard() {
               <Table>
                 <TableHeader className={`sticky top-0 z-20 ${BG} shadow-[0_1px_0_0_rgba(255,255,255,0.08)]`}>
                   <TableRow className={`border-white/[0.08] hover:bg-transparent ${BG}`}>
-                    <TableHead className="text-white/70 font-display text-xs uppercase tracking-wider min-w-[180px] py-4 pl-5">
-                      <div className="flex items-center gap-2">
-                        <IconBox color="white"><Users className="w-3 h-3 text-white/50" /></IconBox>
-                        <span>LEAD</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <IconBox color="amber"><Target className="w-3 h-3 text-amber-400/80" /></IconBox>
-                        <span>FORM</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <IconBox color="cyan"><Shield className="w-3 h-3 text-cyan-400/80" /></IconBox>
-                        <span>EA</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <IconBox color="violet"><Phone className="w-3 h-3 text-violet-400/80" /></IconBox>
-                        <span>CONTACT</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <IconBox color="blue"><Calendar className="w-3 h-3 text-primary/80" /></IconBox>
-                        <span>CALL</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <IconBox color="orange"><Mail className="w-3 h-3 text-orange-400/80" /></IconBox>
-                        <span>MAIL</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <IconBox color="violet"><DollarSign className="w-3 h-3 text-violet-400/80" /></IconBox>
-                        <span>OFFRE</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <IconBox color="fuchsia"><Lock className="w-3 h-3 text-fuchsia-400/80" /></IconBox>
-                        <span>ACCES</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 text-center cursor-pointer hover:text-white transition-colors" onClick={() => setSortAsc(!sortAsc)}>
-                      <div className="flex items-center justify-center gap-1.5">
-                        <IconBox color="emerald"><CreditCard className="w-3 h-3 text-emerald-400/80" /></IconBox>
-                        <span>PAYE {sortAsc ? "↑" : "↓"}</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-white/80 font-display text-sm uppercase tracking-wider py-4 cursor-pointer hover:text-white transition-colors" onClick={() => setSortAsc(!sortAsc)}>
-                      <div className="flex items-center gap-1.5">
-                        <IconBox color="white"><Calendar className="w-3 h-3 text-white/40" /></IconBox>
-                        <span>DATE</span>
-                      </div>
-                    </TableHead>
+                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 pl-5 min-w-[160px]">Lead</TableHead>
+                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center">Budget</TableHead>
+                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center">Form</TableHead>
+                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center">Set</TableHead>
+                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center">Call</TableHead>
+                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center w-16">Trial</TableHead>
+                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center w-16">Statut</TableHead>
+                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center w-12">Auj.</TableHead>
+                    {isSuperAdmin && <TableHead className="w-8" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={10} className="text-center py-20 text-white/30 text-sm">Aucun lead</TableCell></TableRow>
-                  ) : filtered.slice(0, 100).map((lead, idx) => {
+                    <TableRow><TableCell colSpan={isSuperAdmin ? 10 : 9} className="text-center py-20 text-white/30 text-sm font-display">Aucun lead</TableCell></TableRow>
+                  ) : filtered.slice(0, 100).map((lead) => {
                     const sc = lead.setter_name ? getSetterColor(lead.setter_name) : null;
-                    const av = avatarClasses(lead);
+                    const trial = getTrialDay(lead);
+                    const color = getTrialColor(lead);
+                    const step = getChecklistStep(lead);
+                    const colorDot = { red: 'bg-red-400', orange: 'bg-amber-400', green: 'bg-emerald-400' }[color.color];
                     return (
                     <TableRow
                       key={lead.id}
-                      onClick={() => openLead(lead, "lead")}
+                      onClick={() => openLead(lead, "setting")}
                       className={cn(
-                        "group cursor-pointer transition-all duration-200 border-white/[0.04] hover:bg-white/[0.04]",
+                        "group cursor-pointer transition-all duration-200 border-white/[0.04]",
+                        lead.contacte_aujourdhui ? "opacity-40 hover:opacity-70" : "hover:bg-white/[0.04]",
                         selectedLead?.id === lead.id && "bg-white/[0.06]"
                       )}
                     >
-                      {/* LEAD → fiche lead */}
+                      {/* LEAD — nom + setter */}
                       <TableCell className="py-3 pl-5">
                         <div className="flex items-center gap-3">
                           <div className="relative">
-                            <div className={cn("w-10 h-10 rounded-xl border flex items-center justify-center transition-all duration-200 shadow-lg", av.bg)}>
-                              <span className={cn("font-display text-base font-bold", av.text)}>
-                                {(lead.first_name?.[0] || "?").toUpperCase()}
-                              </span>
+                            <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-sm font-display font-bold shrink-0",
+                              lead.paid_at ? "bg-emerald-500 text-white" : color.color === 'red' ? "bg-red-500/20 text-red-400 border border-red-500/30" : color.color === 'orange' ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                            )}>
+                              {(lead.first_name?.[0] || "?").toUpperCase()}
                             </div>
-                            {av.dot && <div className={cn("absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[hsl(220,15%,8%)] shadow-lg", av.dot)} />}
-                            {lead.is_online && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[hsl(220,15%,8%)] animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.5)]" />}
+                            {lead.is_online && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#0c0d12]" />}
                           </div>
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              <p className="text-white font-display text-[15px] font-semibold group-hover:text-white transition-colors">{lead.first_name || "—"}</p>
-                              {lead.status === "approuvée" && !lead.contacted && (lead.session_count || 0) === 0 && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-mono bg-amber-500/15 text-amber-400 border border-amber-500/25 animate-pulse">
-                                  Inactif
-                                </span>
-                              )}
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-[15px] font-display font-bold text-white">{lead.first_name || "—"}</p>
+                              {lead.priorite && <span className={cn("text-[8px] font-display font-bold", lead.priorite === 'P1' ? 'text-emerald-400' : lead.priorite === 'P2' ? 'text-amber-400' : 'text-red-400')}>{lead.priorite}</span>}
                             </div>
                             {lead.setter_name && sc && (
-                              <span className={`inline-flex items-center gap-1 text-[10px] font-display ${sc.text} ${sc.bg} ${sc.border} border px-2 py-0.5 rounded-md w-fit cursor-pointer hover:opacity-80 transition-opacity`}
-                                onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}
-                              >
-                                Setter : {lead.setter_name} <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+                              <span className={`text-[10px] font-display ${sc.text}`} onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}>
+                                Setter : {lead.setter_name}
                               </span>
                             )}
                           </div>
                         </div>
                       </TableCell>
-                      {/* FORM → fiche lead */}
-                      <TableCell className="text-center py-3"><DateBadge date={lead.created_at} color="amber" /></TableCell>
-                      {/* EA → fiche lead */}
+                      {/* BUDGET — fourchette */}
                       <TableCell className="text-center py-3">
-                        {lead.status === "approuvée" ? <DateBadge date={lead.reviewed_at} color="cyan" /> : <Empty />}
-                      </TableCell>
-                      {/* CONTACT → fiche setting (date + icon like spike-launch) */}
-                      <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}>
-                        {lead.contacted && lead.contact_method ? (
-                          <div className="inline-flex items-center gap-1.5">
-                            {lead.contact_method === "whatsapp" ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-300 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/25">
-                                <CheckCircle2 className="w-3 h-3" /> {fmtDate(lead.created_at)}
-                              </span>
-                            ) : lead.contact_method === "email" ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-amber-300 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/25">
-                                <Mail className="w-3 h-3" /> {fmtDate(lead.created_at)}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-cyan-300 bg-cyan-500/10 px-2 py-1 rounded-md border border-cyan-500/25">
-                                <Phone className="w-3 h-3" /> SET
-                              </span>
-                            )}
-                          </div>
-                        ) : lead.contacted ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-purple-300 bg-purple-500/10 px-2 py-1 rounded-md border border-purple-500/25">
-                            <CheckCircle2 className="w-3 h-3" /> SET
+                        {lead.offer_amount ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-display font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/25">
+                            <DollarSign className="w-3 h-3" />{lead.offer_amount.replace(/\s*€\s*-\s*/, '-').replace(/\s*€/, '').replace(/\s/g, '').replace('000', 'K').replace('000', 'K')}
                           </span>
-                        ) : <Empty />}
+                        ) : <span className="text-white/15">—</span>}
                       </TableCell>
-                      {/* CALL → fiche call (avec date+heure+code couleur) */}
+                      {/* FORM — date+h soumission, badge amber */}
+                      <TableCell className="text-center py-3">
+                        <span className="inline-block text-[11px] font-mono font-semibold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/25">
+                          <span className="font-bold">{fmtDate(lead.created_at)}</span> <span className="text-amber-400/60">{fmtTime(lead.created_at)}</span>
+                        </span>
+                      </TableCell>
+                      {/* SET — check + date, badge vert/vide */}
+                      <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}>
+                        {lead.contacted ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/25">
+                            <CheckCircle2 className="w-3 h-3" /> {fmtDate((lead as any).contacted_at || lead.created_at)}
+                          </span>
+                        ) : <span className="text-white/15">—</span>}
+                      </TableCell>
+                      {/* CALL — date+h colorée selon issue */}
                       <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "call"); }}>
                         {lead.call_no_show ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-display font-semibold text-red-300 bg-red-500/10 px-2.5 py-1 rounded-lg border-2 border-dashed border-red-500/40">
-                            <UserX className="w-3 h-3" /> No-show
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-red-300 bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/30">
+                            <X className="w-3 h-3" /> {lead.call_scheduled_at ? <><span className="font-bold">{fmtDate(lead.call_scheduled_at)}</span> <span className="opacity-60">{fmtTime(lead.call_scheduled_at)}</span></> : 'No-show'}
                           </span>
-                        ) : lead.call_outcome === "contracted" ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-violet-300 bg-violet-500/15 px-2.5 py-1 rounded-lg border border-violet-500/30">
-                            <CheckCircle2 className="w-3 h-3" />
-                            {lead.call_scheduled_at ? fmtDateTime(lead.call_scheduled_at) : "Close"}
+                        ) : (lead.call_outcome === 'vendu' || lead.paid_at) ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                            <CheckCircle2 className="w-3 h-3" /> {lead.call_scheduled_at ? <><span className="font-bold">{fmtDate(lead.call_scheduled_at)}</span> <span className="opacity-60">{fmtTime(lead.call_scheduled_at)}</span></> : 'Vendu'}
                           </span>
-                        ) : lead.call_outcome === "closing_in_progress" ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-amber-300 bg-amber-500/15 px-2.5 py-1 rounded-lg border border-amber-500/30">
-                            <Clock className="w-3 h-3" />
-                            {lead.call_scheduled_at ? fmtDateTime(lead.call_scheduled_at) : "En cours"}
+                        ) : (lead.call_outcome === 'contracte_en_attente' || lead.call_outcome === 'contracted') ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-violet-300 bg-violet-500/10 px-2.5 py-1 rounded-lg border border-violet-500/30">
+                            <Clock className="w-3 h-3" /> {lead.call_scheduled_at ? <><span className="font-bold">{fmtDate(lead.call_scheduled_at)}</span> <span className="opacity-60">{fmtTime(lead.call_scheduled_at)}</span></> : 'En attente'}
                           </span>
-                        ) : lead.call_outcome === "not_closed" ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-red-300 bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/25">
-                            <X className="w-3 h-3" />
-                            {lead.call_scheduled_at ? fmtDateTime(lead.call_scheduled_at) : "Non close"}
+                        ) : (lead.call_outcome === 'rappel' || lead.call_outcome === 'closing_in_progress') ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/30">
+                            <Clock className="w-3 h-3" /> {lead.call_scheduled_at ? <><span className="font-bold">{fmtDate(lead.call_scheduled_at)}</span> <span className="opacity-60">{fmtTime(lead.call_scheduled_at)}</span></> : 'Rappel'}
                           </span>
-                        ) : lead.call_rescheduled_at ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-pink-300 bg-pink-500/10 px-2.5 py-1 rounded-lg border border-dashed border-pink-500/30">
-                            {fmtDateTime(lead.call_scheduled_at)} ANNULE
+                        ) : (lead.call_outcome === 'pas_vendu' || lead.call_outcome === 'not_closed') ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-red-300 bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/30">
+                            <X className="w-3 h-3" /> {lead.call_scheduled_at ? <><span className="font-bold">{fmtDate(lead.call_scheduled_at)}</span> <span className="opacity-60">{fmtTime(lead.call_scheduled_at)}</span></> : 'Pas vendu'}
                           </span>
                         ) : lead.call_booked && lead.call_scheduled_at ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-blue-300 bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/25">
-                            <Clock className="w-3 h-3 text-blue-400" />
-                            {fmtDateTime(lead.call_scheduled_at)}
+                            <Calendar className="w-3 h-3" /> <span className="font-bold">{fmtDate(lead.call_scheduled_at)}</span> <span className="opacity-60">{fmtTime(lead.call_scheduled_at)}</span>
                           </span>
-                        ) : lead.call_booked ? (
-                          <div className="flex items-center justify-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-                            <span className="text-[10px] font-display text-blue-300">A venir</span>
+                        ) : <span className="text-white/15">—</span>}
+                      </TableCell>
+                      {/* TRIAL — J + remaining */}
+                      <TableCell className="text-center py-3">
+                        {lead.status === 'approuvée' ? (
+                          <div className="text-center">
+                            <span className={cn("text-xs font-display font-bold",
+                              trial.expired ? "text-red-400" : trial.day >= 5 ? "text-amber-400" : "text-cyan-400"
+                            )}>J{trial.day}</span>
+                            <p className={cn("text-[8px] font-display", trial.expired ? "text-red-400/60" : "text-white/25")}>{trial.expired ? 'expiré' : `${trial.remaining}j`}</p>
                           </div>
-                        ) : <Empty />}
+                        ) : <span className="text-white/15">—</span>}
                       </TableCell>
-                      {/* MAIL → fiche lead */}
+                      {/* STATUT — pastille */}
                       <TableCell className="text-center py-3">
-                        {lead.contact_method === "email" ? <Mail className="w-4 h-4 text-amber-400 mx-auto" /> : <Empty />}
+                        <div className="flex items-center justify-center gap-1">
+                          <div className={cn("w-2.5 h-2.5 rounded-full", colorDot)} />
+                        </div>
                       </TableCell>
-                      {/* OFFRE → fiche call */}
-                      <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "call"); }}>
-                        {lead.offer_amount ? (
-                          <span className="text-sm font-display font-semibold text-violet-300 bg-violet-500/15 px-2.5 py-1 rounded-lg border border-violet-500/25">{lead.offer_amount}</span>
-                        ) : <Empty />}
-                      </TableCell>
-                      {/* ACCES → fiche call */}
-                      <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "call"); }}>
-                        {lead.checkout_unlocked ? <Unlock className="w-4 h-4 text-emerald-400 mx-auto" /> : lead.offer_amount ? <Lock className="w-4 h-4 text-white/15 mx-auto" /> : <Empty />}
-                      </TableCell>
-                      {/* PAYE → fiche lead */}
+                      {/* CONTACTÉ AUJ */}
                       <TableCell className="text-center py-3">
-                        {lead.paid_at ? (
-                          <span className="text-base font-display font-bold text-emerald-400 bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)]">{lead.paid_amount}€</span>
-                        ) : <Empty />}
+                        <button onClick={e => quickUpdate(e, lead.id, { contacte_aujourdhui: !lead.contacte_aujourdhui, derniere_interaction: new Date().toISOString() })}
+                          className={cn("w-5 h-5 rounded border-2 flex items-center justify-center transition-all mx-auto",
+                            lead.contacte_aujourdhui ? "bg-emerald-500/20 border-emerald-500" : "border-white/20 hover:border-white/40"
+                          )}>
+                          {lead.contacte_aujourdhui && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                        </button>
                       </TableCell>
-                      {/* DATE */}
-                      <TableCell className="py-3"><span className="text-[11px] text-white/30 font-mono tabular-nums">{fmtDate(lead.created_at)}</span></TableCell>
+                      {/* DELETE (superadmin) */}
+                      {isSuperAdmin && (
+                        <TableCell className="py-2.5 pr-2">
+                          <button onClick={(e) => deleteLead(e, lead)} className="p-1 rounded text-white/15 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </TableCell>
+                      )}
                     </TableRow>
                     );
                   })}

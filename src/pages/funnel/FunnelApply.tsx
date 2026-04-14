@@ -33,8 +33,8 @@ function AccentText({ html, className, as: Tag = 'h1' }: { html: string; classNa
       {parts.map((p, i) =>
         p.accent ? (
           <span key={i} className="relative inline-block">
-            <span className="relative z-10 text-primary font-semibold">{p.text}</span>
-            <span className="absolute bottom-0 left-0 w-full h-[4px] md:h-[6px] bg-primary/30 -z-0" />
+            <span className="relative z-10 text-[#19B7C9] font-semibold">{p.text}</span>
+            <span className="absolute bottom-0 left-0 w-full h-[4px] md:h-[6px] bg-[#19B7C9]/30 -z-0" />
           </span>
         ) : (
           <span key={i}>{p.text}</span>
@@ -66,6 +66,45 @@ export default function FunnelApply() {
   const [disqualified, setDisqualified] = useState(false);
   const [error, setError] = useState('');
   const vslRef = useRef<HTMLDivElement>(null);
+  const [ctaVisible, setCtaVisible] = useState(false);
+
+  // Phone formatting patterns per country code (groups of digits)
+  const phoneFormats: Record<string, { groups: number[]; placeholder: string }> = {
+    '+33':  { groups: [1, 2, 2, 2, 2], placeholder: '6 12 34 56 78' },
+    '+32':  { groups: [3, 2, 2, 2],    placeholder: '412 34 56 78' },
+    '+41':  { groups: [2, 3, 2, 2],    placeholder: '76 123 45 67' },
+    '+44':  { groups: [4, 3, 3],       placeholder: '7911 123 456' },
+    '+1':   { groups: [3, 3, 4],       placeholder: '212 555 1234' },
+    '+49':  { groups: [3, 3, 4],       placeholder: '151 234 5678' },
+    '+34':  { groups: [3, 3, 3],       placeholder: '612 345 678' },
+    '+39':  { groups: [3, 3, 4],       placeholder: '312 345 6789' },
+    '+351': { groups: [3, 3, 3],       placeholder: '912 345 678' },
+    '+212': { groups: [3, 2, 2, 2],    placeholder: '612 34 56 78' },
+    '+213': { groups: [3, 2, 2, 2],    placeholder: '551 23 45 67' },
+    '+216': { groups: [2, 3, 3],       placeholder: '20 123 456' },
+    '+225': { groups: [2, 2, 2, 2],    placeholder: '07 12 34 56' },
+    '+221': { groups: [2, 3, 2, 2],    placeholder: '77 123 45 67' },
+    '+237': { groups: [3, 2, 2, 2],    placeholder: '671 23 45 67' },
+    '+243': { groups: [3, 3, 3],       placeholder: '815 123 456' },
+    '+352': { groups: [3, 3],          placeholder: '621 123' },
+    '+377': { groups: [2, 2, 2, 2],    placeholder: '06 12 34 56' },
+  };
+
+  const formatPhone = (raw: string, code: string) => {
+    const digits = raw.replace(/\D/g, '');
+    const fmt = phoneFormats[code] || { groups: [3, 3, 4] };
+    let result = '';
+    let pos = 0;
+    for (const len of fmt.groups) {
+      if (pos >= digits.length) break;
+      if (result) result += ' ';
+      result += digits.slice(pos, pos + len);
+      pos += len;
+    }
+    return result;
+  };
+
+  const currentPhoneFmt = phoneFormats[contact.countryCode] || phoneFormats['+33'];
 
   const questions = useMemo(() => config?.apply_form_questions || [], [config]);
   const totalSteps = questions.length + 1;
@@ -80,6 +119,22 @@ export default function FunnelApply() {
       setShowForm(!hasVSL);
     }
   }, [hasVSL, config, loading]);
+
+  // CTA delay timer — show CTA after X seconds of video page being visible
+  // Antifragile: coerce to number, cap at 30min, fallback to visible on any weird value
+  useEffect(() => {
+    const raw = Number(config?.vsl_cta_delay_seconds);
+    const delay = Number.isFinite(raw) && raw > 0 ? Math.min(raw, 1800) : 0;
+    if (!hasVSL || showForm || delay === 0) {
+      setCtaVisible(true);
+      return;
+    }
+    setCtaVisible(false);
+    const timer = setTimeout(() => setCtaVisible(true), delay * 1000);
+    // Safety net: if setTimeout somehow doesn't fire (tab throttle, etc.), force show after delay + 5s
+    const safety = setTimeout(() => setCtaVisible(true), (delay + 5) * 1000);
+    return () => { clearTimeout(timer); clearTimeout(safety); };
+  }, [hasVSL, showForm, config?.vsl_cta_delay_seconds]);
 
   // Execute Vidalytics scripts
   useEffect(() => {
@@ -108,14 +163,51 @@ export default function FunnelApply() {
     try {
       const email = contact.email.trim().toLowerCase();
       const phone = contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : null;
-      const { error: dbError } = await supabase.from('early_access_requests').insert({ first_name: contact.first_name.trim(), email, phone, status: 'en_attente', form_submitted: true });
+      // Extract structured fields from form answers
+      const investmentAnswer = answers['investment_amount'] || '';
+      const difficulte = answers['main_difficulty'] || null;
+      const importanceRaw = answers['time_commitment'] || '';
+
+      // Parse budget number from range string (e.g. "3 000 € - 5 000 €" → 3000)
+      const budgetMatch = investmentAnswer.match(/(\d[\d\s]*)\s*€/);
+      const budgetAmount = budgetMatch ? parseInt(budgetMatch[1].replace(/\s/g, ''), 10) : null;
+
+      // Auto-calculate priority from budget
+      const priorite = budgetAmount && budgetAmount >= 5000 ? 'P1' : budgetAmount && budgetAmount >= 3000 ? 'P2' : budgetAmount && budgetAmount >= 1000 ? 'P3' : null;
+
+      // Parse importance (1-10) from range string (e.g. "7-9" → 8)
+      const impMatch = importanceRaw.match(/(\d+)/);
+      const importance = impMatch ? parseInt(impMatch[1], 10) : null;
+
+      const specFields: any = {
+        form_answers: answers,
+        offer_amount: investmentAnswer || null,
+        budget_amount: budgetAmount,
+        priorite,
+        difficulte_principale: difficulte,
+        importance_trading: importance,
+      };
+
+      const row: any = {
+        first_name: contact.first_name.trim(), email, phone,
+        status: 'en_attente', form_submitted: true,
+        ...specFields,
+      };
+      const { error: dbError } = await supabase.from('early_access_requests').insert(row);
       if (dbError) {
         if (dbError.message.includes('duplicate') || dbError.message.includes('unique') || dbError.code === '23505') {
-          await supabase.from('early_access_requests').update({ first_name: contact.first_name.trim(), phone: phone || undefined, form_submitted: true }).eq('email', email);
+          await supabase.from('early_access_requests').update({
+            first_name: contact.first_name.trim(), phone: phone || undefined,
+            form_submitted: true, ...specFields,
+          }).eq('email', email);
         } else { setError(dbError.message); setSubmitting(false); return; }
       }
       setSubmitted(true);
-      setTimeout(() => navigate(`/${slug}/discovery`), 1500);
+      const params = new URLSearchParams();
+      params.set('name', contact.first_name.trim());
+      params.set('email', email);
+      if (phone) params.set('phone', phone);
+      setTimeout(() => navigate(`/${slug}/discovery?${params}`), 1500);
     } catch { setError('Erreur de connexion.'); setSubmitting(false); }
   };
 
@@ -123,7 +215,7 @@ export default function FunnelApply() {
   const renderEmbed = () => {
     if (!config?.vsl_embed_code) return null;
     if (config.vsl_provider === 'vidalytics') {
-      return <div ref={vslRef} className="vidalytics-container w-full" style={{ position: 'relative', paddingTop: '56.25%' }} />;
+      return <div ref={vslRef} className="w-full [&>div]:!static [&>div]:!pt-0 [&>div]:aspect-video" />;
     }
     if (config.vsl_provider === 'youtube') {
       const code = config.vsl_embed_code.trim();
@@ -151,14 +243,14 @@ export default function FunnelApply() {
       {/* ═══════════════════════════════════════════════ */}
       {hasVSL && !showForm && !disqualified && !submitted ? (
         <div className="relative z-10">
-          <div className="px-3 md:px-4 pt-10 md:pt-16 pb-16 md:pb-20">
-            <div className="max-w-4xl mx-auto space-y-10 md:space-y-16">
+          <div className="px-3 md:px-4 pt-6 md:pt-10 pb-8 md:pb-10">
+            <div className="max-w-7xl mx-auto space-y-6 md:space-y-8">
 
-              {/* Headline — wide, punchy */}
+              {/* Headline — near full-width on desktop */}
               <div className="text-center space-y-6">
                 <AccentText
                   html={config.apply_headline || 'Découvre la méthode'}
-                  className="text-2xl sm:text-3xl md:text-[2.75rem] lg:text-5xl font-display text-white leading-[1.4] md:leading-[1.6] px-2"
+                  className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display text-white leading-[1.3] md:leading-[1.35] px-2"
                 />
                 {(config.apply_subtitle || config.landing_subtitle) && (
                   <AccentText
@@ -169,9 +261,9 @@ export default function FunnelApply() {
                 )}
               </div>
 
-              {/* VSL — glowing container */}
-              <div className="w-full">
-                <div className="relative pt-4 md:pt-8 pb-4 md:pb-6 px-2 md:px-8">
+              {/* VSL — full-width glowing container */}
+              <div className="w-full max-w-6xl mx-auto">
+                <div className="relative pt-4 md:pt-6 pb-4 md:pb-6 px-2 md:px-4">
                   <div className="relative z-10 rounded-lg md:rounded-xl overflow-hidden border border-primary/30 md:border-2 md:border-primary/40 shadow-[0_0_8px_0px_rgba(25,183,201,0.3)] md:shadow-[0_0_12px_0px_rgba(25,183,201,0.4),0_0_25px_5px_rgba(25,183,201,0.25),0_0_50px_10px_rgba(25,183,201,0.15),0_0_80px_20px_rgba(25,183,201,0.08)]">
                     {hasVSLEmbed ? renderEmbed() : (
                       <div className="w-full aspect-video bg-white/[0.02] flex items-center justify-center">
@@ -182,8 +274,8 @@ export default function FunnelApply() {
                 </div>
               </div>
 
-              {/* CTA — big, glowing */}
-              <div className="w-full text-center">
+              {/* CTA — big, glowing, appears after delay */}
+              <div className={`w-full text-center transition-all duration-700 ${ctaVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
                 <button
                   onClick={() => setShowForm(true)}
                   className="group relative px-12 py-5 bg-[#19B7C9] text-[#0A0B10] font-display text-lg font-bold uppercase tracking-wider rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(25,183,201,0.3)]"
@@ -251,7 +343,7 @@ export default function FunnelApply() {
                   <div>
                     <label className="text-xs text-white/40 font-display uppercase tracking-wider mb-1.5 block">{config.apply_form_phone_label || 'Téléphone'}</label>
                     <div className="flex gap-2">
-                      <select value={contact.countryCode} onChange={e => setContact(c => ({ ...c, countryCode: e.target.value }))}
+                      <select value={contact.countryCode} onChange={e => { const code = e.target.value; setContact(c => ({ ...c, countryCode: code, phone: formatPhone(c.phone, code) })); }}
                         className="h-12 px-3 rounded-xl bg-[#111318] border border-white/[0.10] text-white text-sm focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all appearance-none cursor-pointer [&>option]:bg-[#111318] [&>option]:text-white">
                         <option value="+33">🇫🇷 +33</option><option value="+32">🇧🇪 +32</option><option value="+41">🇨🇭 +41</option>
                         <option value="+44">🇬🇧 +44</option><option value="+1">🇺🇸 +1</option><option value="+49">🇩🇪 +49</option>
@@ -260,8 +352,8 @@ export default function FunnelApply() {
                         <option value="+225">🇨🇮 +225</option><option value="+221">🇸🇳 +221</option><option value="+237">🇨🇲 +237</option>
                         <option value="+243">🇨🇩 +243</option><option value="+352">🇱🇺 +352</option><option value="+377">🇲🇨 +377</option>
                       </select>
-                      <input type="tel" value={contact.phone} onChange={e => { const v = e.target.value.replace(/[^\d\s]/g, ''); setContact(c => ({ ...c, phone: v })); }}
-                        className="flex-1 h-12 px-4 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white placeholder:text-white/25 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all font-mono tracking-wider" placeholder="6 12 34 56 78" />
+                      <input type="tel" value={contact.phone} onChange={e => { const formatted = formatPhone(e.target.value, contact.countryCode); setContact(c => ({ ...c, phone: formatted })); }}
+                        className="flex-1 h-12 px-4 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white placeholder:text-white/25 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all font-mono tracking-wider" placeholder={currentPhoneFmt.placeholder} />
                     </div>
                   </div>
                   <div>
@@ -274,7 +366,7 @@ export default function FunnelApply() {
                 <div className="flex items-center gap-3 pt-2">
                   <button onClick={() => setStep(s => s - 1)} className="h-12 px-5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-white/60 hover:text-white hover:bg-white/[0.08] transition-all"><ChevronLeft className="w-4 h-4" /></button>
                   <button onClick={handleSubmit} disabled={submitting || !contact.first_name.trim() || !contact.email.trim()}
-                    className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90 text-white font-display text-sm font-semibold tracking-wide disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(25,183,201,0.2)]">
+                    className="flex-1 h-12 rounded-xl bg-[#19B7C9] hover:bg-[#19B7C9]/90 text-[#0A0B10] font-display text-sm font-semibold tracking-wide disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(25,183,201,0.2)]">
                     {submitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Envoyer ma candidature'}
                   </button>
                 </div>

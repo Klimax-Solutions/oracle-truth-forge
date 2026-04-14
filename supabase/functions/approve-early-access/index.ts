@@ -189,6 +189,7 @@ Deno.serve(async (req) => {
         reviewed_at: new Date().toISOString(),
         reviewed_by: caller?.id || null,
         user_id: userId,
+        date_activation_trial: new Date().toISOString(),
       })
       .eq("id", requestId);
 

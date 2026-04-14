@@ -54,6 +54,7 @@ export interface FunnelConfig {
   vsl_provider: string;
   vsl_embed_code: string;
   vsl_page: string;
+  vsl_cta_delay_seconds: number;
   // Branding
   brand_name: string;
   brand_footer_text: string;

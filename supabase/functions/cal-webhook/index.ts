@@ -81,6 +81,16 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Allow PING events without signature (Cal.com test button doesn't sign)
+    const parsedForPing = (() => { try { return JSON.parse(bodyText); } catch { return null; } })();
+    if (parsedForPing?.triggerEvent === "PING") {
+      console.log("[Cal.com] PING received — OK");
+      return new Response(JSON.stringify({ success: true, event: "PING" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const signature =
       req.headers.get("x-cal-signature-256") ||
       req.headers.get("X-Cal-Signature-256") ||
@@ -130,13 +140,23 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Skip Cal.com system emails
-    if (attendeeEmail.endsWith("@cal.com") || attendeeEmail.endsWith("@sms.cal.com")) {
+    // Skip Cal.com internal emails (but NOT @sms.cal.com — those are phone bookings)
+    if (attendeeEmail.endsWith("@cal.com") && !attendeeEmail.endsWith("@sms.cal.com")) {
       console.log("[Cal.com] Skipping Cal.com system email:", attendeeEmail);
       return new Response(JSON.stringify({ success: true, skipped: "system_email" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // For @sms.cal.com emails, extract the phone number to match by phone
+    const isSmsBooking = attendeeEmail.endsWith("@sms.cal.com");
+    let smsPhone: string | null = null;
+    if (isSmsBooking) {
+      // Email format: 33781748022@sms.cal.com → extract digits, add +
+      const digits = attendeeEmail.split("@")[0];
+      smsPhone = `+${digits}`;
+      console.log(`[Cal.com] SMS booking detected, phone: ${smsPhone}`);
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -145,13 +165,39 @@ Deno.serve(async (req: Request) => {
     if (event === "BOOKING_CREATED") {
       console.log(`[BOOKING_CREATED] ${attendeeName} <${attendeeEmail}> at ${booking.startTime}`);
 
-      // Find lead by email
-      const { data: leads, error: lookupError } = await supabase
-        .from("early_access_requests")
-        .select("*")
-        .eq("email", attendeeEmail)
-        .order("created_at", { ascending: false })
-        .limit(5);
+      // Find lead by email, or by phone for SMS bookings
+      let leads: any[] | null = null;
+      let lookupError: any = null;
+
+      if (!isSmsBooking) {
+        const res = await supabase
+          .from("early_access_requests")
+          .select("*")
+          .eq("email", attendeeEmail)
+          .order("created_at", { ascending: false })
+          .limit(5);
+        leads = res.data;
+        lookupError = res.error;
+      } else if (smsPhone) {
+        // Match by phone: try with +33, then with +33 spaced format
+        // DB stores phone as "+33 6 12 34 56 78", Cal sends "33612345678"
+        const digits = smsPhone.replace(/\D/g, '');
+        console.log(`[BOOKING_CREATED] Looking up by phone digits: ${digits}`);
+        const res = await supabase
+          .from("early_access_requests")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(50);
+        leads = (res.data || []).filter((l: any) => {
+          if (!l.phone) return false;
+          const leadDigits = l.phone.replace(/\D/g, '');
+          return leadDigits === digits || leadDigits === digits.replace(/^0+/, '');
+        });
+        lookupError = res.error;
+        if (leads && leads.length > 0) {
+          console.log(`[BOOKING_CREATED] Matched ${leads.length} lead(s) by phone`);
+        }
+      }
 
       if (lookupError) {
         console.error("[BOOKING_CREATED] Lookup error:", lookupError);
@@ -246,7 +292,7 @@ Deno.serve(async (req: Request) => {
         lead = data;
       }
 
-      if (!lead) {
+      if (!lead && !isSmsBooking) {
         const { data } = await supabase
           .from("early_access_requests")
           .select("*")
@@ -256,6 +302,12 @@ Deno.serve(async (req: Request) => {
           .limit(1)
           .maybeSingle();
         lead = data;
+      }
+
+      if (!lead && isSmsBooking && smsPhone) {
+        const digits = smsPhone.replace(/\D/g, '');
+        const { data: all } = await supabase.from("early_access_requests").select("*").eq("call_booked", true);
+        lead = (all || []).find((l: any) => l.phone && l.phone.replace(/\D/g, '') === digits) || null;
       }
 
       if (lead) {
@@ -312,7 +364,7 @@ Deno.serve(async (req: Request) => {
         lead = data;
       }
 
-      if (!lead) {
+      if (!lead && !isSmsBooking) {
         const { data } = await supabase
           .from("early_access_requests")
           .select("*")
@@ -322,6 +374,12 @@ Deno.serve(async (req: Request) => {
           .limit(1)
           .maybeSingle();
         lead = data;
+      }
+
+      if (!lead && isSmsBooking && smsPhone) {
+        const digits = smsPhone.replace(/\D/g, '');
+        const { data: all } = await supabase.from("early_access_requests").select("*").eq("call_booked", true);
+        lead = (all || []).find((l: any) => l.phone && l.phone.replace(/\D/g, '') === digits) || null;
       }
 
       if (lead) {

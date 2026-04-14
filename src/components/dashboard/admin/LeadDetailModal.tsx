@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { CRMLead } from "@/lib/admin/types";
 import { getSetterColor } from "@/lib/admin/setterColors";
+import { getTrialDay, getTrialColor, getChecklistStep, CHECKLIST_LABELS, CHECKLIST_FIELDS, formatRelativeDate } from "@/lib/admin/trialStatus";
 import LeadThreadPanel from "./LeadThreadPanel";
 
 type PipelineLead = CRMLead; // Alias local pour compatibilite
@@ -269,12 +270,20 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
               ))}
             </div>
 
-            {/* Timer + Close */}
+            {/* Trial timer + Close */}
             <div className="flex items-center gap-2 shrink-0">
-              {exp && (
-                <span className={cn("text-[10px] font-mono px-2 py-1 rounded-lg border",
-                  exp === "Expiré" ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-white/[0.04] text-white/35 border-white/[0.08]"
-                )}><Timer className="w-3 h-3 inline mr-1" />{exp}</span>
+              {lead.status === "approuvée" && (
+                <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-lg border",
+                  exp === "Expiré" ? "bg-red-500/10 border-red-500/25" : exp && !exp.includes("j") ? "bg-amber-500/10 border-amber-500/25" : "bg-cyan-500/10 border-cyan-500/25"
+                )}>
+                  <Timer className={cn("w-3 h-3", exp === "Expiré" ? "text-red-400" : "text-cyan-400")} />
+                  <span className={cn("text-[10px] font-display font-bold", exp === "Expiré" ? "text-red-400" : "text-cyan-400")}>
+                    {exp || "Trial actif"}
+                  </span>
+                  {lead.reviewed_at && (
+                    <span className="text-[9px] text-white/25 font-mono ml-1">depuis {fmtShort(lead.reviewed_at)}</span>
+                  )}
+                </div>
               )}
               <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors">
                 <X className="w-4 h-4 text-white/40" />
@@ -450,435 +459,365 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
             </div>
           </div>
         ) : view === "setting" ? (
-          /* ── SETTING VIEW — Cyan dominant, spike-launch exact ── */
-          <div className="flex-1 overflow-auto p-6 space-y-4">
-
-            {/* Status badges row */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 text-sm font-display font-semibold">
-                <Phone className="w-4 h-4" /> Setting Call
-              </span>
-              {lead.contacted && (
-                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-sm font-display">
-                  ✓ A repondu
-                </span>
-              )}
-              {lead.call_debrief && (
-                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 text-sm font-display">
-                  📋 Debrief
-                </span>
-              )}
-            </div>
-
-            {/* Setter attire — card cyan avec dropdown */}
-            <div className="bg-[#111318] border border-cyan-500/25 rounded-xl p-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-cyan-400" />
+          /* ── SETTING VIEW — spec CRM: trial tracker ── */
+          <div className="flex-1 overflow-auto p-5 space-y-3">
+            {(() => {
+              const trial = getTrialDay(lead);
+              const color = getTrialColor(lead);
+              const step = getChecklistStep(lead);
+              const colorStyles = { red: { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400', dot: 'bg-red-400' }, orange: { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', dot: 'bg-amber-400' }, green: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', dot: 'bg-emerald-400' } };
+              const cs = colorStyles[color.color];
+              return <>
+                {/* ── Barre 3 blocs ── */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-[#111318] border border-white/[0.10] rounded-lg px-3 py-2.5 text-center">
+                    <p className="text-2xl font-display font-bold text-white">J{trial.day}<span className="text-sm text-white/25">/{7}</span></p>
+                    <p className={cn("text-[10px] font-display", trial.expired ? "text-red-400" : "text-emerald-400")}>{trial.expired ? 'Expiré' : `${trial.remaining}j restants`}</p>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-display uppercase tracking-widest text-cyan-400/60">Setter attire</p>
-                    <Select
-                      value={lead.setter_name || ""}
-                      onValueChange={async (v) => {
-                        const name = v === "__none__" ? null : v;
-                        await updateField({ setter_name: name });
-                        if (name) emitEvent("lead_assigned_setter", { setter_name: name });
-                      }}
-                    >
-                      <SelectTrigger className="w-48 h-9 bg-transparent border-none text-lg font-display text-cyan-400 font-bold p-0 focus:ring-0 hover:bg-cyan-500/10 rounded-lg transition-colors">
-                        <SelectValue placeholder="Non assigne" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[hsl(220,13%,8%)] border-white/[0.10] rounded-xl shadow-2xl backdrop-blur-xl p-1">
-                        <SelectItem value="__none__" className="text-white/40 font-display text-sm">Non assigne</SelectItem>
-                        {settersList.map(s => {
-                          const sc = getSetterColor(s);
-                          return <SelectItem key={s} value={s} className={`${sc.text} font-display text-sm`}>{s}</SelectItem>;
-                        })}
+                  <div className={cn("rounded-lg px-3 py-2.5 text-center border", cs.bg, cs.border)}>
+                    <div className={cn("w-2.5 h-2.5 rounded-full mx-auto mb-1", cs.dot)} />
+                    <p className={cn("text-xs font-display font-bold", cs.text)}>{color.label}</p>
+                    <p className={cn("text-[9px] font-display", cs.text, "opacity-70")}>{color.reason}</p>
+                  </div>
+                  <div className="bg-[#111318] border border-white/[0.10] rounded-lg px-3 py-2.5 text-center">
+                    <p className="text-[9px] font-display text-white/30 uppercase tracking-wider">Interaction</p>
+                    <p className="text-sm font-display font-bold text-white mt-0.5">{formatRelativeDate(lead.derniere_interaction)}</p>
+                  </div>
+                </div>
+
+                {/* ── Checklist 6 étapes ── */}
+                <div className="bg-[#111318] border border-white/[0.10] rounded-lg">
+                  <div className="px-3 py-2 border-b border-white/[0.06] flex items-center justify-between">
+                    <span className="text-[10px] font-display uppercase tracking-widest text-white/40">Progression</span>
+                    <span className="text-[10px] font-display font-bold text-white/50">{step}/6</span>
+                  </div>
+                  {CHECKLIST_LABELS.map((label, i) => {
+                    const field = CHECKLIST_FIELDS[i] as string;
+                    const checked = !!(lead as any)[field];
+                    const prevChecked = i === 0 || !!(lead as any)[CHECKLIST_FIELDS[i - 1] as string];
+                    const isNext = !checked && prevChecked;
+                    const disabled = !prevChecked;
+                    return (
+                      <button key={field} disabled={disabled}
+                        onClick={async () => { await updateField({ [field]: !checked }); }}
+                        className={cn("flex items-center gap-2.5 w-full px-3 py-2 text-left transition-all border-b border-white/[0.03] last:border-0",
+                          disabled ? "opacity-25 cursor-not-allowed" : "hover:bg-white/[0.03] cursor-pointer"
+                        )}>
+                        <div className={cn("w-4.5 h-4.5 rounded border flex items-center justify-center shrink-0 transition-all",
+                          checked ? "bg-emerald-500/20 border-emerald-500" : "border-white/20"
+                        )}>
+                          {checked && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                        </div>
+                        <span className={cn("text-xs font-display", checked ? "text-white" : "text-white/40")}>{label}</span>
+                        {isNext && <span className="ml-auto text-[8px] font-display font-bold text-orange-400 bg-orange-500/15 border border-orange-500/30 px-1.5 py-0.5 rounded">NEXT</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* ── Contacté aujourd'hui + setter + WhatsApp ── */}
+                <div className="bg-[#111318] border border-white/[0.10] rounded-lg p-3 space-y-2.5">
+                  {/* Setter inline */}
+                  <div className="flex items-center gap-2">
+                    <Users className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <Select value={lead.setter_name || ""} onValueChange={async (v) => { const name = v === "__none__" ? null : v; await updateField({ setter_name: name }); if (name) emitEvent("lead_assigned_setter", { setter_name: name }); }}>
+                      <SelectTrigger className="w-32 h-7 bg-transparent border-none text-xs font-display text-cyan-400 font-bold p-0 focus:ring-0"><SelectValue placeholder="Setter" /></SelectTrigger>
+                      <SelectContent className="bg-[hsl(220,13%,8%)] border-white/[0.10] rounded-xl shadow-2xl p-1">
+                        <SelectItem value="__none__" className="text-white/40 font-display text-xs">Non assigné</SelectItem>
+                        {settersList.map(s => <SelectItem key={s} value={s} className="font-display text-xs">{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    {/* Toggle contacté aujourd'hui */}
+                    <button onClick={() => { updateField({ contacte_aujourdhui: !lead.contacte_aujourdhui, derniere_interaction: new Date().toISOString() }); }}
+                      className={cn("ml-auto flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-display font-semibold transition-all border",
+                        lead.contacte_aujourdhui ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "border-white/[0.10] text-white/30 hover:text-white/60"
+                      )}>
+                      <div className={cn("w-2 h-2 rounded-full", lead.contacte_aujourdhui ? "bg-emerald-400" : "bg-white/20")} />
+                      {lead.contacte_aujourdhui ? 'Contacté' : 'Pas contacté'}
+                    </button>
+                  </div>
+                  {/* WhatsApp + canal */}
+                  <div className="flex gap-1.5">
+                    {lead.phone && (
+                      <a href={`https://wa.me/${lead.phone.replace(/[\s+()-]/g, '')}`} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/15 transition-all font-display text-[10px] font-semibold">
+                        <MessageCircle className="w-3 h-3" /> WhatsApp <ExternalLink className="w-2.5 h-2.5 opacity-50" />
+                      </a>
+                    )}
+                    <button onClick={() => { updateField({ contacted: true, contact_method: "whatsapp", contacted_at: new Date().toISOString(), derniere_interaction: new Date().toISOString() }); emitEvent("setting_contacted_whatsapp"); }}
+                      className={cn("px-2.5 py-1.5 rounded-md border font-display text-[10px] font-semibold transition-all",
+                        lead.contact_method === "whatsapp" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "border-white/[0.08] text-white/30 hover:text-emerald-400"
+                      )}>WA</button>
+                    <button onClick={() => { updateField({ contacted: true, contact_method: "email", contacted_at: new Date().toISOString(), derniere_interaction: new Date().toISOString() }); emitEvent("setting_contacted_email"); }}
+                      className={cn("px-2.5 py-1.5 rounded-md border font-display text-[10px] font-semibold transition-all",
+                        lead.contact_method === "email" ? "bg-amber-500/15 border-amber-500/30 text-amber-400" : "border-white/[0.08] text-white/30 hover:text-amber-400"
+                      )}>Email</button>
+                    {lead.contacted && (
+                      <button onClick={() => { updateField({ contacted: false, contact_method: null }); emitEvent("setting_contact_reset"); }}
+                        className="px-2 py-1.5 rounded-md text-white/15 hover:text-white/40 transition-all">
+                        <RotateCcw className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Marquer comme contacte */}
-            <div className="bg-[#111318] border border-white/[0.12] rounded-xl overflow-hidden">
-              <div className="px-5 py-3 border-b border-white/[0.08] flex items-center gap-2">
-                <PhoneForwarded className="w-4 h-4 text-purple-400" />
-                <span className="text-sm font-display text-purple-400 font-semibold">Contact</span>
-              </div>
-              <div className="p-4">
-                {lead.contacted ? (
-                  <div className="space-y-3">
-                    <div className={cn("rounded-xl p-3 border-2 flex items-center gap-3",
-                      lead.contact_method === "whatsapp" ? "bg-emerald-500/10 border-emerald-500/30" : "bg-amber-500/10 border-amber-500/30"
-                    )}>
-                      <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center",
-                        lead.contact_method === "whatsapp" ? "bg-emerald-500/20" : "bg-amber-500/20"
-                      )}>
-                        {lead.contact_method === "whatsapp" ? <MessageCircle className="w-5 h-5 text-emerald-400" /> : <Mail className="w-5 h-5 text-amber-400" />}
-                      </div>
-                      <div>
-                        <p className={cn("text-base font-display font-semibold", lead.contact_method === "whatsapp" ? "text-emerald-400" : "text-amber-400")}>
-                          {lead.contact_method === "whatsapp" ? "WhatsApp" : "Email"}
-                        </p>
-                        <p className="text-[10px] text-emerald-400/60">Contacte</p>
-                      </div>
-                      <div className="ml-auto w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => { updateField({ contacted: false, contact_method: null }); emitEvent("setting_contact_reset"); }}
-                      className="w-full text-[11px] text-white/30 hover:text-white/60 font-display py-1.5 transition-colors"
-                    >
-                      Reinitialiser le contact
-                    </button>
+                {/* ── 4 cartes info (read-only) ── */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  <div className="bg-[#111318] border border-white/[0.08] rounded-lg px-2.5 py-2">
+                    <p className="text-[8px] font-display uppercase tracking-wider text-white/30">Budget</p>
+                    <p className="text-[11px] font-display font-bold text-white mt-0.5 truncate">{lead.offer_amount || '—'}</p>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => { updateField({ contacted: true, contact_method: "whatsapp", contacted_at: new Date().toISOString() }); emitEvent("setting_contacted_whatsapp"); }}
-                      className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all font-display text-sm font-semibold"
-                    >
-                      <MessageCircle className="w-4 h-4" /> WhatsApp
-                    </button>
-                    <button
-                      onClick={() => { updateField({ contacted: true, contact_method: "email", contacted_at: new Date().toISOString() }); emitEvent("setting_contacted_email"); }}
-                      className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all font-display text-sm font-semibold"
-                    >
-                      <Mail className="w-4 h-4" /> Email
-                    </button>
+                  <div className="bg-[#111318] border border-white/[0.08] rounded-lg px-2.5 py-2">
+                    <p className="text-[8px] font-display uppercase tracking-wider text-white/30">Priorité</p>
+                    <p className={cn("text-[11px] font-display font-bold mt-0.5",
+                      lead.priorite === 'P1' ? 'text-emerald-400' : lead.priorite === 'P2' ? 'text-amber-400' : lead.priorite === 'P3' ? 'text-red-400' : 'text-white/30'
+                    )}>{lead.priorite || '—'}</p>
                   </div>
+                  <div className="bg-[#111318] border border-white/[0.08] rounded-lg px-2.5 py-2">
+                    <p className="text-[8px] font-display uppercase tracking-wider text-white/30">Difficulté</p>
+                    <p className="text-[11px] font-display font-bold text-white mt-0.5 truncate">{lead.difficulte_principale?.split('(')[0]?.trim() || '—'}</p>
+                  </div>
+                  <div className="bg-[#111318] border border-white/[0.08] rounded-lg px-2.5 py-2">
+                    <p className="text-[8px] font-display uppercase tracking-wider text-white/30">Importance</p>
+                    <p className="text-[11px] font-display font-bold text-white mt-0.5">{lead.importance_trading ? `${lead.importance_trading}/10` : '—'}</p>
+                  </div>
+                </div>
+
+                {/* ── Brief closer ── */}
+                <div className="bg-[#111318] border border-cyan-500/20 rounded-lg overflow-hidden">
+                  <div className="px-3 py-1.5 border-b border-cyan-500/10 bg-cyan-500/[0.03]">
+                    <span className="text-[10px] font-display text-cyan-400 font-semibold">Brief closer</span>
+                  </div>
+                  <Textarea
+                    value={debrief} onChange={e => setDebrief(e.target.value)}
+                    placeholder="Résumé pour le closer avant le call..."
+                    className="min-h-[80px] bg-transparent border-0 text-xs text-white/90 placeholder:text-white/20 resize-y rounded-none px-3 py-2 leading-relaxed focus-visible:ring-0"
+                  />
+                </div>
+
+                {/* Save */}
+                {hasChanges && (
+                  <Button onClick={saveCallData} disabled={saving} className="w-full h-9 bg-[#19B7C9] hover:bg-[#19B7C9]/90 text-[#0A0B10] font-display text-xs font-bold tracking-wide rounded-lg">
+                    {saving ? "Sauvegarde..." : "Sauvegarder"}
+                  </Button>
                 )}
-              </div>
-            </div>
-
-            {/* Contact info */}
-            <div className="space-y-2">
-              <button onClick={() => copy(lead.email, "Email")} className="flex items-center gap-3 w-full text-left px-5 py-3.5 rounded-xl bg-[#111318] border border-white/[0.12] hover:border-white/[0.20] transition-all group">
-                <Mail className="w-5 h-5 text-white/40" />
-                <span className="text-base text-white/90 flex-1 truncate">{lead.email}</span>
-                <Copy className="w-4 h-4 text-white/15 group-hover:text-white/40" />
-              </button>
-              {lead.phone && (
-                <button onClick={() => copy(lead.phone, "Tel")} className="flex items-center gap-3 w-full text-left px-5 py-3.5 rounded-xl bg-[#111318] border border-white/[0.12] hover:border-white/[0.20] transition-all group">
-                  <Phone className="w-5 h-5 text-white/40" />
-                  <span className="text-base text-white/90 flex-1">{lead.phone}</span>
-                  <Copy className="w-4 h-4 text-white/15 group-hover:text-white/40" />
-                </button>
-              )}
-            </div>
-
-            {/* Compte-rendu Setting */}
-            <div className="bg-[#111318] border border-cyan-500/25 rounded-xl overflow-hidden">
-              <div className="px-5 py-3 border-b border-cyan-500/15 bg-cyan-500/[0.04] flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-cyan-400" />
-                <span className="text-sm font-display text-cyan-400 font-semibold">Compte-rendu Setting</span>
-                <span className="text-[10px] text-cyan-400/50 ml-1">Modifiable a tout moment</span>
-              </div>
-              <div className="p-4">
-                <Textarea
-                  value={debrief} onChange={e => setDebrief(e.target.value)}
-                  placeholder="S'interesse au trading depuis 3 ans mais c'est reellement lancer depuis 1 an. Pret a investir dans sa fourchette de prix..."
-                  className="min-h-[160px] bg-[#0c0d12] border-white/[0.10] text-sm text-white/90 placeholder:text-white/20 resize-y rounded-xl leading-relaxed"
-                />
-              </div>
-            </div>
-
-            {/* Save */}
-            {hasChanges && (
-              <Button onClick={saveCallData} disabled={saving} className="w-full h-11 bg-cyan-500 hover:bg-cyan-500/90 text-white font-display text-sm tracking-wide shadow-[0_0_20px_rgba(34,211,238,0.2)] rounded-xl">
-                {saving ? "Sauvegarde..." : "Sauvegarder"}
-              </Button>
-            )}
-
-            {/* Bottom navigation buttons */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button onClick={() => setView("lead")} className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-[#111318] border border-white/[0.12] text-white/60 hover:text-white hover:border-white/[0.20] transition-all font-display text-sm">
-                <Eye className="w-4 h-4" /> FICHE LEAD
-              </button>
-              <button onClick={() => setView("call")} className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/40 transition-all font-display text-sm font-semibold">
-                <Calendar className="w-4 h-4" /> VOIR CALL
-              </button>
-            </div>
+              </>;
+            })()}
           </div>
         ) : (
-        /* ── CALL VIEW — 2 columns (Info+Closing | ) ── */
+        /* ── CALL VIEW — 2 columns like spike-launch ── */
         <div className="flex-1 flex overflow-hidden">
 
-          {/* COL 1 — Informations + Setting (spike-launch exact) */}
-          <div className="w-[320px] shrink-0 overflow-auto p-5 space-y-4 border-r border-white/[0.08]">
+          {/* COL LEFT — Informations */}
+          <div className="w-[340px] shrink-0 overflow-auto p-5 space-y-3 border-r border-white/[0.08]">
+            {/* Section label */}
+            <p className="text-[10px] font-display uppercase tracking-widest text-white/30 flex items-center gap-1.5"><Users className="w-3 h-3" /> Informations</p>
 
-            {/* Contact cards */}
-            <div className="space-y-2">
-              <button onClick={() => copy(lead.email, "Email")} className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl bg-[#111318] border border-white/[0.12] hover:border-white/[0.20] hover:bg-[#151820] transition-all group">
-                <Mail className="w-4 h-4 text-white/40 shrink-0" />
-                <span className="text-sm text-white/90 flex-1 truncate">{lead.email}</span>
-                <Copy className="w-3.5 h-3.5 text-white/20 group-hover:text-white/50 shrink-0 transition-colors" />
+            {/* Email + Tel */}
+            <button onClick={() => copy(lead.email, "Email")} className="flex items-center gap-2.5 w-full text-left px-4 py-2.5 rounded-lg bg-[#111318] border border-white/[0.10] hover:border-white/[0.18] transition-all group">
+              <Mail className="w-3.5 h-3.5 text-white/30 shrink-0" />
+              <span className="text-xs text-white/80 flex-1 truncate">{lead.email}</span>
+              <Copy className="w-3 h-3 text-white/10 group-hover:text-white/30 shrink-0" />
+            </button>
+            {lead.phone && (
+              <button onClick={() => copy(lead.phone, "Tel")} className="flex items-center gap-2.5 w-full text-left px-4 py-2.5 rounded-lg bg-[#111318] border border-white/[0.10] hover:border-white/[0.18] transition-all group">
+                <Phone className="w-3.5 h-3.5 text-white/30 shrink-0" />
+                <span className="text-xs text-white/80 flex-1 font-mono">{lead.phone}</span>
+                <Copy className="w-3 h-3 text-white/10 group-hover:text-white/30 shrink-0" />
               </button>
-              {lead.phone && (
-                <button onClick={() => copy(lead.phone, "Tel")} className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl bg-[#111318] border border-white/[0.12] hover:border-white/[0.20] hover:bg-[#151820] transition-all group">
-                  <Phone className="w-4 h-4 text-white/40 shrink-0" />
-                  <span className="text-sm text-white/90 flex-1">{lead.phone}</span>
-                  <Copy className="w-3.5 h-3.5 text-white/20 group-hover:text-white/50 shrink-0 transition-colors" />
-                </button>
-              )}
-            </div>
+            )}
 
-            {/* Call date */}
-            {lead.call_scheduled_at && (
-              <div className="text-xs text-white/40 flex items-center gap-1.5 px-1">
-                <Clock className="w-3 h-3" />
-                Call reserve le {fmtDate(lead.call_scheduled_at)}
+            {/* Budget déclaré */}
+            {lead.offer_amount && (
+              <div className="bg-emerald-500/[0.06] border border-emerald-500/20 rounded-lg px-4 py-2.5">
+                <p className="text-[9px] font-display uppercase tracking-widest text-emerald-400/60">Budget déclaré</p>
+                <p className="text-sm font-display font-bold text-emerald-400 mt-0.5">{lead.offer_amount}</p>
               </div>
             )}
 
-            {/* Setting card */}
-            <div className="rounded-xl bg-[#111318] border border-white/[0.12] overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-white/[0.08] flex items-center gap-2">
-                <PhoneForwarded className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[10px] font-display uppercase tracking-widest text-emerald-400">Setting</span>
-              </div>
-              <div className="p-4 space-y-3">
-                {lead.setter_name ? (
-                  <>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-white/40">par</span>
-                      <span className="font-display text-cyan-400 font-medium">{lead.setter_name}</span>
-                    </div>
-                    {lead.contacted && lead.contact_method && (
-                      <div className={cn("rounded-xl p-3 border-2 flex items-center gap-3",
-                        lead.contact_method === "whatsapp"
-                          ? "bg-emerald-500/10 border-emerald-500/30"
-                          : "bg-amber-500/10 border-amber-500/30"
-                      )}>
-                        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center",
-                          lead.contact_method === "whatsapp" ? "bg-emerald-500/20" : "bg-amber-500/20"
-                        )}>
-                          {lead.contact_method === "whatsapp"
-                            ? <MessageCircle className="w-5 h-5 text-emerald-400" />
-                            : <Mail className="w-5 h-5 text-amber-400" />
-                          }
-                        </div>
-                        <div>
-                          <p className={cn("text-base font-display font-semibold",
-                            lead.contact_method === "whatsapp" ? "text-emerald-400" : "text-amber-400"
-                          )}>
-                            {lead.contact_method === "whatsapp" ? "WhatsApp" : "Email"}
-                          </p>
-                          {lead.contacted && (
-                            <p className="text-[10px] text-emerald-400/60">✓ A repondu</p>
-                          )}
-                        </div>
-                        {lead.contacted && (
-                          <div className="ml-auto w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {lead.call_debrief && (
-                      <div>
-                        <p className="text-[10px] font-display uppercase tracking-widest text-red-400/70 mb-1.5">Debrief setting</p>
-                        <div className="bg-white/[0.03] border border-white/[0.08] rounded-lg p-3">
-                          <p className="text-xs text-white/70 leading-relaxed">{lead.call_debrief}</p>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-xs text-white/25 py-2">Non assigne</p>
-                )}
-              </div>
+            {/* Call scheduled */}
+            {lead.call_scheduled_at && (
+              <p className="text-[10px] text-white/30 font-display flex items-center gap-1.5 px-1">
+                <Calendar className="w-3 h-3" /> Call réservé le {fmtDate(lead.call_scheduled_at)}
+              </p>
+            )}
+
+            {/* Brief setter (read-only) */}
+            <div>
+              <p className="text-[10px] font-display uppercase tracking-widest text-cyan-400/50 flex items-center gap-1.5 mb-1.5">
+                <PhoneForwarded className="w-3 h-3" /> Setting
+                {lead.brief_closer ? '' : ' — non effectué'}
+              </p>
+              {lead.brief_closer ? (
+                <div className="bg-white/[0.03] border border-white/[0.08] rounded-lg p-3">
+                  <p className="text-xs text-white/70 leading-relaxed">{lead.brief_closer}</p>
+                </div>
+              ) : (
+                <div className="bg-[#111318] border border-white/[0.08] rounded-lg p-3 text-center">
+                  <p className="text-[10px] text-white/20">Aucun setting enregistré</p>
+                  <button onClick={() => setView("setting")} className="text-xs font-display font-semibold text-cyan-400 mt-1.5 flex items-center gap-1 mx-auto">
+                    <PhoneForwarded className="w-3 h-3" /> Faire le setting
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Bottom buttons */}
-            <div className="space-y-2 pt-2">
-              {/* No-show */}
-              {(lead.call_booked || lead.call_done) && (
-                <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#111318] border border-white/[0.12]">
-                  <UserX className="w-4 h-4 text-white/40" />
-                  <span className="text-sm text-white/60 font-display">No-show</span>
-                  <div className={cn("ml-auto w-9 h-5 rounded-full transition-colors cursor-pointer flex items-center px-0.5",
-                    lead.call_no_show ? "bg-red-500 justify-end" : "bg-white/10 justify-start"
+            {/* Meeting link */}
+            {lead.call_meeting_url && (
+              <a href={lead.call_meeting_url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-blue-500/[0.08] border border-blue-500/25 hover:bg-blue-500/[0.12] transition-all">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                  <Headphones className="w-4 h-4 text-blue-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-display font-semibold text-blue-400">Google Meet</p>
+                  <p className="text-[10px] text-white/30 truncate">{lead.call_meeting_url}</p>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-blue-400/50 shrink-0" />
+              </a>
+            )}
+
+            {/* Bottom: Fiche Lead + Voir Setting */}
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button onClick={() => setView("lead")} className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-[#111318] border border-white/[0.10] text-white/50 hover:text-white hover:border-white/[0.18] transition-all font-display text-[10px] uppercase tracking-wider">
+                <Eye className="w-3 h-3" /> Fiche lead
+              </button>
+              <button onClick={() => setView("setting")} className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-400 hover:bg-cyan-500/15 transition-all font-display text-[10px] uppercase tracking-wider font-semibold">
+                <MessageCircle className="w-3 h-3" /> Voir setting
+              </button>
+            </div>
+
+            {/* No-show + Reprogrammer */}
+            {(lead.call_booked || lead.call_done) && (
+              <div className="flex gap-2">
+                <button onClick={() => { updateField({ call_no_show: !lead.call_no_show }); if (!lead.call_no_show) emitEvent("call_no_show"); }}
+                  className={cn("flex items-center gap-1.5 px-3 py-2 rounded-lg border text-[10px] font-display transition-all",
+                    lead.call_no_show ? "bg-red-500/10 border-red-500/25 text-red-400" : "border-white/[0.08] text-white/30 hover:text-red-400"
                   )}>
-                    <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
-                  </div>
-                </div>
-              )}
-
-              {/* Oracle Activity */}
-              {lead.user_id && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-[#111318] border border-white/[0.12] rounded-xl p-3 text-center">
-                    <p className="text-2xl font-display font-bold text-white">{lead.session_count || 0}</p>
-                    <p className="text-[9px] text-white/30 font-display uppercase">Sessions</p>
-                  </div>
-                  <div className="bg-[#111318] border border-white/[0.12] rounded-xl p-3 text-center">
-                    <p className="text-2xl font-display font-bold text-white">{lead.execution_count || 0}</p>
-                    <p className="text-[9px] text-white/30 font-display uppercase">Trades</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* COL 2 — Gestion du Call + Offre & Closing */}
-          <div className="flex-1 overflow-auto p-5 space-y-5 border-r border-white/[0.08]">
-
-            {/* Closer card */}
-            <div className="rounded-xl bg-[#111318] border border-white/[0.12] overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-white/[0.08] flex items-center gap-2">
-                <Headphones className="w-3.5 h-3.5 text-white/30" />
-                <span className="text-[10px] font-display uppercase tracking-widest text-white/40">Closer assigne</span>
-              </div>
-              <div className="p-4">
-                {lead.closer_name ? (
-                  <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl px-4 py-3 flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
-                      <span className="text-sm font-display text-violet-400 font-bold">{lead.closer_name[0]?.toUpperCase()}</span>
-                    </div>
-                    <span className="text-base font-display text-violet-300 font-medium">{lead.closer_name}</span>
-                  </div>
-                ) : (
-                  <p className="text-sm text-white/25">Non assigne</p>
-                )}
-              </div>
-            </div>
-
-            {/* Call effectue toggle */}
-            <div className="rounded-xl bg-[#111318] border border-white/[0.12] overflow-hidden">
-              <div className="px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <Headphones className="w-4 h-4 text-white/40" />
-                  <span className="text-sm font-display text-white/70">Call effectue</span>
-                </div>
-                <button
-                  onClick={() => {
-                    const next = !callDone;
-                    setCallDone(next);
-                    updateField({ call_done: next });
-                  }}
-                  className={cn("w-10 h-5 rounded-full transition-colors cursor-pointer flex items-center px-0.5",
-                    callDone ? "bg-blue-500 justify-end" : "bg-white/10 justify-start"
-                  )}
-                >
-                  <div className="w-4 h-4 rounded-full bg-white shadow-sm transition-all" />
+                  <UserX className="w-3 h-3" /> No-show
                 </button>
               </div>
-            </div>
+            )}
+          </div>
 
-            {/* Issue du Call card */}
-            <div className="rounded-xl bg-[#111318] border border-white/[0.12] overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-white/[0.08] flex items-center justify-between">
-                <span className="text-[10px] font-display uppercase tracking-widest text-white/40">Issue du call</span>
-                {outcome && (
-                  <button onClick={() => setOutcome("")} className="text-[10px] font-display text-white/30 hover:text-white/60 px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.08] transition-colors">
-                    Reinitialiser
-                  </button>
+          {/* COL RIGHT — Gestion du Call */}
+          <div className="flex-1 overflow-auto p-5 space-y-3">
+            <p className="text-[10px] font-display uppercase tracking-widest text-white/30 flex items-center gap-1.5"><Headphones className="w-3 h-3" /> Gestion du call</p>
+
+            {/* Closer assigné */}
+            <div className="bg-[#111318] border border-white/[0.10] rounded-lg p-3 flex items-center gap-3">
+              <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0",
+                lead.closer_name ? "bg-violet-500/20 border border-violet-500/30 text-violet-400" : "bg-white/10 text-white/30"
+              )}>
+                {lead.closer_name?.[0]?.toUpperCase() || '?'}
+              </div>
+              <div>
+                <p className="text-xs font-display font-bold text-white">{lead.closer_name || 'Non assigné'}</p>
+                {lead.closer_name && lead.call_scheduled_at && (
+                  <p className="text-[9px] text-white/30 font-display">Assigné le {fmtShort(lead.call_scheduled_at)}</p>
                 )}
               </div>
-              <div className="p-4">
-                <div className="flex gap-2">
-                  {OUTCOMES.map(o => (
-                    <button key={o.value} onClick={() => setOutcome(o.value)}
-                      className={cn("flex-1 px-3 py-3 rounded-xl text-sm font-display font-semibold border-2 transition-all text-center",
-                        outcome === o.value ? o.cls : "bg-[#0c0d12] text-white/40 border-white/[0.10] hover:border-white/[0.20] hover:bg-white/[0.03]"
+            </div>
+
+            {/* Call effectué */}
+            <div className="bg-[#111318] border border-white/[0.10] rounded-lg px-4 py-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Headphones className="w-3.5 h-3.5 text-white/40" />
+                <span className="text-xs font-display text-white/70">Call effectué</span>
+              </div>
+              <button onClick={() => { const next = !callDone; setCallDone(next); updateField({ call_done: next, call_done_at: next ? new Date().toISOString() : null }); if (next && !lead.call_done) emitEvent("call_done"); }}
+                className={cn("w-10 h-5 rounded-full transition-colors cursor-pointer flex items-center px-0.5", callDone ? "bg-blue-500 justify-end" : "bg-white/10 justify-start")}>
+                <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+              </button>
+            </div>
+
+            {/* Issue du call */}
+            <div>
+              <p className="text-[10px] font-display uppercase tracking-widest text-white/30 mb-2">Issue du call</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {[
+                  { value: "vendu", label: "Vendu", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
+                  { value: "contracte_en_attente", label: "Contracté: en attente", cls: "bg-violet-500/15 text-violet-400 border-violet-500/30" },
+                  { value: "pas_vendu", label: "Pas vendu", cls: "bg-red-500/15 text-red-400 border-red-500/30" },
+                  { value: "rappel", label: "Rappel", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
+                ].map(o => (
+                  <button key={o.value} onClick={() => { setOutcome(o.value); if (o.value !== outcome) emitEvent("outcome_changed", { previous: outcome, new_outcome: o.value }); }}
+                    className={cn("px-3 py-2.5 rounded-lg text-[11px] font-display font-semibold border transition-all text-center",
+                      outcome === o.value ? o.cls : "bg-[#0c0d12] text-white/30 border-white/[0.08] hover:border-white/[0.15]"
+                    )}>
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Raison perdu */}
+            {outcome === "pas_vendu" && (
+              <div className="bg-[#111318] border border-red-500/20 rounded-lg p-3">
+                <p className="text-[9px] font-display uppercase tracking-widest text-red-400/60 mb-2">Raison</p>
+                <div className="flex gap-1.5 flex-wrap">
+                  {["Budget", "Timing", "Pas convaincu", "Ghost"].map(r => (
+                    <button key={r} onClick={() => updateField({ raison_perdu: r })}
+                      className={cn("px-2.5 py-1.5 rounded-md text-[10px] font-display font-semibold border transition-all",
+                        lead.raison_perdu === r ? "bg-red-500/15 border-red-500/30 text-red-400" : "border-white/[0.08] text-white/30 hover:text-red-400 hover:border-red-500/25"
                       )}>
-                      {o.label}
+                      {r}
                     </button>
                   ))}
                 </div>
               </div>
+            )}
+
+            {/* Debrief / Notes closer */}
+            <div>
+              <p className="text-[10px] font-display uppercase tracking-widest text-white/30 mb-1.5">Debrief / Notes</p>
+              <Textarea
+                value={debrief} onChange={e => setDebrief(e.target.value)}
+                placeholder="Notes sur le call..."
+                className="min-h-[70px] bg-[#111318] border-white/[0.10] text-xs text-white/90 placeholder:text-white/20 resize-y rounded-lg leading-relaxed"
+              />
             </div>
 
-            {/* Offre & Closing card */}
-            <div className="rounded-xl bg-[#111318] border border-white/[0.12] overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-white/[0.08] flex items-center gap-2">
-                <DollarSign className="w-3.5 h-3.5 text-white/30" />
-                <span className="text-[10px] font-display uppercase tracking-widest text-white/40">Offre & Closing</span>
-              </div>
-              <div className="p-4 space-y-3">
-                <div>
-                  <p className="text-[10px] text-white/30 font-display uppercase mb-1.5">Montant demande (€)</p>
-                  <input
-                    value={offerAmount} onChange={e => setOfferAmount(e.target.value)}
-                    placeholder="1500"
-                    className="w-full px-4 py-3 rounded-xl bg-[#0c0d12] border border-white/[0.12] text-base text-white font-mono placeholder:text-white/15 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
-                  />
+            {/* Paiement */}
+            {(outcome === "vendu" || outcome === "contracte_en_attente" || lead.paid_at) && (
+              <div className={cn("rounded-lg border overflow-hidden", lead.paid_at ? "bg-emerald-500/[0.05] border-emerald-500/25" : "bg-[#111318] border-white/[0.10]")}>
+                <div className={cn("px-3 py-1.5 border-b flex items-center gap-2", lead.paid_at ? "border-emerald-500/15" : "border-white/[0.06]")}>
+                  <CreditCard className={cn("w-3.5 h-3.5", lead.paid_at ? "text-emerald-400" : "text-white/30")} />
+                  <span className={cn("text-[10px] font-display uppercase tracking-widest", lead.paid_at ? "text-emerald-400" : "text-white/40")}>Paiement</span>
+                  {lead.paid_at && <span className="text-[9px] font-display text-emerald-400/60 ml-auto">Payé</span>}
                 </div>
-                <button
-                  onClick={() => updateField({ checkout_unlocked: !lead.checkout_unlocked })}
-                  className={cn("flex items-center gap-2 px-3 py-2.5 rounded-lg w-full transition-all",
-                    lead.checkout_unlocked
-                      ? "bg-emerald-500/10 border border-emerald-500/25 hover:bg-emerald-500/15"
-                      : "bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06]"
-                  )}
-                >
-                  {lead.checkout_unlocked ? (
-                    <><Unlock className="w-4 h-4 text-emerald-400" /><span className="text-xs text-emerald-400 font-display font-semibold">Checkout debloque</span></>
-                  ) : (
-                    <><Lock className="w-4 h-4 text-white/20" /><span className="text-xs text-white/30 font-display">Cliquer pour debloquer le checkout</span></>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Payment card — editable manually
-               PAIEMENT: Actuellement manuel (admin set paid_amount + paid_at directement).
-               Pas d'integration Stripe/checkout pour l'instant.
-               Flow prevu : contracte → checkout_unlocked → lien paiement → webhook → auto-set paid_at/paid_amount */}
-            <div className={cn("rounded-xl bg-[#111318] border overflow-hidden", lead.paid_at ? "border-emerald-500/30" : "border-white/[0.12]")}>
-              <div className={cn("px-4 py-2.5 border-b flex items-center gap-2", lead.paid_at ? "border-emerald-500/20" : "border-white/[0.08]")}>
-                <CreditCard className={cn("w-3.5 h-3.5", lead.paid_at ? "text-emerald-400" : "text-white/30")} />
-                <span className={cn("text-[10px] font-display uppercase tracking-widest", lead.paid_at ? "text-emerald-400/70" : "text-white/40")}>Paiement</span>
-                <span className="text-[9px] text-white/20 ml-auto font-display">Manuel</span>
-              </div>
-              <div className="p-4 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-[10px] text-white/30 font-display uppercase mb-1.5">Montant (€)</p>
-                    <input
-                      value={paidAmount} onChange={e => setPaidAmount(e.target.value)}
-                      placeholder="0"
-                      type="number"
-                      className="w-full px-3 py-2.5 rounded-xl bg-[#0c0d12] border border-white/[0.12] text-sm text-white font-mono placeholder:text-white/15 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all"
-                    />
+                <div className="p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[8px] text-white/30 font-display uppercase mb-1">Montant (EUR)</p>
+                      <input value={paidAmount} onChange={e => setPaidAmount(e.target.value)} placeholder="0" type="number"
+                        className="w-full px-3 py-2 rounded-lg bg-[#0c0d12] border border-white/[0.10] text-sm text-white font-mono placeholder:text-white/15 focus:border-emerald-500/40 outline-none transition-all" />
+                    </div>
+                    <div>
+                      <p className="text-[8px] text-white/30 font-display uppercase mb-1">Date</p>
+                      <input value={paidAt} onChange={e => setPaidAt(e.target.value)} type="datetime-local"
+                        className="w-full px-3 py-2 rounded-lg bg-[#0c0d12] border border-white/[0.10] text-sm text-white font-mono focus:border-emerald-500/40 outline-none transition-all [color-scheme:dark]" />
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-white/30 font-display uppercase mb-1.5">Date paiement</p>
-                    <input
-                      value={paidAt} onChange={e => setPaidAt(e.target.value)}
-                      type="datetime-local"
-                      className="w-full px-3 py-2.5 rounded-xl bg-[#0c0d12] border border-white/[0.12] text-sm text-white font-mono focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all [color-scheme:dark]"
-                    />
-                  </div>
+                  {(paidAmount !== (lead.paid_amount?.toString() || "") || paidAt !== (lead.paid_at ? new Date(lead.paid_at).toISOString().slice(0, 16) : "")) && (
+                    <Button onClick={async () => {
+                      await updateField({ paid_amount: paidAmount ? parseFloat(paidAmount) : null, paid_at: paidAt ? new Date(paidAt).toISOString() : null });
+                      emitEvent("payment_received", { amount: paidAmount });
+                    }} className="w-full h-8 mt-2 bg-emerald-500 hover:bg-emerald-500/90 text-white font-display text-xs rounded-lg">
+                      Enregistrer le paiement
+                    </Button>
+                  )}
                 </div>
-                {(paidAmount !== (lead.paid_amount?.toString() || "") || paidAt !== (lead.paid_at ? new Date(lead.paid_at).toISOString().slice(0, 16) : "")) && (
-                  <Button
-                    onClick={() => updateField({
-                      paid_amount: paidAmount ? parseFloat(paidAmount) : null,
-                      paid_at: paidAt ? new Date(paidAt).toISOString() : null,
-                    })}
-                    className="w-full h-9 bg-emerald-500 hover:bg-emerald-500/90 text-white font-display text-sm rounded-xl"
-                  >
-                    Enregistrer le paiement
-                  </Button>
-                )}
               </div>
-            </div>
+            )}
 
-            {/* Save button */}
+            {/* Save */}
             {hasChanges && (
-              <Button onClick={saveCallData} disabled={saving} className="w-full h-11 bg-primary hover:bg-primary/90 font-display text-sm tracking-wide shadow-[0_0_20px_rgba(25,183,201,0.2)] rounded-xl">
-                {saving ? "Sauvegarde..." : "Sauvegarder les modifications"}
+              <Button onClick={saveCallData} disabled={saving} className="w-full h-9 bg-[#19B7C9] hover:bg-[#19B7C9]/90 text-[#0A0B10] font-display text-xs font-bold tracking-wide rounded-lg">
+                {saving ? "Sauvegarde..." : "Sauvegarder"}
               </Button>
             )}
           </div>
-
         </div>
         )}
 
