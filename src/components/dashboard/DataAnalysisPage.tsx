@@ -222,14 +222,13 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
               {displayTrades.length} trades • {totalRR >= 0 ? "+" : ""}{totalRR.toFixed(1)} RR • WR {winRate}%
             </p>
           </div>
-          {/* Session selector (right side) */}
-          {sessions.length > 0 && (
-            <SessionAnalysisSelector
-              sessions={sessions}
-              selectedId={selectedSessionId}
-              onChange={setSelectedSessionId}
-            />
-          )}
+          {/* Session selector (right side) — toujours visible, gère "Aucune session" en interne */}
+          <SessionAnalysisSelector
+            sessions={sessions}
+            selectedId={selectedSessionId}
+            onChange={setSelectedSessionId}
+          />
+
         </div>
         {/* Info banner — current session */}
         {selectedSession && (
