@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Calendar, BarChart3, ChevronUp, Lock, Info, Plus } from "lucide-react";
+import { Calendar, BarChart3, ChevronUp, Lock, Info, Plus, Database, Globe } from "lucide-react";
 import { TradingJournal } from "./TradingJournal";
 import { RRDistributionChart } from "./RRDistributionChart";
 import { AnalogClock } from "./AnalogClock";
@@ -8,6 +8,7 @@ import { CumulativeEvolution } from "./CumulativeEvolution";
 import { DataRankings } from "./DataRankings";
 import { supabase } from "@/integrations/supabase/client";
 import SessionAnalysisSelector, { AnalysisSession } from "./SessionAnalysisSelector";
+import type { DataSource } from "./DataSourceSelector";
 
 interface Trade {
   id: string;
@@ -41,6 +42,10 @@ interface DataAnalysisPageProps {
   isExpired?: boolean;
   isPersoOnly?: boolean;
   onNavigateToRecolte?: () => void;
+  // Unified dataset selector (Oracle Core / Étendu / Sessions)
+  dataSource?: DataSource;
+  onDataSourceChange?: (v: DataSource) => void;
+  showDataGenerale?: boolean;
 }
 
 // Trade augmented with optional session_id for filtering (trades from user_personal_trades carry it)
@@ -57,7 +62,7 @@ const ExpiredOverlay = () => (
   </div>
 );
 
-export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess = false, isExpired = false, isPersoOnly = false, onNavigateToRecolte }: DataAnalysisPageProps) => {
+export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess = false, isExpired = false, isPersoOnly = false, onNavigateToRecolte, dataSource, onDataSourceChange, showDataGenerale = false }: DataAnalysisPageProps) => {
   const [isEntering, setIsEntering] = useState(true);
   const [expandedView, setExpandedView] = useState<ExpandedView>(null);
 
@@ -88,11 +93,8 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
         id: s.id, name: s.name, asset: s.asset, type: s.type,
       }));
       setSessions(list);
-      // Auto-preselect most recent backtesting session on first load
-      const latestBacktesting = list.find((s) => s.type === "backtesting");
-      if (latestBacktesting) {
-        setSelectedSessionId((prev) => prev ?? latestBacktesting.id);
-      }
+      // NOTE: we no longer auto-preselect a session here. The default dataset is Setup Oracle Core
+      // (driven by dataSource). User explicitly picks a session to switch to personal analysis.
       setSessionsLoaded(true);
     })();
     return () => { cancelled = true; };
@@ -221,30 +223,54 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
             {displayTrades.length} trades • {totalRR >= 0 ? "+" : ""}{totalRR.toFixed(1)} RR • WR {winRate}%
           </p>
         </div>
-        {/* Info banner — current session */}
-        {selectedSession && (
-          <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-md bg-card/60 border border-border">
-            <Info className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Vous analysez actuellement la session{" "}
-              <span className="text-foreground/90">
-                {selectedSession.type === "backtesting" ? "de backtesting" : "live"}
-              </span>
-              {" "}
-              <span
-                className="font-semibold"
-                style={{ color: selectedSession.type === "backtesting" ? "#3B82F6" : "#F97316" }}
-              >
-                « {selectedSession.name} »
-              </span>
-              {selectedSession.asset && (
-                <span className="font-mono text-foreground/60"> · {selectedSession.asset}</span>
-              )}
-              . Sélectionnez une session{" "}
-              {selectedSession.type === "backtesting" ? "live" : "de backtesting"} pour basculer l'analyse.
-            </p>
-          </div>
-        )}
+        {/* Info banner — current dataset */}
+        {(() => {
+          // Build context for the banner
+          let bannerContent: React.ReactNode = null;
+
+          if (selectedSession) {
+            bannerContent = (
+              <>
+                Vous analysez actuellement la session{" "}
+                <span className="text-foreground/90">
+                  {selectedSession.type === "backtesting" ? "de backtesting" : "live"}
+                </span>
+                {" "}
+                <span
+                  className="font-semibold"
+                  style={{ color: selectedSession.type === "backtesting" ? "#3B82F6" : "#F97316" }}
+                >
+                  « {selectedSession.name} »
+                </span>
+                {selectedSession.asset && (
+                  <span className="font-mono text-foreground/60"> · {selectedSession.asset}</span>
+                )}.
+              </>
+            );
+          } else if (dataSource === "oracle") {
+            bannerContent = (
+              <>
+                Vous analysez le <span className="font-semibold" style={{ color: "#6366F1" }}>Setup Oracle Core</span>
+                {" "}— la base de référence de trades master.
+              </>
+            );
+          } else if (dataSource === "data-generale") {
+            bannerContent = (
+              <>
+                Vous analysez le <span className="font-semibold" style={{ color: "#10B981" }}>Setup Oracle Étendu</span>
+                {" "}— Oracle + trades complémentaires curés par l'équipe.
+              </>
+            );
+          }
+
+          if (!bannerContent) return null;
+          return (
+            <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-md bg-card/60 border border-border">
+              <Info className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+              <p className="text-[11px] text-muted-foreground leading-relaxed">{bannerContent}</p>
+            </div>
+          );
+        })()}
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
@@ -259,17 +285,17 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
               </p>
             </div>
           )}
-          {/* Row 0: Session selector — centered, prominent, hero block */}
+          {/* Row 0: Dataset selector — centered, prominent, hero block */}
           <div
             className={cn(
               "relative rounded-xl border border-border/60 bg-gradient-to-br from-card via-card/80 to-card/60 px-6 py-8 md:px-10 md:py-10",
-              "flex flex-col items-center justify-center gap-4 text-center shadow-lg",
+              "flex flex-col items-center justify-center gap-5 text-center shadow-lg",
               isEntering && "opacity-0",
             )}
             style={{
               animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms forwards",
               backgroundImage:
-                "radial-gradient(circle at 30% 0%, rgba(59,130,246,0.08), transparent 60%), radial-gradient(circle at 70% 100%, rgba(249,115,22,0.08), transparent 60%)",
+                "radial-gradient(circle at 20% 0%, rgba(99,102,241,0.10), transparent 55%), radial-gradient(circle at 80% 100%, rgba(249,115,22,0.08), transparent 55%)",
             }}
           >
             <div className="space-y-1">
@@ -277,19 +303,69 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
                 Setup à analyser
               </p>
               <h3 className="text-base md:text-lg font-semibold text-foreground">
-                Choisissez la session que vous voulez analyser
+                Choisissez le dataset que vous voulez analyser
               </h3>
             </div>
-            <SessionAnalysisSelector
-              sessions={sessions}
-              selectedId={selectedSessionId}
-              onChange={setSelectedSessionId}
-            />
-            {!selectedSession && sessions.length > 0 && (
-              <p className="text-[10px] text-muted-foreground/70 font-mono italic">
-                Aucune session sélectionnée — l'analyse ci-dessous porte sur l'ensemble des trades.
-              </p>
-            )}
+
+            {/* Dataset groups: Oracle side | OU | Sessions side */}
+            <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 w-full">
+              {/* Left: Oracle pills */}
+              {onDataSourceChange && (
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60">
+                    Setup Oracle
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap justify-center">
+                    <OraclePill
+                      active={dataSource === "oracle" && !selectedSessionId}
+                      icon={Database}
+                      label="Core"
+                      sublabel="314 trades"
+                      color="#6366F1"
+                      onClick={() => {
+                        setSelectedSessionId(null);
+                        onDataSourceChange("oracle");
+                      }}
+                    />
+                    {showDataGenerale && (
+                      <OraclePill
+                        active={dataSource === "data-generale" && !selectedSessionId}
+                        icon={Globe}
+                        label="Étendu"
+                        sublabel="+ complémentaires"
+                        color="#10B981"
+                        onClick={() => {
+                          setSelectedSessionId(null);
+                          onDataSourceChange("data-generale");
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* OU separator */}
+              {onDataSourceChange && (
+                <span className="text-[11px] font-mono font-bold text-muted-foreground/70 uppercase tracking-[0.25em] px-1 self-center">
+                  OU
+                </span>
+              )}
+
+              {/* Right: Sessions */}
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60">
+                  Mes sessions
+                </p>
+                <SessionAnalysisSelector
+                  sessions={sessions}
+                  selectedId={selectedSessionId}
+                  onChange={(id) => {
+                    setSelectedSessionId(id);
+                    if (id && onDataSourceChange) onDataSourceChange("perso");
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Row 1: Données clés + quick access */}
@@ -440,3 +516,57 @@ const DonneesClés = ({ trades }: { trades: { rr: number; direction?: string; tr
     </div>
   );
 };
+
+// ─── OraclePill — compact toggle button for Oracle datasets ───
+const OraclePill = ({
+  active,
+  icon: Icon,
+  label,
+  sublabel,
+  color,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ElementType;
+  label: string;
+  sublabel: string;
+  color: string;
+  onClick: () => void;
+}) => (
+  <button
+    onClick={onClick}
+    className={cn(
+      "group flex items-stretch gap-0 rounded-lg border-2 transition-all overflow-hidden min-w-[200px]",
+      "hover:shadow-lg",
+    )}
+    style={{
+      borderColor: active ? color : `${color}40`,
+      backgroundColor: active ? `${color}10` : "transparent",
+      boxShadow: active ? `0 0 0 1px ${color}30, 0 4px 16px ${color}20` : undefined,
+    }}
+  >
+    <div
+      className="flex items-center justify-center px-3 py-2.5 transition-colors"
+      style={{
+        backgroundColor: active ? color : `${color}20`,
+        color: active ? "#fff" : color,
+      }}
+    >
+      <Icon className="w-4 h-4" strokeWidth={2.5} />
+    </div>
+    <div className="flex-1 flex flex-col items-start justify-center px-3 py-1.5 text-left">
+      <span
+        className="text-[10px] font-mono font-bold uppercase tracking-[0.15em] leading-none"
+        style={{ color }}
+      >
+        {label}
+      </span>
+      <span className={cn(
+        "text-xs font-semibold mt-0.5 leading-tight",
+        active ? "text-foreground" : "text-muted-foreground",
+      )}>
+        {sublabel}
+      </span>
+    </div>
+  </button>
+);
