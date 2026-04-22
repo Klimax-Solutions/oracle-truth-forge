@@ -458,9 +458,10 @@ export default function GestionPanel() {
         followupsMap[f.user_id].push({ day_number: f.day_number, contact_date: f.contact_date, message_sent: f.message_sent || false, call_done: f.call_done || false, is_blocked: f.is_blocked || false, correct_actions: f.correct_actions || false, notes: f.notes });
       });
 
-      // Build users
-      const uniqueUserIds = [...new Set(userCycles.map((uc) => uc.user_id))];
-      const platformUsers: PlatformUser[] = uniqueUserIds.map((userId) => {
+      // Build users — source: profiles (ALL users, not just those with cycles)
+      // user_cycles data is optional: new users without any cycle still appear
+      const uniqueUserIds = profiles.map((p: any) => p.user_id);
+      const platformUsers: PlatformUser[] = uniqueUserIds.map((userId: string) => {
         const ucs = userCycles.filter((uc) => uc.user_id === userId);
         const userExecs = allExecutions.filter((e) => e.user_id === userId) as UserExecution[];
         const profile = profileMap[userId];
@@ -468,7 +469,8 @@ export default function GestionPanel() {
         const currentCycleData = activeCycle ? cyclesData.find((c) => c.id === activeCycle.cycle_id) : null;
         const totalRR = userExecs.reduce((sum, e) => sum + (e.rr || 0), 0);
         const hasPending = ucs.some((uc) => uc.status === "pending_review");
-        const allValidated = ucs.every((uc) => uc.status === "validated");
+        // Guard: [].every() returns true — new users with no cycles must NOT show as "completed"
+        const allValidated = ucs.length > 0 && ucs.every((uc) => uc.status === "validated");
         let userStatus: "active" | "pending" | "completed" = "active";
         if (hasPending) userStatus = "pending";
         if (allValidated && ucs.length === cyclesData.length) userStatus = "completed";
@@ -477,7 +479,7 @@ export default function GestionPanel() {
           id: userId,
           displayName: profile?.display_name || profile?.first_name || `User ${userId.slice(0, 8)}`,
           firstName: profile?.first_name || null,
-          created_at: ucs[0]?.started_at || new Date().toISOString(),
+          created_at: profile?.created_at || ucs[0]?.started_at || new Date().toISOString(),
           currentCycle: currentCycleData || null,
           userCycles: ucs,
           totalTrades: userExecs.length,
