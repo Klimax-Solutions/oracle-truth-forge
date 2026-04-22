@@ -473,7 +473,7 @@ const Dashboard = () => {
         );
       }
       case "videos":
-        return <VideoSetup overrideIsAdmin={isAdmin} />;
+        return <VideoSetup overrideIsAdmin={isAdmin} overrideIsEarlyAccess={simulatedRole !== "none" ? isEarlyAccess : undefined} />;
       case "successes":
         return <SuccessPage />;
       case "results":

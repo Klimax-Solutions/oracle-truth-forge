@@ -19,14 +19,22 @@ interface VideoData {
   sort_order: number;
 }
 
-export const VideoSetup = () => {
+interface VideoSetupProps {
+  overrideIsAdmin?: boolean;
+  overrideIsEarlyAccess?: boolean;
+}
+
+export const VideoSetup = ({ overrideIsAdmin, overrideIsEarlyAccess }: VideoSetupProps = {}) => {
   const [videos, setVideos] = useState<VideoData[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null);
   const [viewedIds, setViewedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [userRoles, setUserRoles] = useState<string[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const { isEarlyAccess, isExpired: isEaExpired } = useEarlyAccess();
+  const [isAdminFromDB, setIsAdminFromDB] = useState(false);
+  const isAdmin = overrideIsAdmin !== undefined ? overrideIsAdmin : isAdminFromDB;
+  const { isEarlyAccess: isEarlyAccessFromDB, isExpired: isEaExpiredFromDB } = useEarlyAccess();
+  const isEarlyAccess = overrideIsEarlyAccess !== undefined ? overrideIsEarlyAccess : isEarlyAccessFromDB;
+  const isEaExpired = overrideIsEarlyAccess !== undefined ? false : isEaExpiredFromDB;
   const { settings: eaSettings } = useEarlyAccessSettings();
 
   useEffect(() => {
@@ -54,7 +62,7 @@ export const VideoSetup = () => {
       if (rolesRes.data) {
         const roles = rolesRes.data.map((r: any) => r.role);
         setUserRoles(roles);
-        setIsAdmin(roles.includes("admin") || roles.includes("super_admin"));
+        setIsAdminFromDB(roles.includes("admin") || roles.includes("super_admin"));
       }
 
       setLoading(false);
