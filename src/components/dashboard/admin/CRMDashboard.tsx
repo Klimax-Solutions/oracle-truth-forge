@@ -292,6 +292,20 @@ export default function CRMDashboard() {
   const [isCloserRole, setIsCloserRole] = useState(false);
   const [currentSetterName, setCurrentSetterName] = useState<string | null>(null);
 
+  // ── DEV ONLY: role simulator (localhost) ──────────────────────────────────
+  const isDev = typeof window !== "undefined" && window.location.hostname === "localhost";
+  const DEV_ROLE_KEY = "crm_dev_role_override";
+  type DevRole = "admin" | "setter" | "closer" | "setter+closer";
+  const [devRole, setDevRole] = useState<DevRole | null>(() => {
+    if (typeof window === "undefined") return null;
+    return (localStorage.getItem(DEV_ROLE_KEY) as DevRole) || null;
+  });
+  const applyDevRole = (role: DevRole | null) => {
+    setDevRole(role);
+    if (role) localStorage.setItem(DEV_ROLE_KEY, role);
+    else localStorage.removeItem(DEV_ROLE_KEY);
+  };
+
   // Detect current user's roles → permissions for LeadDetailModal
   useEffect(() => {
     (async () => {
@@ -442,6 +456,13 @@ export default function CRMDashboard() {
     return r;
   }, [leads, search, stageFilter, setterFilter, prioFilter, isSetterOnly, currentSetterName]);
 
+  // ── Effective permissions (dev override takes priority on localhost) ──────
+  const effectiveSetter = isDev && devRole ? (devRole === "setter" || devRole === "setter+closer") : isSetterRole;
+  const effectiveCloser = isDev && devRole ? (devRole === "closer" || devRole === "setter+closer") : isCloserRole;
+  const effectiveAdmin  = isDev && devRole ? devRole === "admin" : (isAdminRole || isSuperAdmin);
+  const canEditSetting = effectiveSetter || effectiveAdmin;
+  const canEditCall    = effectiveCloser || effectiveAdmin;
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
@@ -450,6 +471,25 @@ export default function CRMDashboard() {
 
   return (
     <div className="h-full overflow-auto">
+      {/* ── DEV ONLY: Role simulator ─────────────────────────────────────── */}
+      {isDev && (
+        <div className="fixed bottom-4 right-4 z-[200] flex flex-col items-end gap-1.5">
+          <span className="text-[8px] font-mono uppercase tracking-widest text-white/30 pr-1">
+            Role sim · <span className={cn(canEditSetting ? "text-cyan-400" : "text-white/20")}>Setting</span> / <span className={cn(canEditCall ? "text-violet-400" : "text-white/20")}>Call</span>
+          </span>
+          <div className="flex gap-1">
+            {(["admin", "setter", "closer", "setter+closer"] as DevRole[]).map(r => (
+              <button key={r} onClick={() => applyDevRole(devRole === r ? null : r)}
+                className={cn("px-2 py-1 rounded text-[9px] font-mono uppercase tracking-wider border transition-all",
+                  devRole === r ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-[#111318] border-white/10 text-white/30 hover:text-white/60"
+                )}>
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <Tabs defaultValue="pipeline" className="h-full flex flex-col">
         {/* ── Tabs ── spike-launch style */}
         <div className="shrink-0 border-b border-white/[0.10]">
@@ -709,8 +749,8 @@ export default function CRMDashboard() {
               onClose={() => setSelectedLead(null)}
               onLeadUpdated={loadLeads}
               initialView={modalView}
-              canEditSetting={isSetterRole || isAdminRole || isSuperAdmin}
-              canEditCall={isCloserRole || isAdminRole || isSuperAdmin}
+              canEditSetting={canEditSetting}
+              canEditCall={canEditCall}
             />
           )}
         </TabsContent>
