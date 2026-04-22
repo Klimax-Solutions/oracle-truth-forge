@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Eye } from "lucide-react";
 
-export type SimulatedRole = "none" | "admin" | "member" | "early_access" | "setter";
+export type SimulatedRole = "none" | "admin" | "member" | "early_access" | "setter" | "closer" | "setter+closer";
 
 const roles: { id: SimulatedRole; label: string; color: string }[] = [
   { id: "none", label: "Super Admin", color: "bg-primary text-primary-foreground" },
@@ -9,6 +9,8 @@ const roles: { id: SimulatedRole; label: string; color: string }[] = [
   { id: "member", label: "Membre", color: "bg-emerald-600 text-white" },
   { id: "early_access", label: "Early Access", color: "bg-violet-600 text-white" },
   { id: "setter", label: "Setter", color: "bg-pink-600 text-white" },
+  { id: "closer", label: "Closer", color: "bg-blue-600 text-white" },
+  { id: "setter+closer", label: "Setter+Closer", color: "bg-indigo-600 text-white" },
 ];
 
 interface RoleSwitcherProps {
@@ -44,22 +46,27 @@ export const RoleSwitcher = ({ current, onChange }: RoleSwitcherProps) => {
 export const getEffectiveRoles = (
   realIsSuperAdmin: boolean,
   simulatedRole: SimulatedRole,
-  realIsSetter: boolean = false
+  realIsSetter: boolean = false,
+  realIsCloser: boolean = false,
 ) => {
   if (!realIsSuperAdmin || simulatedRole === "none") {
-    return { effectiveIsAdmin: realIsSuperAdmin, effectiveIsSuperAdmin: realIsSuperAdmin, effectiveIsEarlyAccess: false, effectiveIsSetter: realIsSetter, effectiveIsMember: true };
+    return { effectiveIsAdmin: realIsSuperAdmin, effectiveIsSuperAdmin: realIsSuperAdmin, effectiveIsEarlyAccess: false, effectiveIsSetter: realIsSetter, effectiveIsCloser: realIsCloser, effectiveIsMember: true };
   }
 
   switch (simulatedRole) {
     case "admin":
-      return { effectiveIsAdmin: true, effectiveIsSuperAdmin: false, effectiveIsEarlyAccess: false, effectiveIsSetter: false, effectiveIsMember: true };
+      return { effectiveIsAdmin: true, effectiveIsSuperAdmin: false, effectiveIsEarlyAccess: false, effectiveIsSetter: false, effectiveIsCloser: false, effectiveIsMember: true };
     case "member":
-      return { effectiveIsAdmin: false, effectiveIsSuperAdmin: false, effectiveIsEarlyAccess: false, effectiveIsSetter: false, effectiveIsMember: true };
+      return { effectiveIsAdmin: false, effectiveIsSuperAdmin: false, effectiveIsEarlyAccess: false, effectiveIsSetter: false, effectiveIsCloser: false, effectiveIsMember: true };
     case "early_access":
-      return { effectiveIsAdmin: false, effectiveIsSuperAdmin: false, effectiveIsEarlyAccess: true, effectiveIsSetter: false, effectiveIsMember: false };
+      return { effectiveIsAdmin: false, effectiveIsSuperAdmin: false, effectiveIsEarlyAccess: true, effectiveIsSetter: false, effectiveIsCloser: false, effectiveIsMember: false };
     case "setter":
-      return { effectiveIsAdmin: false, effectiveIsSuperAdmin: false, effectiveIsEarlyAccess: false, effectiveIsSetter: true, effectiveIsMember: false };
+      return { effectiveIsAdmin: false, effectiveIsSuperAdmin: false, effectiveIsEarlyAccess: false, effectiveIsSetter: true, effectiveIsCloser: false, effectiveIsMember: false };
+    case "closer":
+      return { effectiveIsAdmin: false, effectiveIsSuperAdmin: false, effectiveIsEarlyAccess: false, effectiveIsSetter: false, effectiveIsCloser: true, effectiveIsMember: false };
+    case "setter+closer":
+      return { effectiveIsAdmin: false, effectiveIsSuperAdmin: false, effectiveIsEarlyAccess: false, effectiveIsSetter: true, effectiveIsCloser: true, effectiveIsMember: false };
     default:
-      return { effectiveIsAdmin: true, effectiveIsSuperAdmin: true, effectiveIsEarlyAccess: false, effectiveIsSetter: false, effectiveIsMember: true };
+      return { effectiveIsAdmin: true, effectiveIsSuperAdmin: true, effectiveIsEarlyAccess: false, effectiveIsSetter: false, effectiveIsCloser: false, effectiveIsMember: true };
   }
 };

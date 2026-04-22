@@ -123,7 +123,7 @@ const Dashboard = () => {
   const [dataSource, setDataSource] = useState<DataSource>(() => persistedState.dataSource || "oracle");
   const [displayName, setDisplayName] = useState<string>("");
   const { trades: personalTrades } = usePersonalTrades();
-  const { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter, loadingRoles } = useSidebarRoles();
+  const { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter, isCloser: realIsCloser, loadingRoles } = useSidebarRoles();
   const questData = useQuestData();
   const { isEarlyAccess: realIsEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
@@ -132,8 +132,8 @@ const Dashboard = () => {
   
   // Role switching for super admins
   const [simulatedRole, setSimulatedRole] = useState<SimulatedRole>("none");
-  const { effectiveIsAdmin, effectiveIsSuperAdmin, effectiveIsEarlyAccess, effectiveIsSetter } = 
-    getEffectiveRoles(realIsSuperAdmin, simulatedRole, realIsSetter);
+  const { effectiveIsAdmin, effectiveIsSuperAdmin, effectiveIsEarlyAccess, effectiveIsSetter, effectiveIsCloser } =
+    getEffectiveRoles(realIsSuperAdmin, simulatedRole, realIsSetter, realIsCloser);
   
   // Sync activeTab → URL (?tab=crm, ?tab=agenda, etc.)
   // Only depend on activeTab — not searchParams (would cause infinite loop)
@@ -467,7 +467,7 @@ const Dashboard = () => {
         );
       }
       case "videos":
-        return <VideoSetup />;
+        return <VideoSetup overrideIsAdmin={isAdmin} />;
       case "successes":
         return <SuccessPage />;
       case "results":
@@ -479,7 +479,7 @@ const Dashboard = () => {
       case "roles":
         return <AdminVerification />;
       case "crm":
-        return <CRMDashboard />;
+        return <CRMDashboard overrideRoles={simulatedRole !== "none" ? { isAdmin: effectiveIsAdmin, isSuperAdmin: effectiveIsSuperAdmin, isSetter: effectiveIsSetter, isCloser: effectiveIsCloser } : undefined} />;
       case "funnel-editor":
         return <FunnelEditorPage />;
       case "early-access-mgmt":

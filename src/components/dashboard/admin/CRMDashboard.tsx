@@ -274,7 +274,11 @@ function LeadDetail({ lead, onClose }: { lead: PipelineLead; onClose: () => void
 
 // ── Main ──
 
-export default function CRMDashboard() {
+interface CRMDashboardProps {
+  overrideRoles?: { isAdmin: boolean; isSuperAdmin: boolean; isSetter: boolean; isCloser: boolean };
+}
+
+export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) {
   const [leads, setLeads] = useState<PipelineLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -286,28 +290,19 @@ export default function CRMDashboard() {
   const [modalView, setModalView] = useState<LeadModalView>("lead");
   const [refreshing, setRefreshing] = useState(false);
   const [isSetterOnly, setIsSetterOnly] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [isAdminRole, setIsAdminRole] = useState(false);
-  const [isSetterRole, setIsSetterRole] = useState(false);
-  const [isCloserRole, setIsCloserRole] = useState(false);
+  const [_isSuperAdmin, _setIsSuperAdmin] = useState(false);
+  const [_isAdminRole, _setIsAdminRole] = useState(false);
+  const [_isSetterRole, _setIsSetterRole] = useState(false);
+  const [_isCloserRole, _setIsCloserRole] = useState(false);
   const [currentSetterName, setCurrentSetterName] = useState<string | null>(null);
 
-  // ── Role simulator — visible uniquement pour admin/superadmin réels ───────
-  const DEV_ROLE_KEY = "crm_dev_role_override";
-  type DevRole = "admin" | "setter" | "closer" | "setter+closer";
-  const [devRole, setDevRole] = useState<DevRole | null>(() => {
-    if (typeof window === "undefined") return null;
-    return (localStorage.getItem(DEV_ROLE_KEY) as DevRole) || null;
-  });
-  const applyDevRole = (role: DevRole | null) => {
-    setDevRole(role);
-    if (role) localStorage.setItem(DEV_ROLE_KEY, role);
-    else localStorage.removeItem(DEV_ROLE_KEY);
-  };
-  // Simulator visible seulement si vrai admin/superadmin en DB (pas overridé)
-  const canSimulateRoles = isAdminRole || isSuperAdmin;
+  // Effective roles: overrideRoles (from RoleSwitcher) prend le dessus sur les valeurs DB
+  const isSuperAdmin = overrideRoles ? overrideRoles.isSuperAdmin : _isSuperAdmin;
+  const isAdminRole  = overrideRoles ? overrideRoles.isAdmin     : _isAdminRole;
+  const isSetterRole = overrideRoles ? overrideRoles.isSetter    : _isSetterRole;
+  const isCloserRole = overrideRoles ? overrideRoles.isCloser    : _isCloserRole;
 
-  // Detect current user's roles → permissions for LeadDetailModal
+  // Detect current user's real roles (toujours depuis DB — pas overridé)
   useEffect(() => {
     (async () => {
       try {
@@ -321,13 +316,12 @@ export default function CRMDashboard() {
         const isAdmin = adminRes.data === true;
         const superAdmin = superRes.data === true;
         const isCloser = closerRes.data === true;
-        setIsSuperAdmin(superAdmin);
-        setIsAdminRole(isAdmin);
-        setIsSetterRole(isSetter);
-        setIsCloserRole(isCloser);
+        _setIsSuperAdmin(superAdmin);
+        _setIsAdminRole(isAdmin);
+        _setIsSetterRole(isSetter);
+        _setIsCloserRole(isCloser);
         if (isSetter && !isAdmin && !superAdmin) {
           setIsSetterOnly(true);
-          // Get setter's display name for filtering
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             const { data: profile } = await supabase
@@ -335,9 +329,7 @@ export default function CRMDashboard() {
               .select("display_name, first_name")
               .eq("user_id", user.id)
               .single();
-            if (profile) {
-              setCurrentSetterName(profile.display_name || profile.first_name || null);
-            }
+            if (profile) setCurrentSetterName(profile.display_name || profile.first_name || null);
           }
         }
       } catch { /* admin/superadmin by default */ }
@@ -457,12 +449,9 @@ export default function CRMDashboard() {
     return r;
   }, [leads, search, stageFilter, setterFilter, prioFilter, isSetterOnly, currentSetterName]);
 
-  // ── Effective permissions (simulator override si admin réel) ──────────────
-  const effectiveSetter = canSimulateRoles && devRole ? (devRole === "setter" || devRole === "setter+closer") : isSetterRole;
-  const effectiveCloser = canSimulateRoles && devRole ? (devRole === "closer" || devRole === "setter+closer") : isCloserRole;
-  const effectiveAdmin  = canSimulateRoles && devRole ? devRole === "admin" : (isAdminRole || isSuperAdmin);
-  const canEditSetting = effectiveSetter || effectiveAdmin;
-  const canEditCall    = effectiveCloser || effectiveAdmin;
+  // ── Permissions effectives (overrideRoles ou DB) ──────────────────────────
+  const canEditSetting = isSetterRole || isAdminRole || isSuperAdmin;
+  const canEditCall    = isCloserRole || isAdminRole || isSuperAdmin;
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -472,25 +461,6 @@ export default function CRMDashboard() {
 
   return (
     <div className="h-full overflow-auto">
-      {/* ── Role simulator — admins only ─────────────────────────────────── */}
-      {canSimulateRoles && (
-        <div className="fixed bottom-4 right-4 z-[200] flex flex-col items-end gap-1.5">
-          <span className="text-[8px] font-mono uppercase tracking-widest text-white/30 pr-1">
-            Role sim · <span className={cn(canEditSetting ? "text-cyan-400" : "text-white/20")}>Setting</span> / <span className={cn(canEditCall ? "text-violet-400" : "text-white/20")}>Call</span>
-          </span>
-          <div className="flex gap-1">
-            {(["admin", "setter", "closer", "setter+closer"] as DevRole[]).map(r => (
-              <button key={r} onClick={() => applyDevRole(devRole === r ? null : r)}
-                className={cn("px-2 py-1 rounded text-[9px] font-mono uppercase tracking-wider border transition-all",
-                  devRole === r ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-[#111318] border-white/10 text-white/30 hover:text-white/60"
-                )}>
-                {r}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <Tabs defaultValue="pipeline" className="h-full flex flex-col">
         {/* ── Tabs ── spike-launch style */}
         <div className="shrink-0 border-b border-white/[0.10]">
