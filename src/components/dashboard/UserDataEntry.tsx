@@ -47,6 +47,9 @@ import {
   RotateCcw,
   Timer,
   Trophy,
+  AlertTriangle,
+  Link as LinkIcon,
+  ExternalLink,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScreenshotLink } from "./ScreenshotLink";
@@ -251,6 +254,13 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
   const [entryFile, setEntryFile] = useState<File | null>(null);
   const [entryPreview, setEntryPreview] = useState<string | null>(null);
   const [existingEntryUrl, setExistingEntryUrl] = useState<string | null>(null);
+  // Screenshot mode: file upload vs. direct URL link
+  const [contextMode, setContextMode] = useState<"file" | "link">("file");
+  const [entryMode, setEntryMode] = useState<"file" | "link">("file");
+  const [contextLinkUrl, setContextLinkUrl] = useState("");
+  const [entryLinkUrl, setEntryLinkUrl] = useState("");
+  // Screenshot validation state
+  const [screenshotError, setScreenshotError] = useState(false);
   const [selectedExecution, setSelectedExecution] = useState<UserExecution | null>(null);
   const contextFileRef = useRef<HTMLInputElement>(null);
   const entryFileRef = useRef<HTMLInputElement>(null);
@@ -450,6 +460,11 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     setEntryFile(null);
     setEntryPreview(null);
     setExistingEntryUrl(null);
+    setContextMode("file");
+    setEntryMode("file");
+    setContextLinkUrl("");
+    setEntryLinkUrl("");
+    setScreenshotError(false);
     setIsDialogOpen(true);
   };
 
@@ -484,10 +499,30 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     setEditingId(execution.id);
     setContextFile(null);
     setContextPreview(null);
-    setExistingContextUrl(execution.screenshot_url);
     setEntryFile(null);
     setEntryPreview(null);
-    setExistingEntryUrl((execution as any).screenshot_entry_url || null);
+    setScreenshotError(false);
+    // Restore link mode if the stored value is an external URL
+    const existCtx = execution.screenshot_url;
+    const existEntry = (execution as any).screenshot_entry_url || null;
+    if (existCtx?.startsWith("http")) {
+      setContextMode("link");
+      setContextLinkUrl(existCtx);
+      setExistingContextUrl(null);
+    } else {
+      setContextMode("file");
+      setContextLinkUrl("");
+      setExistingContextUrl(existCtx);
+    }
+    if (existEntry?.startsWith("http") && !existEntry?.includes("supabase")) {
+      setEntryMode("link");
+      setEntryLinkUrl(existEntry);
+      setExistingEntryUrl(null);
+    } else {
+      setEntryMode("file");
+      setEntryLinkUrl("");
+      setExistingEntryUrl(existEntry);
+    }
     setIsDialogOpen(true);
   };
 
@@ -524,14 +559,27 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
       return;
     }
 
+    // Hard constraint: both screenshots required before submit
+    const hasContext = contextMode === "link" ? !!contextLinkUrl.trim() : !!(contextFile || existingContextUrl);
+    const hasEntry = entryMode === "link" ? !!entryLinkUrl.trim() : !!(entryFile || existingEntryUrl);
+    if (!hasContext || !hasEntry) {
+      setScreenshotError(true);
+      return;
+    }
+    setScreenshotError(false);
+
     setSaving(true);
     setUploading(true);
 
     const tradeNum = parseInt(formData.trade_number);
-    // Upload dual screenshots
+    // Upload dual screenshots (or resolve external links directly)
     const [contextResult, entryResult] = await Promise.all([
-      uploadScreenshot(user.id, tradeNum, contextFile, existingContextUrl, "context"),
-      uploadScreenshot(user.id, tradeNum, entryFile, existingEntryUrl, "entry"),
+      contextMode === "link"
+        ? Promise.resolve({ path: contextLinkUrl.trim() || null, error: false })
+        : uploadScreenshot(user.id, tradeNum, contextFile, existingContextUrl, "context"),
+      entryMode === "link"
+        ? Promise.resolve({ path: entryLinkUrl.trim() || null, error: false })
+        : uploadScreenshot(user.id, tradeNum, entryFile, existingEntryUrl, "entry"),
     ]);
     setUploading(false);
 
@@ -1014,42 +1062,150 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     </div>
                   </div>
 
-                  {/* Section 5: Screenshots */}
+                  {/* Section 5: Screenshots — obligatoires */}
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Screenshots</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                      Screenshots <span className="text-destructive">*</span>
+                    </p>
+
+                    {/* Hard-constraint error banner */}
+                    {screenshotError && (
+                      <div className="flex items-start gap-2 p-3 mb-3 rounded-md bg-red-500/10 border border-red-500/30">
+                        <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                        <p className="text-xs text-red-400 leading-relaxed">
+                          <span className="font-semibold">Action requise :</span> Vous devez fournir 2 screenshots (Contexte + Entrée) pour enregistrer ce trade.
+                        </p>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                      {/* ── Context screenshot ── */}
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Contexte (M15) <span className="text-destructive">*</span></Label>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs">Contexte (M15)</Label>
+                          {/* Mode toggle */}
+                          <div className="flex items-center gap-0.5 bg-muted rounded-md p-0.5">
+                            <button
+                              type="button"
+                              onClick={() => { setContextMode("file"); setContextLinkUrl(""); }}
+                              className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-all", contextMode === "file" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
+                            >
+                              <ImageIcon className="w-3 h-3" /> Fichier
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setContextMode("link"); setContextFile(null); setContextPreview(null); setExistingContextUrl(null); }}
+                              className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-all", contextMode === "link" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
+                            >
+                              <LinkIcon className="w-3 h-3" /> Lien
+                            </button>
+                          </div>
+                        </div>
                         <input ref={contextFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setContextFile, setContextPreview)} className="hidden" />
-                        {(contextPreview || existingContextUrl) ? (
-                          <div className="relative border border-border rounded-lg p-2 bg-muted/30">
-                            <img src={contextPreview || existingContextUrl || ""} alt="Contexte M15" className="max-h-32 object-contain mx-auto rounded" />
-                            <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5" onClick={() => { setContextFile(null); setContextPreview(null); setExistingContextUrl(null); }}>
-                              <X className="w-3 h-3" />
-                            </Button>
+                        {contextMode === "link" ? (
+                          <div className="space-y-1.5">
+                            <Input
+                              type="url"
+                              value={contextLinkUrl}
+                              onChange={(e) => setContextLinkUrl(e.target.value)}
+                              placeholder="https://www.tradingview.com/x/..."
+                              className={cn("text-xs", screenshotError && !contextLinkUrl.trim() && "border-red-500")}
+                            />
+                            {contextLinkUrl.trim() && (
+                              /\.(png|jpg|jpeg|gif|webp|bmp)(\?.*)?$/i.test(contextLinkUrl) ? (
+                                <div className="relative border border-border rounded-lg p-2 bg-muted/30">
+                                  <img src={contextLinkUrl} alt="Contexte M15" className="max-h-32 object-contain mx-auto rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                  <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5" onClick={() => setContextLinkUrl("")}>
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 border border-border text-xs text-muted-foreground">
+                                  <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                                  <a href={contextLinkUrl} target="_blank" rel="noopener noreferrer" className="truncate hover:text-primary transition-colors">{contextLinkUrl}</a>
+                                </div>
+                              )
+                            )}
                           </div>
                         ) : (
-                          <Button type="button" variant="outline" onClick={() => contextFileRef.current?.click()} className="w-full h-20 border-dashed gap-2 text-xs" disabled={uploading}>
-                            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                            Screenshot Contexte (M15)
-                          </Button>
+                          (contextPreview || existingContextUrl) ? (
+                            <div className="relative border border-border rounded-lg p-2 bg-muted/30">
+                              <img src={contextPreview || existingContextUrl || ""} alt="Contexte M15" className="max-h-32 object-contain mx-auto rounded" />
+                              <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5" onClick={() => { setContextFile(null); setContextPreview(null); setExistingContextUrl(null); }}>
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button type="button" variant="outline" onClick={() => contextFileRef.current?.click()} className={cn("w-full h-20 border-dashed gap-2 text-xs", screenshotError && "border-red-500")} disabled={uploading}>
+                              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                              Screenshot Contexte (M15)
+                            </Button>
+                          )
                         )}
                       </div>
+
+                      {/* ── Entry screenshot ── */}
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Entrée (TF modèle d'entrée) <span className="text-destructive">*</span></Label>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs">Entrée (TF modèle d'entrée)</Label>
+                          {/* Mode toggle */}
+                          <div className="flex items-center gap-0.5 bg-muted rounded-md p-0.5">
+                            <button
+                              type="button"
+                              onClick={() => { setEntryMode("file"); setEntryLinkUrl(""); }}
+                              className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-all", entryMode === "file" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
+                            >
+                              <ImageIcon className="w-3 h-3" /> Fichier
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setEntryMode("link"); setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }}
+                              className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-all", entryMode === "link" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
+                            >
+                              <LinkIcon className="w-3 h-3" /> Lien
+                            </button>
+                          </div>
+                        </div>
                         <input ref={entryFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setEntryFile, setEntryPreview)} className="hidden" />
-                        {(entryPreview || existingEntryUrl) ? (
-                          <div className="relative border border-border rounded-lg p-2 bg-muted/30">
-                            <img src={entryPreview || existingEntryUrl || ""} alt="Entrée TF" className="max-h-32 object-contain mx-auto rounded" />
-                            <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5" onClick={() => { setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }}>
-                              <X className="w-3 h-3" />
-                            </Button>
+                        {entryMode === "link" ? (
+                          <div className="space-y-1.5">
+                            <Input
+                              type="url"
+                              value={entryLinkUrl}
+                              onChange={(e) => setEntryLinkUrl(e.target.value)}
+                              placeholder="https://www.tradingview.com/x/..."
+                              className={cn("text-xs", screenshotError && !entryLinkUrl.trim() && "border-red-500")}
+                            />
+                            {entryLinkUrl.trim() && (
+                              /\.(png|jpg|jpeg|gif|webp|bmp)(\?.*)?$/i.test(entryLinkUrl) ? (
+                                <div className="relative border border-border rounded-lg p-2 bg-muted/30">
+                                  <img src={entryLinkUrl} alt="Entrée TF" className="max-h-32 object-contain mx-auto rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                  <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5" onClick={() => setEntryLinkUrl("")}>
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 border border-border text-xs text-muted-foreground">
+                                  <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                                  <a href={entryLinkUrl} target="_blank" rel="noopener noreferrer" className="truncate hover:text-primary transition-colors">{entryLinkUrl}</a>
+                                </div>
+                              )
+                            )}
                           </div>
                         ) : (
-                          <Button type="button" variant="outline" onClick={() => entryFileRef.current?.click()} className="w-full h-20 border-dashed gap-2 text-xs" disabled={uploading}>
-                            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                            Screenshot Entrée (TF modèle d'entrée)
-                          </Button>
+                          (entryPreview || existingEntryUrl) ? (
+                            <div className="relative border border-border rounded-lg p-2 bg-muted/30">
+                              <img src={entryPreview || existingEntryUrl || ""} alt="Entrée TF" className="max-h-32 object-contain mx-auto rounded" />
+                              <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5" onClick={() => { setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }}>
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button type="button" variant="outline" onClick={() => entryFileRef.current?.click()} className={cn("w-full h-20 border-dashed gap-2 text-xs", screenshotError && "border-red-500")} disabled={uploading}>
+                              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                              Screenshot Entrée (TF modèle d'entrée)
+                            </Button>
+                          )
                         )}
                       </div>
                     </div>

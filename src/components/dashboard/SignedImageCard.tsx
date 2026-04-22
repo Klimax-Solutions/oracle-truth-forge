@@ -34,6 +34,12 @@ export const SignedImageCard = ({
         setLoading(false);
         return;
       }
+      // External URLs (TradingView, Lightshot, etc.) — use directly, no signing needed
+      if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
+        setSignedUrl(storagePath);
+        setLoading(false);
+        return;
+      }
       if (storagePath.includes("token=")) {
         setSignedUrl(storagePath);
         setLoading(false);
