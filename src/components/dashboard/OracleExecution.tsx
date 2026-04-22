@@ -546,92 +546,95 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
           onRequestVerification={verificationPopupData.handler}
         />
       )}
-      {/* Header */}
-      <div className="p-4 md:p-6 border-b border-border">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">Exécution d'Oracle</h2>
-            <p className="text-xs md:text-sm text-muted-foreground font-mono">
-              Progression des 8 cycles vers les 314 trades
+      {/* Header AVE — premium */}
+      <div className="px-6 md:px-10 pt-8 md:pt-12 pb-10 md:pb-16 border-b border-border">
+        <div className="max-w-6xl mx-auto space-y-10 md:space-y-14">
+
+          {/* Title block */}
+          <div className="text-center md:text-left space-y-3 max-w-2xl md:max-w-none">
+            <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">
+              Exécution d'Oracle
+            </h2>
+            <p className="text-sm md:text-lg text-muted-foreground">
+              Suivre le protocole <span className="text-foreground font-semibold">AVE</span> <span className="opacity-60">(apprentissage, vérification, exécution)</span>
             </p>
+          </div>
+
+          {/* 3 cards — premium AVE */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-7">
+
+            {/* 1 — Apprentissage */}
+            <div className="group relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] hover:border-white/[0.18] rounded-2xl p-7 md:p-8 flex flex-col gap-6 transition-all duration-300 hover:translate-y-[-2px] hover:shadow-[0_20px_40px_-20px_rgba(255,255,255,0.08)]">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <div className="relative flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.12] flex items-center justify-center shrink-0">
+                  <span className="font-bold text-xl text-foreground">1</span>
+                </div>
+                <div className="flex-1 pt-0.5">
+                  <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground/50 mb-1">Apprentissage</p>
+                  <h3 className="text-xl md:text-2xl font-bold text-foreground leading-tight">Regarde les vidéos</h3>
+                </div>
+              </div>
+              <p className="relative text-sm text-muted-foreground/80 leading-relaxed flex-1 min-h-[60px]">
+                Accède aux vidéos du Setup Oracle : introduction et méthodologie de récolte.
+              </p>
+              <button
+                onClick={() => onNavigateToVideos?.()}
+                className="relative w-full h-12 rounded-xl bg-white text-black text-sm font-bold tracking-wide hover:bg-white/90 hover:shadow-[0_8px_24px_rgba(255,255,255,0.12)] transition-all inline-flex items-center justify-center gap-2 group/btn"
+              >
+                Accéder aux vidéos
+                <span className="transition-transform group-hover/btn:translate-x-1">→</span>
+              </button>
+            </div>
+
+            {/* 2 — Vérification (primary focus) */}
+            <div className="group relative bg-gradient-to-br from-emerald-500/[0.08] to-emerald-500/[0.02] border border-emerald-500/30 hover:border-emerald-500/50 rounded-2xl p-7 md:p-8 flex flex-col gap-6 transition-all duration-300 hover:translate-y-[-2px] shadow-[0_8px_32px_-12px_rgba(16,185,129,0.15)] hover:shadow-[0_20px_48px_-16px_rgba(16,185,129,0.3)]">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-500/[0.04] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <div className="relative flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+                  <span className="font-bold text-xl text-emerald-400">2</span>
+                </div>
+                <div className="flex-1 pt-0.5">
+                  <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-400/60 mb-1">Vérification</p>
+                  <h3 className="text-xl md:text-2xl font-bold text-foreground leading-tight">Récolte ta data</h3>
+                </div>
+              </div>
+              <p className="relative text-sm text-muted-foreground/90 leading-relaxed flex-1 min-h-[60px]">
+                Applique la méthodologie. Chaque trade récolté fait émerger les patterns gagnants.
+              </p>
+              <button
+                onClick={() => onNavigateToSetup?.()}
+                className="relative w-full h-12 rounded-xl bg-emerald-500 text-white text-sm font-bold tracking-wide hover:bg-emerald-400 shadow-[0_8px_24px_rgba(16,185,129,0.25)] hover:shadow-[0_12px_32px_rgba(16,185,129,0.4)] transition-all inline-flex items-center justify-center gap-2 group/btn"
+              >
+                Récolter ma data
+                <span className="transition-transform group-hover/btn:translate-x-1">→</span>
+              </button>
+            </div>
+
+            {/* 3 — Exécution (coming soon) */}
+            <div className="relative bg-gradient-to-br from-white/[0.02] to-transparent border border-dashed border-white/[0.08] rounded-2xl p-7 md:p-8 flex flex-col gap-6 opacity-70">
+              <div className="relative flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-center shrink-0">
+                  <span className="font-bold text-xl text-muted-foreground/60">3</span>
+                </div>
+                <div className="flex-1 pt-0.5">
+                  <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground/40 mb-1">Exécution</p>
+                  <h3 className="text-xl md:text-2xl font-bold text-muted-foreground leading-tight">La finalité</h3>
+                </div>
+              </div>
+              <p className="relative text-sm text-muted-foreground/60 leading-relaxed flex-1 min-h-[60px]">
+                Exécute en temps réel les patterns identifiés. Capitalise sur ce qui fonctionne, élimine ce qui ne fonctionne pas.
+              </p>
+              <div className="w-full h-12 rounded-xl flex items-center justify-center gap-2 text-[11px] font-mono uppercase tracking-[0.25em] text-muted-foreground/30 border border-dashed border-white/[0.06]">
+                ↳ Coming soon
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
 
-      {/* Cycle Progress Bar - always visible for non-EA, non-staff */}
-      {!isEarlyAccess && !loading && (() => {
-        // Show ébauche progress if not yet validated
-        if (ebauche && ebauche.userCycle?.status !== 'validated') {
-          const ebaucheAnalyzed = questData?.ebaucheTradesAnalyzed || 0;
-          const ebaucheIsComplete = questData?.ebaucheComplete || false;
-          return (
-            <CycleProgressBar
-              cycleName="Phase d'ébauche"
-              cycleNumber={0}
-              progress={ebaucheAnalyzed}
-              total={ebauche.total_trades}
-              status={ebauche.userCycle?.status}
-              isComplete={ebaucheIsComplete}
-              canRequestVerification={ebauche.userCycle?.status === 'in_progress' || ebauche.userCycle?.status === 'rejected'}
-              alreadyRequested={requestedCycleIds.has(ebauche.id)}
-              submitting={submitting}
-              onRequestVerification={() => handleRequestVerification(ebauche)}
-              adminFeedback={ebauche.userCycle?.admin_feedback}
-            />
-          );
-        }
-        // Show current active cycle
-        if (currentCycle) {
-          return (
-            <CycleProgressBar
-              cycleName={currentCycle.name}
-              cycleNumber={currentCycle.cycle_number}
-              progress={currentCycle.userExecutions.length}
-              total={currentCycle.total_trades}
-              status={currentCycle.userCycle?.status}
-              isComplete={currentCycle.userExecutions.length >= currentCycle.total_trades}
-              canRequestVerification={currentCycle.userCycle?.status === 'in_progress' || currentCycle.userCycle?.status === 'rejected'}
-              alreadyRequested={requestedCycleIds.has(currentCycle.id)}
-              submitting={submitting}
-              onRequestVerification={() => handleRequestVerification(currentCycle)}
-              adminFeedback={currentCycle.userCycle?.admin_feedback}
-            />
-          );
-        }
-        return null;
-      })()}
-
       <div className="flex-1 p-4 md:p-6 overflow-auto space-y-6 md:space-y-8">
-      {/* Admin Global Overview */}
-      {isAdmin && globalStats && (
-        <div className="border border-primary/30 rounded-md p-4 md:p-5 bg-primary/5">
-          <p className="text-[10px] md:text-xs text-primary font-mono uppercase mb-3 flex items-center gap-2">
-            <Award className="w-4 h-4" />
-            Overview Globale — Setup Indices US
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-            <div className="text-center p-3 border border-primary/20 rounded-md bg-card">
-              <p className="text-[8px] text-muted-foreground font-mono uppercase">Data totale récoltée</p>
-              <p className="text-xl font-bold text-foreground">{globalStats.totalData}</p>
-            </div>
-            <div className="text-center p-3 border border-primary/20 rounded-md bg-card">
-              <p className="text-[8px] text-muted-foreground font-mono uppercase">Membres actifs</p>
-              <p className="text-xl font-bold text-foreground">{globalStats.totalUsers}</p>
-            </div>
-            <div className="text-center p-3 border border-emerald-500/30 rounded-md bg-emerald-500/5">
-              <p className="text-[8px] text-muted-foreground font-mono uppercase">RR Total Global</p>
-              <p className={cn("text-xl font-bold", globalStats.totalRR >= 0 ? "text-emerald-400" : "text-red-400")}>
-                {globalStats.totalRR >= 0 ? "+" : ""}{globalStats.totalRR.toFixed(1)}
-              </p>
-            </div>
-            <div className="text-center p-3 border border-border rounded-md bg-card">
-              <p className="text-[8px] text-muted-foreground font-mono uppercase">RR Moyen Global</p>
-              <p className="text-xl font-bold text-foreground">{globalStats.avgRR.toFixed(2)}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Early Access: Key Stats + Cumulative Evolution + Results */}
         {isEarlyAccess && (
           <>

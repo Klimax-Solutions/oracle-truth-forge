@@ -24,6 +24,22 @@ npm run build  # DOIT passer sans erreur
 git diff --stat  # Verifier les fichiers modifies
 ```
 
+### 5. Framework "Migration" — reflexe obligatoire
+Avant TOUTE modification de schema DB ou de structure de donnees, se poser systematiquement :
+
+1. **Qu'est-ce qu'il y a deja en prod ?** — combien d'users, combien de rows impactees
+2. **Que devient l'existant ?** — migration automatique ou intervention manuelle
+3. **Rupture compatible ?** — peut-on deployer le code avant/apres la migration SQL sans casser l'app
+4. **Rollback possible ?** — si ca casse en prod, comment revenir en arriere
+5. **Data perdue ?** — on ne doit JAMAIS perdre des donnees utilisateur sans backup explicite
+
+**Exemples concrets** :
+- Ajouter une table `user_sessions` ? -> creer session "default" par user existant + rattacher ses trades existants
+- Renommer un tab ? -> garder les anciennes URLs qui redirigent
+- Changer un role enum ? -> migrer les rows avec l'ancienne valeur
+
+**Toujours ecrire la migration dans le commit qui introduit le changement**, pas plus tard. Sinon c'est oublie.
+
 ---
 
 ## Architecture
