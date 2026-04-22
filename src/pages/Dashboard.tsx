@@ -22,6 +22,7 @@ import { HeaderClock } from "@/components/dashboard/HeaderClock";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
+import { SetupOracleLanding } from "@/components/dashboard/SetupOracleLanding";
 import RecolteDonneesPage from "@/components/dashboard/RecolteDonneesPage";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
@@ -445,7 +446,7 @@ const Dashboard = () => {
       case "recolte-donnees":
         return <RecolteDonneesPage onNavigateToSetupOracle={() => setActiveTab("setup")} />;
       case "setup":
-        return <SetupPage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} onBack={() => setActiveTab("recolte-donnees")} />;
+        return <SetupOracleLanding trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} onBack={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => setActiveTab("data-analysis")} />;
       case "data-analysis": {
         // All non-EA users now use the unified dataSource-driven displayTrades (so regular members
         // can also analyse Setup Oracle, not only their own perso trades).
