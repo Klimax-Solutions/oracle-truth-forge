@@ -292,8 +292,7 @@ export default function CRMDashboard() {
   const [isCloserRole, setIsCloserRole] = useState(false);
   const [currentSetterName, setCurrentSetterName] = useState<string | null>(null);
 
-  // ── DEV ONLY: role simulator (localhost) ──────────────────────────────────
-  const isDev = typeof window !== "undefined" && window.location.hostname === "localhost";
+  // ── Role simulator — visible uniquement pour admin/superadmin réels ───────
   const DEV_ROLE_KEY = "crm_dev_role_override";
   type DevRole = "admin" | "setter" | "closer" | "setter+closer";
   const [devRole, setDevRole] = useState<DevRole | null>(() => {
@@ -305,6 +304,8 @@ export default function CRMDashboard() {
     if (role) localStorage.setItem(DEV_ROLE_KEY, role);
     else localStorage.removeItem(DEV_ROLE_KEY);
   };
+  // Simulator visible seulement si vrai admin/superadmin en DB (pas overridé)
+  const canSimulateRoles = isAdminRole || isSuperAdmin;
 
   // Detect current user's roles → permissions for LeadDetailModal
   useEffect(() => {
@@ -456,10 +457,10 @@ export default function CRMDashboard() {
     return r;
   }, [leads, search, stageFilter, setterFilter, prioFilter, isSetterOnly, currentSetterName]);
 
-  // ── Effective permissions (dev override takes priority on localhost) ──────
-  const effectiveSetter = isDev && devRole ? (devRole === "setter" || devRole === "setter+closer") : isSetterRole;
-  const effectiveCloser = isDev && devRole ? (devRole === "closer" || devRole === "setter+closer") : isCloserRole;
-  const effectiveAdmin  = isDev && devRole ? devRole === "admin" : (isAdminRole || isSuperAdmin);
+  // ── Effective permissions (simulator override si admin réel) ──────────────
+  const effectiveSetter = canSimulateRoles && devRole ? (devRole === "setter" || devRole === "setter+closer") : isSetterRole;
+  const effectiveCloser = canSimulateRoles && devRole ? (devRole === "closer" || devRole === "setter+closer") : isCloserRole;
+  const effectiveAdmin  = canSimulateRoles && devRole ? devRole === "admin" : (isAdminRole || isSuperAdmin);
   const canEditSetting = effectiveSetter || effectiveAdmin;
   const canEditCall    = effectiveCloser || effectiveAdmin;
 
@@ -471,8 +472,8 @@ export default function CRMDashboard() {
 
   return (
     <div className="h-full overflow-auto">
-      {/* ── DEV ONLY: Role simulator ─────────────────────────────────────── */}
-      {isDev && (
+      {/* ── Role simulator — admins only ─────────────────────────────────── */}
+      {canSimulateRoles && (
         <div className="fixed bottom-4 right-4 z-[200] flex flex-col items-end gap-1.5">
           <span className="text-[8px] font-mono uppercase tracking-widest text-white/30 pr-1">
             Role sim · <span className={cn(canEditSetting ? "text-cyan-400" : "text-white/20")}>Setting</span> / <span className={cn(canEditCall ? "text-violet-400" : "text-white/20")}>Call</span>
