@@ -161,6 +161,69 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle }: RecolteD
           <p className="text-sm text-white/50 mt-2">Explorez et gérez vos données de trading</p>
         </div>
 
+        {/* ═══ Setup Oracle — HERO en haut ═══ */}
+        <section className="mb-12">
+          {isEarlyAccess ? (
+            /* EA : locked, hero */
+            <div className="relative overflow-hidden rounded-2xl border border-blue-500/25 p-8 md:p-10 bg-gradient-to-br from-blue-500/[0.12] via-blue-500/[0.04] to-transparent">
+              <div className="absolute inset-0 pointer-events-none" style={{
+                backgroundImage: "radial-gradient(circle at 85% 15%, rgba(59,130,246,0.18), transparent 55%)"
+              }} />
+              <div className="relative flex items-start gap-5">
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/15 border border-blue-500/40 flex items-center justify-center shrink-0 shadow-[0_0_24px_rgba(59,130,246,0.2)]">
+                  <Lock className="w-7 h-7 text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold tracking-[0.22em] uppercase text-blue-400 mb-1.5">
+                    Prime Setup Oracle · verrouillé
+                  </p>
+                  <h2 className="text-xl md:text-2xl font-bold text-white mb-2">
+                    Accéder au Setup Oracle
+                  </h2>
+                  <p className="text-sm text-white/60 max-w-xl mb-5 leading-relaxed">
+                    Base de données de <span className="text-white font-semibold">314 trades de référence</span> + méthodologie complète.
+                    Débloqué en passant membre.
+                  </p>
+                  <button
+                    disabled
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-500/40 text-white text-sm font-semibold opacity-70 cursor-not-allowed border border-blue-400/30"
+                  >
+                    <Lock className="w-4 h-4" />
+                    Débloquer le Prime Setup Oracle
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Membre / Admin : hero débloqué, bouton saillant */
+            <button
+              onClick={() => onNavigateToSetupOracle?.()}
+              className="group relative overflow-hidden w-full text-left rounded-2xl border border-blue-500/40 hover:border-blue-400/60 p-8 md:p-10 transition-all bg-gradient-to-br from-blue-500/[0.14] via-blue-500/[0.06] to-transparent hover:shadow-[0_20px_48px_-16px_rgba(59,130,246,0.35)]"
+            >
+              <div className="absolute inset-0 pointer-events-none" style={{
+                backgroundImage: "radial-gradient(circle at 85% 15%, rgba(59,130,246,0.22), transparent 55%)"
+              }} />
+              <div className="relative flex items-center gap-5">
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/20 border border-blue-500/50 flex items-center justify-center shrink-0 shadow-[0_0_28px_rgba(59,130,246,0.3)] group-hover:shadow-[0_0_40px_rgba(59,130,246,0.5)] transition-shadow">
+                  <Database className="w-7 h-7 text-blue-300" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold tracking-[0.22em] uppercase text-blue-400 mb-1.5">
+                    Prime Setup Oracle · débloqué
+                  </p>
+                  <h2 className="text-xl md:text-2xl font-bold text-white mb-1">
+                    Accéder au Setup Oracle
+                  </h2>
+                  <p className="text-sm text-white/60 leading-relaxed">
+                    Base de données de <span className="text-white font-semibold">314 trades de référence</span> + méthodologie complète
+                  </p>
+                </div>
+                <ChevronRight className="w-6 h-6 text-blue-300 shrink-0 transition-transform group-hover:translate-x-1.5" />
+              </div>
+            </button>
+          )}
+        </section>
+
         {/* Nouvelle session — 2 CTA */}
         <section className="mb-10">
           <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-3">Nouvelle session</p>
@@ -349,55 +412,6 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle }: RecolteD
           )}
         </section>
 
-        {/* Setups Premium / Setup Oracle */}
-        <section>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-white/[0.06]" />
-            <p className="text-[10px] font-mono uppercase tracking-widest text-white/30">Setups Premium</p>
-            <div className="flex-1 h-px bg-white/[0.06]" />
-          </div>
-
-          {isEarlyAccess ? (
-            /* EA : locked */
-            <div className="rounded-2xl border border-white/[0.08] p-8 text-center bg-white/[0.02]">
-              <div className="w-12 h-12 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center mx-auto mb-4">
-                <Lock className="w-5 h-5 text-blue-400" />
-              </div>
-              <h3 className="text-lg font-bold text-white mb-1">Prime Setup Oracle</h3>
-              <p className="text-xs text-white/40 mb-5 max-w-sm mx-auto">
-                Base de données de 314 trades de référence + méthodologie complète. Débloquez en passant membre.
-              </p>
-              <button
-                disabled
-                className="px-6 py-2.5 rounded-lg bg-blue-500 text-white text-sm font-semibold opacity-60 cursor-not-allowed"
-              >
-                Débloquer le Prime Setup Oracle
-              </button>
-            </div>
-          ) : (
-            /* Membre / Admin : accès débloqué */
-            <button
-              onClick={() => onNavigateToSetupOracle?.()}
-              className="group w-full text-left rounded-2xl border border-blue-500/30 hover:border-blue-500/50 p-6 transition-all bg-gradient-to-br from-blue-500/[0.08] to-blue-500/[0.02] hover:from-blue-500/[0.12] hover:to-blue-500/[0.04]"
-            >
-              <div className="flex items-center gap-5">
-                <div className="w-14 h-14 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center shrink-0">
-                  <Database className="w-7 h-7 text-blue-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-blue-400 mb-1">
-                    Prime Setup Oracle · débloqué
-                  </p>
-                  <h3 className="text-lg font-bold text-white">Accéder au Setup Oracle</h3>
-                  <p className="text-xs text-white/50 mt-1">
-                    Base de données de 314 trades de référence + méthodologie complète
-                  </p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-blue-400 shrink-0 transition-transform group-hover:translate-x-1" />
-              </div>
-            </button>
-          )}
-        </section>
       </div>
 
       {/* Popup de création */}
