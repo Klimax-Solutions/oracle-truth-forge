@@ -41,6 +41,9 @@ interface Props {
   onClose: () => void;
   onLeadUpdated?: () => void;
   initialView?: LeadModalView;
+  /** Permissions du user connecté — détermine ce qu'il peut éditer */
+  canEditSetting?: boolean; // setter + admin + super_admin
+  canEditCall?: boolean;    // closer + admin + super_admin
 }
 
 function fmtDate(d: string | null) {
@@ -70,7 +73,7 @@ const OUTCOMES = [
   { value: "contracted", label: "Contracté ✓", cls: "bg-violet-500/15 text-violet-400 border-violet-500/25 hover:bg-violet-500/25" },
 ];
 
-export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialView = "lead" }: Props) {
+export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialView = "lead", canEditSetting = true, canEditCall = true }: Props) {
   const { toast } = useToast();
   const [view, setView] = useState<LeadModalView>(initialView);
   const [notes, setNotes] = useState<LeadNote[]>([]);
@@ -78,6 +81,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
   const [submitting, setSubmitting] = useState(false);
   const [outcome, setOutcome] = useState(lead.call_outcome || "");
   const [debrief, setDebrief] = useState(lead.call_debrief || "");
+  const [briefCloser, setBriefCloser] = useState((lead as any).brief_closer || "");
   const [offerAmount, setOfferAmount] = useState(lead.offer_amount || "");
   const [saving, setSaving] = useState(false);
   const [settersList, setSettersList] = useState<string[]>([]);
@@ -583,22 +587,31 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                   </div>
                 </div>
 
-                {/* ── Brief closer ── */}
+                {/* ── Brief closer — rédigé par le setter, lu par le closer ── */}
                 <div className="bg-[#111318] border border-cyan-500/20 rounded-lg overflow-hidden">
-                  <div className="px-3 py-1.5 border-b border-cyan-500/10 bg-cyan-500/[0.03]">
-                    <span className="text-[10px] font-display text-cyan-400 font-semibold">Brief closer</span>
+                  <div className="px-3 py-1.5 border-b border-cyan-500/10 bg-cyan-500/[0.03] flex items-center justify-between">
+                    <span className="text-[10px] font-display text-cyan-400 font-semibold">Brief pour le closer</span>
+                    {!canEditSetting && (
+                      <span className="text-[9px] text-white/25 font-display">Lecture seule</span>
+                    )}
                   </div>
                   <Textarea
-                    value={debrief} onChange={e => setDebrief(e.target.value)}
-                    placeholder="Résumé pour le closer avant le call..."
-                    className="min-h-[80px] bg-transparent border-0 text-xs text-white/90 placeholder:text-white/20 resize-y rounded-none px-3 py-2 leading-relaxed focus-visible:ring-0"
+                    value={briefCloser}
+                    onChange={e => canEditSetting && setBriefCloser(e.target.value)}
+                    readOnly={!canEditSetting}
+                    placeholder={canEditSetting ? "Résumé du setting pour préparer le closer au call..." : "Aucun brief rédigé par le setter"}
+                    className="min-h-[80px] bg-transparent border-0 text-xs text-white/90 placeholder:text-white/20 resize-y rounded-none px-3 py-2 leading-relaxed focus-visible:ring-0 read-only:opacity-60 read-only:cursor-default"
                   />
                 </div>
 
-                {/* Save */}
-                {hasChanges && (
-                  <Button onClick={saveCallData} disabled={saving} className="w-full h-9 bg-[#19B7C9] hover:bg-[#19B7C9]/90 text-[#0A0B10] font-display text-xs font-bold tracking-wide rounded-lg">
-                    {saving ? "Sauvegarde..." : "Sauvegarder"}
+                {/* Save brief closer */}
+                {canEditSetting && briefCloser !== ((lead as any).brief_closer || "") && (
+                  <Button
+                    onClick={async () => { setSaving(true); await updateField({ brief_closer: briefCloser || null }); emitEvent("setting_debrief_saved"); setSaving(false); }}
+                    disabled={saving}
+                    className="w-full h-9 bg-[#19B7C9] hover:bg-[#19B7C9]/90 text-[#0A0B10] font-display text-xs font-bold tracking-wide rounded-lg"
+                  >
+                    {saving ? "Sauvegarde..." : "Sauvegarder le brief"}
                   </Button>
                 )}
               </>;
@@ -690,9 +703,11 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
             {/* No-show + Reprogrammer */}
             {(lead.call_booked || lead.call_done) && (
               <div className="flex gap-2">
-                <button onClick={() => { updateField({ call_no_show: !lead.call_no_show }); if (!lead.call_no_show) emitEvent("call_no_show"); }}
+                <button onClick={() => { if (!canEditCall) return; updateField({ call_no_show: !lead.call_no_show }); if (!lead.call_no_show) emitEvent("call_no_show"); }}
+                  disabled={!canEditCall}
                   className={cn("flex items-center gap-1.5 px-3 py-2 rounded-lg border text-[10px] font-display transition-all",
-                    lead.call_no_show ? "bg-red-500/10 border-red-500/25 text-red-400" : "border-white/[0.08] text-white/30 hover:text-red-400"
+                    lead.call_no_show ? "bg-red-500/10 border-red-500/25 text-red-400" : "border-white/[0.08] text-white/30 hover:text-red-400",
+                    !canEditCall && "opacity-40 cursor-not-allowed pointer-events-none"
                   )}>
                   <UserX className="w-3 h-3" /> No-show
                 </button>
@@ -725,8 +740,9 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                 <Headphones className="w-3.5 h-3.5 text-white/40" />
                 <span className="text-xs font-display text-white/70">Call effectué</span>
               </div>
-              <button onClick={() => { const next = !callDone; setCallDone(next); updateField({ call_done: next, call_done_at: next ? new Date().toISOString() : null }); if (next && !lead.call_done) emitEvent("call_done"); }}
-                className={cn("w-10 h-5 rounded-full transition-colors cursor-pointer flex items-center px-0.5", callDone ? "bg-blue-500 justify-end" : "bg-white/10 justify-start")}>
+              <button onClick={() => { if (!canEditCall) return; const next = !callDone; setCallDone(next); updateField({ call_done: next, call_done_at: next ? new Date().toISOString() : null }); if (next && !lead.call_done) emitEvent("call_done"); }}
+                disabled={!canEditCall}
+                className={cn("w-10 h-5 rounded-full transition-colors flex items-center px-0.5", callDone ? "bg-blue-500 justify-end" : "bg-white/10 justify-start", canEditCall ? "cursor-pointer" : "cursor-not-allowed opacity-40")}>
                 <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
               </button>
             </div>
@@ -741,9 +757,11 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                   { value: "pas_vendu", label: "Pas vendu", cls: "bg-red-500/15 text-red-400 border-red-500/30" },
                   { value: "rappel", label: "Rappel", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
                 ].map(o => (
-                  <button key={o.value} onClick={() => { setOutcome(o.value); if (o.value !== outcome) emitEvent("outcome_changed", { previous: outcome, new_outcome: o.value }); }}
+                  <button key={o.value} onClick={() => { if (!canEditCall) return; setOutcome(o.value); if (o.value !== outcome) emitEvent("outcome_changed", { previous: outcome, new_outcome: o.value }); }}
+                    disabled={!canEditCall}
                     className={cn("px-3 py-2.5 rounded-lg text-[11px] font-display font-semibold border transition-all text-center",
-                      outcome === o.value ? o.cls : "bg-[#0c0d12] text-white/30 border-white/[0.08] hover:border-white/[0.15]"
+                      outcome === o.value ? o.cls : "bg-[#0c0d12] text-white/30 border-white/[0.08] hover:border-white/[0.15]",
+                      !canEditCall && "opacity-40 cursor-not-allowed"
                     )}>
                     {o.label}
                   </button>
@@ -757,9 +775,11 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                 <p className="text-[9px] font-display uppercase tracking-widest text-red-400/60 mb-2">Raison</p>
                 <div className="flex gap-1.5 flex-wrap">
                   {["Budget", "Timing", "Pas convaincu", "Ghost"].map(r => (
-                    <button key={r} onClick={() => updateField({ raison_perdu: r })}
+                    <button key={r} onClick={() => { if (!canEditCall) return; updateField({ raison_perdu: r }); }}
+                      disabled={!canEditCall}
                       className={cn("px-2.5 py-1.5 rounded-md text-[10px] font-display font-semibold border transition-all",
-                        lead.raison_perdu === r ? "bg-red-500/15 border-red-500/30 text-red-400" : "border-white/[0.08] text-white/30 hover:text-red-400 hover:border-red-500/25"
+                        lead.raison_perdu === r ? "bg-red-500/15 border-red-500/30 text-red-400" : "border-white/[0.08] text-white/30 hover:text-red-400 hover:border-red-500/25",
+                        !canEditCall && "opacity-40 cursor-not-allowed"
                       )}>
                       {r}
                     </button>
@@ -772,9 +792,10 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
             <div>
               <p className="text-[10px] font-display uppercase tracking-widest text-white/30 mb-1.5">Debrief / Notes</p>
               <Textarea
-                value={debrief} onChange={e => setDebrief(e.target.value)}
-                placeholder="Notes sur le call..."
-                className="min-h-[70px] bg-[#111318] border-white/[0.10] text-xs text-white/90 placeholder:text-white/20 resize-y rounded-lg leading-relaxed"
+                value={debrief} onChange={e => canEditCall && setDebrief(e.target.value)}
+                readOnly={!canEditCall}
+                placeholder={canEditCall ? "Notes sur le call..." : "Aucune note rédigée par le closer"}
+                className={cn("min-h-[70px] bg-[#111318] border-white/[0.10] text-xs text-white/90 placeholder:text-white/20 resize-y rounded-lg leading-relaxed", !canEditCall && "opacity-50 cursor-default")}
               />
             </div>
 
@@ -790,16 +811,16 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <p className="text-[8px] text-white/30 font-display uppercase mb-1">Montant (EUR)</p>
-                      <input value={paidAmount} onChange={e => setPaidAmount(e.target.value)} placeholder="0" type="number"
-                        className="w-full px-3 py-2 rounded-lg bg-[#0c0d12] border border-white/[0.10] text-sm text-white font-mono placeholder:text-white/15 focus:border-emerald-500/40 outline-none transition-all" />
+                      <input value={paidAmount} onChange={e => canEditCall && setPaidAmount(e.target.value)} readOnly={!canEditCall} placeholder="0" type="number"
+                        className={cn("w-full px-3 py-2 rounded-lg bg-[#0c0d12] border border-white/[0.10] text-sm text-white font-mono placeholder:text-white/15 focus:border-emerald-500/40 outline-none transition-all", !canEditCall && "opacity-50 cursor-default")} />
                     </div>
                     <div>
                       <p className="text-[8px] text-white/30 font-display uppercase mb-1">Date</p>
-                      <input value={paidAt} onChange={e => setPaidAt(e.target.value)} type="datetime-local"
-                        className="w-full px-3 py-2 rounded-lg bg-[#0c0d12] border border-white/[0.10] text-sm text-white font-mono focus:border-emerald-500/40 outline-none transition-all [color-scheme:dark]" />
+                      <input value={paidAt} onChange={e => canEditCall && setPaidAt(e.target.value)} readOnly={!canEditCall} type="datetime-local"
+                        className={cn("w-full px-3 py-2 rounded-lg bg-[#0c0d12] border border-white/[0.10] text-sm text-white font-mono focus:border-emerald-500/40 outline-none transition-all [color-scheme:dark]", !canEditCall && "opacity-50 cursor-default")} />
                     </div>
                   </div>
-                  {(paidAmount !== (lead.paid_amount?.toString() || "") || paidAt !== (lead.paid_at ? new Date(lead.paid_at).toISOString().slice(0, 16) : "")) && (
+                  {canEditCall && (paidAmount !== (lead.paid_amount?.toString() || "") || paidAt !== (lead.paid_at ? new Date(lead.paid_at).toISOString().slice(0, 16) : "")) && (
                     <Button onClick={async () => {
                       await updateField({ paid_amount: paidAmount ? parseFloat(paidAmount) : null, paid_at: paidAt ? new Date(paidAt).toISOString() : null });
                       emitEvent("payment_received", { amount: paidAmount });
@@ -812,7 +833,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
             )}
 
             {/* Save */}
-            {hasChanges && (
+            {hasChanges && canEditCall && (
               <Button onClick={saveCallData} disabled={saving} className="w-full h-9 bg-[#19B7C9] hover:bg-[#19B7C9]/90 text-[#0A0B10] font-display text-xs font-bold tracking-wide rounded-lg">
                 {saving ? "Sauvegarde..." : "Sauvegarder"}
               </Button>

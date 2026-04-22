@@ -287,21 +287,29 @@ export default function CRMDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [isSetterOnly, setIsSetterOnly] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isAdminRole, setIsAdminRole] = useState(false);
+  const [isSetterRole, setIsSetterRole] = useState(false);
+  const [isCloserRole, setIsCloserRole] = useState(false);
   const [currentSetterName, setCurrentSetterName] = useState<string | null>(null);
 
-  // Detect if current user is a setter (not admin/superadmin) → auto-filter
+  // Detect current user's roles → permissions for LeadDetailModal
   useEffect(() => {
     (async () => {
       try {
-        const [setterRes, adminRes, superRes] = await Promise.all([
+        const [setterRes, adminRes, superRes, closerRes] = await Promise.all([
           supabase.rpc("is_setter"),
           supabase.rpc("is_admin"),
           supabase.rpc("is_super_admin"),
+          supabase.rpc("is_closer" as any),
         ]);
         const isSetter = setterRes.data === true;
         const isAdmin = adminRes.data === true;
         const superAdmin = superRes.data === true;
+        const isCloser = closerRes.data === true;
         setIsSuperAdmin(superAdmin);
+        setIsAdminRole(isAdmin);
+        setIsSetterRole(isSetter);
+        setIsCloserRole(isCloser);
         if (isSetter && !isAdmin && !superAdmin) {
           setIsSetterOnly(true);
           // Get setter's display name for filtering
@@ -696,7 +704,14 @@ export default function CRMDashboard() {
 
           {/* Full-screen modal */}
           {selectedLead && (
-            <LeadDetailModal lead={selectedLead} onClose={() => setSelectedLead(null)} onLeadUpdated={loadLeads} initialView={modalView} />
+            <LeadDetailModal
+              lead={selectedLead}
+              onClose={() => setSelectedLead(null)}
+              onLeadUpdated={loadLeads}
+              initialView={modalView}
+              canEditSetting={isSetterRole || isAdminRole || isSuperAdmin}
+              canEditCall={isCloserRole || isAdminRole || isSuperAdmin}
+            />
           )}
         </TabsContent>
 
