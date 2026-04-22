@@ -30,7 +30,6 @@ import { AdminVerification } from "@/components/dashboard/AdminVerification";
 // RoleManagement is now embedded in AdminVerification
 import { BatchImportPage } from "@/components/dashboard/BatchImportPage";
 import { SuccessPage } from "@/components/dashboard/SuccessPage";
-import { QuestFloatingBubble } from "@/components/dashboard/QuestFloatingBubble";
 import { ResultsPage } from "@/components/dashboard/ResultsPage";
 import { AdminVerificationPopup } from "@/components/dashboard/AdminVerificationPopup";
 import { EarlyAccessManagement } from "@/components/dashboard/EarlyAccessManagement";
@@ -592,14 +591,6 @@ const Dashboard = () => {
         </main>
       </div>
 
-      {!isSetterOnly && (
-        <QuestFloatingBubble
-          questData={questData}
-          onNavigateToVideos={() => setActiveTab("videos")}
-          onNavigateToSetup={() => setActiveTab("setup")}
-          onNavigateToExecution={() => setActiveTab("execution")}
-        />
-      )}
 
       {/* Admin Verification Popup */}
       {(isAdmin || isSuperAdmin) && (
