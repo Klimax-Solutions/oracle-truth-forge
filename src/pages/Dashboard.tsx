@@ -441,7 +441,7 @@ const Dashboard = () => {
     if (isSetterOnly) return <EarlyAccessManagement />;
     switch (activeTab) {
       case "execution":
-        return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
+        return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => setActiveTab("data-analysis")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
       case "recolte-donnees":
         return <RecolteDonneesPage onNavigateToSetupOracle={() => setActiveTab("setup")} />;
       case "setup":

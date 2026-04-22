@@ -48,6 +48,8 @@ interface OracleExecutionProps {
   dataGeneraleTrades?: Trade[];
   onNavigateToVideos?: () => void;
   onNavigateToSetup?: () => void;
+  onNavigateToRecolte?: () => void;
+  onNavigateToAnalysis?: () => void;
   questData?: QuestData;
   isStaff?: boolean;
 }
@@ -102,7 +104,7 @@ interface CycleWithProgress extends Cycle {
   progress: number;
 }
 
-export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos, onNavigateToSetup, questData, isStaff = false }: OracleExecutionProps) => {
+export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos, onNavigateToSetup, onNavigateToRecolte, onNavigateToAnalysis, questData, isStaff = false }: OracleExecutionProps) => {
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [userCycles, setUserCycles] = useState<UserCycle[]>([]);
   const [userExecutions, setUserExecutions] = useState<UserExecution[]>([]);
@@ -603,7 +605,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                 Applique la méthodologie. Chaque trade récolté fait émerger les patterns gagnants.
               </p>
               <button
-                onClick={() => onNavigateToSetup?.()}
+                onClick={() => (onNavigateToRecolte ?? onNavigateToSetup)?.()}
                 className="relative w-full h-12 rounded-xl bg-emerald-500 text-white text-sm font-bold tracking-wide hover:bg-emerald-400 shadow-[0_8px_24px_rgba(16,185,129,0.25)] hover:shadow-[0_12px_32px_rgba(16,185,129,0.4)] transition-all inline-flex items-center justify-center gap-2 group/btn"
               >
                 Récolter ma data
@@ -709,7 +711,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                 completedCycles={completedCycles}
                 onContinueHarvest={() => {
                   window.open("https://app.fxreplay.com/en-US/auth/testing/dashboard", "_blank");
-                  onNavigateToSetup?.();
+                  (onNavigateToRecolte ?? onNavigateToSetup)?.();
                 }}
               />
 
