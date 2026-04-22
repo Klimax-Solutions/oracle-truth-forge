@@ -25,7 +25,11 @@ export const SignedImageCard = ({
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  // Whether the storagePath is an external link (not a Supabase storage path)
+  const isExternalLink = !!storagePath && (storagePath.startsWith("http://") || storagePath.startsWith("https://"));
 
   useEffect(() => {
     const generateSignedUrl = async () => {
@@ -86,15 +90,29 @@ export const SignedImageCard = ({
           <div className={cn("w-full flex items-center justify-center bg-muted/20", fillContainer ? "aspect-video" : "h-48")}>
             <p className="text-xs text-muted-foreground">Erreur de chargement</p>
           </div>
+        ) : imgFailed || (isExternalLink && signedUrl && imgFailed) ? (
+          // External URL that failed to load as image → show as clickable link card
+          <div className={cn("w-full flex flex-col items-center justify-center gap-2 bg-muted/20 px-3", fillContainer ? "aspect-video" : "h-48")}>
+            <ExternalLink className="w-5 h-5 text-muted-foreground" />
+            <a
+              href={signedUrl!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:underline text-center break-all max-w-full line-clamp-3"
+            >
+              {signedUrl}
+            </a>
+          </div>
         ) : (
           <img
-            src={signedUrl}
+            src={signedUrl!}
             alt={alt}
             className={cn(
               "w-full object-cover hover:opacity-80 transition-opacity cursor-pointer",
               fillContainer ? "aspect-video" : "h-48"
             )}
             onClick={() => setLightboxOpen(true)}
+            onError={() => setImgFailed(true)}
           />
         )}
         {signedUrl && !loading && !error && !fillContainer && (
