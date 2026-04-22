@@ -44,6 +44,7 @@ interface SetupPageProps {
   analyzedTradeNumbers?: number[];
   onAnalysisToggle?: (tradeNumber: number, checked: boolean) => void;
   ebaucheComplete?: boolean;
+  onBack?: () => void; // Récolte de données: bouton retour optionnel
 }
 
 type ActiveView = "overview" | "oracle" | "perso" | "data-generale" | `custom-${string}`;
@@ -105,7 +106,7 @@ function getAssetClass(asset: string | null | undefined): string {
   return "Autre";
 }
 
-export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnalysisToggle, ebaucheComplete }: SetupPageProps) => {
+export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnalysisToggle, ebaucheComplete, onBack }: SetupPageProps) => {
   const [activeView, setActiveView] = useState<ActiveView>(() => readPersistedSetupView(initialFilters));
   const { trades: personalTrades } = usePersonalTrades();
   const { isAdmin, isSuperAdmin } = useSidebarRoles();
@@ -443,10 +444,20 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
   return (
     <div className="h-full overflow-auto p-4 md:p-6">
       <div className="max-w-5xl mx-auto space-y-6 md:space-y-8">
+        {/* Back button (if opened from Récolte de données) */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ← Retour à Récolte de données
+          </button>
+        )}
+
         {/* Title */}
         <div className="text-center">
-          <h1 className="text-xl md:text-2xl font-bold text-foreground mb-1">Setup</h1>
-          <p className="text-xs md:text-sm text-muted-foreground">Explorez et gérez vos données de trading</p>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground mb-1">Setup Oracle</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">Base de données de 314 trades de référence</p>
         </div>
 
         {/* ─── 2x2 Grid: Oracle + Data Générale (admin) / Perso ─── */}

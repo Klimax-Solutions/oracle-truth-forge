@@ -442,9 +442,9 @@ const Dashboard = () => {
       case "execution":
         return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
       case "recolte-donnees":
-        return <RecolteDonneesPage />;
+        return <RecolteDonneesPage onNavigateToSetupOracle={() => setActiveTab("setup")} />;
       case "setup":
-        return <SetupPage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} />;
+        return <SetupPage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} onBack={() => setActiveTab("recolte-donnees")} />;
       case "data-analysis": {
         // Regular members: only see their personal trades
         const dataAnalysisTrades = isRegularMember

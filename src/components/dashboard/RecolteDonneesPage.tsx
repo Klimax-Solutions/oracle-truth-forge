@@ -10,11 +10,12 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  LineChart, Play, Lock, Loader2, ChevronRight, Plus,
+  LineChart, Play, Lock, Loader2, ChevronRight, Plus, Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NewSessionDialog, { SessionType } from "./NewSessionDialog";
 import { SetupPerso } from "./SetupPerso";
+import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 
 interface TradingSession {
   id: string;
@@ -37,7 +38,12 @@ interface SessionStats {
 const BLUE = "#3B82F6";
 const ORANGE = "#F97316";
 
-export default function RecolteDonneesPage() {
+interface RecolteDonneesPageProps {
+  onNavigateToSetupOracle?: () => void;
+}
+
+export default function RecolteDonneesPage({ onNavigateToSetupOracle }: RecolteDonneesPageProps = {}) {
+  const { isEarlyAccess } = useEarlyAccess();
   const [sessions, setSessions] = useState<TradingSession[]>([]);
   const [sessionStats, setSessionStats] = useState<Record<string, SessionStats>>({});
   const [loading, setLoading] = useState(true);
@@ -343,7 +349,7 @@ export default function RecolteDonneesPage() {
           )}
         </section>
 
-        {/* Setups Premium */}
+        {/* Setups Premium / Setup Oracle */}
         <section>
           <div className="flex items-center gap-3 mb-4">
             <div className="flex-1 h-px bg-white/[0.06]" />
@@ -351,21 +357,46 @@ export default function RecolteDonneesPage() {
             <div className="flex-1 h-px bg-white/[0.06]" />
           </div>
 
-          <div className="rounded-2xl border border-white/[0.08] p-8 text-center bg-white/[0.02]">
-            <div className="w-12 h-12 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-5 h-5 text-blue-400" />
+          {isEarlyAccess ? (
+            /* EA : locked */
+            <div className="rounded-2xl border border-white/[0.08] p-8 text-center bg-white/[0.02]">
+              <div className="w-12 h-12 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-5 h-5 text-blue-400" />
+              </div>
+              <h3 className="text-lg font-bold text-white mb-1">Prime Setup Oracle</h3>
+              <p className="text-xs text-white/40 mb-5 max-w-sm mx-auto">
+                Base de données de 314 trades de référence + méthodologie complète. Débloquez en passant membre.
+              </p>
+              <button
+                disabled
+                className="px-6 py-2.5 rounded-lg bg-blue-500 text-white text-sm font-semibold opacity-60 cursor-not-allowed"
+              >
+                Débloquer le Prime Setup Oracle
+              </button>
             </div>
-            <h3 className="text-lg font-bold text-white mb-1">Prime Setup Oracle</h3>
-            <p className="text-xs text-white/40 mb-5">
-              Base de données de référence + méthodologie complète
-            </p>
+          ) : (
+            /* Membre / Admin : accès débloqué */
             <button
-              disabled
-              className="px-6 py-2.5 rounded-lg bg-blue-500 text-white text-sm font-semibold opacity-60 cursor-not-allowed"
+              onClick={() => onNavigateToSetupOracle?.()}
+              className="group w-full text-left rounded-2xl border border-blue-500/30 hover:border-blue-500/50 p-6 transition-all bg-gradient-to-br from-blue-500/[0.08] to-blue-500/[0.02] hover:from-blue-500/[0.12] hover:to-blue-500/[0.04]"
             >
-              Débloquer le Prime Setup Oracle
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center shrink-0">
+                  <Database className="w-7 h-7 text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-blue-400 mb-1">
+                    Prime Setup Oracle · débloqué
+                  </p>
+                  <h3 className="text-lg font-bold text-white">Accéder au Setup Oracle</h3>
+                  <p className="text-xs text-white/50 mt-1">
+                    Base de données de 314 trades de référence + méthodologie complète
+                  </p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-blue-400 shrink-0 transition-transform group-hover:translate-x-1" />
+              </div>
             </button>
-          </div>
+          )}
         </section>
       </div>
 
