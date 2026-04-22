@@ -111,6 +111,37 @@ const readDashboardState = (): {
   }
 };
 
+// ─── Access control ──────────────────────────────────────────────────────────
+// Single source of truth for which tabs each role can access.
+// Used both for redirection (useEffect) and render guard (renderContent).
+const getAllowedTabs = (opts: {
+  isAdmin: boolean; isSuperAdmin: boolean;
+  isSetter: boolean; isCloser: boolean;
+  isEarlyAccess: boolean; isSetterOnly: boolean;
+}): Set<string> => {
+  const { isAdmin, isSuperAdmin, isEarlyAccess, isSetterOnly } = opts;
+
+  // Setter / Closer sans admin → uniquement CRM
+  if (isSetterOnly) return new Set(["crm"]);
+
+  // Tabs trading de base (membres + EA + admins)
+  const t = new Set([
+    "execution", "videos", "recolte-donnees", "data-analysis",
+    "successes", "setup", "batch-import",
+  ]);
+
+  // Résultats : EA + admins
+  if (isEarlyAccess || isAdmin || isSuperAdmin) t.add("results");
+
+  // Tabs admin
+  if (isAdmin || isSuperAdmin) {
+    ["crm", "gestion", "config", "admin", "roles",
+     "funnel-editor", "early-access-mgmt"].forEach(id => t.add(id));
+  }
+
+  return t;
+};
+
 const Dashboard = () => {
   const persistedState = useMemo(() => readDashboardState(), []);
   const [user, setUser] = useState<any>(null);
@@ -163,19 +194,33 @@ const Dashboard = () => {
   const needsDataGenerale = showDataGenerale || isEarlyAccess;
   const { dataGenerale } = useDataGenerale(trades, needsDataGenerale);
 
-  // Force tab change when role changes
+  // ── Tab access enforcement ──────────────────────────────────────────────────
+  // Runs when roles load (loadingRoles→false) and on any role/tab change.
+  // Covers both role-based redirects and direct URL access (?tab=admin for a member).
   useEffect(() => {
+    if (loadingRoles) return; // Wait until roles are known before enforcing
+
+    const allowed = getAllowedTabs({ isAdmin, isSuperAdmin, isSetter, isCloser, isEarlyAccess, isSetterOnly });
+
+    // Setter/Closer sans admin → force CRM
     if (isSetterOnly) {
-      setActiveTab("crm");
-    } else if (simulatedRole !== "none") {
-      // Reset to a valid tab for the simulated role
-      if (simulatedRole === "setter" || simulatedRole === "closer" || simulatedRole === "setter+closer") {
-        setActiveTab("crm");
-      } else {
-        setActiveTab("execution");
-      }
+      if (activeTab !== "crm") setActiveTab("crm");
+      return;
     }
-  }, [isSetterOnly, simulatedRole]);
+
+    // Role simulation → force a sensible default
+    if (simulatedRole !== "none") {
+      const isSalesRole = simulatedRole === "setter" || simulatedRole === "closer" || simulatedRole === "setter+closer";
+      const target = isSalesRole ? "crm" : "execution";
+      if (!allowed.has(activeTab)) setActiveTab(target);
+      return;
+    }
+
+    // URL access control: if the tab is not in allowed set, redirect to default
+    if (!allowed.has(activeTab)) {
+      setActiveTab("execution");
+    }
+  }, [loadingRoles, isSetterOnly, simulatedRole, isAdmin, isSuperAdmin, isSetter, isCloser, isEarlyAccess, activeTab]);
 
   useEffect(() => {
     try {
@@ -446,6 +491,15 @@ const Dashboard = () => {
   const renderContent = () => {
     // Setter / Closer sans admin → uniquement CRM
     if (isSetterOnly) return <CRMDashboard overrideRoles={{ isAdmin, isSuperAdmin, isSetter, isCloser }} />;
+
+    // Belt-and-suspenders: block any tab that is not in the allowed set
+    // (catches URL manipulation that bypasses the useEffect redirect)
+    if (!loadingRoles) {
+      const allowed = getAllowedTabs({ isAdmin, isSuperAdmin, isSetter, isCloser, isEarlyAccess, isSetterOnly });
+      if (!allowed.has(activeTab)) {
+        return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => setActiveTab("data-analysis")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
+      }
+    }
     switch (activeTab) {
       case "execution":
         return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => setActiveTab("data-analysis")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
