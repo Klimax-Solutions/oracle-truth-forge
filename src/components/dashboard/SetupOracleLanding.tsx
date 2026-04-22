@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Database, BarChart3, ArrowRight, TrendingUp, Target, ArrowLeft, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { OraclePage } from "./OraclePage";
+import { OracleDatabase } from "./OracleDatabase";
+import { useSidebarRoles } from "./DashboardSidebar";
 
 interface Trade {
   id: string;
@@ -79,6 +80,7 @@ export function SetupOracleLanding({
 }: SetupOracleLandingProps) {
   const [view, setView] = useState<LandingView>("landing");
   const [executionCount, setExecutionCount] = useState(0);
+  const { isAdmin, isSuperAdmin } = useSidebarRoles();
 
   // Fetch user's personal harvest count
   useEffect(() => {
@@ -121,11 +123,11 @@ export function SetupOracleLanding({
           </span>
         </div>
         <div className="flex-1 overflow-auto">
-          <OraclePage
+          <OracleDatabase
             trades={trades}
-            initialFilters={initialFilters}
-            analyzedTradeNumbers={analyzedTradeNumbers}
-            onAnalysisToggle={onAnalysisToggle}
+            isDataGenerale={false}
+            isAdmin={isAdmin || isSuperAdmin}
+            onTradeUpdated={() => window.location.reload()}
           />
         </div>
       </div>
