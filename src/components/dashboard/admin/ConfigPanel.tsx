@@ -197,8 +197,8 @@ function PermissionsTab() {
       {/* Tableau */}
       <div className="overflow-x-auto rounded-2xl border border-white/[0.10]">
         <table className="w-full">
-          <thead>
-            <tr className="bg-white/[0.03] border-b border-white/[0.10]">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-[#0e0f15] border-b border-white/[0.10]">
               <th className="text-left px-5 py-4 text-[11px] font-display uppercase tracking-widest text-white/40 w-72">
                 Action
               </th>
