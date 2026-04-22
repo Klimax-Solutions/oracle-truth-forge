@@ -472,7 +472,7 @@ const Dashboard = () => {
               screenshot_m1: null,
             }))
           : (isEarlyAccess ? dataGenerale : displayTrades);
-        return <DataAnalysisPage trades={dataAnalysisTrades} onNavigateToDatabase={handleNavigateToDatabase} isEarlyAccess={isEarlyAccess} isExpired={isEarlyAccessExpired} isPersoOnly={isRegularMember} />;
+        return <DataAnalysisPage trades={dataAnalysisTrades} onNavigateToDatabase={handleNavigateToDatabase} isEarlyAccess={isEarlyAccess} isExpired={isEarlyAccessExpired} isPersoOnly={isRegularMember} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} />;
       }
       case "videos":
         return <VideoSetup />;

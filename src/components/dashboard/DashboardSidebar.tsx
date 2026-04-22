@@ -32,9 +32,9 @@ interface DashboardSidebarProps {
 
 const tabs: SidebarTab[] = [
   { id: "execution", label: "Exécution d'Oracle", icon: Crosshair },
+  { id: "videos", label: "Vidéo du Setup Oracle", icon: Video },
   { id: "recolte-donnees", label: "Récolte de données", icon: LineChart },
   { id: "data-analysis", label: "Data Analysis", icon: BarChart3 },
-  { id: "videos", label: "Vidéo du Setup Oracle", icon: Video },
   { id: "successes", label: "Chat", icon: Trophy },
 ];
 
