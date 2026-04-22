@@ -72,9 +72,10 @@ const DEFAULT_TARGET_TRADES = 300;
 interface SetupPersoProps {
   customSetupId?: string;
   customSetupName?: string;
+  sessionId?: string; // Récolte de données : si défini, filtre les trades sur cette session
 }
 
-export const SetupPerso = ({ customSetupId, customSetupName }: SetupPersoProps = {}) => {
+export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupPersoProps = {}) => {
   const [trades, setTrades] = useState<PersonalTrade[]>([]);
   const [allTradesCount, setAllTradesCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -96,7 +97,7 @@ export const SetupPerso = ({ customSetupId, customSetupName }: SetupPersoProps =
   // Fetch personal trades
   useEffect(() => {
     fetchTrades();
-  }, []);
+  }, [sessionId]);
 
   const fetchTrades = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -108,7 +109,10 @@ export const SetupPerso = ({ customSetupId, customSetupName }: SetupPersoProps =
       .eq("user_id", user.id)
       .order("trade_number", { ascending: true });
 
-    if (customSetupId) {
+    if (sessionId) {
+      // Mode "Récolte de données" : filtre uniquement les trades de cette session
+      query = query.eq("session_id", sessionId);
+    } else if (customSetupId) {
       query = query.eq("custom_setup_id", customSetupId);
     } else {
       query = query.is("custom_setup_id", null);
@@ -283,6 +287,7 @@ export const SetupPerso = ({ customSetupId, customSetupName }: SetupPersoProps =
             day_of_week: dayOfWeek,
             direction: direction,
             custom_setup_id: customSetupId || null,
+            session_id: sessionId || null,
           };
 
           // All optional known fields
@@ -847,6 +852,7 @@ export const SetupPerso = ({ customSetupId, customSetupName }: SetupPersoProps =
         editingTrade={editingTrade}
         nextTradeNumber={getNextTradeNumber()}
         customSetupId={customSetupId}
+        sessionId={sessionId}
       />
 
       {/* Custom Variables Dialog */}

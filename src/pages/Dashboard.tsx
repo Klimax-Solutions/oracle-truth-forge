@@ -22,6 +22,7 @@ import { HeaderClock } from "@/components/dashboard/HeaderClock";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
 
 import { SetupPage } from "@/components/dashboard/SetupPage";
+import RecolteDonneesPage from "@/components/dashboard/RecolteDonneesPage";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
 import { AdminVerification } from "@/components/dashboard/AdminVerification";
@@ -440,6 +441,8 @@ const Dashboard = () => {
     switch (activeTab) {
       case "execution":
         return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
+      case "recolte-donnees":
+        return <RecolteDonneesPage />;
       case "setup":
         return <SetupPage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} />;
       case "data-analysis": {

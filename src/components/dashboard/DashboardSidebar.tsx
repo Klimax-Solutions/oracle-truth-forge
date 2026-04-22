@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Database, BarChart3, ChevronRight, Crosshair, Video, ShieldCheck, Trophy, Award, TrendingUp, Settings, Users as UsersIcon, AlertTriangle } from "lucide-react";
+import { Database, BarChart3, ChevronRight, Crosshair, Video, ShieldCheck, Trophy, Award, TrendingUp, Settings, Users as UsersIcon, AlertTriangle, LineChart } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
@@ -32,6 +32,7 @@ interface DashboardSidebarProps {
 
 const tabs: SidebarTab[] = [
   { id: "execution", label: "Exécution d'Oracle", icon: Crosshair },
+  { id: "recolte-donnees", label: "Récolte de données", icon: LineChart },
   { id: "setup", label: "Setup", icon: Database },
   { id: "data-analysis", label: "Data Analysis", icon: BarChart3 },
   { id: "videos", label: "Vidéo du Setup Oracle", icon: Video },

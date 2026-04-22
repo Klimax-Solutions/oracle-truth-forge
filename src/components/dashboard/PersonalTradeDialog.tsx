@@ -93,6 +93,7 @@ interface PersonalTradeDialogProps {
   editingTrade: PersonalTrade | null;
   nextTradeNumber: number;
   customSetupId?: string;
+  sessionId?: string; // Récolte de données : rattache le nouveau trade à cette session
 }
 
 const DAYS_MAP: Record<number, string> = {
@@ -266,6 +267,7 @@ export const PersonalTradeDialog = ({
   editingTrade,
   nextTradeNumber,
   customSetupId,
+  sessionId,
 }: PersonalTradeDialogProps) => {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [saving, setSaving] = useState(false);
@@ -447,6 +449,7 @@ export const PersonalTradeDialog = ({
       stop_loss_size: formData.stop_loss_size || null,
       asset: formData.asset || null,
       custom_setup_id: customSetupId || null,
+      session_id: sessionId || null,
     } as any;
 
     try {
