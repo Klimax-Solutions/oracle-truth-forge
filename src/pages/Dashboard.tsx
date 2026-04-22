@@ -120,7 +120,7 @@ const Dashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || persistedState.activeTab || DASHBOARD_DEFAULT_TAB);
   const [databaseFilters, setDatabaseFilters] = useState<any>(() => persistedState.databaseFilters ?? null);
-  const [dataSource, setDataSource] = useState<DataSource>(() => persistedState.dataSource || "all");
+  const [dataSource, setDataSource] = useState<DataSource>(() => persistedState.dataSource || "oracle");
   const [displayName, setDisplayName] = useState<string>("");
   const { trades: personalTrades } = usePersonalTrades();
   const { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter, loadingRoles } = useSidebarRoles();
@@ -422,6 +422,7 @@ const Dashboard = () => {
       news_label: "",
       screenshot_m15_m5: null,
       screenshot_m1: null,
+      session_id: (pt as any).session_id || null,
     }));
 
     if (dataSource === "perso") {
