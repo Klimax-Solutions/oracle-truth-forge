@@ -1,6 +1,11 @@
--- Add 'closer' to the app_role enum
+-- ⚠️  IMPORTANT: exécuter en 2 étapes séparées dans le SQL Editor Supabase
+-- Étape 1 : ALTER TYPE seul (doit être commité avant d'utiliser 'closer')
+-- Étape 2 : tout le reste
+
+-- ÉTAPE 1 — à exécuter seul d'abord
 ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'closer';
 
+-- ÉTAPE 2 — à exécuter après que l'étape 1 soit validée
 -- Add is_closer() RPC function
 CREATE OR REPLACE FUNCTION public.is_closer()
 RETURNS boolean
