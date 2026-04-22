@@ -36,9 +36,6 @@ const tabs: SidebarTab[] = [
   { id: "recolte-donnees", label: "Récolte de données", icon: LineChart },
   { id: "data-analysis", label: "Data Analysis", icon: BarChart3 },
   { id: "successes", label: "Chat", icon: Trophy },
-];
-
-const earlyAccessTabs: SidebarTab[] = [
   { id: "results", label: "Résultats", icon: Award },
 ];
 
@@ -141,14 +138,9 @@ export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: Dash
     );
   }
 
-  // Filter tabs based on role
-  let allTabs: SidebarTab[] = (isEarlyAccess || (!hasInstitute && !isAdmin && !isSuperAdmin))
-    ? tabs.filter(t => t.id !== "successes")
-    : [...tabs];
-
-  if (isEarlyAccess || isAdmin || isSuperAdmin) {
-    allTabs = [...allTabs, ...earlyAccessTabs];
-  }
+  // Tous les utilisateurs (hors setter/closer) voient les mêmes tabs produit,
+  // y compris Chat et Résultats — pas de filtrage par type d'accès.
+  let allTabs: SidebarTab[] = [...tabs];
 
   // Admin V2: CRM + Gestion + Config + deprecated tabs
   if (isAdmin || isSuperAdmin) {

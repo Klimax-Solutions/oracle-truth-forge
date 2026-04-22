@@ -124,14 +124,11 @@ const getAllowedTabs = (opts: {
   // Setter / Closer sans admin → uniquement CRM
   if (isSetterOnly) return new Set(["crm"]);
 
-  // Tabs trading de base (membres + EA + admins)
+  // Tabs produit accessibles à tous (membres, EA, admins)
   const t = new Set([
     "execution", "videos", "recolte-donnees", "data-analysis",
-    "successes", "setup", "batch-import",
+    "successes", "results", "setup", "batch-import",
   ]);
-
-  // Résultats : EA + admins
-  if (isEarlyAccess || isAdmin || isSuperAdmin) t.add("results");
 
   // Tabs admin
   if (isAdmin || isSuperAdmin) {

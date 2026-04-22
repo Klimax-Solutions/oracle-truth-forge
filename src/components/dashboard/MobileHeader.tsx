@@ -26,9 +26,6 @@ const tabs = [
   { id: "data-analysis", label: "Data Analysis", icon: BarChart3 },
   { id: "videos", label: "Vidéo du Setup", icon: Video },
   { id: "successes", label: "Chat", icon: Trophy },
-];
-
-const earlyAccessTabs = [
   { id: "results", label: "Résultats", icon: Award },
 ];
 
@@ -82,13 +79,8 @@ export const MobileHeader = ({
     );
   }
 
-  let allTabs = isEarlyAccess 
-    ? tabs.filter(t => t.id !== "successes") 
-    : [...tabs];
-  
-  if (isEarlyAccess || isAdmin || isSuperAdmin) {
-    allTabs = [...allTabs, ...earlyAccessTabs];
-  }
+  let allTabs = [...tabs];
+
   if (isAdmin) {
     allTabs = [...allTabs, ...adminTabs];
   }
