@@ -500,10 +500,10 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                     const checked = !!(lead as any)[field];
                     const prevChecked = i === 0 || !!(lead as any)[CHECKLIST_FIELDS[i - 1] as string];
                     const isNext = !checked && prevChecked;
-                    const disabled = !prevChecked;
+                    const disabled = !prevChecked || !canEditSetting;
                     return (
                       <button key={field} disabled={disabled}
-                        onClick={async () => { await updateField({ [field]: !checked }); }}
+                        onClick={async () => { if (!canEditSetting) return; await updateField({ [field]: !checked }); }}
                         className={cn("flex items-center gap-2.5 w-full px-3 py-2 text-left transition-all border-b border-white/[0.03] last:border-0",
                           disabled ? "opacity-25 cursor-not-allowed" : "hover:bg-white/[0.03] cursor-pointer"
                         )}>
@@ -524,17 +524,19 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                   {/* Setter inline */}
                   <div className="flex items-center gap-2">
                     <Users className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                    <Select value={lead.setter_name || ""} onValueChange={async (v) => { const name = v === "__none__" ? null : v; await updateField({ setter_name: name }); if (name) emitEvent("lead_assigned_setter", { setter_name: name }); }}>
-                      <SelectTrigger className="w-32 h-7 bg-transparent border-none text-xs font-display text-cyan-400 font-bold p-0 focus:ring-0"><SelectValue placeholder="Setter" /></SelectTrigger>
+                    <Select value={lead.setter_name || ""} onValueChange={async (v) => { if (!canEditSetting) return; const name = v === "__none__" ? null : v; await updateField({ setter_name: name }); if (name) emitEvent("lead_assigned_setter", { setter_name: name }); }} disabled={!canEditSetting}>
+                      <SelectTrigger className={cn("w-32 h-7 bg-transparent border-none text-xs font-display text-cyan-400 font-bold p-0 focus:ring-0", !canEditSetting && "opacity-50 cursor-default")}><SelectValue placeholder="Setter" /></SelectTrigger>
                       <SelectContent className="bg-[hsl(220,13%,8%)] border-white/[0.10] rounded-xl shadow-2xl p-1">
                         <SelectItem value="__none__" className="text-white/40 font-display text-xs">Non assigné</SelectItem>
                         {settersList.map(s => <SelectItem key={s} value={s} className="font-display text-xs">{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     {/* Toggle contacté aujourd'hui */}
-                    <button onClick={() => { updateField({ contacte_aujourdhui: !lead.contacte_aujourdhui, derniere_interaction: new Date().toISOString() }); }}
+                    <button onClick={() => { if (!canEditSetting) return; updateField({ contacte_aujourdhui: !lead.contacte_aujourdhui, derniere_interaction: new Date().toISOString() }); }}
+                      disabled={!canEditSetting}
                       className={cn("ml-auto flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-display font-semibold transition-all border",
-                        lead.contacte_aujourdhui ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "border-white/[0.10] text-white/30 hover:text-white/60"
+                        lead.contacte_aujourdhui ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "border-white/[0.10] text-white/30 hover:text-white/60",
+                        !canEditSetting && "opacity-40 cursor-not-allowed"
                       )}>
                       <div className={cn("w-2 h-2 rounded-full", lead.contacte_aujourdhui ? "bg-emerald-400" : "bg-white/20")} />
                       {lead.contacte_aujourdhui ? 'Contacté' : 'Pas contacté'}
@@ -548,15 +550,19 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                         <MessageCircle className="w-3 h-3" /> WhatsApp <ExternalLink className="w-2.5 h-2.5 opacity-50" />
                       </a>
                     )}
-                    <button onClick={() => { updateField({ contacted: true, contact_method: "whatsapp", contacted_at: new Date().toISOString(), derniere_interaction: new Date().toISOString() }); emitEvent("setting_contacted_whatsapp"); }}
+                    <button onClick={() => { if (!canEditSetting) return; updateField({ contacted: true, contact_method: "whatsapp", contacted_at: new Date().toISOString(), derniere_interaction: new Date().toISOString() }); emitEvent("setting_contacted_whatsapp"); }}
+                      disabled={!canEditSetting}
                       className={cn("px-2.5 py-1.5 rounded-md border font-display text-[10px] font-semibold transition-all",
-                        lead.contact_method === "whatsapp" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "border-white/[0.08] text-white/30 hover:text-emerald-400"
+                        lead.contact_method === "whatsapp" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "border-white/[0.08] text-white/30 hover:text-emerald-400",
+                        !canEditSetting && "opacity-40 cursor-not-allowed"
                       )}>WA</button>
-                    <button onClick={() => { updateField({ contacted: true, contact_method: "email", contacted_at: new Date().toISOString(), derniere_interaction: new Date().toISOString() }); emitEvent("setting_contacted_email"); }}
+                    <button onClick={() => { if (!canEditSetting) return; updateField({ contacted: true, contact_method: "email", contacted_at: new Date().toISOString(), derniere_interaction: new Date().toISOString() }); emitEvent("setting_contacted_email"); }}
+                      disabled={!canEditSetting}
                       className={cn("px-2.5 py-1.5 rounded-md border font-display text-[10px] font-semibold transition-all",
-                        lead.contact_method === "email" ? "bg-amber-500/15 border-amber-500/30 text-amber-400" : "border-white/[0.08] text-white/30 hover:text-amber-400"
+                        lead.contact_method === "email" ? "bg-amber-500/15 border-amber-500/30 text-amber-400" : "border-white/[0.08] text-white/30 hover:text-amber-400",
+                        !canEditSetting && "opacity-40 cursor-not-allowed"
                       )}>Email</button>
-                    {lead.contacted && (
+                    {lead.contacted && canEditSetting && (
                       <button onClick={() => { updateField({ contacted: false, contact_method: null }); emitEvent("setting_contact_reset"); }}
                         className="px-2 py-1.5 rounded-md text-white/15 hover:text-white/40 transition-all">
                         <RotateCcw className="w-3 h-3" />
