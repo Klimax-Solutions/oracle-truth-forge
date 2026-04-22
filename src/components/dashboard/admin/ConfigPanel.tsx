@@ -148,23 +148,46 @@ const PERMISSION_MATRIX: PermissionRow[] = [
   { label: "Simuler un rôle",         desc: "Barre Vue en haut — tester la vue d'un rôle",             access: { super_admin: true } },
 ];
 
-const CHECK  = <span className="text-emerald-400 font-bold text-sm">✓</span>;
-const CROSS  = <span className="text-white/15 text-sm">—</span>;
-const READ   = <span className="text-amber-400 font-mono text-[10px] font-semibold">R</span>;
+// Cell colors per role when access = true
+const ROLE_CELL_BG: Record<RoleId, string> = {
+  super_admin:  "bg-yellow-500/10",
+  admin:        "bg-amber-500/10",
+  setter:       "bg-pink-500/10",
+  closer:       "bg-blue-500/10",
+  early_access: "bg-violet-500/10",
+  member:       "bg-emerald-500/10",
+};
+const ROLE_CHECK_COLOR: Record<RoleId, string> = {
+  super_admin:  "text-yellow-400",
+  admin:        "text-amber-400",
+  setter:       "text-pink-400",
+  closer:       "text-blue-400",
+  early_access: "text-violet-400",
+  member:       "text-emerald-400",
+};
 
 function PermissionsTab() {
   return (
-    <div className="p-6 space-y-2">
-      {/* Légende rôles cumulables */}
-      <div className="bg-[#111318] border border-white/[0.08] rounded-xl p-4 mb-6">
-        <p className="text-xs font-display font-semibold text-white mb-1">Règle fondamentale — rôles additifs</p>
-        <p className="text-[11px] text-white/50 leading-relaxed">
-          Les rôles se cumulent. Un setter peut aussi être admin. Un closer peut être setter+closer.
-          Les permissions ci-dessous s'appliquent pour chaque rôle pris individuellement — un user cumule les droits de tous ses rôles.
-        </p>
-        <div className="flex gap-3 mt-3 flex-wrap">
+    <div className="p-6 space-y-6">
+
+      {/* Règle fondamentale */}
+      <div className="rounded-2xl border border-white/[0.10] bg-gradient-to-br from-white/[0.04] to-transparent p-5">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center shrink-0">
+            <Lock className="w-4 h-4 text-violet-400" />
+          </div>
+          <div>
+            <p className="text-sm font-display font-bold text-white mb-1">Rôles additifs — règle fondamentale</p>
+            <p className="text-xs text-white/50 leading-relaxed max-w-2xl">
+              Les rôles se cumulent. Un setter peut aussi être admin et bénéficier des deux scopes.
+              Le tableau ci-dessous indique les droits de chaque rôle <span className="text-white/70 font-semibold">pris individuellement</span> — un user cumule les droits de tous ses rôles actifs.
+            </p>
+          </div>
+        </div>
+        {/* Badges rôles */}
+        <div className="flex gap-2 mt-4 flex-wrap">
           {ROLE_COLS.map(r => (
-            <span key={r.id} className={cn("px-2.5 py-1 rounded-md text-[10px] font-display font-semibold border", r.bg, r.color)}>
+            <span key={r.id} className={cn("px-3 py-1.5 rounded-lg text-xs font-display font-bold border", r.bg, r.color)}>
               {r.label}
             </span>
           ))}
@@ -172,14 +195,18 @@ function PermissionsTab() {
       </div>
 
       {/* Tableau */}
-      <div className="overflow-x-auto rounded-xl border border-white/[0.08]">
-        <table className="w-full text-xs">
+      <div className="overflow-x-auto rounded-2xl border border-white/[0.10]">
+        <table className="w-full">
           <thead>
-            <tr className="border-b border-white/[0.08]">
-              <th className="text-left px-4 py-3 text-[10px] font-display uppercase tracking-widest text-white/30 w-64">Action</th>
+            <tr className="bg-white/[0.03] border-b border-white/[0.10]">
+              <th className="text-left px-5 py-4 text-[11px] font-display uppercase tracking-widest text-white/40 w-72">
+                Action
+              </th>
               {ROLE_COLS.map(r => (
-                <th key={r.id} className={cn("px-3 py-3 text-[10px] font-display font-semibold text-center", r.color)}>
-                  {r.label}
+                <th key={r.id} className="px-4 py-4 text-center min-w-[90px]">
+                  <span className={cn("inline-block px-2.5 py-1.5 rounded-lg text-[11px] font-display font-bold border", r.bg, r.color)}>
+                    {r.label}
+                  </span>
                 </th>
               ))}
             </tr>
@@ -187,23 +214,37 @@ function PermissionsTab() {
           <tbody>
             {PERMISSION_MATRIX.map((row, i) => {
               if (row.section) return (
-                <tr key={`section-${i}`} className="border-t border-white/[0.06] bg-white/[0.02]">
-                  <td colSpan={ROLE_COLS.length + 1} className="px-4 py-2">
-                    <span className="text-[9px] font-display uppercase tracking-[0.2em] text-white/30">{row.section}</span>
+                <tr key={`section-${i}`} className="border-t-2 border-white/[0.08] bg-white/[0.02]">
+                  <td colSpan={ROLE_COLS.length + 1} className="px-5 py-3">
+                    <span className="text-[10px] font-display font-bold uppercase tracking-[0.25em] text-white/40">
+                      {row.section}
+                    </span>
                   </td>
                 </tr>
               );
               return (
-                <tr key={i} className="border-t border-white/[0.04] hover:bg-white/[0.02] transition-colors">
-                  <td className="px-4 py-2.5">
-                    <p className="text-white/80 font-display text-[11px] font-medium">{row.label}</p>
-                    {row.desc && <p className="text-white/30 text-[10px] mt-0.5">{row.desc}</p>}
+                <tr key={i} className="border-t border-white/[0.05] hover:bg-white/[0.02] transition-colors group">
+                  <td className="px-5 py-3.5">
+                    <p className="text-sm font-display font-medium text-white/90">{row.label}</p>
+                    {row.desc && <p className="text-[11px] text-white/35 mt-0.5 leading-relaxed">{row.desc}</p>}
                   </td>
-                  {ROLE_COLS.map(r => (
-                    <td key={r.id} className="px-3 py-2.5 text-center">
-                      {row.access[r.id] === true ? CHECK : row.access[r.id] === "read" ? READ : CROSS}
-                    </td>
-                  ))}
+                  {ROLE_COLS.map(r => {
+                    const val = row.access[r.id];
+                    return (
+                      <td key={r.id} className={cn(
+                        "px-4 py-3.5 text-center transition-colors",
+                        val === true && ROLE_CELL_BG[r.id]
+                      )}>
+                        {val === true ? (
+                          <span className={cn("text-lg font-bold leading-none", ROLE_CHECK_COLOR[r.id])}>✓</span>
+                        ) : val === "read" ? (
+                          <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">R</span>
+                        ) : (
+                          <span className="text-white/15 text-base">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}
@@ -212,8 +253,8 @@ function PermissionsTab() {
       </div>
 
       {/* Footer */}
-      <p className="text-[10px] text-white/20 font-mono pt-2">
-        Dernière mise à jour : 22 avril 2026 · Source : <code>ConfigPanel.tsx / PERMISSION_MATRIX</code>
+      <p className="text-[10px] text-white/20 font-mono">
+        Mis à jour le 22 avr. 2026 · <code className="opacity-60">ConfigPanel.tsx → PERMISSION_MATRIX</code>
       </p>
     </div>
   );
