@@ -211,28 +211,19 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="p-4 md:p-6 border-b border-border flex-shrink-0 space-y-3">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">
-              {isEarlyAccess ? "Data Analysis — Indices US" : isPersoOnly ? "Data Analysis — Setup Perso" : "Data Analysis"}
-            </h2>
-            <p className="text-xs text-muted-foreground font-mono">
-              {displayTrades.length} trades • {totalRR >= 0 ? "+" : ""}{totalRR.toFixed(1)} RR • WR {winRate}%
-            </p>
-          </div>
-          {/* Session selector (right side) — toujours visible, gère "Aucune session" en interne */}
-          <SessionAnalysisSelector
-            sessions={sessions}
-            selectedId={selectedSessionId}
-            onChange={setSelectedSessionId}
-          />
-
+      {/* Header — title + stats only */}
+      <div className="p-4 md:p-6 border-b border-border flex-shrink-0">
+        <div>
+          <h2 className="text-lg md:text-xl font-semibold text-foreground mb-1">
+            {isEarlyAccess ? "Data Analysis — Indices US" : isPersoOnly ? "Data Analysis — Setup Perso" : "Data Analysis"}
+          </h2>
+          <p className="text-xs text-muted-foreground font-mono">
+            {displayTrades.length} trades • {totalRR >= 0 ? "+" : ""}{totalRR.toFixed(1)} RR • WR {winRate}%
+          </p>
         </div>
         {/* Info banner — current session */}
         {selectedSession && (
-          <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-card/60 border border-border">
+          <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-md bg-card/60 border border-border">
             <Info className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               Vous analysez actuellement la session{" "}
@@ -268,10 +259,43 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
               </p>
             </div>
           )}
+          {/* Row 0: Session selector — centered, prominent, hero block */}
+          <div
+            className={cn(
+              "relative rounded-xl border border-border/60 bg-gradient-to-br from-card via-card/80 to-card/60 px-6 py-8 md:px-10 md:py-10",
+              "flex flex-col items-center justify-center gap-4 text-center shadow-lg",
+              isEntering && "opacity-0",
+            )}
+            style={{
+              animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms forwards",
+              backgroundImage:
+                "radial-gradient(circle at 30% 0%, rgba(59,130,246,0.08), transparent 60%), radial-gradient(circle at 70% 100%, rgba(249,115,22,0.08), transparent 60%)",
+            }}
+          >
+            <div className="space-y-1">
+              <p className="text-[10px] md:text-[11px] font-mono uppercase tracking-[0.25em] text-muted-foreground/80">
+                Setup à analyser
+              </p>
+              <h3 className="text-base md:text-lg font-semibold text-foreground">
+                Choisissez la session que vous voulez analyser
+              </h3>
+            </div>
+            <SessionAnalysisSelector
+              sessions={sessions}
+              selectedId={selectedSessionId}
+              onChange={setSelectedSessionId}
+            />
+            {!selectedSession && sessions.length > 0 && (
+              <p className="text-[10px] text-muted-foreground/70 font-mono italic">
+                Aucune session sélectionnée — l'analyse ci-dessous porte sur l'ensemble des trades.
+              </p>
+            )}
+          </div>
+
           {/* Row 1: Données clés + quick access */}
           <div
             className={cn("space-y-4", isEntering && "opacity-0")}
-            style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms forwards" }}
+            style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 80ms forwards" }}
           >
             <div className="relative">
               {isExpired && <ExpiredOverlay />}
