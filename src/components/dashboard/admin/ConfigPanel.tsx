@@ -12,7 +12,7 @@ import {
   Users, Search, ChevronDown, CheckCircle, XCircle,
   ShieldCheck, Shield, Award, UserPlus, User, Tag,
   Snowflake, Ban, UserX, RefreshCw, Check, X,
-  MoreHorizontal, Clock,
+  MoreHorizontal, Clock, Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,8 +91,133 @@ const TABS = [
   { id: "roles" as const, label: "Rôles", icon: Crown },
   { id: "funnel" as const, label: "Funnel", icon: Layers },
   { id: "quests" as const, label: "Quêtes", icon: Sparkles },
+  { id: "permissions" as const, label: "Permissions", icon: Lock },
 ];
 type TabId = (typeof TABS)[number]["id"];
+
+// ── Permissions Matrix ──────────────────────────────────────────────────────
+const ROLE_COLS = [
+  { id: "super_admin", label: "Super Admin", color: "text-primary", bg: "bg-primary/10 border-primary/30" },
+  { id: "admin",       label: "Admin",       color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/30" },
+  { id: "setter",      label: "Setter",      color: "text-pink-400",  bg: "bg-pink-500/10 border-pink-500/30" },
+  { id: "closer",      label: "Closer",      color: "text-blue-400",  bg: "bg-blue-500/10 border-blue-500/30" },
+  { id: "early_access",label: "Early Access",color: "text-violet-400",bg: "bg-violet-500/10 border-violet-500/30" },
+  { id: "member",      label: "Membre",      color: "text-emerald-400",bg: "bg-emerald-500/10 border-emerald-500/30" },
+] as const;
+
+type RoleId = (typeof ROLE_COLS)[number]["id"];
+
+type PermissionRow = {
+  section?: string; // section header si présent
+  label: string;
+  desc?: string;
+  access: Partial<Record<RoleId, boolean | "read">>;
+};
+
+const PERMISSION_MATRIX: PermissionRow[] = [
+  // ── CRM ──
+  { section: "CRM", label: "" , access: {} },
+  { label: "Voir le pipeline",        desc: "Accès à l'onglet CRM / liste des leads",                 access: { super_admin: true, admin: true, setter: true, closer: true } },
+  { label: "Éditer la vue Setting",   desc: "Checklist, contact, brief closer",                        access: { super_admin: true, admin: true, setter: true } },
+  { label: "Éditer la vue Call",      desc: "Issue, débrief, paiement, no-show",                       access: { super_admin: true, admin: true, closer: true } },
+  { label: "Assigner un setter",      desc: "Changer le setter d'un lead",                             access: { super_admin: true, admin: true, setter: true } },
+  { label: "Approuver un lead EA",    desc: "Passer un lead de en_attente → approuvée",                access: { super_admin: true, admin: true } },
+  { label: "Supprimer un lead",       desc: "Suppression définitive d'un early_access_request",        access: { super_admin: true } },
+  { label: "Voir métriques CRM",      desc: "Onglets Conversions, Cockpit, Agenda",                   access: { super_admin: true, admin: true, setter: true, closer: true } },
+
+  // ── Gestion produit ──
+  { section: "Gestion produit", label: "", access: {} },
+  { label: "Voir les membres",        desc: "Liste users, statuts, activité",                          access: { super_admin: true, admin: true } },
+  { label: "Modifier les rôles",      desc: "Attribuer / révoquer setter, closer, admin, EA…",         access: { super_admin: true } },
+  { label: "Geler / bannir un user",  desc: "Actions disciplinaires sur un compte",                    access: { super_admin: true, admin: true } },
+  { label: "Voir les vérifications",  desc: "Onglet Vérif. Admin — trades, screenshots",               access: { super_admin: true, admin: true } },
+  { label: "Valider / rejeter trade", desc: "Approuver ou refuser une vérification",                   access: { super_admin: true, admin: true } },
+
+  // ── Contenu ──
+  { section: "Contenu", label: "", access: {} },
+  { label: "Voir les vidéos Oracle",  desc: "5 vidéos du Setup Oracle",                               access: { super_admin: true, admin: true, early_access: true, member: true } },
+  { label: "Voir les vidéos bonus",   desc: "Vidéos Mercure Institut",                                 access: { super_admin: true, admin: true, early_access: true, member: true } },
+  { label: "Gérer les vidéos",        desc: "Ajouter / modifier / réordonner les vidéos",              access: { super_admin: true, admin: true } },
+  { label: "Accès Oracle (produit)",  desc: "Exécution, data analysis, résultats",                     access: { super_admin: true, admin: true, early_access: true, member: true } },
+
+  // ── Configuration ──
+  { section: "Configuration", label: "", access: {} },
+  { label: "Onglet Config",           desc: "Rôles, Funnel, Quêtes, Permissions",                      access: { super_admin: true, admin: true } },
+  { label: "Modifier le funnel",      desc: "Landing, Apply, VSL, emails, boutons",                    access: { super_admin: true } },
+  { label: "Modifier les quêtes",     desc: "Steps, labels, logique de progression",                   access: { super_admin: true } },
+  { label: "Simuler un rôle",         desc: "Barre Vue en haut — tester la vue d'un rôle",             access: { super_admin: true } },
+];
+
+const CHECK  = <span className="text-emerald-400 font-bold text-sm">✓</span>;
+const CROSS  = <span className="text-white/15 text-sm">—</span>;
+const READ   = <span className="text-amber-400 font-mono text-[10px] font-semibold">R</span>;
+
+function PermissionsTab() {
+  return (
+    <div className="p-6 space-y-2">
+      {/* Légende rôles cumulables */}
+      <div className="bg-[#111318] border border-white/[0.08] rounded-xl p-4 mb-6">
+        <p className="text-xs font-display font-semibold text-white mb-1">Règle fondamentale — rôles additifs</p>
+        <p className="text-[11px] text-white/50 leading-relaxed">
+          Les rôles se cumulent. Un setter peut aussi être admin. Un closer peut être setter+closer.
+          Les permissions ci-dessous s'appliquent pour chaque rôle pris individuellement — un user cumule les droits de tous ses rôles.
+        </p>
+        <div className="flex gap-3 mt-3 flex-wrap">
+          {ROLE_COLS.map(r => (
+            <span key={r.id} className={cn("px-2.5 py-1 rounded-md text-[10px] font-display font-semibold border", r.bg, r.color)}>
+              {r.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Tableau */}
+      <div className="overflow-x-auto rounded-xl border border-white/[0.08]">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-white/[0.08]">
+              <th className="text-left px-4 py-3 text-[10px] font-display uppercase tracking-widest text-white/30 w-64">Action</th>
+              {ROLE_COLS.map(r => (
+                <th key={r.id} className={cn("px-3 py-3 text-[10px] font-display font-semibold text-center", r.color)}>
+                  {r.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {PERMISSION_MATRIX.map((row, i) => {
+              if (row.section) return (
+                <tr key={`section-${i}`} className="border-t border-white/[0.06] bg-white/[0.02]">
+                  <td colSpan={ROLE_COLS.length + 1} className="px-4 py-2">
+                    <span className="text-[9px] font-display uppercase tracking-[0.2em] text-white/30">{row.section}</span>
+                  </td>
+                </tr>
+              );
+              return (
+                <tr key={i} className="border-t border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                  <td className="px-4 py-2.5">
+                    <p className="text-white/80 font-display text-[11px] font-medium">{row.label}</p>
+                    {row.desc && <p className="text-white/30 text-[10px] mt-0.5">{row.desc}</p>}
+                  </td>
+                  {ROLE_COLS.map(r => (
+                    <td key={r.id} className="px-3 py-2.5 text-center">
+                      {row.access[r.id] === true ? CHECK : row.access[r.id] === "read" ? READ : CROSS}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Footer */}
+      <p className="text-[10px] text-white/20 font-mono pt-2">
+        Dernière mise à jour : 22 avril 2026 · Source : <code>ConfigPanel.tsx / PERMISSION_MATRIX</code>
+      </p>
+    </div>
+  );
+}
 
 // ============================================
 // ── Main ──
@@ -527,6 +652,9 @@ export default function ConfigPanel() {
             <QuestStepManager />
           </Suspense>
         )}
+
+        {/* ═══ PERMISSIONS ═══ */}
+        {activeTab === "permissions" && <PermissionsTab />}
       </div>
 
       {/* ── Dialogs ── */}
