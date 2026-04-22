@@ -434,7 +434,8 @@ const Dashboard = () => {
 
   const displayTrades = getDisplayTrades();
   const isRegularMember = !isAdmin && !isSuperAdmin && !isEarlyAccess && !isSetterOnly;
-  const showDataSourceSelector = ["data-analysis"].includes(activeTab) && !isEarlyAccess && !isSetterOnly && (isAdmin || isSuperAdmin);
+  // data-analysis now uses the new in-page SessionAnalysisSelector; the legacy DataSourceSelector is hidden there.
+  const showDataSourceSelector = false && ["data-analysis"].includes(activeTab) && !isEarlyAccess && !isSetterOnly && (isAdmin || isSuperAdmin);
 
   const renderContent = () => {
     if (isSetterOnly) return <EarlyAccessManagement />;
