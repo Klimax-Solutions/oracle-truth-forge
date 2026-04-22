@@ -149,7 +149,8 @@ const Dashboard = () => {
   const isAdmin = effectiveIsAdmin;
   const isSuperAdmin = effectiveIsSuperAdmin;
   const isSetter = effectiveIsSetter;
-  const isSetterOnly = isSetter && !isSuperAdmin && !isAdmin;
+  const isCloser = effectiveIsCloser;
+  const isSetterOnly = (isSetter || isCloser) && !isSuperAdmin && !isAdmin;
   const isEarlyAccess = simulatedRole !== "none" ? effectiveIsEarlyAccess : realIsEarlyAccess;
   // When simulating EA, create a fake expiresAt 3 days from now for demo
   const effectiveExpiresAt = simulatedRole === "early_access" 
@@ -166,10 +167,14 @@ const Dashboard = () => {
   // Force tab change when role changes
   useEffect(() => {
     if (isSetterOnly) {
-      setActiveTab("early-access-mgmt");
+      setActiveTab("crm");
     } else if (simulatedRole !== "none") {
       // Reset to a valid tab for the simulated role
-      setActiveTab("execution");
+      if (simulatedRole === "setter" || simulatedRole === "closer" || simulatedRole === "setter+closer") {
+        setActiveTab("crm");
+      } else {
+        setActiveTab("execution");
+      }
     }
   }, [isSetterOnly, simulatedRole]);
 
@@ -440,7 +445,8 @@ const Dashboard = () => {
   const showDataSourceSelector = false && ["data-analysis"].includes(activeTab) && !isEarlyAccess && !isSetterOnly && (isAdmin || isSuperAdmin);
 
   const renderContent = () => {
-    if (isSetterOnly) return <EarlyAccessManagement />;
+    // Setter / Closer sans admin → uniquement CRM
+    if (isSetterOnly) return <CRMDashboard overrideRoles={{ isAdmin, isSuperAdmin, isSetter, isCloser }} />;
     switch (activeTab) {
       case "execution":
         return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => setActiveTab("data-analysis")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
@@ -522,8 +528,8 @@ const Dashboard = () => {
         onTabChange={setActiveTab}
         overrideRoles={
           simulatedRole !== "none"
-            ? { isAdmin, isSuperAdmin, isSetter, isEarlyAccess }
-            : { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter, isEarlyAccess: realIsEarlyAccess }
+            ? { isAdmin, isSuperAdmin, isSetter, isCloser, isEarlyAccess }
+            : { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter, isCloser: realIsCloser, isEarlyAccess: realIsEarlyAccess }
         }
       />
 

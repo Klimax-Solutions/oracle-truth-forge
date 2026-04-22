@@ -27,7 +27,7 @@ interface SidebarTab {
 interface DashboardSidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  overrideRoles?: { isAdmin: boolean; isSuperAdmin: boolean; isSetter: boolean; isEarlyAccess: boolean };
+  overrideRoles?: { isAdmin: boolean; isSuperAdmin: boolean; isSetter: boolean; isCloser: boolean; isEarlyAccess: boolean };
 }
 
 const tabs: SidebarTab[] = [
@@ -56,12 +56,14 @@ export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: Dash
   const [_isAdmin, setIsAdmin] = useState(false);
   const [_isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [_isSetter, setIsSetter] = useState(false);
+  const [_isCloser, setIsCloser] = useState(false);
   const { isEarlyAccess: _isEarlyAccess } = useEarlyAccess();
   const hasInstitute = useHasInstitute();
 
   const isAdmin = overrideRoles ? overrideRoles.isAdmin : _isAdmin;
   const isSuperAdmin = overrideRoles ? overrideRoles.isSuperAdmin : _isSuperAdmin;
   const isSetter = overrideRoles ? overrideRoles.isSetter : _isSetter;
+  const isCloser = overrideRoles ? overrideRoles.isCloser : _isCloser;
   const isEarlyAccess = overrideRoles ? overrideRoles.isEarlyAccess : _isEarlyAccess;
 
   const checkInternalRoles = async () => {
@@ -71,6 +73,8 @@ export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: Dash
     setIsSuperAdmin(!!isSuperAdminData);
     const { data: isSetterData } = await supabase.rpc('is_setter' as any);
     setIsSetter(!!isSetterData);
+    const { data: isCloserData } = await supabase.rpc('is_closer' as any);
+    setIsCloser(!!isCloserData);
   };
 
   useEffect(() => {
@@ -88,8 +92,8 @@ export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: Dash
     };
   }, []);
 
-  // Setter role: CRM only (filtered to their leads)
-  if (isSetter && !isSuperAdmin && !isAdmin) {
+  // Setter / Closer (sans admin) : CRM uniquement
+  if ((isSetter || isCloser) && !isSuperAdmin && !isAdmin) {
     const setterTabs: SidebarTab[] = [crmTab];
     return (
       <aside
@@ -249,12 +253,14 @@ export const useSidebarRoles = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isSetter, setIsSetter] = useState(false);
+  const [isCloser, setIsCloser] = useState(false);
   const [loadingRoles, setLoadingRoles] = useState(true);
 
   const resetRoles = () => {
     setIsAdmin(false);
     setIsSuperAdmin(false);
     setIsSetter(false);
+    setIsCloser(false);
   };
 
   const checkRoles = async (retries = 2) => {
@@ -266,10 +272,11 @@ export const useSidebarRoles = () => {
         return;
       }
 
-      const [adminRes, superAdminRes, setterRes] = await Promise.all([
+      const [adminRes, superAdminRes, setterRes, closerRes] = await Promise.all([
         supabase.rpc('is_admin'),
         supabase.rpc('is_super_admin'),
         supabase.rpc('is_setter' as any),
+        supabase.rpc('is_closer' as any),
       ]);
 
       // If all results errored/null and we have retries left, try again after 500ms
@@ -282,6 +289,7 @@ export const useSidebarRoles = () => {
       setIsAdmin(!!adminRes.data);
       setIsSuperAdmin(!!superAdminRes.data);
       setIsSetter(!!setterRes.data);
+      setIsCloser(!!closerRes.data);
     } catch (err) {
       console.warn("[Roles] aborted or failed, using defaults", err);
     } finally {
@@ -350,5 +358,5 @@ export const useSidebarRoles = () => {
     };
   }, []);
 
-  return { isAdmin, isSuperAdmin, isSetter, loadingRoles };
+  return { isAdmin, isSuperAdmin, isSetter, isCloser, loadingRoles };
 };
