@@ -68,6 +68,7 @@ interface Filters {
   quarter: string[];
   year: string[];
   contributor: string[];
+  cycle: number[];
   hasScreenshots?: boolean;
 }
 
