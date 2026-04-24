@@ -436,68 +436,138 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
             </Button>
           </div>
         ) : (
-          <div className="space-y-2">
-            {filteredTrades.map((trade, tradeIdx) => {
-              const isBlurred = isEarlyAccess && tradeIdx >= 50;
-              const currentCycle = !isDataGenerale ? getCycleForTrade(trade.trade_number) : null;
-              const prevCycle = !isDataGenerale && tradeIdx > 0
-                ? getCycleForTrade(filteredTrades[tradeIdx - 1].trade_number)
-                : null;
-              const showCycleHeader = !isDataGenerale && currentCycle && currentCycle.num !== prevCycle?.num;
+          <div className="space-y-3">
+            {(() => {
+              // Group filtered trades by cycle (only when not in Data Générale)
+              type Group = { cycle: ReturnType<typeof getCycleForTrade>; trades: Trade[]; startIdx: number };
+              const groups: Group[] = [];
+              filteredTrades.forEach((trade, idx) => {
+                const cycle = !isDataGenerale ? getCycleForTrade(trade.trade_number) : null;
+                const last = groups[groups.length - 1];
+                if (last && last.cycle?.num === cycle?.num) {
+                  last.trades.push(trade);
+                } else {
+                  groups.push({ cycle, trades: [trade], startIdx: idx });
+                }
+              });
 
-              // Count trades in this cycle within the filtered list
-              const cycleTradesInView = showCycleHeader
-                ? filteredTrades.filter(t => {
-                    const c = getCycleForTrade(t.trade_number);
-                    return c?.num === currentCycle?.num;
-                  }).length
-                : 0;
+              const cycleColor = (cycle: ReturnType<typeof getCycleForTrade>) => {
+                if (!cycle) return { rail: "bg-border", text: "text-muted-foreground", border: "border-border", bg: "bg-transparent", soft: "bg-muted/30", glow: "" };
+                if (cycle.num === 0) return {
+                  rail: "bg-gradient-to-b from-amber-500/80 via-amber-500/40 to-amber-500/10",
+                  text: "text-amber-400",
+                  border: "border-amber-500/30",
+                  bg: "bg-amber-500/5",
+                  soft: "bg-amber-500/10",
+                  glow: "shadow-[0_0_20px_-8px_hsl(38_92%_50%/0.4)]",
+                };
+                if (cycle.phase === 1) return {
+                  rail: "bg-gradient-to-b from-primary/80 via-primary/40 to-primary/10",
+                  text: "text-primary",
+                  border: "border-primary/30",
+                  bg: "bg-primary/5",
+                  soft: "bg-primary/10",
+                  glow: "shadow-[0_0_20px_-8px_hsl(var(--primary)/0.4)]",
+                };
+                return {
+                  rail: "bg-gradient-to-b from-emerald-500/80 via-emerald-500/40 to-emerald-500/10",
+                  text: "text-emerald-400",
+                  border: "border-emerald-500/30",
+                  bg: "bg-emerald-500/5",
+                  soft: "bg-emerald-500/10",
+                  glow: "shadow-[0_0_20px_-8px_hsl(160_84%_39%/0.4)]",
+                };
+              };
 
-              return (
-              <div key={`wrap-${trade.id}`}>
-                {showCycleHeader && currentCycle && (
-                  <div
-                    className={cn(
-                      "sticky top-0 z-20 mb-2 mt-1 first:mt-0 backdrop-blur-md",
-                      "border rounded-md px-3 md:px-4 py-2 md:py-2.5",
-                      "flex items-center justify-between gap-3",
-                      currentCycle.num === 0
-                        ? "border-amber-500/30 bg-amber-500/5"
-                        : currentCycle.phase === 1
-                          ? "border-primary/30 bg-primary/5"
-                          : "border-emerald-500/30 bg-emerald-500/5"
+              return groups.map((group, groupIdx) => {
+                const { cycle } = group;
+                const colors = cycleColor(cycle);
+                const showCycleUI = !isDataGenerale && cycle;
+                const totalInCycle = cycle ? cycle.end - cycle.start + 1 : 0;
+
+                return (
+                  <div key={`group-${groupIdx}`} className={cn("relative", showCycleUI && "flex gap-2 md:gap-3")}>
+                    {/* Side rail with vertical sticky label */}
+                    {showCycleUI && cycle && (
+                      <div className="relative flex-shrink-0 w-7 md:w-9">
+                        {/* Vertical color rail */}
+                        <div className={cn("absolute inset-y-0 left-1/2 -translate-x-1/2 w-[3px] rounded-full", colors.rail)} />
+                        {/* Sticky vertical label */}
+                        <div className="sticky top-2 z-10 flex flex-col items-center">
+                          <div
+                            className={cn(
+                              "rounded-md border backdrop-blur-md px-1 py-2 md:py-2.5 flex flex-col items-center gap-1.5",
+                              colors.border, colors.bg, colors.glow
+                            )}
+                          >
+                            {/* Phase chip */}
+                            <span
+                              className={cn(
+                                "text-[8px] md:text-[9px] font-mono font-bold leading-none",
+                                colors.text
+                              )}
+                              title={cycle.num === 0 ? "Phase 0" : `Phase ${cycle.phase}`}
+                            >
+                              P{cycle.num === 0 ? 0 : cycle.phase}
+                            </span>
+                            <div className={cn("h-px w-3 md:w-4", colors.soft)} />
+                            {/* Vertical cycle name */}
+                            <span
+                              className={cn(
+                                "text-[10px] md:text-[11px] font-bold tracking-[0.2em] uppercase whitespace-nowrap",
+                                colors.text
+                              )}
+                              style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+                            >
+                              {cycle.name}
+                            </span>
+                            <div className={cn("h-px w-3 md:w-4", colors.soft)} />
+                            {/* Trade count */}
+                            <span className="text-[9px] md:text-[10px] font-mono text-foreground font-semibold leading-none">
+                              {group.trades.length}
+                            </span>
+                            <span className="text-[7px] md:text-[8px] font-mono text-muted-foreground leading-none">
+                              /{totalInCycle}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     )}
-                  >
-                    <div className="flex items-center gap-2.5 md:gap-3 min-w-0">
-                      <span
-                        className={cn(
-                          "text-[9px] md:text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded border",
-                          currentCycle.num === 0
-                            ? "border-amber-500/40 text-amber-400 bg-amber-500/10"
-                            : currentCycle.phase === 1
-                              ? "border-primary/40 text-primary bg-primary/10"
-                              : "border-emerald-500/40 text-emerald-400 bg-emerald-500/10"
-                        )}
-                      >
-                        {currentCycle.num === 0 ? "Phase 0" : `Phase ${currentCycle.phase}`}
-                      </span>
-                      <h3 className="text-xs md:text-sm font-bold text-foreground truncate">
-                        {currentCycle.name}
-                      </h3>
-                      <span className="hidden sm:inline text-[10px] md:text-[11px] font-mono text-muted-foreground">
-                        #{String(currentCycle.start).padStart(3, "0")} → #{String(currentCycle.end).padStart(3, "0")}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className="text-[10px] md:text-[11px] font-mono text-foreground font-semibold">
-                        {cycleTradesInView}
-                      </span>
-                      <span className="text-[9px] md:text-[10px] font-mono text-muted-foreground uppercase">
-                        / {currentCycle.end - currentCycle.start + 1} trades
-                      </span>
-                    </div>
-                  </div>
-                )}
+
+                    {/* Trades column */}
+                    <div className={cn("flex-1 min-w-0 space-y-2", showCycleUI && "pl-0")}>
+                      {/* Cycle header row */}
+                      {showCycleUI && cycle && (
+                        <div
+                          className={cn(
+                            "sticky top-0 z-20 backdrop-blur-md border rounded-md px-3 md:px-4 py-2 flex items-center justify-between gap-3",
+                            colors.border, colors.bg
+                          )}
+                        >
+                          <div className="flex items-center gap-2.5 md:gap-3 min-w-0">
+                            <h3 className={cn("text-xs md:text-sm font-bold truncate", colors.text)}>
+                              {cycle.name}
+                            </h3>
+                            <span className="hidden sm:inline text-[10px] md:text-[11px] font-mono text-muted-foreground">
+                              #{String(cycle.start).padStart(3, "0")} → #{String(cycle.end).padStart(3, "0")}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className="text-[10px] md:text-[11px] font-mono text-foreground font-semibold">
+                              {group.trades.length}
+                            </span>
+                            <span className="text-[9px] md:text-[10px] font-mono text-muted-foreground uppercase">
+                              / {totalInCycle} trades
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {group.trades.map((trade, localIdx) => {
+                        const tradeIdx = group.startIdx + localIdx;
+                        const isBlurred = isEarlyAccess && tradeIdx >= 50;
+                        return (
+              <div key={`wrap-${trade.id}`}>
               <div
                 key={trade.id}
                 className={cn(
@@ -868,7 +938,12 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
               </div>
               </div>
             );
-            })}
+                      })}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         )}
       </div>
