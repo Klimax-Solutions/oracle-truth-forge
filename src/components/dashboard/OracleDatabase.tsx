@@ -271,8 +271,8 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* Header with stats - redesigned & responsive */}
-      <div className="p-3 md:p-4 border-b border-border bg-card">
+      {/* Header with stats — sticky so it stays visible while scrolling */}
+      <div className="sticky top-0 z-40 p-3 md:p-4 border-b border-border bg-card/95 backdrop-blur-sm">
         {/* Mobile: Stack stats and filters */}
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           {/* Stats row - scrollable on mobile */}
@@ -469,8 +469,8 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
         </div>
       </div>
 
-      {/* Trades list */}
-      <div className="flex-1 overflow-auto p-4">
+      {/* Trades list — no overflow-auto so sticky children work vs the parent scroll container */}
+      <div className="flex-1 p-4">
       {filteredTrades.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-muted-foreground text-lg mb-4">Aucun trade correspondant aux filtres</p>
@@ -629,28 +629,28 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
 
                           {/* Stats principales — 4 métriques clés */}
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border/50 rounded-xl overflow-hidden border border-border/50">
-                            <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5">
+                            <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5">
                               <div className="flex items-center gap-1.5">
                                 <Clock className="w-3 h-3 text-muted-foreground/50" />
                                 <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Entrée</span>
                               </div>
                               <p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.entry_time || "—"}</p>
                             </div>
-                            <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5">
+                            <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5">
                               <div className="flex items-center gap-1.5">
                                 <Clock className="w-3 h-3 text-muted-foreground/50" />
                                 <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Sortie</span>
                               </div>
                               <p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.exit_time || "—"}</p>
                             </div>
-                            <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5">
+                            <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5">
                               <div className="flex items-center gap-1.5">
                                 <Target className="w-3 h-3 text-muted-foreground/50" />
                                 <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Durée</span>
                               </div>
                               <p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.trade_duration || "—"}</p>
                             </div>
-                            <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5">
+                            <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5">
                               <div className="flex items-center gap-1.5">
                                 <Calendar className="w-3 h-3 text-muted-foreground/50" />
                                 <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">News</span>
@@ -663,15 +663,15 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
 
                           {/* Contexte setup */}
                           <div className="grid grid-cols-3 gap-px bg-border/50 rounded-xl overflow-hidden border border-border/50">
-                            <div className="bg-background flex flex-col gap-1.5 px-4 py-3 md:py-4">
+                            <div className="bg-transparent flex flex-col gap-1.5 px-4 py-3 md:py-4">
                               <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Structure</span>
                               <p className="text-sm md:text-base font-semibold text-foreground">{trade.direction_structure || "—"}</p>
                             </div>
-                            <div className="bg-background flex flex-col gap-1.5 px-4 py-3 md:py-4">
+                            <div className="bg-transparent flex flex-col gap-1.5 px-4 py-3 md:py-4">
                               <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Timing entrée</span>
                               <p className="text-sm md:text-base font-semibold text-foreground">{trade.entry_timing || "—"}</p>
                             </div>
-                            <div className="bg-background flex flex-col gap-1.5 px-4 py-3 md:py-4">
+                            <div className="bg-transparent flex flex-col gap-1.5 px-4 py-3 md:py-4">
                               <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Stop-Loss</span>
                               <p className="text-sm md:text-base font-semibold text-foreground">{trade.stop_loss_size || "—"}</p>
                             </div>
@@ -877,8 +877,8 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                       "absolute top-14 bottom-0 left-1/2 -translate-x-1/2 w-[2px] bg-gradient-to-b",
                       colors.rail
                     )} />
-                    {/* Chip sticky — suit le scroll dans le groupe */}
-                    <div className="sticky top-2 z-30">
+                    {/* Chip sticky — suit le scroll, se positionne sous le header stats (top-[57px]) */}
+                    <div className="sticky top-[57px] z-30">
                       <div className={cn(
                         "rounded-lg border-2 flex flex-col items-center gap-1 py-2.5 px-1",
                         "bg-background shadow-md",
@@ -1009,15 +1009,15 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                                         </div>
                                       </div>
                                       <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border/50 rounded-xl overflow-hidden border border-border/50">
-                                        <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Entrée</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.entry_time || "—"}</p></div>
-                                        <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Sortie</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.exit_time || "—"}</p></div>
-                                        <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Target className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Durée</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.trade_duration || "—"}</p></div>
-                                        <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Calendar className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">News</span></div><p className="text-xl font-bold text-foreground leading-none">{trade.news_day ? (trade.news_label || "Oui") : "Non"}</p></div>
+                                        <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Entrée</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.entry_time || "—"}</p></div>
+                                        <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Sortie</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.exit_time || "—"}</p></div>
+                                        <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Target className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Durée</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.trade_duration || "—"}</p></div>
+                                        <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Calendar className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">News</span></div><p className="text-xl font-bold text-foreground leading-none">{trade.news_day ? (trade.news_label || "Oui") : "Non"}</p></div>
                                       </div>
                                       <div className="grid grid-cols-3 gap-px bg-border/50 rounded-xl overflow-hidden border border-border/50">
-                                        <div className="bg-background flex flex-col gap-1.5 px-4 py-3 md:py-4"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Structure</span><p className="text-sm md:text-base font-semibold text-foreground">{trade.direction_structure || "—"}</p></div>
-                                        <div className="bg-background flex flex-col gap-1.5 px-4 py-3 md:py-4"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Timing entrée</span><p className="text-sm md:text-base font-semibold text-foreground">{trade.entry_timing || "—"}</p></div>
-                                        <div className="bg-background flex flex-col gap-1.5 px-4 py-3 md:py-4"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Stop-Loss</span><p className="text-sm md:text-base font-semibold text-foreground">{trade.stop_loss_size || "—"}</p></div>
+                                        <div className="bg-transparent flex flex-col gap-1.5 px-4 py-3 md:py-4"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Structure</span><p className="text-sm md:text-base font-semibold text-foreground">{trade.direction_structure || "—"}</p></div>
+                                        <div className="bg-transparent flex flex-col gap-1.5 px-4 py-3 md:py-4"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Timing entrée</span><p className="text-sm md:text-base font-semibold text-foreground">{trade.entry_timing || "—"}</p></div>
+                                        <div className="bg-transparent flex flex-col gap-1.5 px-4 py-3 md:py-4"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Stop-Loss</span><p className="text-sm md:text-base font-semibold text-foreground">{trade.stop_loss_size || "—"}</p></div>
                                       </div>
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                                         <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
