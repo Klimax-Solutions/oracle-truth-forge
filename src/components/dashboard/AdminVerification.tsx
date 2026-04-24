@@ -223,6 +223,14 @@ export const AdminVerification = () => {
   const [userSearch, setUserSearch] = useState("");
   const [verificationSearch, setVerificationSearch] = useState("");
   const [verificationAssigneeFilter, setVerificationAssigneeFilter] = useState<string>("all");
+  // Users panel filters
+  const [userStatusFilter, setUserStatusFilter] = useState<string>("all");
+  const [userRoleFilter, setUserRoleFilter] = useState<string>("all");
+  const [userInitFilter, setUserInitFilter] = useState<string>("all"); // all | initialized | ghost
+  const [userActivityFilter, setUserActivityFilter] = useState<string>("all"); // all | with_trades | no_trades
+  const [userFakeFilter, setUserFakeFilter] = useState<string>("all"); // all | real | suspicious | fake
+  const [userCycleFilter, setUserCycleFilter] = useState<string>("all"); // all | 0..8
+  const [userSortBy, setUserSortBy] = useState<string>("smart"); // smart | recent | name | trades | cycle
   const [historySearch, setHistorySearch] = useState("");
   // Assignment states
   const [assigningRequest, setAssigningRequest] = useState<string | null>(null);
