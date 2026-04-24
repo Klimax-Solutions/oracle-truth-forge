@@ -283,6 +283,37 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
               </button>
             )}
 
+            {!isDataGenerale && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className={cn(
+                    "px-2 md:px-3 py-1 md:py-1.5 text-[9px] md:text-[10px] font-medium rounded-md transition-all flex items-center gap-1 flex-shrink-0",
+                    filters.cycle.length > 0
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  )}>
+                    Cycle{filters.cycle.length > 0 && ` (${filters.cycle.length})`}
+                    <ChevronDown className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[160px] p-1 max-h-72 overflow-y-auto scrollbar-hide">
+                  {CYCLES.map(c => (
+                    <DropdownMenuCheckboxItem
+                      key={c.num}
+                      checked={filters.cycle.includes(c.num)}
+                      onCheckedChange={() => toggleCycle(c.num)}
+                      className="text-foreground text-[10px] md:text-xs rounded-md px-2 md:px-3 py-1.5 md:py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
+                    >
+                      <span className="flex items-center justify-between gap-3 w-full">
+                        <span>{c.name}</span>
+                        <span className="text-muted-foreground font-mono text-[9px] md:text-[10px]">#{String(c.start).padStart(3,'0')}–{String(c.end).padStart(3,'0')}</span>
+                      </span>
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className={cn(
