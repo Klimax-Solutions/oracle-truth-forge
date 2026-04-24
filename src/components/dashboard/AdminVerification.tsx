@@ -165,13 +165,21 @@ interface PendingRequest extends VerificationRequest {
 interface PlatformUser {
   id: string;
   displayName: string;
+  email?: string | null;
   created_at: string;
   currentCycle: Cycle | null;
   userCycles: UserCycle[];
   totalTrades: number;
   totalRR: number;
   status: "active" | "pending" | "completed";
+  profileStatus: "active" | "pending" | "frozen" | "banned";
   executions: UserExecution[];
+  // Enrichissements
+  roles: string[]; // ['member','early_access',...]
+  hasCycles: boolean; // false = fantôme
+  lastSeenAt: string | null;
+  fakeScore: number; // 0=réel, 100=très probable fake
+  fakeLevel: "real" | "low" | "medium" | "high";
 }
 
 interface PendingAccount {
