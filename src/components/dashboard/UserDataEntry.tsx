@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
+import { TimeField } from "@/components/ui/time-field";
 // CustomizableSelect removed - using CustomizableMultiSelect for all fields
 import { CustomizableMultiSelect } from "@/components/dashboard/CustomizableMultiSelect";
 import { useCustomVariables } from "@/hooks/useCustomVariables";
@@ -250,66 +251,6 @@ const initialFormData: FormData = {
   news_label: "",
 };
 
-// ── TimeInput — plain keyboard-first HH:MM field, no clock icon ──────────────
-const TimeInput = ({
-  value,
-  onChange,
-  className,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  className?: string;
-}) => {
-  const [local, setLocal] = React.useState(value || "");
-
-  React.useEffect(() => { setLocal(value || ""); }, [value]);
-
-  const format = (raw: string): string => {
-    const d = raw.replace(/\D/g, "").slice(0, 4);
-    if (d.length <= 1) return d;
-    if (d.length === 2) return d + ":";
-    return `${d.slice(0, 2)}:${d.slice(2)}`;
-  };
-
-  const normalize = (raw: string): string => {
-    const d = raw.replace(/\D/g, "");
-    if (!d) return "";
-    const p = d.padEnd(4, "0").slice(0, 4);
-    const hh = Math.min(parseInt(p.slice(0, 2)) || 0, 23).toString().padStart(2, "0");
-    const mm = Math.min(parseInt(p.slice(2)) || 0, 59).toString().padStart(2, "0");
-    return `${hh}:${mm}`;
-  };
-
-  return (
-    <Input
-      type="text"
-      inputMode="numeric"
-      autoComplete="off"
-      spellCheck={false}
-      value={local}
-      placeholder="HH:MM"
-      maxLength={5}
-      className={cn("font-mono", className)}
-      onChange={(e) => {
-        const f = format(e.target.value);
-        setLocal(f);
-        if (/^\d{2}:\d{2}$/.test(f)) onChange(normalize(f));
-        else if (f === "") onChange("");
-      }}
-      onBlur={() => {
-        const n = normalize(local);
-        setLocal(n);
-        if (n !== value) onChange(n);
-      }}
-      onKeyDown={(e) => {
-        const allowed = ["Backspace", "Delete", "Tab", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
-        if (allowed.includes(e.key)) return;
-        if ((e.metaKey || e.ctrlKey) && ["a", "c", "v", "x"].includes(e.key.toLowerCase())) return;
-        if (!/^[0-9:]$/.test(e.key)) e.preventDefault();
-      }}
-    />
-  );
-};
 
 export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: UserDataEntryProps) => {
   const [executions, setExecutions] = useState<UserExecution[]>([]);
@@ -953,11 +894,11 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-foreground/85">H. Entrée</Label>
-                          <TimeInput value={formData.entry_time} onChange={(v) => setFormData({ ...formData, entry_time: v })} className="h-9 border-white/30 bg-white/[.04]" />
+                          <TimeField value={formData.entry_time} onChange={(v) => setFormData({ ...formData, entry_time: v })} className="h-9" />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-foreground/85">H. Sortie</Label>
-                          <TimeInput value={formData.exit_time} onChange={(v) => setFormData({ ...formData, exit_time: v })} className="h-9 border-white/30 bg-white/[.04]" />
+                          <TimeField value={formData.exit_time} onChange={(v) => setFormData({ ...formData, exit_time: v })} className="h-9" />
                         </div>
                       </div>
                       {(!isSameDay || !formData.exit_date) && (
