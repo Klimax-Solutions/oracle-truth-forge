@@ -1983,13 +1983,28 @@ export const AdminVerification = () => {
                               <User className="w-4 h-4 text-orange-400" />
                             </div>
                             <div className="min-w-0">
-                              <h4 className="font-semibold text-foreground text-xs truncate flex items-center gap-1">
+                              <h4 className="font-semibold text-foreground text-xs truncate flex items-center gap-1 flex-wrap">
                                 {request.userName}
                                 {request.attemptNumber > 1 && (
                                   <span className="text-[9px] px-1 py-0.5 rounded bg-orange-500/20 text-orange-400 font-mono flex-shrink-0">
                                     ×{request.attemptNumber}
                                   </span>
                                 )}
+                                {request.cycle?.cycle_number === 0 && (() => {
+                                  const realSaisies = request.executions.filter(e => e.trade_number >= 1 && e.trade_number <= 15).length;
+                                  if (realSaisies < 15) {
+                                    return (
+                                      <span
+                                        className="text-[9px] px-1 py-0.5 rounded bg-destructive/20 text-destructive font-mono flex items-center gap-0.5 flex-shrink-0"
+                                        title={`Seules ${realSaisies}/15 datas ont été réellement saisies dans user_executions. Les autres ont été cochées sans saisie réelle.`}
+                                      >
+                                        <AlertTriangle className="w-2.5 h-2.5" />
+                                        {realSaisies}/15
+                                      </span>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                               </h4>
                               <p className="text-[10px] text-muted-foreground font-mono truncate">
                                 {request.cycle?.name || "Cycle inconnu"}
@@ -2040,13 +2055,28 @@ export const AdminVerification = () => {
                               <User className="w-5 h-5 text-orange-400" />
                             </div>
                             <div>
-                              <h4 className="font-semibold text-foreground flex items-center gap-2">
+                              <h4 className="font-semibold text-foreground flex items-center gap-2 flex-wrap">
                                 {request.userName} — {request.cycle?.name || "Cycle inconnu"}
                                 {request.attemptNumber > 1 && (
                                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 font-mono">
                                     {request.attemptNumber}ème demande
                                   </span>
                                 )}
+                                {request.cycle?.cycle_number === 0 && (() => {
+                                  const realSaisies = request.executions.filter(e => e.trade_number >= 1 && e.trade_number <= 15).length;
+                                  if (realSaisies < 15) {
+                                    return (
+                                      <span
+                                        className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/20 text-destructive font-mono flex items-center gap-1"
+                                        title={`Seules ${realSaisies}/15 datas ont été réellement saisies. Les ${15 - realSaisies} autres ont été cochées sans saisie réelle dans user_executions.`}
+                                      >
+                                        <AlertTriangle className="w-3 h-3" />
+                                        Saisie réelle : {realSaisies}/15
+                                      </span>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                               </h4>
                               <p className="text-xs text-muted-foreground font-mono">
                                 Demandé le {new Date(request.requested_at).toLocaleDateString("fr-FR", {
