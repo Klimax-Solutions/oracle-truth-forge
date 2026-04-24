@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -183,6 +183,18 @@ const CYCLE_THRESHOLDS = [
   { max: 357, name: "Cycle 8" },     // Trades 294-357 (64 trades)
 ];
 
+// Get cycle label and range for a trade number (for visual grouping)
+const getCycleLabelForTrade = (tradeNumber: number): { label: string; start: number; end: number } | null => {
+  let prevMax = 0;
+  for (const cycle of CYCLE_THRESHOLDS) {
+    if (tradeNumber > prevMax && tradeNumber <= cycle.max) {
+      return { label: cycle.name, start: prevMax + 1, end: cycle.max };
+    }
+    prevMax = cycle.max;
+  }
+  return null;
+};
+
 // Get the current cycle threshold based on total trades
 const getCurrentCycleThreshold = (totalTrades: number): number => {
   for (const cycle of CYCLE_THRESHOLDS) {
@@ -243,6 +255,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
   const [executions, setExecutions] = useState<UserExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showAdvancedPrices, setShowAdvancedPrices] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -835,231 +848,203 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                   </DialogTitle>
                 </DialogHeader>
                 
-                {/* Section 1: Infos principales */}
-                <div className="space-y-6">
+                <div className="space-y-7">
+
+                  {/* ── 1. DIRECTION — le premier choix, visuel et immédiat ── */}
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Informations</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                    <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/50 mb-3">Direction</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, direction: "Long" })}
+                        className={cn(
+                          "flex items-center justify-center gap-3 py-5 rounded-xl border-2 transition-all duration-150 font-bold text-base",
+                          formData.direction === "Long"
+                            ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_24px_-8px_theme(colors.emerald.500)]"
+                            : "border-border/50 text-muted-foreground hover:border-emerald-500/40 hover:text-emerald-500/70"
+                        )}
+                      >
+                        <TrendingUp className="w-5 h-5" />
+                        Long
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, direction: "Short" })}
+                        className={cn(
+                          "flex items-center justify-center gap-3 py-5 rounded-xl border-2 transition-all duration-150 font-bold text-base",
+                          formData.direction === "Short"
+                            ? "border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_24px_-8px_theme(colors.red.500)]"
+                            : "border-border/50 text-muted-foreground hover:border-red-500/40 hover:text-red-500/70"
+                        )}
+                      >
+                        <TrendingDown className="w-5 h-5" />
+                        Short
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ── 2. TIMING — quand ── */}
+                  <div>
+                    <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/50 mb-3">Timing</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">N° Trade</Label>
-                        <Input
-                          type="number"
-                          value={formData.trade_number}
-                          onChange={(e) => setFormData({ ...formData, trade_number: e.target.value })}
-                        />
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">N° Trade</Label>
+                        <Input type="number" value={formData.trade_number} onChange={(e) => setFormData({ ...formData, trade_number: e.target.value })} />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Date Entrée</Label>
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Date entrée</Label>
                         <DatePicker value={formData.trade_date} onChange={handleEntryDateChange} />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Date Sortie</Label>
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Heure entrée</Label>
+                        <TimePicker value={formData.entry_time} onChange={(value) => setFormData({ ...formData, entry_time: value })} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Heure sortie</Label>
+                        <TimePicker value={formData.exit_time} onChange={(value) => setFormData({ ...formData, exit_time: value })} />
+                      </div>
+                    </div>
+                    {/* Date sortie si différente */}
+                    <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Date sortie</Label>
                         <DatePicker value={formData.exit_date} onChange={(value) => setFormData({ ...formData, exit_date: value })} />
                         {!isSameDay && formData.exit_date && (
                           <p className="text-[10px] text-orange-400 font-mono">Sortie J+{Math.ceil((new Date(formData.exit_date).getTime() - new Date(formData.trade_date).getTime()) / (1000 * 60 * 60 * 24))}</p>
                         )}
                       </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Direction</Label>
-                        <Select value={formData.direction} onValueChange={(v) => setFormData({ ...formData, direction: v as "Long" | "Short" })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Long">Long</SelectItem>
-                            <SelectItem value="Short">Short</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
                     </div>
                   </div>
 
-                  {/* Section 2: Filtres multi-select */}
+                  {/* ── 3. RÉSULTAT — Win / Loss / BE + RR ── */}
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Paramètres du Setup</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Type de Configuration</Label>
-                        <CustomizableMultiSelect
-                          value={formData.setup_type}
-                          onChange={(v) => setFormData({ ...formData, setup_type: v })}
-                          fixedOptions={SETUP_TYPE_FIXED_OPTIONS}
-                          customOptions={variables.setup_type}
-                          variableType="setup_type"
-                          placeholder="Sélectionner..."
-                          onOptionsChanged={refetchVariables}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Contexte</Label>
-                        <CustomizableMultiSelect
-                          value={formData.direction_structure}
-                          onChange={(v) => setFormData({ ...formData, direction_structure: v })}
-                          customOptions={variables.direction_structure}
-                          variableType="direction_structure"
-                          placeholder="Sélectionner..."
-                          onOptionsChanged={refetchVariables}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Entry Model</Label>
-                        <CustomizableMultiSelect
-                          value={formData.entry_model}
-                          onChange={(v) => setFormData({ ...formData, entry_model: v })}
-                          fixedOptions={ENTRY_MODEL_FIXED_OPTIONS}
-                          customOptions={variables.entry_model}
-                          variableType="entry_model"
-                          placeholder="Sélectionner..."
-                          onOptionsChanged={refetchVariables}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Timing</Label>
-                        <CustomizableMultiSelect
-                          value={formData.entry_timing}
-                          onChange={(v) => setFormData({ ...formData, entry_timing: v })}
-                          fixedOptions={TIMING_FIXED_OPTIONS}
-                          customOptions={variables.entry_timing}
-                          variableType="entry_timing"
-                          placeholder="Sélectionner..."
-                          onOptionsChanged={refetchVariables}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Time Frame</Label>
-                        <CustomizableMultiSelect
-                          value={formData.entry_timeframe}
-                          onChange={(v) => setFormData({ ...formData, entry_timeframe: v })}
-                          fixedOptions={ENTRY_TIMEFRAME_FIXED_OPTIONS}
-                          customOptions={variables.entry_timeframe}
-                          variableType="entry_timeframe"
-                          placeholder="Sélectionner..."
-                          onOptionsChanged={refetchVariables}
-                        />
-                      </div>
+                    <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/50 mb-3">Résultat</p>
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      {([
+                        { value: "Win",  label: "Win",        activeClass: "border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_20px_-8px_theme(colors.emerald.500)]" },
+                        { value: "Loss", label: "Loss",       activeClass: "border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_20px_-8px_theme(colors.red.500)]" },
+                        { value: "BE",   label: "Break Even", activeClass: "border-amber-500 bg-amber-500/10 text-amber-400 shadow-[0_0_20px_-8px_theme(colors.amber.500)]" },
+                      ] as const).map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, result: opt.value })}
+                          className={cn(
+                            "py-3 rounded-xl border-2 font-semibold text-sm transition-all duration-150",
+                            formData.result === opt.value
+                              ? opt.activeClass
+                              : "border-border/50 text-muted-foreground hover:border-border"
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
                     </div>
-
-                    {/* SL/TP Placement */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mt-3">
+                    <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Placement du SL</Label>
-                        <CustomizableMultiSelect
-                          value={formData.sl_placement}
-                          onChange={(v) => setFormData({ ...formData, sl_placement: v })}
-                          customOptions={variables.sl_placement || []}
-                          variableType="sl_placement"
-                          placeholder="Sélectionner..."
-                          onOptionsChanged={refetchVariables}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Placement du TP</Label>
-                        <CustomizableMultiSelect
-                          value={formData.tp_placement}
-                          onChange={(v) => setFormData({ ...formData, tp_placement: v })}
-                          customOptions={variables.tp_placement || []}
-                          variableType="tp_placement"
-                          placeholder="Sélectionner..."
-                          onOptionsChanged={refetchVariables}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Section 3: Temps & Résultat */}
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Exécution</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Heure Entrée</Label>
-                        <TimePicker
-                          value={formData.entry_time}
-                          onChange={(value) => setFormData({ ...formData, entry_time: value })}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Heure Sortie</Label>
-                        <TimePicker
-                          value={formData.exit_time}
-                          onChange={(value) => setFormData({ ...formData, exit_time: value })}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Résultat</Label>
-                        <Select value={formData.result} onValueChange={(v) => setFormData({ ...formData, result: v as "Win" | "Loss" | "BE" | "" })}>
-                          <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Win">Win</SelectItem>
-                            <SelectItem value="Loss">Loss</SelectItem>
-                            <SelectItem value="BE">Break Even</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">RR</Label>
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">RR</Label>
                         <Input
                           type="number"
                           step="0.1"
                           value={formData.rr}
                           onChange={(e) => setFormData({ ...formData, rr: e.target.value })}
                           placeholder="Ex: 2.5"
+                          className={cn(
+                            "text-lg font-bold tabular-nums",
+                            formData.result === "Win" && formData.rr ? "text-emerald-400" : "",
+                            formData.result === "Loss" && formData.rr ? "text-red-400" : "",
+                          )}
                         />
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Taille du SL + News */}
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Complément</p>
-                    <div className="grid grid-cols-2 gap-3 md:gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Taille du SL</Label>
-                        <Input
-                          value={formData.stop_loss_size}
-                          onChange={(e) => setFormData({ ...formData, stop_loss_size: e.target.value })}
-                          placeholder="Taille du stop loss en points/pips"
-                        />
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Taille du SL</Label>
+                        <Input value={formData.stop_loss_size} onChange={(e) => setFormData({ ...formData, stop_loss_size: e.target.value })} placeholder="Points / pips" />
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 mt-3">
+                    {/* News */}
+                    <div className="flex items-center gap-3 mt-4">
                       <Checkbox
                         id="news_day_exec"
                         checked={formData.news_day}
                         onCheckedChange={(checked) => setFormData({ ...formData, news_day: !!checked, news_label: !!checked ? formData.news_label : "" })}
                       />
-                      <Label htmlFor="news_day_exec" className="cursor-pointer text-xs">Jour de news</Label>
+                      <Label htmlFor="news_day_exec" className="cursor-pointer text-[10px] font-mono uppercase tracking-wide text-muted-foreground/70">Jour de news</Label>
                     </div>
                     {formData.news_day && (
-                      <div className="mt-2 ml-7 space-y-1.5">
-                        <Label className="text-xs">Label de la news</Label>
-                        <Input
-                          value={formData.news_label}
-                          onChange={(e) => setFormData({ ...formData, news_label: e.target.value })}
-                          placeholder="Ex: NFP, CPI, FOMC..."
-                        />
+                      <div className="mt-3 space-y-1.5">
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Label de la news</Label>
+                        <Input value={formData.news_label} onChange={(e) => setFormData({ ...formData, news_label: e.target.value })} placeholder="NFP, CPI, FOMC…" />
                       </div>
                     )}
                   </div>
 
-                  {/* Section 4: Prix manuels */}
+                  {/* ── 4. CLASSIFICATION SETUP ── */}
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Données Manuelles</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                    <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/50 mb-3">Classification du Setup</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Prix Entrée</Label>
-                        <Input type="number" step="0.00001" value={formData.entry_price} onChange={(e) => setFormData({ ...formData, entry_price: e.target.value })} placeholder="Ex: 1.08542" />
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Type de config</Label>
+                        <CustomizableMultiSelect value={formData.setup_type} onChange={(v) => setFormData({ ...formData, setup_type: v })} fixedOptions={SETUP_TYPE_FIXED_OPTIONS} customOptions={variables.setup_type} variableType="setup_type" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Prix Sortie</Label>
-                        <Input type="number" step="0.00001" value={formData.exit_price} onChange={(e) => setFormData({ ...formData, exit_price: e.target.value })} placeholder="Ex: 1.08650" />
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Contexte</Label>
+                        <CustomizableMultiSelect value={formData.direction_structure} onChange={(v) => setFormData({ ...formData, direction_structure: v })} customOptions={variables.direction_structure} variableType="direction_structure" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Stop Loss</Label>
-                        <Input type="number" step="0.00001" value={formData.stop_loss} onChange={(e) => setFormData({ ...formData, stop_loss: e.target.value })} placeholder="Ex: 1.08500" />
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Entry Model</Label>
+                        <CustomizableMultiSelect value={formData.entry_model} onChange={(v) => setFormData({ ...formData, entry_model: v })} fixedOptions={ENTRY_MODEL_FIXED_OPTIONS} customOptions={variables.entry_model} variableType="entry_model" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Take Profit</Label>
-                        <Input type="number" step="0.00001" value={formData.take_profit} onChange={(e) => setFormData({ ...formData, take_profit: e.target.value })} placeholder="Ex: 1.08700" />
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Timing</Label>
+                        <CustomizableMultiSelect value={formData.entry_timing} onChange={(v) => setFormData({ ...formData, entry_timing: v })} fixedOptions={TIMING_FIXED_OPTIONS} customOptions={variables.entry_timing} variableType="entry_timing" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Time Frame</Label>
+                        <CustomizableMultiSelect value={formData.entry_timeframe} onChange={(v) => setFormData({ ...formData, entry_timeframe: v })} fixedOptions={ENTRY_TIMEFRAME_FIXED_OPTIONS} customOptions={variables.entry_timeframe} variableType="entry_timeframe" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} />
                       </div>
                     </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Placement du SL</Label>
+                        <CustomizableMultiSelect value={formData.sl_placement} onChange={(v) => setFormData({ ...formData, sl_placement: v })} customOptions={variables.sl_placement || []} variableType="sl_placement" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Placement du TP</Label>
+                        <CustomizableMultiSelect value={formData.tp_placement} onChange={(v) => setFormData({ ...formData, tp_placement: v })} customOptions={variables.tp_placement || []} variableType="tp_placement" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── 5. PRIX — section avancée collapsible ── */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedPrices(!showAdvancedPrices)}
+                      className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                    >
+                      <span className={cn("transition-transform duration-200", showAdvancedPrices ? "rotate-90" : "")}>▶</span>
+                      Prix exacts (optionnel)
+                    </button>
+                    {showAdvancedPrices && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Prix Entrée</Label>
+                          <Input type="number" step="0.00001" value={formData.entry_price} onChange={(e) => setFormData({ ...formData, entry_price: e.target.value })} placeholder="1.08542" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Prix Sortie</Label>
+                          <Input type="number" step="0.00001" value={formData.exit_price} onChange={(e) => setFormData({ ...formData, exit_price: e.target.value })} placeholder="1.08650" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Stop Loss</Label>
+                          <Input type="number" step="0.00001" value={formData.stop_loss} onChange={(e) => setFormData({ ...formData, stop_loss: e.target.value })} placeholder="1.08500" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Take Profit</Label>
+                          <Input type="number" step="0.00001" value={formData.take_profit} onChange={(e) => setFormData({ ...formData, take_profit: e.target.value })} placeholder="1.08700" />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Section 5: Screenshots — obligatoires */}
@@ -1385,12 +1370,27 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
           </div>
         ) : (
           <div className="space-y-2">
-            {executions.map((execution) => {
+            {executions.map((execution, execIdx) => {
               const isSelected = selectedExecution?.id === execution.id;
+              const cycleInfo = getCycleLabelForTrade(execution.trade_number);
+              const prevExecution = execIdx > 0 ? executions[execIdx - 1] : null;
+              const prevCycleInfo = prevExecution ? getCycleLabelForTrade(prevExecution.trade_number) : null;
+              const showCycleHeader = cycleInfo && cycleInfo.label !== prevCycleInfo?.label;
 
               return (
+                <React.Fragment key={execution.id}>
+                  {showCycleHeader && (
+                    <div className="flex items-center gap-3 pt-3 pb-1">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/70 whitespace-nowrap">
+                        {cycleInfo.label}
+                        <span className="ml-2 text-muted-foreground/40">
+                          {cycleInfo.start}–{cycleInfo.end}
+                        </span>
+                      </span>
+                      <div className="flex-1 border-t border-border/40" />
+                    </div>
+                  )}
                 <div
-                  key={execution.id}
                   className={cn(
                     "border transition-all rounded-md overflow-hidden",
                     isSelected
@@ -1721,6 +1721,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     </div>
                   )}
                 </div>
+                </React.Fragment>
               );
             })}
           </div>
