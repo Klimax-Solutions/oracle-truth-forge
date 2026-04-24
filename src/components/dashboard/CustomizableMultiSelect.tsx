@@ -1,12 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Plus, Trash2, X, Check, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -19,8 +14,8 @@ interface CustomizableMultiSelectProps {
   variableType: string;
   placeholder?: string;
   onOptionsChanged: () => void;
-  /** compact: trigger h-9 instead of h-10 */
   compact?: boolean;
+  className?: string;
 }
 
 export const CustomizableMultiSelect = ({
@@ -32,10 +27,14 @@ export const CustomizableMultiSelect = ({
   placeholder = "Sélectionner…",
   onOptionsChanged,
   compact = false,
+  className,
 }: CustomizableMultiSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const [newValue, setNewValue] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const allOptions = [
@@ -47,11 +46,41 @@ export const CustomizableMultiSelect = ({
     ? value.split(",").map((v) => v.trim()).filter(Boolean)
     : [];
 
+  // ── Open / close ────────────────────────────────────────────
+  const handleToggle = () => {
+    if (!isOpen && triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setDropdownPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
+    setIsOpen((v) => !v);
+  };
+
+  // Close on outside click
+  useEffect(() => {
+    if (!isOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (triggerRef.current?.contains(e.target as Node)) return;
+      if (dropdownRef.current?.contains(e.target as Node)) return;
+      setIsOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [isOpen]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIsOpen(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isOpen]);
+
+  // ── Value helpers ────────────────────────────────────────────
   const toggleValue = (opt: string) => {
-    const newSelected = selectedValues.includes(opt)
+    const next = selectedValues.includes(opt)
       ? selectedValues.filter((v) => v !== opt)
       : [...selectedValues, opt];
-    onChange(newSelected.join(", "));
+    onChange(next.join(", "));
   };
 
   const removeValue = (opt: string, e: React.MouseEvent) => {
@@ -59,13 +88,10 @@ export const CustomizableMultiSelect = ({
     onChange(selectedValues.filter((v) => v !== opt).join(", "));
   };
 
-  const handleAddOption = async () => {
+  // ── CRUD ─────────────────────────────────────────────────────
+  const handleAdd = async () => {
     const trimmed = newValue.trim();
-    if (!trimmed) return;
-    if (allOptions.includes(trimmed)) {
-      toast({ title: "Option existante", description: `"${trimmed}" existe déjà.`, variant: "destructive" });
-      return;
-    }
+    if (!trimmed || allOptions.includes(trimmed)) return;
     setIsAdding(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setIsAdding(false); return; }
@@ -75,133 +101,138 @@ export const CustomizableMultiSelect = ({
       variable_value: trimmed,
     });
     setIsAdding(false);
-    if (error) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
-    } else {
-      setNewValue("");
-      onOptionsChanged();
-      toast({ title: "Option ajoutée", description: `"${trimmed}" ajouté.` });
-    }
+    if (!error) { setNewValue(""); onOptionsChanged(); }
+    else toast({ title: "Erreur", description: error.message, variant: "destructive" });
   };
 
-  const handleDeleteOption = async (optionValue: string) => {
+  const handleDelete = async (opt: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     await supabase.from("user_custom_variables")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("variable_type", variableType)
-      .eq("variable_value", optionValue);
-    if (selectedValues.includes(optionValue)) {
-      onChange(selectedValues.filter((v) => v !== optionValue).join(", "));
-    }
+      .delete().eq("user_id", user.id).eq("variable_type", variableType).eq("variable_value", opt);
+    if (selectedValues.includes(opt))
+      onChange(selectedValues.filter((v) => v !== opt).join(", "));
     onOptionsChanged();
-    toast({ title: "Option supprimée" });
   };
 
+  // ── Render ───────────────────────────────────────────────────
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        {/* Styled exactly like an Input field */}
-        <button
-          type="button"
-          className={cn(
-            "flex w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm",
-            "ring-offset-background transition-colors",
-            "hover:border-ring/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            compact ? "h-9 min-h-9" : "h-10 min-h-10",
-            selectedValues.length === 0 && "text-muted-foreground"
-          )}
-        >
-          {selectedValues.length > 0 ? (
-            <div className="flex flex-wrap gap-1 flex-1 overflow-hidden min-w-0">
-              {selectedValues.map((v) => (
-                <span
-                  key={v}
-                  className="inline-flex items-center gap-0.5 bg-primary/15 text-primary text-xs px-1.5 py-0.5 rounded font-medium"
-                >
-                  <span className="truncate max-w-[100px]">{v}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => removeValue(v, e)}
-                    className="hover:text-destructive shrink-0 ml-0.5"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          ) : (
-            <span className="flex-1 text-left truncate">{placeholder}</span>
-          )}
-          <ChevronDown className={cn(
-            "ml-1 shrink-0 text-muted-foreground/60 transition-transform duration-150",
-            "w-4 h-4",
-            isOpen && "rotate-180"
-          )} />
-        </button>
-      </PopoverTrigger>
-
-      <PopoverContent className="w-64 p-2 z-[100]" align="start" onWheel={(e) => e.stopPropagation()}>
-        {/* Add custom option inline */}
-        <div className="flex gap-1.5 mb-2">
-          <Input
-            value={newValue}
-            onChange={(e) => setNewValue(e.target.value)}
-            placeholder="Nouvelle option…"
-            className="h-8 text-xs"
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddOption(); } }}
-          />
-          <Button type="button" size="sm" className="h-8 px-2 shrink-0" onClick={handleAddOption} disabled={isAdding || !newValue.trim()}>
-            <Plus className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-        <div className="h-px bg-border/40 mb-2" />
-        {/* Options */}
-        <div className="space-y-0.5 max-h-52 overflow-y-auto">
-          {allOptions.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-3 italic">
-              Tapez ci-dessus pour ajouter une option
-            </p>
-          )}
-          {allOptions.map((opt) => {
-            const isSelected = selectedValues.includes(opt);
-            const isCustom = !fixedOptions.includes(opt);
-            return (
-              <div key={opt} className="flex items-center gap-1 group">
-                <button
-                  type="button"
-                  className={cn(
-                    "flex-1 flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors text-left",
-                    isSelected ? "bg-primary/10 text-primary" : "hover:bg-muted text-foreground"
-                  )}
-                  onClick={() => toggleValue(opt)}
-                >
-                  <div className={cn(
-                    "w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 transition-colors",
-                    isSelected ? "bg-primary border-primary text-primary-foreground" : "border-input"
-                  )}>
-                    {isSelected && <Check className="w-3 h-3" />}
-                  </div>
-                  <span className="truncate flex-1">{opt}</span>
-                  {isCustom && (
-                    <span className="text-[10px] text-muted-foreground/50 shrink-0">perso</span>
-                  )}
+    <>
+      {/* Trigger — looks exactly like an Input */}
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={handleToggle}
+        className={cn(
+          "flex w-full items-center rounded-md border bg-white/[.04] px-3 py-2 text-sm transition-all duration-150",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20",
+          compact ? "h-9" : "h-10",
+          isOpen ? "border-white/40 bg-white/[.07]" : "border-white/25 hover:border-white/35 hover:bg-white/[.06]",
+          selectedValues.length === 0 ? "text-foreground/40" : "text-foreground",
+          className
+        )}
+      >
+        {selectedValues.length > 0 ? (
+          <div className="flex flex-wrap gap-1 flex-1 overflow-hidden min-w-0">
+            {selectedValues.map((v) => (
+              <span key={v} className="inline-flex items-center gap-0.5 bg-primary/20 text-primary text-[11px] px-1.5 py-0.5 rounded font-semibold">
+                <span className="truncate max-w-[100px]">{v}</span>
+                <button type="button" onClick={(e) => removeValue(v, e)} className="shrink-0 ml-0.5 opacity-60 hover:opacity-100 hover:text-destructive">
+                  <X className="w-2.5 h-2.5" />
                 </button>
-                {isCustom && (
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="flex-1 text-left truncate text-sm">{placeholder}</span>
+        )}
+        <ChevronDown className={cn(
+          "ml-1.5 shrink-0 w-3.5 h-3.5 transition-all duration-200",
+          isOpen ? "rotate-180 text-foreground/70" : "text-foreground/30"
+        )} />
+      </button>
+
+      {/* Dropdown — rendered via portal for perfect positioning */}
+      {isOpen && dropdownPos && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{
+            position: "fixed",
+            top: dropdownPos.top,
+            left: dropdownPos.left,
+            width: dropdownPos.width,
+            zIndex: 9999,
+          }}
+          className="rounded-xl border border-white/[.15] bg-[hsl(var(--card))] shadow-2xl shadow-black/70 overflow-hidden"
+        >
+          {/* Add option */}
+          <div className="flex gap-1.5 p-2 border-b border-white/[.08]">
+            <Input
+              value={newValue}
+              onChange={(e) => setNewValue(e.target.value)}
+              placeholder="Ajouter une option…"
+              className="h-8 text-xs border-white/[.15] bg-white/[.05] placeholder:text-foreground/30"
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={isAdding || !newValue.trim()}
+              className={cn(
+                "h-8 w-8 shrink-0 rounded-md border border-white/[.15] flex items-center justify-center transition-all",
+                newValue.trim() ? "bg-primary/80 hover:bg-primary text-primary-foreground border-primary/60" : "text-foreground/30 cursor-not-allowed"
+              )}
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Options */}
+          <div className="max-h-56 overflow-y-auto py-1">
+            {allOptions.length === 0 && (
+              <p className="text-xs text-foreground/30 text-center py-4 italic">Tapez ci-dessus pour ajouter une option</p>
+            )}
+            {allOptions.map((opt) => {
+              const isSelected = selectedValues.includes(opt);
+              const isCustom = !fixedOptions.includes(opt);
+              return (
+                <div key={opt} className="flex items-center group px-1">
                   <button
                     type="button"
-                    onClick={() => handleDeleteOption(opt)}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:text-destructive transition-all"
+                    onClick={() => toggleValue(opt)}
+                    className={cn(
+                      "flex-1 flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm transition-all text-left",
+                      isSelected
+                        ? "bg-primary/15 text-primary"
+                        : "text-foreground/80 hover:bg-white/[.06] hover:text-foreground"
+                    )}
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <div className={cn(
+                      "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all",
+                      isSelected ? "bg-primary border-primary" : "border-white/[.25] bg-transparent"
+                    )}>
+                      {isSelected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                    </div>
+                    <span className="truncate flex-1 font-medium text-[13px]">{opt}</span>
+                    {isCustom && <span className="text-[10px] text-foreground/20 shrink-0 italic">perso</span>}
                   </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </PopoverContent>
-    </Popover>
+                  {isCustom && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(opt)}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 };
