@@ -877,8 +877,8 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                       "absolute top-14 bottom-0 left-1/2 -translate-x-1/2 w-[2px] bg-gradient-to-b",
                       colors.rail
                     )} />
-                    {/* Chip sticky — suit le scroll, se positionne sous le header stats (top-[57px]) */}
-                    <div className="sticky top-[57px] z-30">
+                    {/* Chip sticky — suit le scroll, se positionne sous le header stats */}
+                    <div className="sticky top-[96px] z-30">
                       <div className={cn(
                         "rounded-lg border-2 flex flex-col items-center gap-1 py-2.5 px-1",
                         "bg-background shadow-md",
