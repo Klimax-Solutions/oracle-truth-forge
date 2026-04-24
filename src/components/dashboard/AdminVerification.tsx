@@ -25,9 +25,14 @@ import {
   MessageSquare,
   Save,
   Crown,
+  Ghost,
+  Flame,
+  Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -160,13 +165,21 @@ interface PendingRequest extends VerificationRequest {
 interface PlatformUser {
   id: string;
   displayName: string;
+  email?: string | null;
   created_at: string;
   currentCycle: Cycle | null;
   userCycles: UserCycle[];
   totalTrades: number;
   totalRR: number;
   status: "active" | "pending" | "completed";
+  profileStatus: "active" | "pending" | "frozen" | "banned";
   executions: UserExecution[];
+  // Enrichissements
+  roles: string[]; // ['member','early_access',...]
+  hasCycles: boolean; // false = fantôme
+  lastSeenAt: string | null;
+  fakeScore: number; // 0=réel, 100=très probable fake
+  fakeLevel: "real" | "low" | "medium" | "high";
 }
 
 interface PendingAccount {
@@ -210,6 +223,14 @@ export const AdminVerification = () => {
   const [userSearch, setUserSearch] = useState("");
   const [verificationSearch, setVerificationSearch] = useState("");
   const [verificationAssigneeFilter, setVerificationAssigneeFilter] = useState<string>("all");
+  // Users panel filters
+  const [userStatusFilter, setUserStatusFilter] = useState<string>("all");
+  const [userRoleFilter, setUserRoleFilter] = useState<string>("all");
+  const [userInitFilter, setUserInitFilter] = useState<string>("all"); // all | initialized | ghost
+  const [userActivityFilter, setUserActivityFilter] = useState<string>("all"); // all | with_trades | no_trades
+  const [userFakeFilter, setUserFakeFilter] = useState<string>("all"); // all | real | suspicious | fake
+  const [userCycleFilter, setUserCycleFilter] = useState<string>("all"); // all | 0..8
+  const [userSortBy, setUserSortBy] = useState<string>("smart"); // smart | recent | name | trades | cycle
   const [historySearch, setHistorySearch] = useState("");
   // Assignment states
   const [assigningRequest, setAssigningRequest] = useState<string | null>(null);
@@ -478,70 +499,100 @@ export const AdminVerification = () => {
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
-    
-    // Fetch profiles
-    const { data: profilesData } = await supabase
-      .from("profiles")
-      .select("*");
-    
-    // Get all user_cycles to find unique users
-    const { data: allUserCycles, error: userCyclesError } = await supabase
-      .from("user_cycles")
-      .select("*")
-      .order("created_at", { ascending: true });
 
-    if (userCyclesError) {
-      console.error("Error fetching user cycles:", userCyclesError);
-      setLoadingUsers(false);
-      return;
-    }
+    // Source de vérité = profiles (227 users)
+    const [profilesRes, userCyclesRes, executionsRes, rolesRes, sessionsRes] = await Promise.all([
+      supabase.from("profiles").select("*"),
+      supabase.from("user_cycles").select("*").order("created_at", { ascending: true }),
+      supabase.from("user_executions").select("*").order("trade_number", { ascending: true }),
+      supabase.from("user_roles").select("user_id, role"),
+      supabase.from("user_sessions").select("user_id, updated_at").order("updated_at", { ascending: false }),
+    ]);
 
-    // Get unique user IDs
-    const uniqueUserIds = [...new Set(allUserCycles?.map(uc => uc.user_id) || [])];
+    const profilesData = profilesRes.data || [];
+    const allUserCycles = userCyclesRes.data || [];
+    const allExecutions = executionsRes.data || [];
+    const allRoles = rolesRes.data || [];
+    const allSessions = sessionsRes.data || [];
 
-    // Fetch user_executions for all users (les trades saisis par les utilisateurs)
-    const { data: allExecutions } = await supabase
-      .from("user_executions")
-      .select("*")
-      .order("trade_number", { ascending: true });
+    // Map: user_id -> dernière session
+    const lastSeenMap = new Map<string, string>();
+    allSessions.forEach(s => {
+      if (!lastSeenMap.has(s.user_id)) lastSeenMap.set(s.user_id, s.updated_at);
+    });
 
-    // Create user objects
-    const platformUsers: PlatformUser[] = uniqueUserIds.map(userId => {
-      const userCycles = allUserCycles?.filter(uc => uc.user_id === userId) || [];
-      const userExecutions = (allExecutions?.filter(e => e.user_id === userId) || []) as UserExecution[];
-      const profile = profilesData?.find(p => p.user_id === userId);
-      
-      // Find current active cycle (in_progress or pending_review)
-      const activeCycle = userCycles.find(uc => 
+    const now = Date.now();
+
+    const platformUsers: PlatformUser[] = profilesData.map(profile => {
+      const userId = profile.user_id;
+      const userCycles = allUserCycles.filter(uc => uc.user_id === userId);
+      const userExecutions = allExecutions.filter(e => e.user_id === userId) as UserExecution[];
+      const userRoles = allRoles.filter(r => r.user_id === userId).map(r => r.role);
+      const lastSeenAt = lastSeenMap.get(userId) || null;
+
+      const activeCycle = userCycles.find(uc =>
         uc.status === "in_progress" || uc.status === "pending_review"
       );
-      
-      const currentCycleData = activeCycle 
-        ? cycles.find(c => c.id === activeCycle.cycle_id) 
-        : null;
-      
-      // Calculate total RR from user executions
+      const currentCycleData = activeCycle ? cycles.find(c => c.id === activeCycle.cycle_id) : null;
+
       const totalRR = userExecutions.reduce((sum, e) => sum + (e.rr || 0), 0);
-      
-      // Determine status
+
       const hasPending = userCycles.some(uc => uc.status === "pending_review");
       const allValidated = userCycles.every(uc => uc.status === "validated");
-      
+
       let status: "active" | "pending" | "completed" = "active";
       if (hasPending) status = "pending";
-      if (allValidated && userCycles.length === cycles.length) status = "completed";
+      if (allValidated && userCycles.length === cycles.length && userCycles.length > 0) status = "completed";
+
+      // ----- Score Fake combiné (0 = réel, 100 = très probable fake) -----
+      let fakeScore = 0;
+      const ageDays = (now - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24);
+      const lastSeenDays = lastSeenAt
+        ? (now - new Date(lastSeenAt).getTime()) / (1000 * 60 * 60 * 24)
+        : Infinity;
+
+      if (!lastSeenAt) fakeScore += 40; // jamais connecté
+      else if (lastSeenDays > 30) fakeScore += 20;
+
+      if (userExecutions.length === 0) fakeScore += 25;
+      if (userCycles.length === 0) fakeScore += 15; // fantôme
+      if (profile.status === "pending" && ageDays > 7) fakeScore += 15;
+      if (userRoles.length === 0) fakeScore += 10;
+      if (ageDays < 1 && !lastSeenAt) fakeScore = Math.min(fakeScore, 30); // trop tôt pour juger
+
+      let fakeLevel: "real" | "low" | "medium" | "high" = "real";
+      if (fakeScore >= 70) fakeLevel = "high";
+      else if (fakeScore >= 45) fakeLevel = "medium";
+      else if (fakeScore >= 25) fakeLevel = "low";
 
       return {
         id: userId,
-        displayName: profile?.display_name || `Utilisateur ${userId.slice(0, 8)}`,
-        created_at: userCycles[0]?.created_at || new Date().toISOString(),
+        displayName: profile.display_name || profile.first_name || `Utilisateur ${userId.slice(0, 8)}`,
+        created_at: profile.created_at,
         currentCycle: currentCycleData || null,
         userCycles: userCycles as UserCycle[],
         totalTrades: userExecutions.length,
         totalRR,
         status,
+        profileStatus: profile.status as PlatformUser["profileStatus"],
         executions: userExecutions,
+        roles: userRoles,
+        hasCycles: userCycles.length > 0,
+        lastSeenAt,
+        fakeScore,
+        fakeLevel,
       };
+    });
+
+    // Tri : actifs récents d'abord, fakes en bas
+    platformUsers.sort((a, b) => {
+      if (a.fakeLevel !== b.fakeLevel) {
+        const order = { real: 0, low: 1, medium: 2, high: 3 };
+        return order[a.fakeLevel] - order[b.fakeLevel];
+      }
+      const aSeen = a.lastSeenAt ? new Date(a.lastSeenAt).getTime() : 0;
+      const bSeen = b.lastSeenAt ? new Date(b.lastSeenAt).getTime() : 0;
+      return bSeen - aSeen;
     });
 
     setUsers(platformUsers);
@@ -1101,52 +1152,229 @@ export const AdminVerification = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {/* Stats Summary - responsive grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-4 md:mb-6">
-                  <div className="p-3 md:p-4 bg-card border border-border rounded-md">
-                    <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase mb-1">
-                      Total
-                    </p>
-                    <p className="text-xl md:text-2xl font-bold text-foreground">{users.length}</p>
+                {/* Stats Summary - 6 cartes */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 md:gap-3 mb-4">
+                  <div className="p-3 bg-card border border-border rounded-md">
+                    <p className="text-[9px] text-muted-foreground font-mono uppercase mb-1">Total</p>
+                    <p className="text-xl font-bold text-foreground">{users.length}</p>
                   </div>
-                  <div className="p-3 md:p-4 bg-card border border-border rounded-md">
-                    <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase mb-1">
-                      En Attente
-                    </p>
-                    <p className="text-xl md:text-2xl font-bold text-orange-400">
-                      {users.filter(u => u.status === "pending").length}
-                    </p>
+                  <div className="p-3 bg-card border border-border rounded-md">
+                    <p className="text-[9px] text-muted-foreground font-mono uppercase mb-1">Connectés</p>
+                    <p className="text-xl font-bold text-blue-400">{users.filter(u => u.lastSeenAt).length}</p>
                   </div>
-                  <div className="p-3 md:p-4 bg-card border border-border rounded-md">
-                    <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase mb-1">
-                      Actifs
-                    </p>
-                    <p className="text-xl md:text-2xl font-bold text-blue-400">
-                      {users.filter(u => u.status === "active").length}
-                    </p>
+                  <div className="p-3 bg-card border border-border rounded-md">
+                    <p className="text-[9px] text-muted-foreground font-mono uppercase mb-1">Avec Trades</p>
+                    <p className="text-xl font-bold text-emerald-400">{users.filter(u => u.totalTrades > 0).length}</p>
                   </div>
-                  <div className="p-3 md:p-4 bg-card border border-border rounded-md">
-                    <p className="text-[9px] md:text-[10px] text-muted-foreground font-mono uppercase mb-1">
-                      Diplômés
-                    </p>
-                    <p className="text-xl md:text-2xl font-bold text-emerald-400">
-                      {users.filter(u => u.status === "completed").length}
-                    </p>
+                  <div className="p-3 bg-card border border-border rounded-md">
+                    <p className="text-[9px] text-muted-foreground font-mono uppercase mb-1">Fantômes</p>
+                    <p className="text-xl font-bold text-purple-400">{users.filter(u => !u.hasCycles).length}</p>
+                  </div>
+                  <div className="p-3 bg-card border border-border rounded-md">
+                    <p className="text-[9px] text-muted-foreground font-mono uppercase mb-1">Suspects</p>
+                    <p className="text-xl font-bold text-orange-400">{users.filter(u => u.fakeLevel === "medium").length}</p>
+                  </div>
+                  <div className="p-3 bg-card border border-border rounded-md">
+                    <p className="text-[9px] text-muted-foreground font-mono uppercase mb-1">Probables Fakes</p>
+                    <p className="text-xl font-bold text-red-400">{users.filter(u => u.fakeLevel === "high").length}</p>
                   </div>
                 </div>
 
-                {/* Search bar */}
-                <Input
-                  placeholder="Rechercher un utilisateur..."
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  className="max-w-sm h-9 text-sm"
-                />
+                {/* Filtres */}
+                <div className="flex flex-wrap items-center gap-2 p-3 bg-card border border-border rounded-md">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono uppercase">
+                    <Filter className="w-3.5 h-3.5" /> Filtres
+                  </div>
+                  <Input
+                    placeholder="Rechercher nom..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    className="h-8 text-xs w-44"
+                  />
+                  <Select value={userStatusFilter} onValueChange={setUserStatusFilter}>
+                    <SelectTrigger className="h-8 text-xs w-32"><SelectValue placeholder="Statut" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous statuts</SelectItem>
+                      <SelectItem value="active">Actif</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="frozen">Frozen</SelectItem>
+                      <SelectItem value="banned">Banned</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={userRoleFilter} onValueChange={setUserRoleFilter}>
+                    <SelectTrigger className="h-8 text-xs w-32"><SelectValue placeholder="Rôle" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous rôles</SelectItem>
+                      <SelectItem value="member">Member</SelectItem>
+                      <SelectItem value="early_access">Early Access</SelectItem>
+                      <SelectItem value="institute">Institut</SelectItem>
+                      <SelectItem value="setter">Setter</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="super_admin">Super Admin</SelectItem>
+                      <SelectItem value="none">Sans rôle</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={userInitFilter} onValueChange={setUserInitFilter}>
+                    <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="Initialisation" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous (init/non)</SelectItem>
+                      <SelectItem value="initialized">Initialisés</SelectItem>
+                      <SelectItem value="ghost">Fantômes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={userActivityFilter} onValueChange={setUserActivityFilter}>
+                    <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="Activité" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toute activité</SelectItem>
+                      <SelectItem value="with_trades">Avec trades</SelectItem>
+                      <SelectItem value="no_trades">Sans trades</SelectItem>
+                      <SelectItem value="seen_7d">Vu &lt; 7j</SelectItem>
+                      <SelectItem value="seen_30d">Vu &lt; 30j</SelectItem>
+                      <SelectItem value="never_seen">Jamais connecté</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={userCycleFilter} onValueChange={setUserCycleFilter}>
+                    <SelectTrigger className="h-8 text-xs w-32"><SelectValue placeholder="Cycle" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous cycles</SelectItem>
+                      {cycles.map(c => (
+                        <SelectItem key={c.id} value={String(c.cycle_number)}>
+                          {c.cycle_number === 0 ? "Ébauche" : `Cycle ${c.cycle_number}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={userFakeFilter} onValueChange={setUserFakeFilter}>
+                    <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="Fake score" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous</SelectItem>
+                      <SelectItem value="real">Réels uniquement</SelectItem>
+                      <SelectItem value="suspicious">Suspects (medium)</SelectItem>
+                      <SelectItem value="fake">Probables fakes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={userSortBy} onValueChange={setUserSortBy}>
+                    <SelectTrigger className="h-8 text-xs w-40"><SelectValue placeholder="Tri" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="smart">Tri intelligent</SelectItem>
+                      <SelectItem value="recent">Dernière connexion</SelectItem>
+                      <SelectItem value="name">Nom (A-Z)</SelectItem>
+                      <SelectItem value="trades">Plus de trades</SelectItem>
+                      <SelectItem value="cycle">Cycle atteint</SelectItem>
+                      <SelectItem value="created">Date d'inscription</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {(userStatusFilter !== "all" || userRoleFilter !== "all" || userInitFilter !== "all" || userActivityFilter !== "all" || userCycleFilter !== "all" || userFakeFilter !== "all" || userSearch) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={() => {
+                        setUserSearch("");
+                        setUserStatusFilter("all");
+                        setUserRoleFilter("all");
+                        setUserInitFilter("all");
+                        setUserActivityFilter("all");
+                        setUserCycleFilter("all");
+                        setUserFakeFilter("all");
+                      }}
+                    >
+                      Réinitialiser
+                    </Button>
+                  )}
+                </div>
 
-                {/* Users List */}
-                {users.filter(u => !userSearch || u.displayName.toLowerCase().includes(userSearch.toLowerCase())).map((user) => {
+                {/* Users List avec filtrage + tri */}
+                {(() => {
+                  const nowMs = Date.now();
+                  const filtered = users.filter(u => {
+                    if (userSearch && !u.displayName.toLowerCase().includes(userSearch.toLowerCase())) return false;
+                    if (userStatusFilter !== "all" && u.profileStatus !== userStatusFilter) return false;
+                    if (userRoleFilter === "none") {
+                      if (u.roles.length > 0) return false;
+                    } else if (userRoleFilter !== "all") {
+                      if (!u.roles.includes(userRoleFilter)) return false;
+                    }
+                    if (userInitFilter === "initialized" && !u.hasCycles) return false;
+                    if (userInitFilter === "ghost" && u.hasCycles) return false;
+                    if (userActivityFilter === "with_trades" && u.totalTrades === 0) return false;
+                    if (userActivityFilter === "no_trades" && u.totalTrades > 0) return false;
+                    if (userActivityFilter === "never_seen" && u.lastSeenAt) return false;
+                    if (userActivityFilter === "seen_7d") {
+                      if (!u.lastSeenAt) return false;
+                      if ((nowMs - new Date(u.lastSeenAt).getTime()) > 7 * 86400000) return false;
+                    }
+                    if (userActivityFilter === "seen_30d") {
+                      if (!u.lastSeenAt) return false;
+                      if ((nowMs - new Date(u.lastSeenAt).getTime()) > 30 * 86400000) return false;
+                    }
+                    if (userCycleFilter !== "all") {
+                      const targetNum = parseInt(userCycleFilter, 10);
+                      const cur = u.currentCycle?.cycle_number ?? -1;
+                      if (cur !== targetNum) return false;
+                    }
+                    if (userFakeFilter === "real" && u.fakeLevel !== "real") return false;
+                    if (userFakeFilter === "suspicious" && u.fakeLevel !== "medium") return false;
+                    if (userFakeFilter === "fake" && u.fakeLevel !== "high") return false;
+                    return true;
+                  });
+
+                  const sorted = [...filtered].sort((a, b) => {
+                    if (userSortBy === "name") return a.displayName.localeCompare(b.displayName);
+                    if (userSortBy === "trades") return b.totalTrades - a.totalTrades;
+                    if (userSortBy === "cycle") return (b.currentCycle?.cycle_number ?? -1) - (a.currentCycle?.cycle_number ?? -1);
+                    if (userSortBy === "created") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                    if (userSortBy === "recent") {
+                      const aT = a.lastSeenAt ? new Date(a.lastSeenAt).getTime() : 0;
+                      const bT = b.lastSeenAt ? new Date(b.lastSeenAt).getTime() : 0;
+                      return bT - aT;
+                    }
+                    return 0; // smart : déjà trié dans fetchUsers
+                  });
+
+                  const formatLastSeen = (iso: string | null) => {
+                    if (!iso) return "Jamais";
+                    const diff = (nowMs - new Date(iso).getTime()) / 1000;
+                    if (diff < 60) return "À l'instant";
+                    if (diff < 3600) return `${Math.floor(diff / 60)}min`;
+                    if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+                    if (diff < 86400 * 30) return `${Math.floor(diff / 86400)}j`;
+                    if (diff < 86400 * 365) return `${Math.floor(diff / (86400 * 30))}mois`;
+                    return `${Math.floor(diff / (86400 * 365))}an+`;
+                  };
+
+                  if (sorted.length === 0) {
+                    return (
+                      <div className="text-center py-12 text-sm text-muted-foreground font-mono">
+                        Aucun utilisateur ne correspond aux filtres ({users.length} au total)
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {sorted.length} / {users.length} utilisateurs
+                      </p>
+                      {sorted.map((user) => {
                   const isExpanded = expandedUser === user.id;
                   const progress = getUserProgressPercentage(user);
+                  const lastSeenLabel = formatLastSeen(user.lastSeenAt);
+                  const primaryRole = user.roles.includes("super_admin") ? "super_admin"
+                    : user.roles.includes("admin") ? "admin"
+                    : user.roles.includes("setter") ? "setter"
+                    : user.roles.includes("early_access") ? "early_access"
+                    : user.roles.includes("institute") ? "institute"
+                    : user.roles[0] || "none";
+                  const roleBadgeClass: Record<string, string> = {
+                    super_admin: "bg-amber-500/20 text-amber-400 border-amber-500/40",
+                    admin: "bg-blue-500/20 text-blue-400 border-blue-500/40",
+                    setter: "bg-pink-500/20 text-pink-400 border-pink-500/40",
+                    early_access: "bg-purple-500/20 text-purple-400 border-purple-500/40",
+                    institute: "bg-cyan-500/20 text-cyan-400 border-cyan-500/40",
+                    member: "bg-slate-500/20 text-slate-400 border-slate-500/40",
+                    none: "bg-muted text-muted-foreground border-border",
+                  };
 
                   return (
                     <div
@@ -1184,16 +1412,51 @@ export const AdminVerification = () => {
                                 )} />
                               )}
                             </div>
-                            <div className="min-w-0">
-                              <h4 className="font-semibold text-foreground text-xs md:text-sm truncate">
-                                {user.displayName}
-                              </h4>
-                              <div className="flex items-center gap-1 md:gap-2 mt-0.5">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-semibold text-foreground text-xs md:text-sm truncate">
+                                  {user.displayName}
+                                </h4>
+                                <span className={cn(
+                                  "px-1.5 py-0.5 text-[9px] font-mono uppercase rounded border",
+                                  roleBadgeClass[primaryRole]
+                                )}>
+                                  {primaryRole === "none" ? "sans rôle" : primaryRole.replace("_", " ")}
+                                </span>
+                                {user.profileStatus !== "active" && (
+                                  <span className="px-1.5 py-0.5 text-[9px] font-mono uppercase rounded bg-orange-500/20 text-orange-400 border border-orange-500/40">
+                                    {user.profileStatus}
+                                  </span>
+                                )}
+                                {!user.hasCycles && (
+                                  <span className="px-1.5 py-0.5 text-[9px] font-mono uppercase rounded bg-purple-500/20 text-purple-400 border border-purple-500/40 flex items-center gap-1">
+                                    <Ghost className="w-2.5 h-2.5" /> Fantôme
+                                  </span>
+                                )}
+                                {user.fakeLevel === "high" && (
+                                  <span className="px-1.5 py-0.5 text-[9px] font-mono uppercase rounded bg-red-500/20 text-red-400 border border-red-500/40 flex items-center gap-1">
+                                    <Flame className="w-2.5 h-2.5" /> Fake {user.fakeScore}
+                                  </span>
+                                )}
+                                {user.fakeLevel === "medium" && (
+                                  <span className="px-1.5 py-0.5 text-[9px] font-mono uppercase rounded bg-orange-500/20 text-orange-400 border border-orange-500/40">
+                                    Suspect {user.fakeScore}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                 <p className="text-[10px] md:text-xs text-muted-foreground font-mono truncate">
-                                  {user.currentCycle?.name || "—"}
+                                  {user.currentCycle?.name || (user.hasCycles ? "—" : "Cycles non initialisés")}
+                                </p>
+                                <span className="text-[9px] text-muted-foreground font-mono">·</span>
+                                <p className="text-[10px] text-muted-foreground font-mono">
+                                  Vu: <span className={cn(
+                                    !user.lastSeenAt && "text-red-400",
+                                    user.lastSeenAt && "text-foreground"
+                                  )}>{lastSeenLabel}</span>
                                 </p>
                                 {user.status === "pending" && (
-                                  <span className="px-1 py-0.5 text-[8px] md:text-[10px] font-mono uppercase bg-orange-500/20 text-orange-400 rounded flex-shrink-0">
+                                  <span className="px-1 py-0.5 text-[8px] font-mono uppercase bg-orange-500/20 text-orange-400 rounded">
                                     Vérif
                                   </span>
                                 )}
@@ -1546,6 +1809,9 @@ export const AdminVerification = () => {
                     </div>
                   );
                 })}
+                    </>
+                  );
+                })()}
               </div>
             )}
           </TabsContent>
