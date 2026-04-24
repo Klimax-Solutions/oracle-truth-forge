@@ -184,6 +184,23 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
     return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
   };
 
+  // Cycle definitions (mirrors public.cycles)
+  const CYCLES = [
+    { num: 0, name: "Ébauche",  phase: 0, start: 1,   end: 15  },
+    { num: 1, name: "Cycle 1",  phase: 1, start: 16,  end: 40  },
+    { num: 2, name: "Cycle 2",  phase: 1, start: 41,  end: 65  },
+    { num: 3, name: "Cycle 3",  phase: 1, start: 66,  end: 90  },
+    { num: 4, name: "Cycle 4",  phase: 1, start: 91,  end: 115 },
+    { num: 5, name: "Cycle 5",  phase: 2, start: 116, end: 165 },
+    { num: 6, name: "Cycle 6",  phase: 2, start: 166, end: 215 },
+    { num: 7, name: "Cycle 7",  phase: 2, start: 216, end: 265 },
+    { num: 8, name: "Cycle 8",  phase: 2, start: 266, end: 314 },
+  ] as const;
+
+  const getCycleForTrade = (tradeNumber: number) => {
+    return CYCLES.find(c => tradeNumber >= c.start && tradeNumber <= c.end) || null;
+  };
+
   // Get trade context for charts - ISOLATED 10 last trades (like TradingJournal)
   const getTradeContext = (trade: Trade) => {
     const tradeIndex = trades.findIndex(t => t.id === trade.id);
