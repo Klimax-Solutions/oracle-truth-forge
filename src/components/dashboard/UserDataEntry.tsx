@@ -860,12 +860,18 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                 {/* Corps — 2 colonnes */}
                 <div className="flex-1 flex overflow-hidden">
 
-                  {/* ── COL GAUCHE : direction + timing + résultat ── */}
-                  <div className="flex flex-col gap-5 p-6 w-[52%] border-r border-border overflow-y-auto">
+                  {/* ── COL GAUCHE : direction + timing + résultat + optionnel ── */}
+                  <div className="flex flex-col gap-4 p-6 w-[52%] border-r border-border overflow-y-auto">
+
+                    {/* ─ REQUIS ─────────────────────────────── */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-semibold font-mono uppercase tracking-[0.2em] text-foreground/70">Requis</span>
+                      <div className="flex-1 h-px bg-border/60" />
+                    </div>
 
                     {/* Direction */}
                     <div>
-                      <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/40 mb-2.5">Direction</p>
+                      <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60 mb-2">Direction</p>
                       <div className="grid grid-cols-2 gap-2.5">
                         <button type="button" onClick={() => setFormData({ ...formData, direction: "Long" })}
                           className={cn("flex items-center justify-center gap-2.5 py-4 rounded-xl border-2 transition-all duration-150 font-bold text-sm",
@@ -882,16 +888,16 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
 
                     {/* Timing */}
                     <div>
-                      <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/40 mb-2.5">Timing</p>
+                      <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60 mb-2">Timing</p>
                       <div className="grid grid-cols-4 gap-2">
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">N°</Label><Input type="number" value={formData.trade_number} onChange={(e) => setFormData({ ...formData, trade_number: e.target.value })} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Date</Label><DatePicker value={formData.trade_date} onChange={handleEntryDateChange} /></div>
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">H. Entrée</Label><TimePicker value={formData.entry_time} onChange={(value) => setFormData({ ...formData, entry_time: value })} /></div>
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">H. Sortie</Label><TimePicker value={formData.exit_time} onChange={(value) => setFormData({ ...formData, exit_time: value })} /></div>
+                        <div className="space-y-1.5"><Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">N°</Label><Input type="number" value={formData.trade_number} onChange={(e) => setFormData({ ...formData, trade_number: e.target.value })} className="h-9 text-sm" /></div>
+                        <div className="space-y-1.5"><Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Date</Label><DatePicker value={formData.trade_date} onChange={handleEntryDateChange} /></div>
+                        <div className="space-y-1.5"><Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">H. Entrée</Label><TimePicker value={formData.entry_time} onChange={(value) => setFormData({ ...formData, entry_time: value })} /></div>
+                        <div className="space-y-1.5"><Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">H. Sortie</Label><TimePicker value={formData.exit_time} onChange={(value) => setFormData({ ...formData, exit_time: value })} /></div>
                       </div>
                       <div className="grid grid-cols-4 gap-2 mt-2">
-                        <div className="space-y-1">
-                          <Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Date sortie</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Date sortie</Label>
                           <DatePicker value={formData.exit_date} onChange={(value) => setFormData({ ...formData, exit_date: value })} />
                           {!isSameDay && formData.exit_date && <p className="text-[9px] text-orange-400 font-mono">J+{Math.ceil((new Date(formData.exit_date).getTime() - new Date(formData.trade_date).getTime()) / (1000 * 60 * 60 * 24))}</p>}
                         </div>
@@ -900,7 +906,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
 
                     {/* Résultat */}
                     <div>
-                      <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/40 mb-2.5">Résultat</p>
+                      <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60 mb-2">Résultat</p>
                       <div className="grid grid-cols-3 gap-2 mb-3">
                         {([
                           { value: "Win",  label: "Win",  icon: "↑", activeClass: "border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_16px_-6px_theme(colors.emerald.500)]" },
@@ -915,74 +921,77 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                           </button>
                         ))}
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">RR</Label>
-                          <Input type="number" step="0.1" value={formData.rr} onChange={(e) => setFormData({ ...formData, rr: e.target.value })} placeholder="2.5"
-                            className={cn("h-8 text-base font-bold tabular-nums", formData.result === "Win" && formData.rr ? "text-emerald-400" : "", formData.result === "Loss" && formData.rr ? "text-red-400" : "")} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Taille SL</Label>
-                          <Input value={formData.stop_loss_size} onChange={(e) => setFormData({ ...formData, stop_loss_size: e.target.value })} placeholder="Points / pips" className="h-8 text-sm" />
-                        </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">RR</Label>
+                        <Input type="number" step="0.1" value={formData.rr} onChange={(e) => setFormData({ ...formData, rr: e.target.value })} placeholder="2.5"
+                          className={cn("h-9 text-base font-bold tabular-nums", formData.result === "Win" && formData.rr ? "text-emerald-400" : "", formData.result === "Loss" && formData.rr ? "text-red-400" : "")} />
                       </div>
-                      <div className="flex items-center gap-2.5 mt-3">
-                        <Checkbox id="news_day_exec" checked={formData.news_day} onCheckedChange={(checked) => setFormData({ ...formData, news_day: !!checked, news_label: !!checked ? formData.news_label : "" })} />
-                        <Label htmlFor="news_day_exec" className="cursor-pointer text-[9px] font-mono uppercase tracking-wide text-muted-foreground/50">Jour de news</Label>
-                      </div>
-                      {formData.news_day && (
-                        <div className="mt-2 space-y-1">
-                          <Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Label news</Label>
-                          <Input value={formData.news_label} onChange={(e) => setFormData({ ...formData, news_label: e.target.value })} placeholder="NFP, CPI, FOMC…" className="h-8 text-sm" />
-                        </div>
-                      )}
                     </div>
+
+                    {/* ─ OPTIONNEL ──────────────────────────── */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-[10px] font-semibold font-mono uppercase tracking-[0.2em] text-muted-foreground/40">Optionnel</span>
+                      <div className="flex-1 h-px bg-border/30" />
+                    </div>
+
+                    {/* Taille SL + News */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide">Taille SL</Label>
+                        <Input value={formData.stop_loss_size} onChange={(e) => setFormData({ ...formData, stop_loss_size: e.target.value })} placeholder="Points / pips" className="h-9 text-sm" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide invisible">_</Label>
+                        <div className="flex items-center gap-2.5 h-9 px-3 rounded-md border border-border/50">
+                          <Checkbox id="news_day_exec" checked={formData.news_day} onCheckedChange={(checked) => setFormData({ ...formData, news_day: !!checked, news_label: !!checked ? formData.news_label : "" })} />
+                          <Label htmlFor="news_day_exec" className="cursor-pointer text-[10px] font-mono uppercase tracking-wide text-muted-foreground/50 leading-none">Jour news</Label>
+                        </div>
+                      </div>
+                    </div>
+                    {formData.news_day && (
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide">Label news</Label>
+                        <Input value={formData.news_label} onChange={(e) => setFormData({ ...formData, news_label: e.target.value })} placeholder="NFP, CPI, FOMC…" className="h-9 text-sm" />
+                      </div>
+                    )}
 
                     {/* Prix — collapsible */}
                     <div>
                       <button type="button" onClick={() => setShowAdvancedPrices(!showAdvancedPrices)}
-                        className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors">
+                        className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors">
                         <span className={cn("transition-transform duration-200 text-[8px]", showAdvancedPrices ? "rotate-90" : "")}>▶</span>
-                        Prix exacts (optionnel)
+                        Prix exacts
                       </button>
                       {showAdvancedPrices && (
                         <div className="grid grid-cols-2 gap-2 mt-2">
-                          <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Prix Entrée</Label><Input type="number" step="0.00001" value={formData.entry_price} onChange={(e) => setFormData({ ...formData, entry_price: e.target.value })} placeholder="1.08542" className="h-8 text-sm" /></div>
-                          <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Prix Sortie</Label><Input type="number" step="0.00001" value={formData.exit_price} onChange={(e) => setFormData({ ...formData, exit_price: e.target.value })} placeholder="1.08650" className="h-8 text-sm" /></div>
-                          <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Stop Loss</Label><Input type="number" step="0.00001" value={formData.stop_loss} onChange={(e) => setFormData({ ...formData, stop_loss: e.target.value })} placeholder="1.08500" className="h-8 text-sm" /></div>
-                          <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Take Profit</Label><Input type="number" step="0.00001" value={formData.take_profit} onChange={(e) => setFormData({ ...formData, take_profit: e.target.value })} placeholder="1.08700" className="h-8 text-sm" /></div>
+                          <div className="space-y-1.5"><Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide">Prix Entrée</Label><Input type="number" step="0.00001" value={formData.entry_price} onChange={(e) => setFormData({ ...formData, entry_price: e.target.value })} placeholder="1.08542" className="h-9 text-sm" /></div>
+                          <div className="space-y-1.5"><Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide">Prix Sortie</Label><Input type="number" step="0.00001" value={formData.exit_price} onChange={(e) => setFormData({ ...formData, exit_price: e.target.value })} placeholder="1.08650" className="h-9 text-sm" /></div>
+                          <div className="space-y-1.5"><Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide">Stop Loss</Label><Input type="number" step="0.00001" value={formData.stop_loss} onChange={(e) => setFormData({ ...formData, stop_loss: e.target.value })} placeholder="1.08500" className="h-9 text-sm" /></div>
+                          <div className="space-y-1.5"><Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide">Take Profit</Label><Input type="number" step="0.00001" value={formData.take_profit} onChange={(e) => setFormData({ ...formData, take_profit: e.target.value })} placeholder="1.08700" className="h-9 text-sm" /></div>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* ── COL DROITE : classification + screenshots + notes ── */}
-                  <div className="flex flex-col gap-5 p-6 flex-1 overflow-y-auto">
+                  {/* ── COL DROITE : screenshots (requis) + classification + notes (optionnel) ── */}
+                  <div className="flex flex-col gap-4 p-6 flex-1 overflow-y-auto">
 
-                    {/* Classification setup */}
-                    <div>
-                      <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/40 mb-2.5">Classification du Setup</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Type de config</Label><CustomizableMultiSelect value={formData.setup_type} onChange={(v) => setFormData({ ...formData, setup_type: v })} fixedOptions={SETUP_TYPE_FIXED_OPTIONS} customOptions={variables.setup_type} variableType="setup_type" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Contexte</Label><CustomizableMultiSelect value={formData.direction_structure} onChange={(v) => setFormData({ ...formData, direction_structure: v })} customOptions={variables.direction_structure} variableType="direction_structure" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Entry Model</Label><CustomizableMultiSelect value={formData.entry_model} onChange={(v) => setFormData({ ...formData, entry_model: v })} fixedOptions={ENTRY_MODEL_FIXED_OPTIONS} customOptions={variables.entry_model} variableType="entry_model" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Timing</Label><CustomizableMultiSelect value={formData.entry_timing} onChange={(v) => setFormData({ ...formData, entry_timing: v })} fixedOptions={TIMING_FIXED_OPTIONS} customOptions={variables.entry_timing} variableType="entry_timing" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Time Frame</Label><CustomizableMultiSelect value={formData.entry_timeframe} onChange={(v) => setFormData({ ...formData, entry_timeframe: v })} fixedOptions={ENTRY_TIMEFRAME_FIXED_OPTIONS} customOptions={variables.entry_timeframe} variableType="entry_timeframe" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Placement SL</Label><CustomizableMultiSelect value={formData.sl_placement} onChange={(v) => setFormData({ ...formData, sl_placement: v })} customOptions={variables.sl_placement || []} variableType="sl_placement" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
-                        <div className="col-span-2 space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Placement TP</Label><CustomizableMultiSelect value={formData.tp_placement} onChange={(v) => setFormData({ ...formData, tp_placement: v })} customOptions={variables.tp_placement || []} variableType="tp_placement" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
-                      </div>
+                    {/* ─ REQUIS ─────────────────────────────── */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-semibold font-mono uppercase tracking-[0.2em] text-foreground/70">Requis</span>
+                      <div className="flex-1 h-px bg-border/60" />
                     </div>
 
                     {/* Screenshots */}
                     <div>
-                      <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/40 mb-2.5">
+                      <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/60 mb-2">
                         Screenshots <span className="text-destructive">*</span>
                       </p>
                       <div className="grid grid-cols-2 gap-2">
                         {/* Contexte M15 */}
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Contexte M15</Label>
+                            <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Contexte M15</Label>
                             <div className="flex items-center gap-0.5 bg-muted rounded p-0.5">
                               <button type="button" onClick={() => { setContextMode("file"); setContextLinkUrl(""); }} className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] transition-all", contextMode === "file" ? "bg-background shadow text-foreground" : "text-muted-foreground")}><ImageIcon className="w-2.5 h-2.5" /> Fichier</button>
                               <button type="button" onClick={() => { setContextMode("link"); setContextFile(null); setContextPreview(null); setExistingContextUrl(null); }} className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] transition-all", contextMode === "link" ? "bg-background shadow text-foreground" : "text-muted-foreground")}><LinkIcon className="w-2.5 h-2.5" /> Lien</button>
@@ -991,7 +1000,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                           <input ref={contextFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setContextFile, setContextPreview)} className="hidden" />
                           {contextMode === "link" ? (
                             <div className="space-y-1">
-                              <Input type="url" value={contextLinkUrl} onChange={(e) => setContextLinkUrl(e.target.value)} placeholder="https://tradingview.com/x/…" className={cn("h-8 text-xs", screenshotError && !contextLinkUrl.trim() && "border-red-500")} />
+                              <Input type="url" value={contextLinkUrl} onChange={(e) => setContextLinkUrl(e.target.value)} placeholder="https://tradingview.com/x/…" className={cn("h-9 text-xs", screenshotError && !contextLinkUrl.trim() && "border-red-500")} />
                               {contextLinkUrl.trim() && (/\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(contextLinkUrl) ? (
                                 <div className="relative border border-border rounded p-1"><img src={contextLinkUrl} alt="M15" className="max-h-24 object-contain mx-auto rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /><Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-4 w-4" onClick={() => setContextLinkUrl("")}><X className="w-2.5 h-2.5" /></Button></div>
                               ) : (<div className="flex items-center gap-1.5 p-2 rounded bg-muted/30 border border-border text-[10px] text-muted-foreground"><ExternalLink className="w-3 h-3 shrink-0" /><a href={contextLinkUrl} target="_blank" rel="noopener noreferrer" className="truncate">{contextLinkUrl}</a></div>))}
@@ -1005,9 +1014,9 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                           )}
                         </div>
                         {/* Entrée TF */}
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Entrée TF</Label>
+                            <Label className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wide">Entrée TF</Label>
                             <div className="flex items-center gap-0.5 bg-muted rounded p-0.5">
                               <button type="button" onClick={() => { setEntryMode("file"); setEntryLinkUrl(""); }} className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] transition-all", entryMode === "file" ? "bg-background shadow text-foreground" : "text-muted-foreground")}><ImageIcon className="w-2.5 h-2.5" /> Fichier</button>
                               <button type="button" onClick={() => { setEntryMode("link"); setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }} className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] transition-all", entryMode === "link" ? "bg-background shadow text-foreground" : "text-muted-foreground")}><LinkIcon className="w-2.5 h-2.5" /> Lien</button>
@@ -1016,7 +1025,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                           <input ref={entryFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setEntryFile, setEntryPreview)} className="hidden" />
                           {entryMode === "link" ? (
                             <div className="space-y-1">
-                              <Input type="url" value={entryLinkUrl} onChange={(e) => setEntryLinkUrl(e.target.value)} placeholder="https://tradingview.com/x/…" className={cn("h-8 text-xs", screenshotError && !entryLinkUrl.trim() && "border-red-500")} />
+                              <Input type="url" value={entryLinkUrl} onChange={(e) => setEntryLinkUrl(e.target.value)} placeholder="https://tradingview.com/x/…" className={cn("h-9 text-xs", screenshotError && !entryLinkUrl.trim() && "border-red-500")} />
                               {entryLinkUrl.trim() && (/\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(entryLinkUrl) ? (
                                 <div className="relative border border-border rounded p-1"><img src={entryLinkUrl} alt="TF" className="max-h-24 object-contain mx-auto rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /><Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-4 w-4" onClick={() => setEntryLinkUrl("")}><X className="w-2.5 h-2.5" /></Button></div>
                               ) : (<div className="flex items-center gap-1.5 p-2 rounded bg-muted/30 border border-border text-[10px] text-muted-foreground"><ExternalLink className="w-3 h-3 shrink-0" /><a href={entryLinkUrl} target="_blank" rel="noopener noreferrer" className="truncate">{entryLinkUrl}</a></div>))}
@@ -1032,9 +1041,29 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                       </div>
                     </div>
 
+                    {/* ─ OPTIONNEL ──────────────────────────── */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-[10px] font-semibold font-mono uppercase tracking-[0.2em] text-muted-foreground/40">Optionnel</span>
+                      <div className="flex-1 h-px bg-border/30" />
+                    </div>
+
+                    {/* Classification setup */}
+                    <div>
+                      <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/50 mb-2">Classification du Setup</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1.5"><Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide">Type de config</Label><CustomizableMultiSelect value={formData.setup_type} onChange={(v) => setFormData({ ...formData, setup_type: v })} fixedOptions={SETUP_TYPE_FIXED_OPTIONS} customOptions={variables.setup_type} variableType="setup_type" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
+                        <div className="space-y-1.5"><Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide">Contexte</Label><CustomizableMultiSelect value={formData.direction_structure} onChange={(v) => setFormData({ ...formData, direction_structure: v })} customOptions={variables.direction_structure} variableType="direction_structure" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
+                        <div className="space-y-1.5"><Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide">Entry Model</Label><CustomizableMultiSelect value={formData.entry_model} onChange={(v) => setFormData({ ...formData, entry_model: v })} fixedOptions={ENTRY_MODEL_FIXED_OPTIONS} customOptions={variables.entry_model} variableType="entry_model" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
+                        <div className="space-y-1.5"><Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide">Timing</Label><CustomizableMultiSelect value={formData.entry_timing} onChange={(v) => setFormData({ ...formData, entry_timing: v })} fixedOptions={TIMING_FIXED_OPTIONS} customOptions={variables.entry_timing} variableType="entry_timing" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
+                        <div className="space-y-1.5"><Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide">Time Frame</Label><CustomizableMultiSelect value={formData.entry_timeframe} onChange={(v) => setFormData({ ...formData, entry_timeframe: v })} fixedOptions={ENTRY_TIMEFRAME_FIXED_OPTIONS} customOptions={variables.entry_timeframe} variableType="entry_timeframe" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
+                        <div className="space-y-1.5"><Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide">Placement SL</Label><CustomizableMultiSelect value={formData.sl_placement} onChange={(v) => setFormData({ ...formData, sl_placement: v })} customOptions={variables.sl_placement || []} variableType="sl_placement" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
+                        <div className="col-span-2 space-y-1.5"><Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide">Placement TP</Label><CustomizableMultiSelect value={formData.tp_placement} onChange={(v) => setFormData({ ...formData, tp_placement: v })} customOptions={variables.tp_placement || []} variableType="tp_placement" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
+                      </div>
+                    </div>
+
                     {/* Notes */}
-                    <div className="space-y-1 flex-1">
-                      <Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Notes</Label>
+                    <div className="space-y-1.5 flex-1">
+                      <Label className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-wide">Notes</Label>
                       <Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Observations, contexte du trade…" className="resize-none h-16 text-sm" />
                     </div>
 
