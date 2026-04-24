@@ -1,3 +1,4 @@
+import React from "react";
 import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X, CheckSquare, Lock, Pencil } from "lucide-react";
 import { SignedImageCard } from "./SignedImageCard";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,51 @@ interface Filters {
   contributor: string[];
   hasScreenshots?: boolean;
 }
+
+// ─── Cycles ───────────────────────────────────────────────────────────────────
+const CYCLES = [
+  { num: 0, name: "Ébauche", phase: 0, start: 1,   end: 15  },
+  { num: 1, name: "Cycle 1", phase: 1, start: 16,  end: 40  },
+  { num: 2, name: "Cycle 2", phase: 1, start: 41,  end: 65  },
+  { num: 3, name: "Cycle 3", phase: 1, start: 66,  end: 90  },
+  { num: 4, name: "Cycle 4", phase: 1, start: 91,  end: 115 },
+  { num: 5, name: "Cycle 5", phase: 2, start: 116, end: 165 },
+  { num: 6, name: "Cycle 6", phase: 2, start: 166, end: 215 },
+  { num: 7, name: "Cycle 7", phase: 2, start: 216, end: 265 },
+  { num: 8, name: "Cycle 8", phase: 2, start: 266, end: 314 },
+];
+type CycleDef = typeof CYCLES[number];
+
+const getCycleForTrade = (n: number): CycleDef | null =>
+  CYCLES.find(c => n >= c.start && n <= c.end) ?? null;
+
+// ─── Couleurs par phase ────────────────────────────────────────────────────────
+const cycleColor = (phase: number) => {
+  if (phase === 0) return {
+    rail:   'from-amber-500/80 via-amber-500/40 to-amber-500/10',
+    text:   'text-amber-500',
+    border: 'border-amber-500/30',
+    bg:     'bg-amber-500/10',
+    soft:   'bg-amber-500/5',
+    glow:   'shadow-[0_0_20px_-8px_theme(colors.amber.500)]',
+  };
+  if (phase === 2) return {
+    rail:   'from-emerald-500/80 via-emerald-500/40 to-emerald-500/10',
+    text:   'text-emerald-500',
+    border: 'border-emerald-500/30',
+    bg:     'bg-emerald-500/10',
+    soft:   'bg-emerald-500/5',
+    glow:   'shadow-[0_0_20px_-8px_theme(colors.emerald.500)]',
+  };
+  return {
+    rail:   'from-primary/80 via-primary/40 to-primary/10',
+    text:   'text-primary',
+    border: 'border-primary/30',
+    bg:     'bg-primary/10',
+    soft:   'bg-primary/5',
+    glow:   'shadow-[0_0_20px_-8px_hsl(var(--primary))]',
+  };
+};
 
 export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [], onAnalysisToggle, isDataGenerale, isAdmin, onTradeUpdated }: OracleDatabaseProps) => {
   const chartColors = useChartColors();
@@ -208,6 +254,20 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
 
     return { cumulativeRR, chartData, tradeIndex, isolatedTotal };
   };
+
+  // ─── Groupes par cycle pour le rail ─────────────────────────────────────────
+  type CycleGroup = { cycle: CycleDef | null; trades: Trade[]; startIdx: number };
+  const groups = useMemo<CycleGroup[]>(() => {
+    if (isDataGenerale) return [];
+    const result: CycleGroup[] = [];
+    filteredTrades.forEach((trade, idx) => {
+      const cycle = getCycleForTrade(trade.trade_number);
+      const last = result[result.length - 1];
+      if (last && last.cycle?.num === cycle?.num) last.trades.push(trade);
+      else result.push({ cycle, trades: [trade], startIdx: idx });
+    });
+    return result;
+  }, [filteredTrades, isDataGenerale]);
 
   return (
     <div className="flex flex-col min-h-full">
@@ -418,7 +478,8 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
               Réinitialiser les filtres
             </Button>
           </div>
-        ) : (
+        ) : isDataGenerale ? (
+          /* ── Data Générale : liste plate, pas de groupement ── */
           <div className="space-y-2">
             {filteredTrades.map((trade, tradeIdx) => {
               const isBlurred = isEarlyAccess && tradeIdx >= 50;
@@ -566,62 +627,62 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                             </div>
                           </div>
 
-                          {/* Stats row - responsive 2x2 on mobile */}
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-                            <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                              <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
-                                <Clock className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
-                                <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Entrée</span>
+                          {/* Stats principales — 4 métriques clés */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border/50 rounded-xl overflow-hidden border border-border/50">
+                            <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5">
+                              <div className="flex items-center gap-1.5">
+                                <Clock className="w-3 h-3 text-muted-foreground/50" />
+                                <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Entrée</span>
                               </div>
-                              <p className="text-sm md:text-base font-bold text-foreground">{trade.entry_time || "—"}</p>
+                              <p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.entry_time || "—"}</p>
                             </div>
-                            <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                              <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
-                                <Clock className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
-                                <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Sortie</span>
+                            <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5">
+                              <div className="flex items-center gap-1.5">
+                                <Clock className="w-3 h-3 text-muted-foreground/50" />
+                                <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Sortie</span>
                               </div>
-                              <p className="text-sm md:text-base font-bold text-foreground">{trade.exit_time || "—"}</p>
+                              <p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.exit_time || "—"}</p>
                             </div>
-                            <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                              <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
-                                <Target className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
-                                <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Durée</span>
+                            <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5">
+                              <div className="flex items-center gap-1.5">
+                                <Target className="w-3 h-3 text-muted-foreground/50" />
+                                <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Durée</span>
                               </div>
-                              <p className="text-sm md:text-base font-bold text-foreground">{trade.trade_duration || "—"}</p>
+                              <p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.trade_duration || "—"}</p>
                             </div>
-                            <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                              <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
-                                <Calendar className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
-                                <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">News</span>
+                            <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5">
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="w-3 h-3 text-muted-foreground/50" />
+                                <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">News</span>
                               </div>
-                              <p className="text-sm md:text-base font-bold text-foreground">
+                              <p className="text-xl font-bold text-foreground leading-none">
                                 {trade.news_day ? (trade.news_label || "Oui") : "Non"}
                               </p>
                             </div>
                           </div>
 
-                          {/* Additional info - responsive */}
-                          <div className="grid grid-cols-3 gap-2 md:gap-3">
-                            <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Structure</span>
-                              <p className="text-xs md:text-sm font-medium text-foreground mt-0.5 md:mt-1">{trade.direction_structure || "—"}</p>
+                          {/* Contexte setup */}
+                          <div className="grid grid-cols-3 gap-px bg-border/50 rounded-xl overflow-hidden border border-border/50">
+                            <div className="bg-background flex flex-col gap-1.5 px-4 py-3 md:py-4">
+                              <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Structure</span>
+                              <p className="text-sm md:text-base font-semibold text-foreground">{trade.direction_structure || "—"}</p>
                             </div>
-                            <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Entry</span>
-                              <p className="text-xs md:text-sm font-medium text-foreground mt-0.5 md:mt-1">{trade.entry_timing || "—"}</p>
+                            <div className="bg-background flex flex-col gap-1.5 px-4 py-3 md:py-4">
+                              <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Timing entrée</span>
+                              <p className="text-sm md:text-base font-semibold text-foreground">{trade.entry_timing || "—"}</p>
                             </div>
-                            <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                              <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">SL</span>
-                              <p className="text-xs md:text-sm font-medium text-foreground mt-0.5 md:mt-1">{trade.stop_loss_size || "—"}</p>
+                            <div className="bg-background flex flex-col gap-1.5 px-4 py-3 md:py-4">
+                              <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Stop-Loss</span>
+                              <p className="text-sm md:text-base font-semibold text-foreground">{trade.stop_loss_size || "—"}</p>
                             </div>
                           </div>
 
                           {/* RR charts - vertical stack on mobile */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                             {/* Bar chart - individual RR per trade */}
-                            <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
+                            <div className="border border-border/50 p-4 md:p-5 rounded-xl">
                               <div className="flex items-center justify-between mb-3 md:mb-4">
-                                <h4 className="text-[9px] md:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                                <h4 className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
                                   RR par Trade
                                 </h4>
                               </div>
@@ -670,12 +731,12 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                             </div>
 
                             {/* Isolated cumulative RR chart */}
-                            <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
+                            <div className="border border-border/50 p-4 md:p-5 rounded-xl">
                               <div className="flex items-center justify-between mb-3 md:mb-4">
-                                <h4 className="text-[9px] md:text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                                <h4 className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">
                                   Cumul Isolé
                                 </h4>
-                                <span className="text-sm md:text-base font-bold text-emerald-500">
+                                <span className="text-base md:text-lg font-bold tabular-nums text-emerald-500">
                                   +{context.isolatedTotal.toFixed(2)}
                                 </span>
                               </div>
@@ -726,10 +787,15 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                             </div>
                           </div>
 
-                          {/* Total cumulative RR note */}
-                          <div className="flex items-center justify-between p-2 md:p-3 border border-border bg-card rounded-md">
-                            <span className="text-[9px] md:text-xs text-muted-foreground font-mono uppercase">Cumul Total</span>
-                            <span className="text-sm md:text-base font-bold text-emerald-500">+{context.cumulativeRR.toFixed(2)} RR</span>
+                          {/* Cumul Total */}
+                          <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-border/50">
+                            <div className="flex items-center gap-2.5">
+                              <div className={cn("w-0.5 h-5 rounded-full", context.cumulativeRR >= 0 ? "bg-emerald-500/60" : "bg-red-500/60")} />
+                              <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Cumul Total</span>
+                            </div>
+                            <span className={cn("text-xl font-bold tabular-nums", context.cumulativeRR >= 0 ? "text-emerald-500" : "text-red-500")}>
+                              {context.cumulativeRR >= 0 ? "+" : ""}{context.cumulativeRR.toFixed(2)} RR
+                            </span>
                           </div>
 
                           {/* Screenshots - vertical stack on mobile */}
@@ -791,7 +857,219 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                   </div>
                 )}
               </div>
-            );
+              );
+            })}
+          </div>
+        ) : (
+          /* ── Oracle Vérif : groupé par cycle avec rail latéral sticky ── */
+          <div className="space-y-8">
+            {groups.map((group) => {
+              const cycle = group.cycle;
+              const colors = cycleColor(cycle?.phase ?? 1);
+              const cycleTotal = cycle ? cycle.end - cycle.start + 1 : group.trades.length;
+              return (
+                <div key={String(cycle?.num ?? 'u')} className="flex gap-3 md:gap-4">
+
+                  {/* ── Rail latéral ── */}
+                  <div className="relative w-14 md:w-16 flex-shrink-0">
+                    {/* Barre verticale — court sur toute la hauteur du groupe */}
+                    <div className={cn(
+                      "absolute top-14 bottom-0 left-1/2 -translate-x-1/2 w-[2px] bg-gradient-to-b",
+                      colors.rail
+                    )} />
+                    {/* Chip sticky — suit le scroll dans le groupe */}
+                    <div className="sticky top-2 z-30">
+                      <div className={cn(
+                        "rounded-lg border-2 flex flex-col items-center gap-1 py-2.5 px-1",
+                        "bg-background shadow-md",
+                        colors.border, colors.glow
+                      )}>
+                        {/* Numéro/abrév — grand et lisible */}
+                        <span className={cn("text-xl font-black font-mono leading-none", colors.text)}>
+                          {cycle?.num === 0 ? "É" : String(cycle?.num)}
+                        </span>
+                        {/* Label phase */}
+                        <span className={cn("text-[10px] font-bold font-mono tracking-widest leading-none", colors.text)}>
+                          {cycle?.num === 0 ? "bauche" : `Cycle ${cycle?.num}`}
+                        </span>
+                        {/* Séparateur */}
+                        <div className="w-6 border-t border-border/60 my-0.5" />
+                        {/* Compteur */}
+                        <span className={cn("text-xs font-bold font-mono leading-none", colors.text)}>
+                          {group.trades.length}
+                          <span className="text-muted-foreground font-normal">/{cycleTotal}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Colonne droite : header + trades ── */}
+                  <div className="flex-1 min-w-0 pb-4">
+                    {/* Header du groupe — bandeau coloré */}
+                    <div className={cn(
+                      "flex items-center gap-2 mb-3 px-3 py-2 rounded-md border-l-4",
+                      colors.bg, colors.border
+                    )}>
+                      <span className={cn("text-sm font-bold font-mono", colors.text)}>
+                        {cycle?.name ?? "—"}
+                      </span>
+                      <span className="text-muted-foreground/50">·</span>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        #{String(cycle?.start ?? 0).padStart(3, "0")} → #{String(cycle?.end ?? 0).padStart(3, "0")}
+                      </span>
+                      <span className="text-muted-foreground/50">·</span>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {group.trades.length} / {cycleTotal}
+                      </span>
+                    </div>
+
+                    {/* Cartes de trades du groupe */}
+                    <div className="space-y-2">
+                      {group.trades.map((trade, idxInGroup) => {
+                        const tradeIdx = group.startIdx + idxInGroup;
+                        const isBlurred = isEarlyAccess && tradeIdx >= 50;
+                        return (
+                          <div
+                            key={trade.id}
+                            className={cn(
+                              "border transition-all rounded-md overflow-hidden relative",
+                              isBlurred && "pointer-events-none",
+                              selectedTrade?.id === trade.id
+                                ? "border-foreground/20 bg-accent/40"
+                                : "border-border hover:bg-accent/30 bg-transparent"
+                            )}
+                          >
+                            {/* Blur overlay for Early Access beyond 50 trades */}
+                            {isBlurred && (
+                              <div className="absolute inset-0 z-10 backdrop-blur-md bg-background/50 flex items-center justify-center pointer-events-auto cursor-not-allowed">
+                                <div className="flex flex-col items-center gap-1 px-3 py-2 bg-background/80 rounded-lg border border-border">
+                                  <div className="flex items-center gap-2">
+                                    <Lock className="w-3 h-3 text-muted-foreground" />
+                                    <span className="text-[10px] font-mono text-muted-foreground uppercase">Accès complet requis</span>
+                                  </div>
+                                  <span className="text-[9px] font-mono text-muted-foreground">Data bientôt disponible</span>
+                                </div>
+                              </div>
+                            )}
+                            {/* Main row - clickable */}
+                            <div
+                              onClick={() => !isBlurred && setSelectedTrade(selectedTrade?.id === trade.id ? null : trade)}
+                              className="px-3 md:px-5 py-3 flex items-center justify-between cursor-pointer"
+                            >
+                              <div className="flex items-center gap-3 md:gap-5">
+                                {/* Checkbox for trades 1-15 */}
+                                {trade.trade_number >= 1 && trade.trade_number <= 15 && (
+                                  <div onClick={(e) => e.stopPropagation()} className="flex items-center" title="Trade analysé et compris">
+                                    <Checkbox
+                                      checked={analyzedTradeNumbers.includes(trade.trade_number)}
+                                      onCheckedChange={(checked) => onAnalysisToggle?.(trade.trade_number, !!checked)}
+                                      className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                    />
+                                  </div>
+                                )}
+                                {/* Trade number */}
+                                <span className="text-lg font-bold text-muted-foreground/50 w-10">
+                                  {String(trade.trade_number).padStart(3, "0")}
+                                </span>
+                                <div className={cn("flex items-center gap-2 w-16", trade.direction === "Long" ? "text-emerald-500" : "text-red-500")}>
+                                  {trade.direction === "Long" ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                  <span className="text-xs font-mono uppercase">{trade.direction}</span>
+                                </div>
+                                <div className="hidden md:block">
+                                  <p className="text-sm text-foreground">{formatDate(trade.trade_date)}</p>
+                                  <p className="text-[10px] text-muted-foreground">{trade.day_of_week}</p>
+                                </div>
+                                <div className="hidden lg:block">
+                                  <p className="text-[10px] text-muted-foreground font-mono">{trade.setup_type || "—"}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-bold text-emerald-500">+{trade.rr?.toFixed(2) || "0"}</p>
+                                <p className="text-[9px] text-muted-foreground font-mono uppercase">RR</p>
+                              </div>
+                            </div>
+                            {/* Expanded details */}
+                            {selectedTrade?.id === trade.id && (
+                              <div className="border-t border-border p-3 md:p-4 space-y-3 md:space-y-4 bg-transparent">
+                                {(() => {
+                                  const context = getTradeContext(trade);
+                                  return (
+                                    <>
+                                      <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 p-3 md:p-4 border border-border bg-transparent rounded-md">
+                                        <div className={cn("w-10 h-10 md:w-12 md:h-12 flex items-center justify-center border rounded-md flex-shrink-0", trade.direction === "Long" ? "border-emerald-500/50 bg-emerald-500/10" : "border-red-500/50 bg-red-500/10")}>
+                                          {trade.direction === "Long" ? <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" /> : <TrendingDown className="w-5 h-5 md:w-6 md:h-6 text-red-500" />}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-base md:text-lg font-bold text-foreground">Trade #{trade.trade_number}</p>
+                                          <p className="text-xs md:text-sm text-muted-foreground truncate">{trade.setup_type || "Setup standard"} • {trade.entry_model || "Model standard"}</p>
+                                        </div>
+                                        <div className="text-left md:text-right">
+                                          <p className={cn("text-lg md:text-xl font-bold", (trade.rr || 0) >= 0 ? "text-emerald-500" : "text-red-500")}>{(trade.rr || 0) >= 0 ? "+" : ""}{trade.rr?.toFixed(2)} RR</p>
+                                          <p className="text-xs md:text-sm text-muted-foreground">≈ {(trade.rr || 0) >= 0 ? "+" : ""}{((trade.rr || 0) * 1000).toLocaleString("fr-FR")} €</p>
+                                        </div>
+                                      </div>
+                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border/50 rounded-xl overflow-hidden border border-border/50">
+                                        <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Entrée</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.entry_time || "—"}</p></div>
+                                        <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Sortie</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.exit_time || "—"}</p></div>
+                                        <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Target className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Durée</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.trade_duration || "—"}</p></div>
+                                        <div className="bg-background flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Calendar className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">News</span></div><p className="text-xl font-bold text-foreground leading-none">{trade.news_day ? (trade.news_label || "Oui") : "Non"}</p></div>
+                                      </div>
+                                      <div className="grid grid-cols-3 gap-px bg-border/50 rounded-xl overflow-hidden border border-border/50">
+                                        <div className="bg-background flex flex-col gap-1.5 px-4 py-3 md:py-4"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Structure</span><p className="text-sm md:text-base font-semibold text-foreground">{trade.direction_structure || "—"}</p></div>
+                                        <div className="bg-background flex flex-col gap-1.5 px-4 py-3 md:py-4"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Timing entrée</span><p className="text-sm md:text-base font-semibold text-foreground">{trade.entry_timing || "—"}</p></div>
+                                        <div className="bg-background flex flex-col gap-1.5 px-4 py-3 md:py-4"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Stop-Loss</span><p className="text-sm md:text-base font-semibold text-foreground">{trade.stop_loss_size || "—"}</p></div>
+                                      </div>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                                        <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
+                                          <div className="flex items-center justify-between mb-3 md:mb-4"><h4 className="text-[9px] md:text-xs font-mono uppercase tracking-wider text-muted-foreground">RR par Trade</h4></div>
+                                          <div className="h-28 md:h-36"><ResponsiveContainer width="100%" height="100%"><BarChart data={context.chartData}><XAxis dataKey="trade" tick={{ fill: "var(--chart-axis)", fontSize: 9 }} axisLine={{ stroke: "var(--chart-axis-line)" }} tickLine={false} /><YAxis tick={{ fill: "var(--chart-axis)", fontSize: 9 }} axisLine={{ stroke: "var(--chart-axis-line)" }} tickLine={false} /><Tooltip contentStyle={{ backgroundColor: "var(--chart-tooltip-bg)", border: "1px solid var(--chart-tooltip-border)", borderRadius: 4, color: "var(--chart-tooltip-text)" }} itemStyle={{ color: "var(--chart-tooltip-text)" }} labelStyle={{ color: "var(--chart-tooltip-text)" }} formatter={(value: number, name: string, props: any) => [`${value.toFixed(2)} RR`, `Trade #${props.payload.tradeNum}`]} /><Bar dataKey="individual" radius={[3, 3, 0, 0]}>{context.chartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.current ? "var(--chart-bar)" : "#22c55e"} />))}</Bar></BarChart></ResponsiveContainer></div>
+                                        </div>
+                                        <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
+                                          <div className="flex items-center justify-between mb-3 md:mb-4"><h4 className="text-[9px] md:text-xs font-mono uppercase tracking-wider text-muted-foreground">Cumul Isolé</h4><span className="text-sm md:text-base font-bold text-emerald-500">+{context.isolatedTotal.toFixed(2)}</span></div>
+                                          <div className="h-28 md:h-36"><ResponsiveContainer width="100%" height="100%"><AreaChart data={context.chartData}><defs><linearGradient id="colorIsolatedRR" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/><stop offset="95%" stopColor="#22c55e" stopOpacity={0}/></linearGradient></defs><XAxis dataKey="trade" tick={{ fill: "var(--chart-axis)", fontSize: 9 }} axisLine={{ stroke: "var(--chart-axis-line)" }} tickLine={false} /><YAxis tick={{ fill: "var(--chart-axis)", fontSize: 9 }} axisLine={{ stroke: "var(--chart-axis-line)" }} tickLine={false} /><Tooltip contentStyle={{ backgroundColor: "var(--chart-tooltip-bg)", border: "1px solid var(--chart-tooltip-border)", borderRadius: 4, color: "var(--chart-tooltip-text)" }} itemStyle={{ color: "var(--chart-tooltip-text)" }} labelStyle={{ color: "var(--chart-tooltip-text)" }} formatter={(value: number, name: string, props: any) => [`${value.toFixed(2)} RR`, `Trade #${props.payload.tradeNum}`]} /><Area type="monotone" dataKey="rr" stroke="#22c55e" fillOpacity={1} fill="url(#colorIsolatedRR)" /></AreaChart></ResponsiveContainer></div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-border/50">
+                                        <div className="flex items-center gap-2.5"><div className={cn("w-0.5 h-5 rounded-full", context.cumulativeRR >= 0 ? "bg-emerald-500/60" : "bg-red-500/60")} /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Cumul Total</span></div>
+                                        <span className={cn("text-xl font-bold tabular-nums", context.cumulativeRR >= 0 ? "text-emerald-500" : "text-red-500")}>{context.cumulativeRR >= 0 ? "+" : ""}{context.cumulativeRR.toFixed(2)} RR</span>
+                                      </div>
+                                      {(trade.screenshot_m1 || trade.screenshot_m15_m5) ? (
+                                        isEarlyAccess ? (
+                                          tradeIdx % 2 === 0 && tradeIdx < 50 ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                                              <SignedImageCard storagePath={trade.screenshot_m15_m5} alt={`Trade ${trade.trade_number} M15`} label="M15 / Contexte" />
+                                              <SignedImageCard storagePath={trade.screenshot_m1} alt={`Trade ${trade.trade_number} M5`} label="M5 / Entrée" />
+                                            </div>
+                                          ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                                              <div className="relative border border-border rounded-md overflow-hidden aspect-video bg-muted/50"><div className="absolute inset-0 backdrop-blur-xl bg-background/30 flex flex-col items-center justify-center z-10"><Lock className="w-5 h-5 text-muted-foreground mb-1" /><span className="text-[10px] font-mono text-muted-foreground">M15 / Contexte</span></div></div>
+                                              <div className="relative border border-border rounded-md overflow-hidden aspect-video bg-muted/50"><div className="absolute inset-0 backdrop-blur-xl bg-background/30 flex flex-col items-center justify-center z-10"><Lock className="w-5 h-5 text-muted-foreground mb-1" /><span className="text-[10px] font-mono text-muted-foreground">M5 / Entrée</span></div></div>
+                                            </div>
+                                          )
+                                        ) : (
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                                            <SignedImageCard storagePath={trade.screenshot_m15_m5} alt={`Trade ${trade.trade_number} M15`} label="M15 / Contexte" />
+                                            <SignedImageCard storagePath={trade.screenshot_m1} alt={`Trade ${trade.trade_number} M5`} label="M5 / Entrée" />
+                                          </div>
+                                        )
+                                      ) : (
+                                        <div className="border border-dashed border-border p-4 md:p-6 bg-muted/50 rounded-md flex flex-col items-center justify-center">
+                                          <Image className="w-6 h-6 md:w-8 md:h-8 text-muted-foreground mb-2" />
+                                          <p className="text-xs md:text-sm text-muted-foreground">Screenshot à venir</p>
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
             })}
           </div>
         )}
