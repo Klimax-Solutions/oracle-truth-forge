@@ -14,6 +14,7 @@ import {
   Snowflake, Ban, UserX, RefreshCw, Check, X,
   MoreHorizontal, Clock, Lock,
 } from "lucide-react";
+import { AccessRulesPanel } from "./AccessRulesPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -92,6 +93,7 @@ const TABS = [
   { id: "funnel" as const, label: "Funnel", icon: Layers },
   { id: "quests" as const, label: "Quêtes", icon: Sparkles },
   { id: "permissions" as const, label: "Permissions", icon: Lock },
+  { id: "access-rules" as const, label: "Règles d'accès", icon: Shield },
 ];
 type TabId = (typeof TABS)[number]["id"];
 
@@ -305,52 +307,54 @@ export default function ConfigPanel() {
   // ── Fetch users ──
   const fetchUsers = useCallback(async () => {
     setLoading(true);
-    const [{ data: profiles }, { data: roles }] = await Promise.all([
-      supabase.from("profiles").select("user_id, display_name, first_name, status, status_reason, is_client"),
-      supabase.from("user_roles").select("user_id, role"),
-    ]);
-    const map = new Map<string, RoleUser>();
-    (profiles || []).forEach((p: any) => {
-      map.set(p.user_id, {
-        user_id: p.user_id, email: p.display_name || "?", display_name: p.display_name,
-        first_name: p.first_name || null, roles: [], status: p.status || "active",
-        status_reason: p.status_reason, is_client: p.is_client || false,
+    try {
+      const [{ data: profiles }, { data: roles }] = await Promise.all([
+        supabase.from("profiles").select("user_id, display_name, first_name, status, status_reason, is_client"),
+        supabase.from("user_roles").select("user_id, role"),
+      ]);
+      const map = new Map<string, RoleUser>();
+      (profiles || []).forEach((p: any) => {
+        map.set(p.user_id, {
+          user_id: p.user_id, email: p.display_name || "?", display_name: p.display_name,
+          first_name: p.first_name || null, roles: [], status: p.status || "active",
+          status_reason: p.status_reason, is_client: p.is_client || false,
+        });
       });
-    });
-    (roles || []).forEach((r: any) => { const u = map.get(r.user_id); if (u) u.roles.push(r.role); });
-    setUsers(Array.from(map.values()));
-    setLoading(false);
+      (roles || []).forEach((r: any) => { const u = map.get(r.user_id); if (u) u.roles.push(r.role); });
+      setUsers(Array.from(map.values()));
+    } catch (err) {
+      console.warn("[ConfigPanel] fetchUsers error:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-  // ── Filter counts ──
+  // ── Config → Rôles: équipe uniquement (super_admin, admin, setter) ──
+  // Seuls les membres de l'équipe interne apparaissent ici (3-5 personnes max).
+  // Les membres/EA/clients sont dans Gestion, pas dans Config.
+  const TEAM_ROLES = ["super_admin", "admin", "setter"];
+  const teamUsers = useMemo(() => users.filter((u) => u.roles.some((r) => TEAM_ROLES.includes(r))), [users]);
+
   const filterCounts = useMemo(() => ({
-    all: users.length,
-    super_admin: users.filter((u) => u.roles.includes("super_admin")).length,
-    admin: users.filter((u) => u.roles.includes("admin")).length,
-    setter: users.filter((u) => u.roles.includes("setter")).length,
-    early_access: users.filter((u) => u.roles.includes("early_access")).length,
-    institute: users.filter((u) => u.roles.includes("institute")).length,
-    client: users.filter((u) => u.is_client).length,
-    frozen: users.filter((u) => u.status === "frozen").length,
-    banned: users.filter((u) => u.status === "banned").length,
-  }), [users]);
+    all: teamUsers.length,
+    super_admin: teamUsers.filter((u) => u.roles.includes("super_admin")).length,
+    admin: teamUsers.filter((u) => u.roles.includes("admin")).length,
+    setter: teamUsers.filter((u) => u.roles.includes("setter")).length,
+  }), [teamUsers]);
 
   const filteredUsers = useMemo(() => {
-    let list = users;
+    let list = teamUsers;
     if (roleFilter !== "all") {
-      if (roleFilter === "frozen") list = list.filter((u) => u.status === "frozen");
-      else if (roleFilter === "banned") list = list.filter((u) => u.status === "banned");
-      else if (roleFilter === "client") list = list.filter((u) => u.is_client);
-      else list = list.filter((u) => u.roles.includes(roleFilter));
+      list = list.filter((u) => u.roles.includes(roleFilter));
     }
     if (search) {
       const q = search.toLowerCase();
       list = list.filter((u) => (u.display_name || "").toLowerCase().includes(q) || (u.first_name || "").toLowerCase().includes(q) || u.user_id.includes(q));
     }
     return list.sort((a, b) => (a.display_name || "").localeCompare(b.display_name || ""));
-  }, [users, search, roleFilter]);
+  }, [teamUsers, search, roleFilter]);
 
   // ── Save first name ──
   const saveFirstName = async (userId: string) => {
@@ -512,19 +516,14 @@ export default function ConfigPanel() {
                 {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"><X className="w-3.5 h-3.5" /></button>}
               </div>
 
-              {/* Filters bar */}
+              {/* Filters bar — équipe uniquement */}
               <div className="flex items-center justify-between rounded-xl bg-white/[0.03] border border-white/[0.08] px-4 py-2">
                 <div className="flex items-center gap-2 overflow-x-auto">
                   {([
-                    { key: "all", label: "Tous", count: filterCounts.all },
+                    { key: "all", label: "Équipe", count: filterCounts.all },
                     { key: "super_admin", label: "Super Admin", count: filterCounts.super_admin },
                     { key: "admin", label: "Admin", count: filterCounts.admin },
                     { key: "setter", label: "Setter", count: filterCounts.setter },
-                    { key: "early_access", label: "EA", count: filterCounts.early_access },
-                    { key: "institute", label: "Institut", count: filterCounts.institute },
-                    { key: "client", label: "Client", count: filterCounts.client },
-                    { key: "frozen", label: "Gelés", count: filterCounts.frozen },
-                    { key: "banned", label: "Bannis", count: filterCounts.banned },
                   ] as const).map((f) => (
                     <button key={f.key} onClick={() => setRoleFilter(roleFilter === f.key ? "all" : f.key)}
                       className={cn(
@@ -541,7 +540,7 @@ export default function ConfigPanel() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-3">
                   <span className="text-lg font-bold text-white tabular-nums">{filteredUsers.length}</span>
-                  <span className="text-white/30 text-[10px] uppercase">résultats</span>
+                  <span className="text-white/30 text-[10px] uppercase">membres équipe</span>
                   <Button variant="ghost" size="sm" onClick={fetchUsers} className="text-white/40 hover:text-white/70 h-8 w-8 p-0 ml-1"><RefreshCw className="w-3.5 h-3.5" /></Button>
                 </div>
               </div>
@@ -561,7 +560,6 @@ export default function ConfigPanel() {
                     <span className="text-white/70 text-xs font-medium uppercase tracking-wider">Rôles</span>
                   </div>
                   <div className="w-[80px] shrink-0 text-center text-white/70 text-xs font-medium uppercase tracking-wider">Statut</div>
-                  <div className="w-[60px] shrink-0 text-center text-white/70 text-xs font-medium uppercase tracking-wider">Client</div>
                   <div className="w-[100px] shrink-0 text-right text-white/70 text-xs font-medium uppercase tracking-wider">Actions</div>
                 </div>
 
@@ -605,13 +603,6 @@ export default function ConfigPanel() {
                           {u.status === "banned" && <span className="inline-flex items-center gap-1 text-red-400 text-xs"><Ban className="w-3 h-3" />Banni</span>}
                         </div>
 
-                        {/* Client */}
-                        <div className="w-[60px] shrink-0 text-center">
-                          {u.is_client ? (
-                            <span className="inline-flex items-center gap-0.5 text-violet-400 text-xs"><Tag className="w-3 h-3" />Oui</span>
-                          ) : <span className="text-white/15 text-xs">—</span>}
-                        </div>
-
                         {/* Actions */}
                         <div className="w-[100px] shrink-0 flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                           <Tooltip><TooltipTrigger asChild>
@@ -619,12 +610,6 @@ export default function ConfigPanel() {
                               <Crown className="w-3.5 h-3.5" />
                             </Button>
                           </TooltipTrigger><TooltipContent className="text-[10px]">Modifier rôles</TooltipContent></Tooltip>
-
-                          <Tooltip><TooltipTrigger asChild>
-                            <Button variant="ghost" size="sm" className={cn("h-7 w-7 p-0", u.is_client ? "text-violet-400" : "text-white/40 hover:text-violet-400")} onClick={() => toggleClient(u.user_id)}>
-                              <Tag className="w-3.5 h-3.5" />
-                            </Button>
-                          </TooltipTrigger><TooltipContent className="text-[10px]">{u.is_client ? "Retirer Client" : "Ajouter Client"}</TooltipContent></Tooltip>
 
                           {u.status === "active" && <Tooltip><TooltipTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-white/40 hover:text-blue-400" onClick={() => openAction(u.user_id, "freeze")}><Snowflake className="w-3.5 h-3.5" /></Button>
@@ -696,6 +681,9 @@ export default function ConfigPanel() {
 
         {/* ═══ PERMISSIONS ═══ */}
         {activeTab === "permissions" && <PermissionsTab />}
+
+        {/* ═══ RÈGLES D'ACCÈS ═══ */}
+        {activeTab === "access-rules" && <AccessRulesPanel />}
       </div>
 
       {/* ── Dialogs ── */}

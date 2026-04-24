@@ -12,8 +12,12 @@ import {
   BarChart3, RefreshCw,
   Lock, Play, ArrowUpRight, ArrowDownRight,
   MessageSquare, Save, User, Crown, ShieldCheck,
-  Snowflake, Ban, UserX, Award, UserPlus, Tag,
+  Snowflake, Ban, UserX, Award, UserPlus, Tag, ExternalLink,
+  Edit2, RotateCcw,
 } from "lucide-react";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -145,6 +149,7 @@ interface PlatformUser {
   eaInfo: EaInfo | null;          // null if no EA role
   isInstitute: boolean;           // has 'institute' role
   followups: FollowupEntry[];
+  lastSeen: string | null;        // last_heartbeat from ea_activity_tracking
 }
 
 interface PendingRequest {
@@ -167,10 +172,14 @@ interface PendingRequest {
 
 interface ProcessedRequest {
   id: string;
+  user_id: string;
   userName: string;
   cycleName: string;
-  status: string;
+  status: string;           // "approved" | "rejected"
   reviewed_at: string;
+  admin_comments: string | null;
+  user_cycle_id: string | null;
+  reviewerName: string | null;
 }
 
 interface Profile {
@@ -268,6 +277,16 @@ function getRoleBadgeCls(role: string) {
 const fmtDate = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
 const fmtDateLong = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
+function fmtRelativeTime(ts: string | null): string {
+  if (!ts) return "Jamais";
+  const diffMs = Date.now() - new Date(ts).getTime();
+  if (diffMs < 60000) return "Il y a < 1 min";
+  if (diffMs < 3600000) return `Il y a ${Math.floor(diffMs / 60000)} min`;
+  if (diffMs < 86400000) return `Il y a ${Math.floor(diffMs / 3600000)}h`;
+  if (diffMs < 7 * 86400000) return `Il y a ${Math.floor(diffMs / 86400000)}j`;
+  return new Date(ts).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+}
+
 // ── Design system (matching CRM) ──
 const BG = "bg-[hsl(220,15%,8%)]";
 const Empty = () => <span className="text-white/[0.08] select-none">—</span>;
@@ -323,6 +342,10 @@ export default function GestionPanel() {
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
+  // Correction system
+  const [reopeningId, setReopeningId] = useState<string | null>(null);
+  const [editingComment, setEditingComment] = useState<{ vrId: string; userCycleId: string | null; value: string } | null>(null);
+  const [savingComment, setSavingComment] = useState(false);
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [tradeNotes, setTradeNotes] = useState<Record<string, string>>({});
   const [tradeValidity, setTradeValidity] = useState<Record<string, boolean>>({});
@@ -332,6 +355,10 @@ export default function GestionPanel() {
   const [userFilter, setUserFilter] = useState<string>("all");
   const [userSort, setUserSort] = useState<string>("priority");
   const [activeSubTab, setActiveSubTab] = useState<Record<string, "cycles" | "trades" | "profil">>({});
+  // Fiche user — drawer latéral (depuis vérifs ou alertes)
+  const [ficheUserId, setFicheUserId] = useState<string | null>(null);
+  // Filter verifications by user (from fiche link)
+  const [verificationUserFilter, setVerificationUserFilter] = useState<string | null>(null);
 
   // Gallery
   const [galleryItems, setGalleryItems] = useState<TradeScreenshotItem[]>([]);
@@ -374,7 +401,7 @@ export default function GestionPanel() {
     try {
       const [
         profilesRes, cyclesRes, userCyclesRes, executionsRes, sessionsRes, activityRes,
-        rolesRes, vrsRes, allVrsRes, processedVrsRes, alertsRes, oracleRes, adminRolesRes, followupsRes,
+        rolesRes, vrsRes, allVrsRes, processedVrsRes, alertsRes, oracleRes, adminRolesRes,
       ] = await Promise.all([
         supabase.from("profiles").select("*"),
         supabase.from("cycles").select("*").order("cycle_number"),
@@ -389,7 +416,6 @@ export default function GestionPanel() {
         supabase.from("security_alerts").select("*").eq("resolved", false).order("created_at", { ascending: false }),
         supabase.from("trades").select("id, trade_number, trade_date, entry_time, direction, rr, screenshot_m15_m5, screenshot_m1").order("trade_number"),
         supabase.from("user_roles").select("user_id").in("role", ["admin", "super_admin"]),
-        supabase.from("user_followups").select("*").order("day_number"),
       ]);
 
       const profiles = (profilesRes.data || []) as any[];
@@ -405,7 +431,6 @@ export default function GestionPanel() {
       const alertsData = alertsRes.data || [];
       const oracleData = (oracleRes.data || []) as OracleTrade[];
       const adminRoles = adminRolesRes.data || [];
-      const followupsData = followupsRes.data || [];
 
       setCycles(cyclesData);
       setOracleTrades(oracleData);
@@ -416,7 +441,11 @@ export default function GestionPanel() {
       const sessionCounts: Record<string, number> = {};
       sessions.forEach((s: any) => { sessionCounts[s.user_id] = (sessionCounts[s.user_id] || 0) + 1; });
       const onlineMap: Record<string, boolean> = {};
-      activity.forEach((a: any) => { onlineMap[a.user_id] = !!(a.last_heartbeat && Date.now() - new Date(a.last_heartbeat).getTime() < 60000); });
+      const lastSeenMap: Record<string, string | null> = {};
+      activity.forEach((a: any) => {
+        onlineMap[a.user_id] = !!(a.last_heartbeat && Date.now() - new Date(a.last_heartbeat).getTime() < 60000);
+        lastSeenMap[a.user_id] = a.last_heartbeat || null;
+      });
 
       // Roles map (with EA metadata)
       const rolesMap: Record<string, string[]> = {};
@@ -451,16 +480,10 @@ export default function GestionPanel() {
         }
       };
 
-      // Followups map
-      const followupsMap: Record<string, FollowupEntry[]> = {};
-      followupsData.forEach((f: any) => {
-        if (!followupsMap[f.user_id]) followupsMap[f.user_id] = [];
-        followupsMap[f.user_id].push({ day_number: f.day_number, contact_date: f.contact_date, message_sent: f.message_sent || false, call_done: f.call_done || false, is_blocked: f.is_blocked || false, correct_actions: f.correct_actions || false, notes: f.notes });
-      });
-
-      // Build users — source: profiles (ALL users, not just those with cycles)
-      // user_cycles data is optional: new users without any cycle still appear
-      const uniqueUserIds = profiles.map((p: any) => p.user_id);
+      // Build users — source: profiles filtered to clients only
+      // profileMap contains ALL profiles (for reviewer name lookups)
+      const clientProfiles = profiles.filter((p: any) => p.is_client === true);
+      const uniqueUserIds = clientProfiles.map((p: any) => p.user_id);
       const platformUsers: PlatformUser[] = uniqueUserIds.map((userId: string) => {
         const ucs = userCycles.filter((uc) => uc.user_id === userId);
         const userExecs = allExecutions.filter((e) => e.user_id === userId) as UserExecution[];
@@ -491,23 +514,19 @@ export default function GestionPanel() {
           executions: userExecs,
           sessionCount: sessionCounts[userId] || 0,
           isOnline: onlineMap[userId] || false,
+          lastSeen: lastSeenMap[userId] || null,
           roles: rolesMap[userId] || [],
           teamRoles: (rolesMap[userId] || []).filter((r) => ["super_admin", "admin", "setter"].includes(r)),
           hasEarlyAccess: (rolesMap[userId] || []).includes("early_access"),
           eaInfo: buildEaInfo(userId),
           isInstitute: (rolesMap[userId] || []).includes("institute"),
-          followups: (followupsMap[userId] || []).sort((a, b) => a.day_number - b.day_number),
+          followups: [],
         };
       }).sort((a, b) => {
-        // Priority sort: frozen/banned first, then pending verif, then EA expiring soon, then by trades
+        // Priority sort: frozen/banned first, then pending verif, then by trades
         const priorityScore = (u: PlatformUser) => {
           if (u.profileStatus === "frozen" || u.profileStatus === "banned") return 0;
           if (u.userStatus === "pending") return 1;
-          if (u.eaInfo?.timerStatus === "expired") return 2;
-          if (u.eaInfo?.timerStatus === "active" && u.eaInfo.expiresAt) {
-            const remaining = new Date(u.eaInfo.expiresAt).getTime() - Date.now();
-            if (remaining < 12 * 3600000) return 3; // < 12h
-          }
           return 10;
         };
         const pa = priorityScore(a), pb = priorityScore(b);
@@ -534,7 +553,18 @@ export default function GestionPanel() {
       const processed: ProcessedRequest[] = processedVrs.map((vr: any) => {
         const p = profileMap[vr.user_id];
         const c = cyclesData.find((cy) => cy.id === vr.cycle_id);
-        return { id: vr.id, userName: p?.display_name || `User ${vr.user_id.slice(0, 8)}`, cycleName: c?.name || "?", status: vr.status, reviewed_at: vr.reviewed_at || vr.requested_at };
+        const reviewer = vr.reviewed_by ? profileMap[vr.reviewed_by] : null;
+        return {
+          id: vr.id,
+          user_id: vr.user_id,
+          userName: p?.display_name || `User ${vr.user_id.slice(0, 8)}`,
+          cycleName: c?.name || "?",
+          status: vr.status,
+          reviewed_at: vr.reviewed_at || vr.requested_at,
+          admin_comments: vr.admin_comments || null,
+          user_cycle_id: vr.user_cycle_id || null,
+          reviewerName: reviewer?.display_name || null,
+        };
       });
       setProcessedRequests(processed);
 
@@ -669,6 +699,69 @@ export default function GestionPanel() {
     loadData();
   };
 
+  // ── Reopen a processed verification (reset to pending) ──
+  // RÈGLE : reset VR + user_cycle to pending_review. Ne re-verrouille PAS le cycle suivant
+  // automatiquement (trop risqué si l'élève a déjà commencé). L'admin le fait manuellement
+  // depuis la fiche utilisateur si nécessaire.
+  const handleReopenVerification = async (pr: ProcessedRequest) => {
+    setReopeningId(pr.id);
+    try {
+      const ops: Promise<any>[] = [
+        supabase.from("verification_requests").update({
+          status: "pending",
+          reviewed_at: null,
+          reviewed_by: null,
+          admin_comments: null,
+        }).eq("id", pr.id),
+      ];
+      if (pr.user_cycle_id) {
+        ops.push(
+          supabase.from("user_cycles").update({
+            status: "pending_review",
+            verified_at: null,
+            completed_at: null,
+            admin_feedback: null,
+          }).eq("id", pr.user_cycle_id)
+        );
+      }
+      await Promise.all(ops);
+      toast({
+        title: "Ré-ouvert",
+        description: `${pr.userName} — ${pr.cycleName} repassé en attente de vérification.${pr.user_cycle_id ? " ⚠️ Vérifier si le cycle suivant a déjà été déverrouillé." : ""}`,
+      });
+      loadData();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setReopeningId(null);
+    }
+  };
+
+  // ── Save edited admin comment ──
+  // Met à jour admin_comments (verification_requests) ET admin_feedback (user_cycles) en parallèle.
+  const handleSaveEditedComment = async () => {
+    if (!editingComment) return;
+    setSavingComment(true);
+    try {
+      const ops: Promise<any>[] = [
+        supabase.from("verification_requests").update({ admin_comments: editingComment.value }).eq("id", editingComment.vrId),
+      ];
+      if (editingComment.userCycleId) {
+        ops.push(
+          supabase.from("user_cycles").update({ admin_feedback: editingComment.value }).eq("id", editingComment.userCycleId)
+        );
+      }
+      await Promise.all(ops);
+      toast({ title: "Commentaire mis à jour" });
+      setEditingComment(null);
+      loadData();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingComment(false);
+    }
+  };
+
   // ── Resolve alert ──
   const resolveAlert = async (alertId: string, userId: string, unfreeze: boolean) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -725,9 +818,6 @@ export default function GestionPanel() {
     all: users.length,
     online: users.filter((u) => u.isOnline).length,
     pending: users.filter((u) => u.userStatus === "pending").length,
-    ea_active: users.filter((u) => u.eaInfo?.timerStatus === "active" || u.eaInfo?.timerStatus === "not_started").length,
-    ea_expired: users.filter((u) => u.eaInfo?.timerStatus === "expired").length,
-    client: users.filter((u) => u.isClient).length,
     institute: users.filter((u) => u.isInstitute).length,
     frozen: users.filter((u) => u.profileStatus === "frozen").length,
     banned: users.filter((u) => u.profileStatus === "banned").length,
@@ -740,9 +830,6 @@ export default function GestionPanel() {
       else if (userFilter === "banned") list = list.filter((u) => u.profileStatus === "banned");
       else if (userFilter === "pending") list = list.filter((u) => u.userStatus === "pending");
       else if (userFilter === "online") list = list.filter((u) => u.isOnline);
-      else if (userFilter === "ea_active") list = list.filter((u) => u.eaInfo?.timerStatus === "active" || u.eaInfo?.timerStatus === "not_started");
-      else if (userFilter === "ea_expired") list = list.filter((u) => u.eaInfo?.timerStatus === "expired");
-      else if (userFilter === "client") list = list.filter((u) => u.isClient);
       else if (userFilter === "institute") list = list.filter((u) => u.isInstitute);
       else list = list.filter((u) => u.roles.includes(userFilter));
     }
@@ -770,12 +857,13 @@ export default function GestionPanel() {
 
   const filteredRequests = useMemo(() => {
     let r = requests;
+    if (verificationUserFilter) r = r.filter((v) => v.user_id === verificationUserFilter);
     if (search) { const q = search.toLowerCase(); r = r.filter((v) => v.userName.toLowerCase().includes(q)); }
     if (verificationAssigneeFilter !== "all") {
       r = verificationAssigneeFilter === "unassigned" ? r.filter((v) => !v.assigned_to) : r.filter((v) => v.assigned_to === verificationAssigneeFilter);
     }
     return r;
-  }, [requests, search, verificationAssigneeFilter]);
+  }, [requests, search, verificationAssigneeFilter, verificationUserFilter]);
 
   const kpis = useMemo(() => ({
     totalUsers: users.length,
@@ -847,12 +935,10 @@ export default function GestionPanel() {
               {/* Left: Filters + Sort */}
               <div className="flex items-center gap-2">
                 {([
-                  { key: "all", label: "Tous", count: filterCounts.all },
+                  { key: "all", label: "Clients", count: filterCounts.all },
                   { key: "pending", label: "En vérif", count: filterCounts.pending, dot: "orange" },
-                  { key: "ea_expired", label: "EA expiré", count: filterCounts.ea_expired, dot: "red" },
                   { key: "online", label: "En ligne", count: filterCounts.online, dot: "emerald" },
-                  { key: "ea_active", label: "EA actif", count: filterCounts.ea_active },
-                  { key: "client", label: "Clients", count: filterCounts.client },
+                  { key: "institute", label: "Institut", count: filterCounts.institute },
                   { key: "frozen", label: "Gelés", count: filterCounts.frozen },
                 ] as const).map((f) => (
                   <button
@@ -932,8 +1018,7 @@ export default function GestionPanel() {
               </div>
               <div className="w-[50px] shrink-0 text-right text-white/70 text-xs font-medium uppercase tracking-wider">WR</div>
               <div className="w-[90px] shrink-0 text-center flex items-center justify-center gap-1.5">
-                <IconBox color="cyan"><Clock className="w-3 h-3 text-cyan-400/80" /></IconBox>
-                <span className="text-white/70 text-xs font-medium uppercase tracking-wider">Timer</span>
+                <span className="text-white/70 text-xs font-medium uppercase tracking-wider">Activité</span>
               </div>
               <div className="flex-1 text-center text-white/70 text-xs font-medium uppercase tracking-wider">Cycles</div>
               <div className="w-[70px] shrink-0 text-right text-white/70 text-xs font-medium uppercase tracking-wider">Prog.</div>
@@ -952,7 +1037,6 @@ export default function GestionPanel() {
                 u.profileStatus === "frozen" ? "border-l-blue-500" :
                 u.profileStatus === "banned" ? "border-l-red-500" :
                 u.userStatus === "pending" ? "border-l-orange-400" :
-                u.eaInfo?.timerStatus === "expired" ? "border-l-red-400" :
                 u.userStatus === "completed" ? "border-l-emerald-400" : "border-l-transparent";
 
               return (
@@ -981,7 +1065,6 @@ export default function GestionPanel() {
                         {u.profileStatus === "frozen" && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-blue-500/15 text-blue-400 rounded leading-none">Gelé</span>}
                         {u.profileStatus === "banned" && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-red-500/15 text-red-400 rounded leading-none">Banni</span>}
                         {u.userStatus === "pending" && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-orange-500/15 text-orange-400 rounded leading-none animate-pulse">Vérif</span>}
-                        {u.isClient && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-emerald-500/10 text-emerald-400 rounded leading-none">Client</span>}
                         {u.isInstitute && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-blue-500/10 text-blue-400 rounded leading-none">Institut</span>}
                         {u.teamRoles.map((r) => <span key={r} className="px-1.5 py-0.5 text-[9px] font-mono bg-violet-500/10 text-violet-400 rounded leading-none">{getRoleLabel(r)}</span>)}
                       </div>
@@ -1009,17 +1092,12 @@ export default function GestionPanel() {
                       <span className="text-sm font-mono text-muted-foreground">{stats.winRate.toFixed(0)}%</span>
                     </div>
 
-                    {/* EA Timer */}
+                    {/* Activité */}
                     <div className="w-[90px] shrink-0 text-center">
-                      {u.eaInfo?.timerStatus === "active" && (() => {
-                        const diffMs = new Date(u.eaInfo!.expiresAt!).getTime() - Date.now();
-                        const urgent = diffMs < 12 * 3600000;
-                        const warning = diffMs < 48 * 3600000;
-                        return <span className={cn("text-xs font-mono", urgent ? "text-red-400" : warning ? "text-amber-400" : "text-muted-foreground")}>⏱ {u.eaInfo!.remainingLabel}</span>;
-                      })()}
-                      {u.eaInfo?.timerStatus === "expired" && <span className="text-xs font-mono text-red-400">Expiré</span>}
-                      {u.eaInfo?.timerStatus === "not_started" && <span className="text-xs font-mono text-muted-foreground/50">⏸</span>}
-                      {!u.eaInfo && <span className="text-xs text-muted-foreground/30">—</span>}
+                      {u.isOnline
+                        ? <span className="text-[10px] font-mono text-emerald-400 flex items-center justify-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />En ligne</span>
+                        : <span className="text-[10px] font-mono text-white/30">{fmtRelativeTime(u.lastSeen)}</span>
+                      }
                     </div>
 
                     {/* Cycle mini-grid */}
@@ -1209,56 +1287,13 @@ export default function GestionPanel() {
                                   {u.teamRoles.map((r) => <span key={r} className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono border", getRoleBadgeCls(r))}>{getRoleIcon(r)}{getRoleLabel(r)}</span>)}
                                 </div>
                               )}
-                              {u.hasEarlyAccess && u.eaInfo && (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-mono uppercase text-muted-foreground w-12">Accès</span>
-                                  <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono border",
-                                    u.eaInfo.timerStatus === "active" ? "bg-primary/10 text-primary border-primary/30" :
-                                    u.eaInfo.timerStatus === "expired" ? "bg-red-500/10 text-red-400 border-red-500/30" :
-                                    "bg-amber-500/10 text-amber-400 border-amber-500/30"
-                                  )}><Shield className="w-2.5 h-2.5" />EA {u.eaInfo.earlyAccessType && `(${u.eaInfo.earlyAccessType})`}</span>
-                                  <span className={cn("text-[9px] font-mono",
-                                    u.eaInfo.timerStatus === "active" ? "text-emerald-400" : u.eaInfo.timerStatus === "expired" ? "text-red-400" : "text-amber-400"
-                                  )}>{u.eaInfo.remainingLabel}</span>
-                                </div>
-                              )}
-                              {(u.isClient || u.isInstitute) && (
+                              {u.isInstitute && (
                                 <div className="flex items-center gap-2">
                                   <span className="text-[10px] font-mono uppercase text-muted-foreground w-12">Tags</span>
-                                  {u.isClient && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-mono border bg-emerald-500/10 text-emerald-400 border-emerald-500/30"><CheckCircle className="w-2.5 h-2.5" />Client</span>}
-                                  {u.isInstitute && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-mono border bg-blue-500/10 text-blue-500 border-blue-500/30"><Award className="w-2.5 h-2.5" />Institut</span>}
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-mono border bg-blue-500/10 text-blue-500 border-blue-500/30"><Award className="w-2.5 h-2.5" />Institut</span>
                                 </div>
                               )}
                             </div>
-
-                            {/* Suivi */}
-                            {u.followups.length > 0 && (
-                              <div>
-                                <p className="text-[10px] font-mono uppercase text-muted-foreground mb-1.5">Suivi ({u.followups.length}j)</p>
-                                <div className="flex gap-1 flex-wrap">
-                                  {u.followups.map((f) => (
-                                    <Tooltip key={f.day_number}>
-                                      <TooltipTrigger>
-                                        <div className={cn("w-7 h-7 rounded flex items-center justify-center text-[9px] font-mono font-bold border",
-                                          f.is_blocked ? "bg-red-500/10 border-red-500/20 text-red-400" :
-                                          f.correct_actions && f.message_sent ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
-                                          f.message_sent || f.call_done ? "bg-blue-500/10 border-blue-500/20 text-blue-400" :
-                                          "bg-muted/20 border-border text-muted-foreground"
-                                        )}>J{f.day_number}</div>
-                                      </TooltipTrigger>
-                                      <TooltipContent className="text-[10px]">
-                                        <p>J{f.day_number} — {fmtDate(f.contact_date)}</p>
-                                        {f.message_sent && <p>💬 Message</p>}
-                                        {f.call_done && <p>📞 Call</p>}
-                                        {f.is_blocked && <p>🚫 Bloqué</p>}
-                                        {f.correct_actions && <p>✅ OK</p>}
-                                        {f.notes && <p className="text-muted-foreground">{f.notes}</p>}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
 
                             {/* Footer */}
                             <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono pt-2 border-t border-border/30">
@@ -1290,9 +1325,20 @@ export default function GestionPanel() {
               <>
                 {/* Filters */}
                 {requests.length > 0 && (
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <AlertTriangle className="w-4 h-4 text-orange-400" />
                     <span className="text-xs font-mono uppercase text-muted-foreground">{filteredRequests.length} en attente</span>
+                    {verificationUserFilter && (() => {
+                      const filteredUser = users.find((u) => u.id === verificationUserFilter);
+                      return (
+                        <button
+                          onClick={() => setVerificationUserFilter(null)}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-primary/10 text-primary border border-primary/25 hover:bg-primary/15 transition-colors"
+                        >
+                          {filteredUser?.displayName || "Filtré"} <XCircle className="w-3 h-3" />
+                        </button>
+                      );
+                    })()}
                     <select value={verificationAssigneeFilter} onChange={(e) => setVerificationAssigneeFilter(e.target.value)} className="h-8 text-xs font-mono bg-card border border-border rounded-md px-2 text-foreground">
                       <option value="all">Tous</option><option value="unassigned">Non assignés</option>
                       {adminProfiles.map((a) => <option key={a.user_id} value={a.user_id}>{a.display_name || "Admin"}</option>)}
@@ -1318,7 +1364,15 @@ export default function GestionPanel() {
                                 {request.userName} — {request.cycle?.name || "?"}
                                 {request.attemptNumber > 1 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 font-mono">{request.attemptNumber}ème</span>}
                               </h4>
-                              <p className="text-xs text-muted-foreground font-mono">{fmtDateLong(request.requested_at)}</p>
+                              <div className="flex items-center gap-3 mt-0.5">
+                                <p className="text-xs text-muted-foreground font-mono">{fmtDateLong(request.requested_at)}</p>
+                                <button
+                                  className="flex items-center gap-1 text-[10px] text-primary/70 hover:text-primary font-mono transition-colors"
+                                  onClick={(e) => { e.stopPropagation(); setFicheUserId(request.user_id); }}
+                                >
+                                  <ExternalLink className="w-2.5 h-2.5" />Voir fiche
+                                </button>
+                              </div>
                               {assignedAdmin ? <p className="text-[10px] text-primary font-mono mt-0.5">Assigné: {assignedAdmin.display_name}</p> : (
                                 <button className="text-[10px] text-muted-foreground hover:text-primary font-mono mt-0.5 underline" onClick={(e) => { e.stopPropagation(); setAssigningRequest(assigningRequest === request.id ? null : request.id); }}>+ Assigner</button>
                               )}
@@ -1394,13 +1448,20 @@ export default function GestionPanel() {
                                     const reviewed = tradeValidity[nk] !== undefined;
 
                                     return (
-                                      <TableRow key={exec.id} className={cn("hover:bg-muted/30",
-                                        reviewed && isValid && "bg-emerald-500/10",
-                                        reviewed && !isValid && "bg-red-500/10",
-                                        !reviewed && exec.trade_number <= 15 && comp.status === "match" && "bg-emerald-500/5",
-                                        !reviewed && exec.trade_number <= 15 && comp.status === "warning" && "bg-orange-500/5",
-                                        !reviewed && exec.trade_number <= 15 && (comp.status === "error" || comp.status === "no-match") && "bg-red-500/5",
-                                      )}>
+                                      <TableRow key={exec.id}
+                                        className={cn("hover:bg-muted/30 cursor-pointer",
+                                          reviewed && isValid && "bg-emerald-500/10",
+                                          reviewed && !isValid && "bg-red-500/10",
+                                          !reviewed && exec.trade_number <= 15 && comp.status === "match" && "bg-emerald-500/5",
+                                          !reviewed && exec.trade_number <= 15 && comp.status === "warning" && "bg-orange-500/5",
+                                          !reviewed && exec.trade_number <= 15 && (comp.status === "error" || comp.status === "no-match") && "bg-red-500/5",
+                                        )}
+                                        onClick={() => {
+                                          const idx = request.executions.findIndex((x) => x.id === exec.id);
+                                          const screen = exec.screenshot_url ? "m15" : exec.screenshot_entry_url ? "m5" : "m15";
+                                          openGallery(request.executions, idx >= 0 ? idx : 0, screen, request.id);
+                                        }}
+                                      >
                                         <TableCell className="py-1.5">
                                           {exec.trade_number <= 15 ? (
                                             <Tooltip><TooltipTrigger>
@@ -1474,23 +1535,119 @@ export default function GestionPanel() {
                   );
                 })}
 
-                {/* ── Processed history ── */}
+                {/* ── Historique des corrections ── */}
                 {processedRequests.length > 0 && (
-                  <div className="mt-6">
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-3">Historique ({processedRequests.length})</h3>
-                    <div className="space-y-1.5">
-                      {processedRequests.map((pr) => (
-                        <div key={pr.id} className="bg-card border border-border rounded-lg p-3 flex items-center gap-3">
-                          <div className={cn("w-7 h-7 rounded-full flex items-center justify-center", pr.status === "approved" ? "bg-emerald-500/15" : "bg-red-500/15")}>
-                            {pr.status === "approved" ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />}
+                  <div className="mt-8">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="h-px flex-1 bg-white/[0.06]" />
+                      <span className="text-[11px] font-mono uppercase tracking-widest text-white/30 px-3">Historique · {processedRequests.length} corrections</span>
+                      <div className="h-px flex-1 bg-white/[0.06]" />
+                    </div>
+                    <div className="space-y-2">
+                      {processedRequests.map((pr) => {
+                        const isEditing = editingComment?.vrId === pr.id;
+                        const isReopening = reopeningId === pr.id;
+                        return (
+                          <div key={pr.id} className={cn(
+                            "rounded-xl border transition-colors",
+                            pr.status === "approved"
+                              ? "border-emerald-500/20 bg-emerald-500/[0.04]"
+                              : "border-red-500/20 bg-red-500/[0.04]"
+                          )}>
+                            {/* Header row */}
+                            <div className="flex items-center gap-3 px-4 py-3">
+                              <div className={cn("w-7 h-7 rounded-full shrink-0 flex items-center justify-center",
+                                pr.status === "approved" ? "bg-emerald-500/15" : "bg-red-500/15"
+                              )}>
+                                {pr.status === "approved"
+                                  ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                                  : <XCircle className="w-3.5 h-3.5 text-red-400" />}
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-white truncate">
+                                  {pr.userName}
+                                  <span className="text-white/40 font-normal"> — {pr.cycleName}</span>
+                                </p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[10px] font-mono text-white/30">{fmtDateLong(pr.reviewed_at)}</span>
+                                  {pr.reviewerName && (
+                                    <span className="text-[10px] text-white/25">par {pr.reviewerName}</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <span className={cn("px-2 py-0.5 rounded text-[10px] font-mono uppercase border shrink-0",
+                                pr.status === "approved"
+                                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/25"
+                                  : "bg-red-500/15 text-red-400 border-red-500/25"
+                              )}>
+                                {pr.status === "approved" ? "Validé" : "Rejeté"}
+                              </span>
+
+                              {/* Actions */}
+                              <div className="flex items-center gap-1 shrink-0">
+                                {/* Edit comment */}
+                                {!isEditing && (
+                                  <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 text-white/40 hover:text-white/70 px-2"
+                                    onClick={() => setEditingComment({ vrId: pr.id, userCycleId: pr.user_cycle_id, value: pr.admin_comments || "" })}>
+                                    <Edit2 className="w-3 h-3" />Éditer
+                                  </Button>
+                                )}
+                                {/* Reopen */}
+                                <Button variant="ghost" size="sm" disabled={isReopening}
+                                  className="h-7 text-[10px] gap-1 text-amber-400/70 hover:text-amber-400 hover:bg-amber-500/10 px-2"
+                                  onClick={() => handleReopenVerification(pr)}>
+                                  {isReopening
+                                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                                    : <RotateCcw className="w-3 h-3" />}
+                                  Ré-ouvrir
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Comment — display or edit */}
+                            {(pr.admin_comments || isEditing) && (
+                              <div className="px-4 pb-3 border-t border-white/[0.04] pt-3">
+                                {isEditing ? (
+                                  <div className="space-y-2">
+                                    <Textarea
+                                      value={editingComment!.value}
+                                      onChange={(e) => setEditingComment(prev => prev ? { ...prev, value: e.target.value } : null)}
+                                      className="resize-none bg-white/[0.04] border-white/[0.10] text-sm text-white placeholder:text-white/30 min-h-[80px]"
+                                      placeholder="Feedback envoyé à l'élève…"
+                                      autoFocus
+                                    />
+                                    <div className="flex gap-2">
+                                      <Button size="sm" className="h-7 text-[10px] gap-1 bg-primary/80 hover:bg-primary" disabled={savingComment} onClick={handleSaveEditedComment}>
+                                        {savingComment ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}Enregistrer
+                                      </Button>
+                                      <Button variant="ghost" size="sm" className="h-7 text-[10px] text-white/40" onClick={() => setEditingComment(null)}>
+                                        Annuler
+                                      </Button>
+                                      <span className="text-[9px] text-amber-400/60 font-mono self-center ml-1">⚠ Met à jour le feedback reçu par l'élève</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-[11px] text-white/50 italic leading-relaxed whitespace-pre-wrap">
+                                    "{pr.admin_comments}"
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Warning when no comment — invite to add one */}
+                            {!pr.admin_comments && !isEditing && pr.status === "rejected" && (
+                              <div className="px-4 pb-2.5">
+                                <button className="text-[10px] text-red-400/50 hover:text-red-400/80 transition-colors"
+                                  onClick={() => setEditingComment({ vrId: pr.id, userCycleId: pr.user_cycle_id, value: "" })}>
+                                  ⚠ Aucun feedback — ajouter un commentaire
+                                </button>
+                              </div>
+                            )}
                           </div>
-                          <div className="flex-1 min-w-0"><p className="text-sm truncate">{pr.userName} — {pr.cycleName}</p></div>
-                          <span className="text-[10px] text-muted-foreground font-mono">{fmtDate(pr.reviewed_at)}</span>
-                          <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-mono uppercase border",
-                            pr.status === "approved" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" : "bg-red-500/15 text-red-400 border-red-500/25"
-                          )}>{pr.status === "approved" ? "Validé" : "Rejeté"}</span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -1516,6 +1673,7 @@ export default function GestionPanel() {
                 </div>
                 <span className="text-[10px] text-muted-foreground font-mono">{fmtDate(a.created_at)}</span>
                 <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setFicheUserId(a.user_id)} className="text-xs gap-1 text-primary/70 hover:text-primary"><ExternalLink className="w-3 h-3" />Fiche</Button>
                   <Button size="sm" variant="outline" onClick={() => resolveAlert(a.id, a.user_id, false)} className="text-xs">Résoudre</Button>
                   <Button size="sm" onClick={() => resolveAlert(a.id, a.user_id, true)} className="text-xs bg-emerald-600 hover:bg-emerald-700">Résoudre + Dégeler</Button>
                 </div>
@@ -1554,6 +1712,213 @@ export default function GestionPanel() {
       />
 
       <AdminTradeNotesViewer open={!!notesViewerRequestId} onOpenChange={(o) => { if (!o) setNotesViewerRequestId(null); }} requestId={notesViewerRequestId || ""} executions={notesViewerExecs} onNotesUpdated={() => { if (notesViewerRequestId) loadTradeNotes(notesViewerRequestId); }} />
+
+      {/* ── Fiche User — Drawer latéral ── */}
+      {/* Ouvert depuis Vérifications ou Alertes. Contexte préservé, pas de changement de tab. */}
+      <Sheet open={!!ficheUserId} onOpenChange={(o) => { if (!o) setFicheUserId(null); }}>
+        <SheetContent side="right" className="w-[420px] sm:w-[480px] bg-[#0A0B10] border-l border-white/[0.08] overflow-y-auto p-0">
+          {(() => {
+            const u = users.find((x) => x.id === ficheUserId);
+            if (!u) return (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-muted-foreground text-sm">Utilisateur non trouvé dans Gestion</p>
+              </div>
+            );
+            const subTab = activeSubTab[u.id] || "cycles";
+            return (
+              <div className="flex flex-col h-full">
+                {/* Header */}
+                <SheetHeader className="px-6 pt-6 pb-4 border-b border-white/[0.08] shrink-0">
+                  <div className="flex items-start gap-3">
+                    <div className={cn(
+                      "w-11 h-11 rounded-full flex items-center justify-center text-base font-bold shrink-0",
+                      u.profileStatus === "frozen" ? "bg-blue-500/20 text-blue-400" :
+                      u.profileStatus === "banned" ? "bg-red-500/20 text-red-400" : "bg-primary/20 text-primary"
+                    )}>
+                      {(u.firstName || u.displayName || "?")[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <SheetTitle className="text-white text-base font-display">{u.firstName || u.displayName}</SheetTitle>
+                      <SheetDescription className="text-[11px] font-mono text-white/40 truncate">{u.id.slice(0, 16)}…</SheetDescription>
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {u.profileStatus === "active" && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/20">Actif</span>}
+                        {u.profileStatus === "frozen" && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-blue-500/10 text-blue-400 rounded border border-blue-500/20">Gelé</span>}
+                        {u.profileStatus === "banned" && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-red-500/10 text-red-400 rounded border border-red-500/20">Banni</span>}
+                        {u.isInstitute && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-blue-500/10 text-blue-400 rounded border border-blue-500/20">Institut</span>}
+                        {u.teamRoles.map((r) => <span key={r} className={cn("px-1.5 py-0.5 text-[9px] font-mono rounded border", getRoleBadgeCls(r))}>{getRoleLabel(r)}</span>)}
+                        {u.isOnline
+                          ? <span className="px-1.5 py-0.5 text-[9px] font-mono bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/20 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />En ligne</span>
+                          : u.lastSeen && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-white/[0.04] text-white/40 rounded border border-white/[0.08]">{fmtRelativeTime(u.lastSeen)}</span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  {/* Quick actions */}
+                  <div className="flex gap-2 mt-3">
+                    {u.profileStatus === "active" && <>
+                      <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 px-2.5" onClick={() => { setFicheUserId(null); openActionDialog(u.id, "freeze"); }}><Snowflake className="w-3 h-3" />Geler</Button>
+                      <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 px-2.5 text-red-400 border-red-500/30 hover:bg-red-500/10" onClick={() => { setFicheUserId(null); openActionDialog(u.id, "ban"); }}><Ban className="w-3 h-3" />Bannir</Button>
+                    </>}
+                    {u.profileStatus === "frozen" && <Button size="sm" className="h-7 text-[10px] gap-1 px-2.5 bg-emerald-600 hover:bg-emerald-700" onClick={() => { setFicheUserId(null); openActionDialog(u.id, "unfreeze"); }}><CheckCircle className="w-3 h-3" />Dégeler</Button>}
+                    {u.profileStatus === "banned" && <Button size="sm" className="h-7 text-[10px] gap-1 px-2.5 bg-emerald-600 hover:bg-emerald-700" onClick={() => { setFicheUserId(null); openActionDialog(u.id, "unban"); }}><CheckCircle className="w-3 h-3" />Réactiver</Button>}
+                    <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 px-2.5 text-primary/70 hover:text-primary ml-auto" onClick={() => { setFicheUserId(null); setTab("users"); setExpandedUser(u.id); }}>
+                      <ExternalLink className="w-3 h-3" />Fiche complète
+                    </Button>
+                  </div>
+                </SheetHeader>
+
+                {/* Stats bar */}
+                <div className="grid grid-cols-4 gap-0 border-b border-white/[0.08] shrink-0">
+                  {[
+                    { l: "Trades", v: String(u.totalTrades) },
+                    { l: "RR total", v: `${u.totalRR >= 0 ? "+" : ""}${u.totalRR.toFixed(1)}`, c: u.totalRR >= 0 ? "text-emerald-400" : "text-red-400" },
+                    { l: "WR", v: u.totalTrades > 0 ? `${Math.round((u.executions.filter(e => (e.rr || 0) > 0).length / u.totalTrades) * 100)}%` : "—" },
+                    { l: "Sessions", v: String(u.sessionCount) },
+                  ].map((s) => (
+                    <div key={s.l} className="px-4 py-3 text-center border-r border-white/[0.06] last:border-r-0">
+                      <p className={cn("text-sm font-bold font-mono", s.c || "text-white")}>{s.v}</p>
+                      <p className="text-[10px] text-white/30 uppercase tracking-wider">{s.l}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Sub-tabs */}
+                <div className="flex border-b border-white/[0.08] shrink-0 px-4">
+                  {(["cycles", "trades", "profil"] as const).map((st) => (
+                    <button key={st} onClick={() => setActiveSubTab(prev => ({ ...prev, [u.id]: st }))}
+                      className={cn("px-3 py-2.5 text-[11px] font-medium capitalize transition-colors border-b-2 -mb-px",
+                        (activeSubTab[u.id] || "cycles") === st ? "border-primary text-white" : "border-transparent text-white/40 hover:text-white/60"
+                      )}>
+                      {st === "cycles" ? `Cycles ${u.userCycles.filter(uc => uc.status !== "locked").length}/${u.userCycles.length}` : st === "trades" ? `Trades ${u.totalTrades}` : "Profil & Actions"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto px-5 py-4">
+                  {/* Cycles tab */}
+                  {(activeSubTab[u.id] || "cycles") === "cycles" && (
+                    <div className="space-y-3">
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[10px] text-white/40 uppercase tracking-wider">Progression</span>
+                          <span className="text-[10px] font-mono text-white/50">{u.userCycles.filter(uc => uc.status === "validated").length} validés</span>
+                        </div>
+                        <Progress value={u.userCycles.length > 0 ? (u.userCycles.filter(uc => uc.status === "validated").length / u.userCycles.length) * 100 : 0} className="h-1.5" />
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {cycles.map((cycle) => {
+                          const uc = u.userCycles.find((x) => x.cycle_id === cycle.id);
+                          const status = uc?.status || "locked";
+                          const isLocked = status === "locked";
+                          return (
+                            <div key={cycle.id} className={cn(
+                              "rounded-lg p-3 border text-center transition-colors",
+                              isLocked ? "bg-white/[0.02] border-white/[0.06] opacity-40" :
+                              status === "validated" ? "bg-emerald-500/10 border-emerald-500/25" :
+                              status === "pending_review" ? "bg-orange-500/10 border-orange-500/25" :
+                              status === "rejected" ? "bg-red-500/10 border-red-500/20" :
+                              "bg-white/[0.04] border-white/[0.10]"
+                            )}>
+                              <p className="text-[10px] font-mono text-white/50 mb-1">{cycle.name}</p>
+                              {isLocked ? <Lock className="w-4 h-4 mx-auto text-white/20" /> :
+                               status === "validated" ? <CheckCircle className="w-4 h-4 mx-auto text-emerald-400" /> :
+                               status === "pending_review" ? <Clock className="w-4 h-4 mx-auto text-orange-400" /> :
+                               status === "rejected" ? <XCircle className="w-4 h-4 mx-auto text-red-400" /> :
+                               <Play className="w-4 h-4 mx-auto text-primary" />}
+                              {uc && <p className="text-[9px] font-mono text-white/30 mt-1">{uc.total_rr != null ? `${uc.total_rr >= 0 ? "+" : ""}${uc.total_rr.toFixed(1)} RR` : ""}</p>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Trades tab — résumé seulement, pas la table complète */}
+                  {(activeSubTab[u.id] || "cycles") === "trades" && (
+                    <div className="space-y-2">
+                      {u.executions.length === 0 ? (
+                        <p className="text-center text-sm text-muted-foreground py-8">Aucun trade</p>
+                      ) : u.executions.slice(0, 20).map((e) => (
+                        <div key={e.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-xs font-mono">
+                          <span className="text-white/30 w-6">#{e.trade_number}</span>
+                          <span className={cn("w-3 h-3 rounded-full shrink-0", e.direction === "Buy" ? "bg-emerald-500" : "bg-red-500")} />
+                          <span className="text-white/60 flex-1 truncate">{e.setup_type || "—"}</span>
+                          <span className={cn("font-bold", (e.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400")}>
+                            {(e.rr || 0) >= 0 ? "+" : ""}{(e.rr || 0).toFixed(2)}R
+                          </span>
+                        </div>
+                      ))}
+                      {u.executions.length > 20 && <p className="text-center text-[10px] text-white/30 pt-2">+{u.executions.length - 20} trades — voir fiche complète</p>}
+                    </div>
+                  )}
+
+                  {/* Profil & Actions */}
+                  {(activeSubTab[u.id] || "cycles") === "profil" && (
+                    <div className="space-y-5">
+                      {/* Statut */}
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-mono uppercase text-white/30 tracking-wider">Statut compte</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {u.profileStatus === "active" && <span className="px-2 py-1 text-[10px] font-mono bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/20">🟢 Actif</span>}
+                          {u.profileStatus === "frozen" && <span className="px-2 py-1 text-[10px] font-mono bg-blue-500/10 text-blue-400 rounded border border-blue-500/20">🧊 Gelé</span>}
+                          {u.profileStatus === "banned" && <span className="px-2 py-1 text-[10px] font-mono bg-red-500/10 text-red-400 rounded border border-red-500/20">🚫 Banni</span>}
+                          {u.statusReason && <span className="text-[10px] text-white/40 italic">{u.statusReason}</span>}
+                        </div>
+                      </div>
+                      {/* Tags */}
+                      {u.isInstitute && (
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-mono uppercase text-white/30 tracking-wider">Tags</p>
+                          <div className="flex gap-1.5 flex-wrap">
+                            <span className="px-2 py-1 text-[10px] font-mono bg-violet-500/10 text-violet-400 rounded border border-violet-500/20">Institut</span>
+                          </div>
+                        </div>
+                      )}
+                      {/* Rôles équipe */}
+                      {u.teamRoles.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-mono uppercase text-white/30 tracking-wider">Rôles équipe</p>
+                          <div className="flex gap-1.5 flex-wrap">
+                            {u.teamRoles.map((r) => <span key={r} className={cn("px-2 py-1 text-[10px] font-mono rounded border", getRoleBadgeCls(r))}>{getRoleIcon(r)}{getRoleLabel(r)}</span>)}
+                          </div>
+                        </div>
+                      )}
+                      {/* Vérifications */}
+                      {(() => {
+                        const userVerifCount = requests.filter((r) => r.user_id === u.id).length;
+                        return (
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-mono uppercase text-white/30 tracking-wider">Vérifications en attente</p>
+                            {userVerifCount === 0 ? (
+                              <p className="text-[10px] font-mono text-white/25">Aucune</p>
+                            ) : (
+                              <button
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/10 border border-orange-500/25 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-colors"
+                                onClick={() => { setFicheUserId(null); setVerificationUserFilter(u.id); setTab("verifications"); }}
+                              >
+                                <Clock className="w-3.5 h-3.5" />
+                                {userVerifCount} demande{userVerifCount > 1 ? "s" : ""} en attente — Voir →
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
+                      {/* Infos */}
+                      <div className="space-y-1.5 pt-2 border-t border-white/[0.06]">
+                        <p className="text-[10px] font-mono text-white/30">ID : <span className="text-white/50">{u.id.slice(0, 16)}…</span></p>
+                        <p className="text-[10px] font-mono text-white/30">Depuis : <span className="text-white/50">{u.created_at ? new Date(u.created_at).toLocaleDateString("fr-FR") : "—"}</span></p>
+                        <p className="text-[10px] font-mono text-white/30">Sessions : <span className="text-white/50">{u.sessionCount}</span></p>
+                        <p className="text-[10px] font-mono text-white/30">Dernière activité : <span className={cn("font-mono", u.isOnline ? "text-emerald-400" : "text-white/50")}>{u.isOnline ? "En ligne maintenant" : fmtRelativeTime(u.lastSeen)}</span></p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
 
       {/* Action Dialog (freeze/ban/remove/unfreeze/unban) */}
       <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>

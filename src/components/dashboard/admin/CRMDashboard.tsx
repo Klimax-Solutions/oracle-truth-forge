@@ -27,7 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { CRMLead, StageFilter, getStage, mapRowToCRMLead } from "@/lib/admin/types";
-import { getTrialDay, getTrialColor, getChecklistStep } from "@/lib/admin/trialStatus";
+import { getTrialDay, getTrialColor, getChecklistStep, formatRelativeDate } from "@/lib/admin/trialStatus";
 import { getSetterColor } from "@/lib/admin/setterColors";
 import AgendaTab from "./AgendaTab";
 import CockpitTab from "./CockpitTab";
@@ -112,10 +112,12 @@ function DateBadge({ date, color = "amber" }: { date: string | null; color?: str
 }
 
 function OutcomeBadge({ outcome }: { outcome: string | null }) {
+  // Valeurs canoniques — alignées avec CALL_OUTCOME_STYLES dans types.ts
   const cfg: Record<string, { label: string; cls: string }> = {
-    contracted: { label: "Contracte ✓", cls: "text-violet-300 bg-violet-500/20 border-violet-500/30" },
-    closing_in_progress: { label: "En cours", cls: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
-    not_closed: { label: "Non close", cls: "text-red-300 bg-red-500/20 border-red-500/30" },
+    vendu:                { label: "Vendu ✓",    cls: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30" },
+    contracte_en_attente: { label: "Contracté",  cls: "text-violet-300  bg-violet-500/20  border-violet-500/30"  },
+    pas_vendu:            { label: "Pas vendu",  cls: "text-red-300     bg-red-500/20     border-red-500/30"     },
+    rappel:               { label: "Rappel",     cls: "text-amber-300   bg-amber-500/20   border-amber-500/30"   },
   };
   if (!outcome || !cfg[outcome]) {
     return <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-display font-semibold border text-white/40 bg-white/[0.04] border-white/[0.10]">Call fait</span>;
@@ -295,6 +297,9 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
   const [_isSetterRole, _setIsSetterRole] = useState(false);
   const [_isCloserRole, _setIsCloserRole] = useState(false);
   const [currentSetterName, setCurrentSetterName] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [closingId, setClosingId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // Effective roles: overrideRoles (from RoleSwitcher) prend le dessus sur les valeurs DB
   const isSuperAdmin = overrideRoles ? overrideRoles.isSuperAdmin : _isSuperAdmin;
@@ -354,6 +359,54 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
     if (error) { console.error("[CRM] Delete error:", error); return; }
     setLeads(prev => prev.filter(l => l.id !== lead.id));
     if (selectedLead?.id === lead.id) setSelectedLead(null);
+  };
+
+  const handleCloseLead = async (e: React.MouseEvent, lead: PipelineLead) => {
+    e.stopPropagation();
+    if (!lead.user_id) { toast({ title: "Impossible", description: "Le lead n'a pas encore de compte. Approuvez-le d'abord.", variant: "destructive" }); return; }
+    if (!confirm(`Closer ${lead.first_name} (${lead.email}) comme client payant ? Cette action mettra is_client=true et archivera la ligne CRM.`)) return;
+    setClosingId(lead.id);
+    try {
+      const now = new Date().toISOString();
+      await Promise.all([
+        supabase.from("early_access_requests").update({ status: "closed_won" as any, paid_at: now }).eq("id", lead.id),
+        supabase.from("profiles").update({ is_client: true } as any).eq("user_id", lead.user_id),
+      ]);
+      toast({ title: "✅ Closé", description: `${lead.first_name} est maintenant client. Visible dans Gestion.` });
+      loadLeads();
+    } catch (err: any) {
+      toast({ title: "Erreur closing", description: err.message, variant: "destructive" });
+    } finally {
+      setClosingId(null);
+    }
+  };
+
+  const handleApproveLead = async (e: React.MouseEvent, lead: PipelineLead) => {
+    e.stopPropagation();
+    setApprovingId(lead.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("approve-early-access", {
+        body: { requestId: lead.id },
+      });
+      // Supabase wraps the real error — extract it from the response body
+      if (error) {
+        const detail = (data as any)?.error || error.message;
+        throw new Error(detail);
+      }
+      const msg = (data as any)?.magic_link
+        ? `Magic link généré (email échoué) — copier manuellement`
+        : `${lead.first_name} approuvé — magic link envoyé`;
+      toast({ title: "✅ Approuvé", description: msg });
+      if ((data as any)?.magic_link) {
+        console.info("[Approve] Magic link manuel:", (data as any).magic_link);
+      }
+      loadLeads();
+    } catch (err: any) {
+      toast({ title: "Erreur approbation", description: err.message, variant: "destructive" });
+      console.error("[Approve]", err.message);
+    } finally {
+      setApprovingId(null);
+    }
   };
 
   const mapLead = useCallback((r: any, enrich?: any): PipelineLead => mapRowToCRMLead(r, enrich ? {
@@ -427,25 +480,32 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
     if (isSetterOnly && currentSetterName) r = r.filter(l => l.setter_name === currentSetterName);
     if (search) { const q = search.toLowerCase(); r = r.filter(l => l.first_name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q) || l.phone.includes(q)); }
     // Vue filter
+    // Filtres trial — 'non_applicable' exclus implicitement (leads pending/non-approuvés)
     if (stageFilter === "a_contacter") r = r.filter(l => l.statut_trial === 'actif' && getTrialDay(l).day <= 7);
-    else if (stageFilter === "expirent") r = r.filter(l => getTrialDay(l).day >= 5 && l.statut_trial === 'actif');
-    else if (stageFilter === "expires") r = r.filter(l => l.statut_trial === 'expire' || getTrialDay(l).day > 7);
-    else if (stageFilter !== "all") r = r.filter(l => getStage(l) === stageFilter);
+    else if (stageFilter === "expirent") r = r.filter(l => l.statut_trial === 'actif' && getTrialDay(l).day >= 5);
+    else if (stageFilter === "expires") r = r.filter(l => l.statut_trial === 'expire');
+    // "Demandes" = uniquement en_attente (exclut doublon + rejetée qui sont des états terminaux)
+    else if (stageFilter === "pending") r = r.filter(l => l.status === 'en_attente');
+    else if (stageFilter === "all") r = r.filter(l => l.status !== 'doublon' && l.status !== 'rejetée');
+    else r = r.filter(l => getStage(l) === stageFilter);
     // Manual filters
     if (setterFilter !== "all") r = r.filter(l => l.setter_name === setterFilter);
     if (prioFilter !== "all") r = r.filter(l => l.priorite === prioFilter);
-    // Tri spec: non contactés en haut > rouge > orange > vert > par expiration
-    r.sort((a, b) => {
-      const aContacted = a.contacte_aujourdhui ? 1 : 0;
-      const bContacted = b.contacte_aujourdhui ? 1 : 0;
-      if (aContacted !== bContacted) return aContacted - bContacted;
-      const aColor = colorOrder[getTrialColor(a).color] ?? 2;
-      const bColor = colorOrder[getTrialColor(b).color] ?? 2;
-      if (aColor !== bColor) return aColor - bColor;
-      const aDay = getTrialDay(a).day;
-      const bDay = getTrialDay(b).day;
-      return bDay - aDay; // plus urgent (plus de jours) en haut
-    });
+    // Tri : spécifique uniquement pour les vues trial (à contacter / expirent / expirés)
+    // Pour toutes les autres vues → ordre DB conservé : created_at DESC (plus récent en haut)
+    if (["a_contacter", "expirent", "expires"].includes(stageFilter)) {
+      r.sort((a, b) => {
+        const aColor = colorOrder[getTrialColor(a).color] ?? 2;
+        const bColor = colorOrder[getTrialColor(b).color] ?? 2;
+        if (aColor !== bColor) return aColor - bColor;
+        const aDay = getTrialDay(a).day;
+        const bDay = getTrialDay(b).day;
+        return bDay - aDay;
+      });
+    } else {
+      // Ordre par défaut : plus récent en haut (created_at DESC)
+      r.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
     return r;
   }, [leads, search, stageFilter, setterFilter, prioFilter, isSetterOnly, currentSetterName]);
 
@@ -516,7 +576,23 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
           <div className="px-6 pb-3 flex items-center justify-between h-12 rounded-xl bg-white/[0.03] border border-white/[0.08] mx-6 mb-4 px-4">
             {/* Left: Vues + Filters */}
             <div className="flex items-center gap-2">
-              {/* Vues pré-configurées */}
+              {/* Vues pré-configurées — funnel complet */}
+              {[
+                { v: "pending",     label: "Demandes",    color: "amber" },
+                { v: "approved",    label: "Approuvés",   color: "cyan" },
+              ].map(vue => (
+                <button key={vue.v} onClick={() => setStageFilter(vue.v as StageFilter)}
+                  className={cn("px-3 py-1.5 rounded-lg text-[10px] font-display font-semibold uppercase tracking-wider transition-all border",
+                    stageFilter === vue.v
+                      ? vue.color === "amber"
+                        ? "bg-amber-500/15 border-amber-500/30 text-amber-300"
+                        : "bg-cyan-500/15 border-cyan-500/30 text-cyan-300"
+                      : "border-transparent text-white/30 hover:text-white/60"
+                  )}>
+                  {vue.label}
+                </button>
+              ))}
+              <div className="w-px h-5 bg-white/10 mx-1" />
               {[
                 { v: "a_contacter", label: "À contacter" },
                 { v: "expirent", label: "Expirent" },
@@ -568,32 +644,27 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                 <TableHeader className={`sticky top-0 z-20 ${BG} shadow-[0_1px_0_0_rgba(255,255,255,0.08)]`}>
                   <TableRow className={`border-white/[0.08] hover:bg-transparent ${BG}`}>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 pl-5 min-w-[160px]">Lead</TableHead>
-                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center">Budget</TableHead>
-                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center">Form</TableHead>
-                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center">Set</TableHead>
-                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center">Call</TableHead>
+                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[110px]">Form / EA</TableHead>
+                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[130px]">Setting</TableHead>
+                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[130px]">Call</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center w-16">Trial</TableHead>
-                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center w-16">Statut</TableHead>
-                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center w-12">Auj.</TableHead>
                     {isSuperAdmin && <TableHead className="w-8" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={isSuperAdmin ? 10 : 9} className="text-center py-20 text-white/30 text-sm font-display">Aucun lead</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={isSuperAdmin ? 6 : 5} className="text-center py-20 text-white/30 text-sm font-display">Aucun lead</TableCell></TableRow>
                   ) : filtered.slice(0, 100).map((lead) => {
                     const sc = lead.setter_name ? getSetterColor(lead.setter_name) : null;
                     const trial = getTrialDay(lead);
                     const color = getTrialColor(lead);
-                    const step = getChecklistStep(lead);
-                    const colorDot = { red: 'bg-red-400', orange: 'bg-amber-400', green: 'bg-emerald-400' }[color.color];
                     return (
                     <TableRow
                       key={lead.id}
                       onClick={() => openLead(lead, "setting")}
                       className={cn(
                         "group cursor-pointer transition-all duration-200 border-white/[0.04]",
-                        lead.contacte_aujourdhui ? "opacity-40 hover:opacity-70" : "hover:bg-white/[0.04]",
+                        "hover:bg-white/[0.04]",
                         selectedLead?.id === lead.id && "bg-white/[0.06]"
                       )}
                     >
@@ -613,37 +684,73 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                               <p className="text-[15px] font-display font-bold text-white">{lead.first_name || "—"}</p>
                               {lead.priorite && <span className={cn("text-[8px] font-display font-bold", lead.priorite === 'P1' ? 'text-emerald-400' : lead.priorite === 'P2' ? 'text-amber-400' : 'text-red-400')}>{lead.priorite}</span>}
                             </div>
-                            {lead.setter_name && sc && (
+                            {lead.setter_name && sc ? (
                               <span className={`text-[10px] font-display ${sc.text}`} onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}>
                                 Setter : {lead.setter_name}
                               </span>
-                            )}
+                            ) : getStage(lead) === 'pending' ? (
+                              <button
+                                onClick={e => handleApproveLead(e, lead)}
+                                disabled={approvingId === lead.id}
+                                className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-display font-semibold text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/25 hover:bg-cyan-500/20 transition-all disabled:opacity-50"
+                              >
+                                {approvingId === lead.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <UserCheck className="w-2.5 h-2.5" />}
+                                {approvingId === lead.id ? '...' : 'Approuver'}
+                              </button>
+                            ) : (lead.status === 'approuvée' && lead.user_id && !lead.paid_at) ? (
+                              <button
+                                onClick={e => handleCloseLead(e, lead)}
+                                disabled={closingId === lead.id}
+                                className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-display font-semibold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/25 hover:bg-emerald-500/20 transition-all disabled:opacity-50"
+                              >
+                                {closingId === lead.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <CheckCircle2 className="w-2.5 h-2.5" />}
+                                {closingId === lead.id ? '...' : 'Closer →'}
+                              </button>
+                            ) : null}
                           </div>
                         </div>
                       </TableCell>
-                      {/* BUDGET — fourchette */}
+                      {/* FORM / EA — date soumission + date approbation */}
                       <TableCell className="text-center py-3">
-                        {lead.offer_amount ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-display font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/25">
-                            <DollarSign className="w-3 h-3" />{lead.offer_amount.replace(/\s*€\s*-\s*/, '-').replace(/\s*€/, '').replace(/\s/g, '').replace('000', 'K').replace('000', 'K')}
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="inline-block text-[11px] font-mono font-semibold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/25">
+                            <span className="font-bold">{fmtDate(lead.created_at)}</span> <span className="text-amber-400/60">{fmtTime(lead.created_at)}</span>
                           </span>
-                        ) : <span className="text-white/15">—</span>}
+                          {lead.reviewed_at && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono text-cyan-400/80 bg-cyan-500/8 px-2 py-0.5 rounded border border-cyan-500/20">
+                              <Shield className="w-2.5 h-2.5 shrink-0" />
+                              <span className="font-bold">{fmtDate(lead.reviewed_at)}</span> <span className="opacity-60">{fmtTime(lead.reviewed_at)}</span>
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
-                      {/* FORM — date+h soumission, badge amber */}
-                      <TableCell className="text-center py-3">
-                        <span className="inline-block text-[11px] font-mono font-semibold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/25">
-                          <span className="font-bold">{fmtDate(lead.created_at)}</span> <span className="text-amber-400/60">{fmtTime(lead.created_at)}</span>
-                        </span>
-                      </TableCell>
-                      {/* SET — check + date, badge vert/vide */}
+                      {/* SETTING — premier contact (méthode + date) + dernière interaction */}
                       <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}>
-                        {lead.contacted ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/25">
-                            <CheckCircle2 className="w-3 h-3" /> {fmtDate((lead as any).contacted_at || lead.created_at)}
-                          </span>
-                        ) : <span className="text-white/15">—</span>}
+                        <div className="flex flex-col items-center gap-1">
+                          {lead.contacted ? (
+                            <span className={cn(
+                              "inline-flex items-center gap-1 text-[11px] font-mono font-semibold px-2.5 py-1 rounded-lg border",
+                              lead.contact_method === 'email'
+                                ? "text-amber-300 bg-amber-500/10 border-amber-500/25"
+                                : "text-emerald-300 bg-emerald-500/10 border-emerald-500/25"
+                            )}>
+                              {lead.contact_method === 'email'
+                                ? <Mail className="w-3 h-3 shrink-0" />
+                                : <MessageCircle className="w-3 h-3 shrink-0" />}
+                              <span className="font-bold">{fmtDate(lead.contacted_at || lead.created_at)}</span>
+                              <span className="opacity-50">{fmtTime(lead.contacted_at || lead.created_at)}</span>
+                            </span>
+                          ) : (
+                            <span className="text-white/15 text-[11px]">—</span>
+                          )}
+                          {lead.derniere_interaction && (
+                            <span className="text-[10px] font-display text-white/30 tabular-nums">
+                              {formatRelativeDate(lead.derniere_interaction)}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
-                      {/* CALL — date+h colorée selon issue */}
+                      {/* CALL — date+h colorée selon outcome (valeurs canoniques) */}
                       <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "call"); }}>
                         {lead.call_no_show ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-red-300 bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/30">
@@ -653,25 +760,34 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                           <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
                             <CheckCircle2 className="w-3 h-3" /> {lead.call_scheduled_at ? <><span className="font-bold">{fmtDate(lead.call_scheduled_at)}</span> <span className="opacity-60">{fmtTime(lead.call_scheduled_at)}</span></> : 'Vendu'}
                           </span>
-                        ) : (lead.call_outcome === 'contracte_en_attente' || lead.call_outcome === 'contracted') ? (
+                        ) : lead.call_outcome === 'contracte_en_attente' ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-violet-300 bg-violet-500/10 px-2.5 py-1 rounded-lg border border-violet-500/30">
-                            <Clock className="w-3 h-3" /> {lead.call_scheduled_at ? <><span className="font-bold">{fmtDate(lead.call_scheduled_at)}</span> <span className="opacity-60">{fmtTime(lead.call_scheduled_at)}</span></> : 'En attente'}
+                            <Clock className="w-3 h-3" /> {lead.call_scheduled_at ? <><span className="font-bold">{fmtDate(lead.call_scheduled_at)}</span> <span className="opacity-60">{fmtTime(lead.call_scheduled_at)}</span></> : 'Contracté'}
                           </span>
-                        ) : (lead.call_outcome === 'rappel' || lead.call_outcome === 'closing_in_progress') ? (
+                        ) : lead.call_outcome === 'rappel' ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/30">
                             <Clock className="w-3 h-3" /> {lead.call_scheduled_at ? <><span className="font-bold">{fmtDate(lead.call_scheduled_at)}</span> <span className="opacity-60">{fmtTime(lead.call_scheduled_at)}</span></> : 'Rappel'}
                           </span>
-                        ) : (lead.call_outcome === 'pas_vendu' || lead.call_outcome === 'not_closed') ? (
+                        ) : lead.call_outcome === 'pas_vendu' ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-red-300 bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/30">
                             <X className="w-3 h-3" /> {lead.call_scheduled_at ? <><span className="font-bold">{fmtDate(lead.call_scheduled_at)}</span> <span className="opacity-60">{fmtTime(lead.call_scheduled_at)}</span></> : 'Pas vendu'}
                           </span>
-                        ) : lead.call_booked && lead.call_scheduled_at ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-blue-300 bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/25">
-                            <Calendar className="w-3 h-3" /> <span className="font-bold">{fmtDate(lead.call_scheduled_at)}</span> <span className="opacity-60">{fmtTime(lead.call_scheduled_at)}</span>
-                          </span>
-                        ) : <span className="text-white/15">—</span>}
+                        ) : lead.call_booked && lead.call_scheduled_at ? (() => {
+                          // Call passé depuis > 30 min sans outcome ni rapport → À reporter
+                          const isOverdue = new Date(lead.call_scheduled_at).getTime() < Date.now() - 30 * 60 * 1000;
+                          return isOverdue ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/30 animate-pulse">
+                              <Clock className="w-3 h-3" /> <span className="font-bold">{fmtDate(lead.call_scheduled_at)}</span>
+                              <span className="ml-0.5 text-[9px] font-display uppercase tracking-wider text-amber-400/80">à reporter</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-blue-300 bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/25">
+                              <Calendar className="w-3 h-3" /> <span className="font-bold">{fmtDate(lead.call_scheduled_at)}</span> <span className="opacity-60">{fmtTime(lead.call_scheduled_at)}</span>
+                            </span>
+                          );
+                        })() : <span className="text-white/15">—</span>}
                       </TableCell>
-                      {/* TRIAL — J + remaining */}
+                      {/* TRIAL — J + remaining (ou "En attente" si pas encore approuvé) */}
                       <TableCell className="text-center py-3">
                         {lead.status === 'approuvée' ? (
                           <div className="text-center">
@@ -680,22 +796,9 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                             )}>J{trial.day}</span>
                             <p className={cn("text-[8px] font-display", trial.expired ? "text-red-400/60" : "text-white/25")}>{trial.expired ? 'expiré' : `${trial.remaining}j`}</p>
                           </div>
-                        ) : <span className="text-white/15">—</span>}
-                      </TableCell>
-                      {/* STATUT — pastille */}
-                      <TableCell className="text-center py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <div className={cn("w-2.5 h-2.5 rounded-full", colorDot)} />
-                        </div>
-                      </TableCell>
-                      {/* CONTACTÉ AUJ */}
-                      <TableCell className="text-center py-3">
-                        <button onClick={e => quickUpdate(e, lead.id, { contacte_aujourdhui: !lead.contacte_aujourdhui, derniere_interaction: new Date().toISOString() })}
-                          className={cn("w-5 h-5 rounded border-2 flex items-center justify-center transition-all mx-auto",
-                            lead.contacte_aujourdhui ? "bg-emerald-500/20 border-emerald-500" : "border-white/20 hover:border-white/40"
-                          )}>
-                          {lead.contacte_aujourdhui && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
-                        </button>
+                        ) : (
+                          <span className="text-[9px] font-display text-white/20 uppercase tracking-wider">attente</span>
+                        )}
                       </TableCell>
                       {/* DELETE (superadmin) */}
                       {isSuperAdmin && (
