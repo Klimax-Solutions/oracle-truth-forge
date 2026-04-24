@@ -938,8 +938,15 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
               </div>
               </div>
             );
-            })}
+                      })}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
+        )}
+      </div>
         )}
       </div>
 
