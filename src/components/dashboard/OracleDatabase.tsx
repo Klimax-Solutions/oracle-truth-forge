@@ -486,49 +486,51 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                 const totalInCycle = cycle ? cycle.end - cycle.start + 1 : 0;
 
                 return (
-                  <div key={`group-${groupIdx}`} className={cn("relative", showCycleUI && "flex gap-2 md:gap-3")}>
+                  <div key={`group-${groupIdx}`} className={cn("relative", showCycleUI && "flex gap-3 md:gap-4")}>
                     {/* Side rail with vertical sticky label */}
                     {showCycleUI && cycle && (
-                      <div className="relative flex-shrink-0 w-7 md:w-9">
+                      <div className="relative flex-shrink-0 w-10 md:w-12">
                         {/* Vertical color rail */}
                         <div className={cn("absolute inset-y-0 left-1/2 -translate-x-1/2 w-[3px] rounded-full", colors.rail)} />
-                        {/* Sticky vertical label */}
-                        <div className="sticky top-2 z-10 flex flex-col items-center">
+                        {/* Sticky vertical label - persists while scrolling through this cycle */}
+                        <div className="sticky top-3 z-30 flex flex-col items-center">
                           <div
                             className={cn(
-                              "rounded-md border backdrop-blur-md px-1 py-2 md:py-2.5 flex flex-col items-center gap-1.5",
-                              colors.border, colors.bg, colors.glow
+                              "rounded-lg border backdrop-blur-xl px-1.5 py-3 md:py-3.5 flex flex-col items-center gap-2",
+                              "bg-background/80",
+                              colors.border, colors.glow
                             )}
                           >
                             {/* Phase chip */}
                             <span
                               className={cn(
-                                "text-[8px] md:text-[9px] font-mono font-bold leading-none",
-                                colors.text
+                                "text-[9px] md:text-[10px] font-mono font-bold leading-none px-1.5 py-0.5 rounded border",
+                                colors.border, colors.text, colors.soft
                               )}
                               title={cycle.num === 0 ? "Phase 0" : `Phase ${cycle.phase}`}
                             >
                               P{cycle.num === 0 ? 0 : cycle.phase}
                             </span>
-                            <div className={cn("h-px w-3 md:w-4", colors.soft)} />
                             {/* Vertical cycle name */}
                             <span
                               className={cn(
-                                "text-[10px] md:text-[11px] font-bold tracking-[0.2em] uppercase whitespace-nowrap",
+                                "text-[11px] md:text-[12px] font-bold tracking-[0.25em] uppercase whitespace-nowrap py-1",
                                 colors.text
                               )}
                               style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
                             >
                               {cycle.name}
                             </span>
-                            <div className={cn("h-px w-3 md:w-4", colors.soft)} />
+                            <div className={cn("h-px w-4 md:w-5", colors.soft)} />
                             {/* Trade count */}
-                            <span className="text-[9px] md:text-[10px] font-mono text-foreground font-semibold leading-none">
-                              {group.trades.length}
-                            </span>
-                            <span className="text-[7px] md:text-[8px] font-mono text-muted-foreground leading-none">
-                              /{totalInCycle}
-                            </span>
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="text-[10px] md:text-[11px] font-mono text-foreground font-bold leading-none">
+                                {group.trades.length}
+                              </span>
+                              <span className="text-[8px] md:text-[9px] font-mono text-muted-foreground leading-none">
+                                /{totalInCycle}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -536,11 +538,11 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
 
                     {/* Trades column */}
                     <div className={cn("flex-1 min-w-0 space-y-2", showCycleUI && "pl-0")}>
-                      {/* Cycle header row */}
+                      {/* Cycle header row - compact, just for entry context */}
                       {showCycleUI && cycle && (
                         <div
                           className={cn(
-                            "sticky top-0 z-20 backdrop-blur-md border rounded-md px-3 md:px-4 py-2 flex items-center justify-between gap-3",
+                            "border rounded-md px-3 md:px-4 py-1.5 flex items-center justify-between gap-3",
                             colors.border, colors.bg
                           )}
                         >
