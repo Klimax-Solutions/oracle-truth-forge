@@ -627,53 +627,55 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                             </div>
                           </div>
 
-                          {/* Stats principales — 4 métriques clés */}
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border/50 rounded-xl overflow-hidden border border-border/50">
-                            <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5">
-                              <div className="flex items-center gap-1.5">
-                                <Clock className="w-3 h-3 text-muted-foreground/50" />
-                                <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Entrée</span>
+                          {/* Stats + Contexte — un seul bloc, zéro background, dividers simples */}
+                          <div className="rounded-xl border border-border/30 overflow-hidden">
+                            {/* Row 1 : 4 métriques temporelles */}
+                            <div className="grid grid-cols-2 md:grid-cols-4">
+                              <div className="flex flex-col gap-2 px-4 py-4 border-r border-b md:border-b-0 border-border/30">
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="w-3 h-3 text-muted-foreground/40" />
+                                  <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">Entrée</span>
+                                </div>
+                                <p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.entry_time || "—"}</p>
                               </div>
-                              <p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.entry_time || "—"}</p>
-                            </div>
-                            <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5">
-                              <div className="flex items-center gap-1.5">
-                                <Clock className="w-3 h-3 text-muted-foreground/50" />
-                                <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Sortie</span>
+                              <div className="flex flex-col gap-2 px-4 py-4 border-b md:border-b-0 md:border-r border-border/30">
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="w-3 h-3 text-muted-foreground/40" />
+                                  <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">Sortie</span>
+                                </div>
+                                <p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.exit_time || "—"}</p>
                               </div>
-                              <p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.exit_time || "—"}</p>
-                            </div>
-                            <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5">
-                              <div className="flex items-center gap-1.5">
-                                <Target className="w-3 h-3 text-muted-foreground/50" />
-                                <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Durée</span>
+                              <div className="flex flex-col gap-2 px-4 py-4 border-r border-border/30">
+                                <div className="flex items-center gap-1.5">
+                                  <Target className="w-3 h-3 text-muted-foreground/40" />
+                                  <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">Durée</span>
+                                </div>
+                                <p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.trade_duration || "—"}</p>
                               </div>
-                              <p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.trade_duration || "—"}</p>
-                            </div>
-                            <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5">
-                              <div className="flex items-center gap-1.5">
-                                <Calendar className="w-3 h-3 text-muted-foreground/50" />
-                                <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">News</span>
+                              <div className="flex flex-col gap-2 px-4 py-4">
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="w-3 h-3 text-muted-foreground/40" />
+                                  <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">News</span>
+                                </div>
+                                <p className="text-2xl font-bold text-foreground leading-none">
+                                  {trade.news_day ? (trade.news_label || "Oui") : "Non"}
+                                </p>
                               </div>
-                              <p className="text-xl font-bold text-foreground leading-none">
-                                {trade.news_day ? (trade.news_label || "Oui") : "Non"}
-                              </p>
                             </div>
-                          </div>
-
-                          {/* Contexte setup */}
-                          <div className="grid grid-cols-3 gap-px bg-border/50 rounded-xl overflow-hidden border border-border/50">
-                            <div className="bg-transparent flex flex-col gap-1.5 px-4 py-3 md:py-4">
-                              <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Structure</span>
-                              <p className="text-sm md:text-base font-semibold text-foreground">{trade.direction_structure || "—"}</p>
-                            </div>
-                            <div className="bg-transparent flex flex-col gap-1.5 px-4 py-3 md:py-4">
-                              <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Timing entrée</span>
-                              <p className="text-sm md:text-base font-semibold text-foreground">{trade.entry_timing || "—"}</p>
-                            </div>
-                            <div className="bg-transparent flex flex-col gap-1.5 px-4 py-3 md:py-4">
-                              <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Stop-Loss</span>
-                              <p className="text-sm md:text-base font-semibold text-foreground">{trade.stop_loss_size || "—"}</p>
+                            {/* Row 2 : contexte setup */}
+                            <div className="grid grid-cols-3 border-t border-border/30">
+                              <div className="flex flex-col gap-1.5 px-4 py-3 border-r border-border/30">
+                                <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">Structure</span>
+                                <p className="text-sm font-semibold text-foreground">{trade.direction_structure || "—"}</p>
+                              </div>
+                              <div className="flex flex-col gap-1.5 px-4 py-3 border-r border-border/30">
+                                <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">Timing entrée</span>
+                                <p className="text-sm font-semibold text-foreground">{trade.entry_timing || "—"}</p>
+                              </div>
+                              <div className="flex flex-col gap-1.5 px-4 py-3">
+                                <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">Stop-Loss</span>
+                                <p className="text-sm font-semibold text-foreground">{trade.stop_loss_size || "—"}</p>
+                              </div>
                             </div>
                           </div>
 
@@ -1008,16 +1010,18 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                                           <p className="text-xs md:text-sm text-muted-foreground">≈ {(trade.rr || 0) >= 0 ? "+" : ""}{((trade.rr || 0) * 1000).toLocaleString("fr-FR")} €</p>
                                         </div>
                                       </div>
-                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border/50 rounded-xl overflow-hidden border border-border/50">
-                                        <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Entrée</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.entry_time || "—"}</p></div>
-                                        <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Sortie</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.exit_time || "—"}</p></div>
-                                        <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Target className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Durée</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.trade_duration || "—"}</p></div>
-                                        <div className="bg-transparent flex flex-col gap-1.5 px-4 py-4 md:py-5"><div className="flex items-center gap-1.5"><Calendar className="w-3 h-3 text-muted-foreground/50" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">News</span></div><p className="text-xl font-bold text-foreground leading-none">{trade.news_day ? (trade.news_label || "Oui") : "Non"}</p></div>
-                                      </div>
-                                      <div className="grid grid-cols-3 gap-px bg-border/50 rounded-xl overflow-hidden border border-border/50">
-                                        <div className="bg-transparent flex flex-col gap-1.5 px-4 py-3 md:py-4"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Structure</span><p className="text-sm md:text-base font-semibold text-foreground">{trade.direction_structure || "—"}</p></div>
-                                        <div className="bg-transparent flex flex-col gap-1.5 px-4 py-3 md:py-4"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Timing entrée</span><p className="text-sm md:text-base font-semibold text-foreground">{trade.entry_timing || "—"}</p></div>
-                                        <div className="bg-transparent flex flex-col gap-1.5 px-4 py-3 md:py-4"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/60">Stop-Loss</span><p className="text-sm md:text-base font-semibold text-foreground">{trade.stop_loss_size || "—"}</p></div>
+                                      <div className="rounded-xl border border-border/30 overflow-hidden">
+                                        <div className="grid grid-cols-2 md:grid-cols-4">
+                                          <div className="flex flex-col gap-2 px-4 py-4 border-r border-b md:border-b-0 border-border/30"><div className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-muted-foreground/40" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">Entrée</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.entry_time || "—"}</p></div>
+                                          <div className="flex flex-col gap-2 px-4 py-4 border-b md:border-b-0 md:border-r border-border/30"><div className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-muted-foreground/40" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">Sortie</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.exit_time || "—"}</p></div>
+                                          <div className="flex flex-col gap-2 px-4 py-4 border-r border-border/30"><div className="flex items-center gap-1.5"><Target className="w-3 h-3 text-muted-foreground/40" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">Durée</span></div><p className="text-2xl font-bold text-foreground tabular-nums leading-none">{trade.trade_duration || "—"}</p></div>
+                                          <div className="flex flex-col gap-2 px-4 py-4"><div className="flex items-center gap-1.5"><Calendar className="w-3 h-3 text-muted-foreground/40" /><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">News</span></div><p className="text-2xl font-bold text-foreground leading-none">{trade.news_day ? (trade.news_label || "Oui") : "Non"}</p></div>
+                                        </div>
+                                        <div className="grid grid-cols-3 border-t border-border/30">
+                                          <div className="flex flex-col gap-1.5 px-4 py-3 border-r border-border/30"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">Structure</span><p className="text-sm font-semibold text-foreground">{trade.direction_structure || "—"}</p></div>
+                                          <div className="flex flex-col gap-1.5 px-4 py-3 border-r border-border/30"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">Timing entrée</span><p className="text-sm font-semibold text-foreground">{trade.entry_timing || "—"}</p></div>
+                                          <div className="flex flex-col gap-1.5 px-4 py-3"><span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/50">Stop-Loss</span><p className="text-sm font-semibold text-foreground">{trade.stop_loss_size || "—"}</p></div>
+                                        </div>
                                       </div>
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                                         <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
