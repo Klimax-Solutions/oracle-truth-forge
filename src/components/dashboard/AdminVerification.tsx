@@ -1375,8 +1375,6 @@ export const AdminVerification = () => {
                     member: "bg-slate-500/20 text-slate-400 border-slate-500/40",
                     none: "bg-muted text-muted-foreground border-border",
                   };
-                  const isExpanded = expandedUser === user.id;
-                  const progress = getUserProgressPercentage(user);
 
                   return (
                     <div
