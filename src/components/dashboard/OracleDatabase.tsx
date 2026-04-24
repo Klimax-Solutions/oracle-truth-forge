@@ -156,6 +156,11 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
       if (filters.hasScreenshots && !trade.screenshot_m15_m5 && !trade.screenshot_m1) return false;
       // Filter by contributor
       if (filters.contributor.length > 0 && (!trade.contributor || !filters.contributor.includes(trade.contributor))) return false;
+      // Filter by cycle
+      if (filters.cycle.length > 0) {
+        const c = getCycleForTrade(trade.trade_number);
+        if (!c || !filters.cycle.includes(c.num)) return false;
+      }
       return true;
     });
   }, [trades, filters]);
