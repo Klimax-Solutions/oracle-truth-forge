@@ -82,7 +82,8 @@ export function DatePicker({
   const handleToggle = () => {
     if (!isOpen && triggerRef.current) {
       const r = triggerRef.current.getBoundingClientRect();
-      setDropPos({ top: r.bottom + 4, left: r.left });
+      const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+      setDropPos({ top: r.bottom / zoom, left: r.left / zoom });
     }
     setIsOpen((v) => !v);
   };

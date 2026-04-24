@@ -101,7 +101,8 @@ export function TimeField({
     e.preventDefault();
     if (!wrapperRef.current) return;
     const r = wrapperRef.current.getBoundingClientRect();
-    setDropPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+    setDropPos({ top: r.bottom / zoom, left: r.left / zoom, width: r.width / zoom });
     setIsOpen(true);
   };
 

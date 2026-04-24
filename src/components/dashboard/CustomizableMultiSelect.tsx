@@ -50,7 +50,10 @@ export const CustomizableMultiSelect = ({
   const handleToggle = () => {
     if (!isOpen && triggerRef.current) {
       const r = triggerRef.current.getBoundingClientRect();
-      setDropdownPos({ top: r.bottom + 4, left: r.left, width: r.width });
+      // Compensate for html { zoom } which creates a gap between
+      // getBoundingClientRect (visual/post-zoom) and position:fixed (layout/pre-zoom)
+      const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+      setDropdownPos({ top: r.bottom / zoom, left: r.left / zoom, width: r.width / zoom });
     }
     setIsOpen((v) => !v);
   };
