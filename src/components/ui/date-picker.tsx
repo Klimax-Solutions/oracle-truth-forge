@@ -136,6 +136,7 @@ export function DatePicker({
         createPortal(
           <div
             ref={dropRef}
+            onPointerDown={(e) => e.stopPropagation()}
             style={{
               position: "fixed",
               top: dropPos.top,

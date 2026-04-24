@@ -159,6 +159,7 @@ export const CustomizableMultiSelect = ({
       {isOpen && dropdownPos && createPortal(
         <div
           ref={dropdownRef}
+          onPointerDown={(e) => e.stopPropagation()}
           style={{
             position: "fixed",
             top: dropdownPos.top,
