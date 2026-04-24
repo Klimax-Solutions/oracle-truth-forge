@@ -947,8 +947,6 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
           </div>
         )}
       </div>
-        )}
-      </div>
 
       {/* Edit Dialog for Data Générale */}
       {editingTrade && (
