@@ -491,70 +491,100 @@ export const AdminVerification = () => {
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
-    
-    // Fetch profiles
-    const { data: profilesData } = await supabase
-      .from("profiles")
-      .select("*");
-    
-    // Get all user_cycles to find unique users
-    const { data: allUserCycles, error: userCyclesError } = await supabase
-      .from("user_cycles")
-      .select("*")
-      .order("created_at", { ascending: true });
 
-    if (userCyclesError) {
-      console.error("Error fetching user cycles:", userCyclesError);
-      setLoadingUsers(false);
-      return;
-    }
+    // Source de vérité = profiles (227 users)
+    const [profilesRes, userCyclesRes, executionsRes, rolesRes, sessionsRes] = await Promise.all([
+      supabase.from("profiles").select("*"),
+      supabase.from("user_cycles").select("*").order("created_at", { ascending: true }),
+      supabase.from("user_executions").select("*").order("trade_number", { ascending: true }),
+      supabase.from("user_roles").select("user_id, role"),
+      supabase.from("user_sessions").select("user_id, updated_at").order("updated_at", { ascending: false }),
+    ]);
 
-    // Get unique user IDs
-    const uniqueUserIds = [...new Set(allUserCycles?.map(uc => uc.user_id) || [])];
+    const profilesData = profilesRes.data || [];
+    const allUserCycles = userCyclesRes.data || [];
+    const allExecutions = executionsRes.data || [];
+    const allRoles = rolesRes.data || [];
+    const allSessions = sessionsRes.data || [];
 
-    // Fetch user_executions for all users (les trades saisis par les utilisateurs)
-    const { data: allExecutions } = await supabase
-      .from("user_executions")
-      .select("*")
-      .order("trade_number", { ascending: true });
+    // Map: user_id -> dernière session
+    const lastSeenMap = new Map<string, string>();
+    allSessions.forEach(s => {
+      if (!lastSeenMap.has(s.user_id)) lastSeenMap.set(s.user_id, s.updated_at);
+    });
 
-    // Create user objects
-    const platformUsers: PlatformUser[] = uniqueUserIds.map(userId => {
-      const userCycles = allUserCycles?.filter(uc => uc.user_id === userId) || [];
-      const userExecutions = (allExecutions?.filter(e => e.user_id === userId) || []) as UserExecution[];
-      const profile = profilesData?.find(p => p.user_id === userId);
-      
-      // Find current active cycle (in_progress or pending_review)
-      const activeCycle = userCycles.find(uc => 
+    const now = Date.now();
+
+    const platformUsers: PlatformUser[] = profilesData.map(profile => {
+      const userId = profile.user_id;
+      const userCycles = allUserCycles.filter(uc => uc.user_id === userId);
+      const userExecutions = allExecutions.filter(e => e.user_id === userId) as UserExecution[];
+      const userRoles = allRoles.filter(r => r.user_id === userId).map(r => r.role);
+      const lastSeenAt = lastSeenMap.get(userId) || null;
+
+      const activeCycle = userCycles.find(uc =>
         uc.status === "in_progress" || uc.status === "pending_review"
       );
-      
-      const currentCycleData = activeCycle 
-        ? cycles.find(c => c.id === activeCycle.cycle_id) 
-        : null;
-      
-      // Calculate total RR from user executions
+      const currentCycleData = activeCycle ? cycles.find(c => c.id === activeCycle.cycle_id) : null;
+
       const totalRR = userExecutions.reduce((sum, e) => sum + (e.rr || 0), 0);
-      
-      // Determine status
+
       const hasPending = userCycles.some(uc => uc.status === "pending_review");
       const allValidated = userCycles.every(uc => uc.status === "validated");
-      
+
       let status: "active" | "pending" | "completed" = "active";
       if (hasPending) status = "pending";
-      if (allValidated && userCycles.length === cycles.length) status = "completed";
+      if (allValidated && userCycles.length === cycles.length && userCycles.length > 0) status = "completed";
+
+      // ----- Score Fake combiné (0 = réel, 100 = très probable fake) -----
+      let fakeScore = 0;
+      const ageDays = (now - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24);
+      const lastSeenDays = lastSeenAt
+        ? (now - new Date(lastSeenAt).getTime()) / (1000 * 60 * 60 * 24)
+        : Infinity;
+
+      if (!lastSeenAt) fakeScore += 40; // jamais connecté
+      else if (lastSeenDays > 30) fakeScore += 20;
+
+      if (userExecutions.length === 0) fakeScore += 25;
+      if (userCycles.length === 0) fakeScore += 15; // fantôme
+      if (profile.status === "pending" && ageDays > 7) fakeScore += 15;
+      if (userRoles.length === 0) fakeScore += 10;
+      if (ageDays < 1 && !lastSeenAt) fakeScore = Math.min(fakeScore, 30); // trop tôt pour juger
+
+      let fakeLevel: "real" | "low" | "medium" | "high" = "real";
+      if (fakeScore >= 70) fakeLevel = "high";
+      else if (fakeScore >= 45) fakeLevel = "medium";
+      else if (fakeScore >= 25) fakeLevel = "low";
 
       return {
         id: userId,
-        displayName: profile?.display_name || `Utilisateur ${userId.slice(0, 8)}`,
-        created_at: userCycles[0]?.created_at || new Date().toISOString(),
+        displayName: profile.display_name || profile.first_name || `Utilisateur ${userId.slice(0, 8)}`,
+        created_at: profile.created_at,
         currentCycle: currentCycleData || null,
         userCycles: userCycles as UserCycle[],
         totalTrades: userExecutions.length,
         totalRR,
         status,
+        profileStatus: profile.status as PlatformUser["profileStatus"],
         executions: userExecutions,
+        roles: userRoles,
+        hasCycles: userCycles.length > 0,
+        lastSeenAt,
+        fakeScore,
+        fakeLevel,
       };
+    });
+
+    // Tri : actifs récents d'abord, fakes en bas
+    platformUsers.sort((a, b) => {
+      if (a.fakeLevel !== b.fakeLevel) {
+        const order = { real: 0, low: 1, medium: 2, high: 3 };
+        return order[a.fakeLevel] - order[b.fakeLevel];
+      }
+      const aSeen = a.lastSeenAt ? new Date(a.lastSeenAt).getTime() : 0;
+      const bSeen = b.lastSeenAt ? new Date(b.lastSeenAt).getTime() : 0;
+      return bSeen - aSeen;
     });
 
     setUsers(platformUsers);
