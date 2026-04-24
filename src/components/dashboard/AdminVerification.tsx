@@ -1779,7 +1779,6 @@ export const AdminVerification = () => {
                 })()}
               </div>
             )}
-            )}
           </TabsContent>
 
           {/* Approvals Tab */}
