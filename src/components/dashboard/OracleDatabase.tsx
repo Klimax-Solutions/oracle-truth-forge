@@ -45,6 +45,23 @@ interface Trade {
   comment?: string | null;
 }
 
+// Cycle definitions (mirrors public.cycles)
+const CYCLES = [
+  { num: 0, name: "Ébauche",  phase: 0, start: 1,   end: 15  },
+  { num: 1, name: "Cycle 1",  phase: 1, start: 16,  end: 40  },
+  { num: 2, name: "Cycle 2",  phase: 1, start: 41,  end: 65  },
+  { num: 3, name: "Cycle 3",  phase: 1, start: 66,  end: 90  },
+  { num: 4, name: "Cycle 4",  phase: 1, start: 91,  end: 115 },
+  { num: 5, name: "Cycle 5",  phase: 2, start: 116, end: 165 },
+  { num: 6, name: "Cycle 6",  phase: 2, start: 166, end: 215 },
+  { num: 7, name: "Cycle 7",  phase: 2, start: 216, end: 265 },
+  { num: 8, name: "Cycle 8",  phase: 2, start: 266, end: 314 },
+] as const;
+
+const getCycleForTrade = (tradeNumber: number) => {
+  return CYCLES.find(c => tradeNumber >= c.start && tradeNumber <= c.end) || null;
+};
+
 interface OracleDatabaseProps {
   trades: Trade[];
   initialFilters?: Filters;
@@ -68,6 +85,7 @@ interface Filters {
   quarter: string[];
   year: string[];
   contributor: string[];
+  cycle: number[];
   hasScreenshots?: boolean;
 }
 
@@ -76,7 +94,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
   const { isEarlyAccess } = useEarlyAccess();
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
-  const [filters, setFilters] = useState<Filters>(initialFilters ? { ...initialFilters, contributor: (initialFilters as any).contributor || [] } : {
+  const [filters, setFilters] = useState<Filters>(initialFilters ? { ...initialFilters, contributor: (initialFilters as any).contributor || [], cycle: (initialFilters as any).cycle || [] } : {
     direction: [],
     direction_structure: [],
     setup_type: [],
@@ -89,6 +107,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
     quarter: [],
     year: [],
     contributor: [],
+    cycle: [],
     hasScreenshots: false,
   });
 
@@ -137,6 +156,11 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
       if (filters.hasScreenshots && !trade.screenshot_m15_m5 && !trade.screenshot_m1) return false;
       // Filter by contributor
       if (filters.contributor.length > 0 && (!trade.contributor || !filters.contributor.includes(trade.contributor))) return false;
+      // Filter by cycle
+      if (filters.cycle.length > 0) {
+        const c = getCycleForTrade(trade.trade_number);
+        if (!c || !filters.cycle.includes(c.num)) return false;
+      }
       return true;
     });
   }, [trades, filters]);
@@ -152,12 +176,21 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
     .flatMap(([, value]) => value as string[])
     .length + (filters.hasScreenshots ? 1 : 0);
 
-  const toggleFilter = (category: keyof Omit<Filters, 'hasScreenshots'>, value: string) => {
+  const toggleFilter = (category: Exclude<keyof Filters, 'hasScreenshots' | 'cycle'>, value: string) => {
     setFilters(prev => ({
       ...prev,
       [category]: prev[category].includes(value)
         ? prev[category].filter(v => v !== value)
         : [...prev[category], value]
+    }));
+  };
+
+  const toggleCycle = (cycleNum: number) => {
+    setFilters(prev => ({
+      ...prev,
+      cycle: prev.cycle.includes(cycleNum)
+        ? prev.cycle.filter(v => v !== cycleNum)
+        : [...prev.cycle, cycleNum]
     }));
   };
 
@@ -175,6 +208,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
       quarter: [],
       year: [],
       contributor: [],
+      cycle: [],
       hasScreenshots: false,
     });
   };
@@ -184,22 +218,8 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
     return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
   };
 
-  // Cycle definitions (mirrors public.cycles)
-  const CYCLES = [
-    { num: 0, name: "Ébauche",  phase: 0, start: 1,   end: 15  },
-    { num: 1, name: "Cycle 1",  phase: 1, start: 16,  end: 40  },
-    { num: 2, name: "Cycle 2",  phase: 1, start: 41,  end: 65  },
-    { num: 3, name: "Cycle 3",  phase: 1, start: 66,  end: 90  },
-    { num: 4, name: "Cycle 4",  phase: 1, start: 91,  end: 115 },
-    { num: 5, name: "Cycle 5",  phase: 2, start: 116, end: 165 },
-    { num: 6, name: "Cycle 6",  phase: 2, start: 166, end: 215 },
-    { num: 7, name: "Cycle 7",  phase: 2, start: 216, end: 265 },
-    { num: 8, name: "Cycle 8",  phase: 2, start: 266, end: 314 },
-  ] as const;
 
-  const getCycleForTrade = (tradeNumber: number) => {
-    return CYCLES.find(c => tradeNumber >= c.start && tradeNumber <= c.end) || null;
-  };
+
 
   // Get trade context for charts - ISOLATED 10 last trades (like TradingJournal)
   const getTradeContext = (trade: Trade) => {
@@ -261,6 +281,37 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                 <X className="w-3 h-3" />
                 {activeFiltersCount}
               </button>
+            )}
+
+            {!isDataGenerale && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className={cn(
+                    "px-2 md:px-3 py-1 md:py-1.5 text-[9px] md:text-[10px] font-medium rounded-md transition-all flex items-center gap-1 flex-shrink-0",
+                    filters.cycle.length > 0
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  )}>
+                    Cycle{filters.cycle.length > 0 && ` (${filters.cycle.length})`}
+                    <ChevronDown className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-popover border-border z-50 rounded-md min-w-[160px] p-1 max-h-72 overflow-y-auto scrollbar-hide">
+                  {CYCLES.map(c => (
+                    <DropdownMenuCheckboxItem
+                      key={c.num}
+                      checked={filters.cycle.includes(c.num)}
+                      onCheckedChange={() => toggleCycle(c.num)}
+                      className="text-foreground text-[10px] md:text-xs rounded-md px-2 md:px-3 py-1.5 md:py-2 cursor-pointer focus:bg-accent focus:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-foreground"
+                    >
+                      <span className="flex items-center justify-between gap-3 w-full">
+                        <span>{c.name}</span>
+                        <span className="text-muted-foreground font-mono text-[9px] md:text-[10px]">#{String(c.start).padStart(3,'0')}–{String(c.end).padStart(3,'0')}</span>
+                      </span>
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
 
             <DropdownMenu>
