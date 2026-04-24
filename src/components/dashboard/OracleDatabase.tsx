@@ -439,7 +439,65 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
           <div className="space-y-2">
             {filteredTrades.map((trade, tradeIdx) => {
               const isBlurred = isEarlyAccess && tradeIdx >= 50;
+              const currentCycle = !isDataGenerale ? getCycleForTrade(trade.trade_number) : null;
+              const prevCycle = !isDataGenerale && tradeIdx > 0
+                ? getCycleForTrade(filteredTrades[tradeIdx - 1].trade_number)
+                : null;
+              const showCycleHeader = !isDataGenerale && currentCycle && currentCycle.num !== prevCycle?.num;
+
+              // Count trades in this cycle within the filtered list
+              const cycleTradesInView = showCycleHeader
+                ? filteredTrades.filter(t => {
+                    const c = getCycleForTrade(t.trade_number);
+                    return c?.num === currentCycle?.num;
+                  }).length
+                : 0;
+
               return (
+              <div key={`wrap-${trade.id}`}>
+                {showCycleHeader && currentCycle && (
+                  <div
+                    className={cn(
+                      "sticky top-0 z-20 mb-2 mt-1 first:mt-0 backdrop-blur-md",
+                      "border rounded-md px-3 md:px-4 py-2 md:py-2.5",
+                      "flex items-center justify-between gap-3",
+                      currentCycle.num === 0
+                        ? "border-amber-500/30 bg-amber-500/5"
+                        : currentCycle.phase === 1
+                          ? "border-primary/30 bg-primary/5"
+                          : "border-emerald-500/30 bg-emerald-500/5"
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5 md:gap-3 min-w-0">
+                      <span
+                        className={cn(
+                          "text-[9px] md:text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded border",
+                          currentCycle.num === 0
+                            ? "border-amber-500/40 text-amber-400 bg-amber-500/10"
+                            : currentCycle.phase === 1
+                              ? "border-primary/40 text-primary bg-primary/10"
+                              : "border-emerald-500/40 text-emerald-400 bg-emerald-500/10"
+                        )}
+                      >
+                        {currentCycle.num === 0 ? "Phase 0" : `Phase ${currentCycle.phase}`}
+                      </span>
+                      <h3 className="text-xs md:text-sm font-bold text-foreground truncate">
+                        {currentCycle.name}
+                      </h3>
+                      <span className="hidden sm:inline text-[10px] md:text-[11px] font-mono text-muted-foreground">
+                        #{String(currentCycle.start).padStart(3, "0")} → #{String(currentCycle.end).padStart(3, "0")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="text-[10px] md:text-[11px] font-mono text-foreground font-semibold">
+                        {cycleTradesInView}
+                      </span>
+                      <span className="text-[9px] md:text-[10px] font-mono text-muted-foreground uppercase">
+                        / {currentCycle.end - currentCycle.start + 1} trades
+                      </span>
+                    </div>
+                  </div>
+                )}
               <div
                 key={trade.id}
                 className={cn(
