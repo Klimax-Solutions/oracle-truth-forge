@@ -1412,16 +1412,51 @@ export const AdminVerification = () => {
                                 )} />
                               )}
                             </div>
-                            <div className="min-w-0">
-                              <h4 className="font-semibold text-foreground text-xs md:text-sm truncate">
-                                {user.displayName}
-                              </h4>
-                              <div className="flex items-center gap-1 md:gap-2 mt-0.5">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-semibold text-foreground text-xs md:text-sm truncate">
+                                  {user.displayName}
+                                </h4>
+                                <span className={cn(
+                                  "px-1.5 py-0.5 text-[9px] font-mono uppercase rounded border",
+                                  roleBadgeClass[primaryRole]
+                                )}>
+                                  {primaryRole === "none" ? "sans rôle" : primaryRole.replace("_", " ")}
+                                </span>
+                                {user.profileStatus !== "active" && (
+                                  <span className="px-1.5 py-0.5 text-[9px] font-mono uppercase rounded bg-orange-500/20 text-orange-400 border border-orange-500/40">
+                                    {user.profileStatus}
+                                  </span>
+                                )}
+                                {!user.hasCycles && (
+                                  <span className="px-1.5 py-0.5 text-[9px] font-mono uppercase rounded bg-purple-500/20 text-purple-400 border border-purple-500/40 flex items-center gap-1">
+                                    <Ghost className="w-2.5 h-2.5" /> Fantôme
+                                  </span>
+                                )}
+                                {user.fakeLevel === "high" && (
+                                  <span className="px-1.5 py-0.5 text-[9px] font-mono uppercase rounded bg-red-500/20 text-red-400 border border-red-500/40 flex items-center gap-1">
+                                    <Flame className="w-2.5 h-2.5" /> Fake {user.fakeScore}
+                                  </span>
+                                )}
+                                {user.fakeLevel === "medium" && (
+                                  <span className="px-1.5 py-0.5 text-[9px] font-mono uppercase rounded bg-orange-500/20 text-orange-400 border border-orange-500/40">
+                                    Suspect {user.fakeScore}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                 <p className="text-[10px] md:text-xs text-muted-foreground font-mono truncate">
-                                  {user.currentCycle?.name || "—"}
+                                  {user.currentCycle?.name || (user.hasCycles ? "—" : "Cycles non initialisés")}
+                                </p>
+                                <span className="text-[9px] text-muted-foreground font-mono">·</span>
+                                <p className="text-[10px] text-muted-foreground font-mono">
+                                  Vu: <span className={cn(
+                                    !user.lastSeenAt && "text-red-400",
+                                    user.lastSeenAt && "text-foreground"
+                                  )}>{lastSeenLabel}</span>
                                 </p>
                                 {user.status === "pending" && (
-                                  <span className="px-1 py-0.5 text-[8px] md:text-[10px] font-mono uppercase bg-orange-500/20 text-orange-400 rounded flex-shrink-0">
+                                  <span className="px-1 py-0.5 text-[8px] font-mono uppercase bg-orange-500/20 text-orange-400 rounded">
                                     Vérif
                                   </span>
                                 )}
