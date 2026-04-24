@@ -869,12 +869,12 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                       <div className="grid grid-cols-2 gap-2.5">
                         <button type="button" onClick={() => setFormData({ ...formData, direction: "Long" })}
                           className={cn("flex items-center justify-center gap-2.5 py-4 rounded-xl border-2 transition-all duration-150 font-bold text-sm",
-                            formData.direction === "Long" ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_20px_-8px_theme(colors.emerald.500)]" : "border-border/40 text-muted-foreground hover:border-emerald-500/40 hover:text-emerald-500/70")}>
+                            formData.direction === "Long" ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_20px_-8px_theme(colors.emerald.500)]" : "border-border text-muted-foreground/60 hover:border-emerald-500/50 hover:text-emerald-500/60")}>
                           <TrendingUp className="w-4 h-4" /> Long
                         </button>
                         <button type="button" onClick={() => setFormData({ ...formData, direction: "Short" })}
                           className={cn("flex items-center justify-center gap-2.5 py-4 rounded-xl border-2 transition-all duration-150 font-bold text-sm",
-                            formData.direction === "Short" ? "border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_20px_-8px_theme(colors.red.500)]" : "border-border/40 text-muted-foreground hover:border-red-500/40 hover:text-red-500/70")}>
+                            formData.direction === "Short" ? "border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_20px_-8px_theme(colors.red.500)]" : "border-border text-muted-foreground/60 hover:border-red-500/50 hover:text-red-500/60")}>
                           <TrendingDown className="w-4 h-4" /> Short
                         </button>
                       </div>
@@ -903,13 +903,14 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                       <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/40 mb-2.5">Résultat</p>
                       <div className="grid grid-cols-3 gap-2 mb-3">
                         {([
-                          { value: "Win",  label: "Win",        activeClass: "border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_16px_-6px_theme(colors.emerald.500)]" },
-                          { value: "Loss", label: "Loss",       activeClass: "border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_16px_-6px_theme(colors.red.500)]" },
-                          { value: "BE",   label: "Break Even", activeClass: "border-amber-500 bg-amber-500/10 text-amber-400 shadow-[0_0_16px_-6px_theme(colors.amber.500)]" },
+                          { value: "Win",  label: "Win",  icon: "↑", activeClass: "border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_16px_-6px_theme(colors.emerald.500)]" },
+                          { value: "Loss", label: "Loss", icon: "↓", activeClass: "border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_16px_-6px_theme(colors.red.500)]" },
+                          { value: "BE",   label: "BE",   icon: "—", activeClass: "border-amber-500 bg-amber-500/10 text-amber-400 shadow-[0_0_16px_-6px_theme(colors.amber.500)]" },
                         ] as const).map((opt) => (
                           <button key={opt.value} type="button" onClick={() => setFormData({ ...formData, result: opt.value })}
-                            className={cn("py-2.5 rounded-xl border-2 font-semibold text-sm transition-all duration-150",
-                              formData.result === opt.value ? opt.activeClass : "border-border/40 text-muted-foreground hover:border-border")}>
+                            className={cn("py-2.5 rounded-xl border-2 font-semibold text-sm transition-all duration-150 flex items-center justify-center gap-1.5",
+                              formData.result === opt.value ? opt.activeClass : "border-border text-muted-foreground/60 hover:border-border hover:text-foreground/70")}>
+                            <span className="font-mono text-base leading-none">{opt.icon}</span>
                             {opt.label}
                           </button>
                         ))}
@@ -962,13 +963,13 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     <div>
                       <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/40 mb-2.5">Classification du Setup</p>
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Type de config</Label><CustomizableMultiSelect value={formData.setup_type} onChange={(v) => setFormData({ ...formData, setup_type: v })} fixedOptions={SETUP_TYPE_FIXED_OPTIONS} customOptions={variables.setup_type} variableType="setup_type" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} /></div>
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Contexte</Label><CustomizableMultiSelect value={formData.direction_structure} onChange={(v) => setFormData({ ...formData, direction_structure: v })} customOptions={variables.direction_structure} variableType="direction_structure" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} /></div>
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Entry Model</Label><CustomizableMultiSelect value={formData.entry_model} onChange={(v) => setFormData({ ...formData, entry_model: v })} fixedOptions={ENTRY_MODEL_FIXED_OPTIONS} customOptions={variables.entry_model} variableType="entry_model" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} /></div>
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Timing</Label><CustomizableMultiSelect value={formData.entry_timing} onChange={(v) => setFormData({ ...formData, entry_timing: v })} fixedOptions={TIMING_FIXED_OPTIONS} customOptions={variables.entry_timing} variableType="entry_timing" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} /></div>
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Time Frame</Label><CustomizableMultiSelect value={formData.entry_timeframe} onChange={(v) => setFormData({ ...formData, entry_timeframe: v })} fixedOptions={ENTRY_TIMEFRAME_FIXED_OPTIONS} customOptions={variables.entry_timeframe} variableType="entry_timeframe" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} /></div>
-                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Placement SL</Label><CustomizableMultiSelect value={formData.sl_placement} onChange={(v) => setFormData({ ...formData, sl_placement: v })} customOptions={variables.sl_placement || []} variableType="sl_placement" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} /></div>
-                        <div className="col-span-2 space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Placement TP</Label><CustomizableMultiSelect value={formData.tp_placement} onChange={(v) => setFormData({ ...formData, tp_placement: v })} customOptions={variables.tp_placement || []} variableType="tp_placement" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} /></div>
+                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Type de config</Label><CustomizableMultiSelect value={formData.setup_type} onChange={(v) => setFormData({ ...formData, setup_type: v })} fixedOptions={SETUP_TYPE_FIXED_OPTIONS} customOptions={variables.setup_type} variableType="setup_type" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
+                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Contexte</Label><CustomizableMultiSelect value={formData.direction_structure} onChange={(v) => setFormData({ ...formData, direction_structure: v })} customOptions={variables.direction_structure} variableType="direction_structure" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
+                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Entry Model</Label><CustomizableMultiSelect value={formData.entry_model} onChange={(v) => setFormData({ ...formData, entry_model: v })} fixedOptions={ENTRY_MODEL_FIXED_OPTIONS} customOptions={variables.entry_model} variableType="entry_model" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
+                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Timing</Label><CustomizableMultiSelect value={formData.entry_timing} onChange={(v) => setFormData({ ...formData, entry_timing: v })} fixedOptions={TIMING_FIXED_OPTIONS} customOptions={variables.entry_timing} variableType="entry_timing" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
+                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Time Frame</Label><CustomizableMultiSelect value={formData.entry_timeframe} onChange={(v) => setFormData({ ...formData, entry_timeframe: v })} fixedOptions={ENTRY_TIMEFRAME_FIXED_OPTIONS} customOptions={variables.entry_timeframe} variableType="entry_timeframe" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
+                        <div className="space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Placement SL</Label><CustomizableMultiSelect value={formData.sl_placement} onChange={(v) => setFormData({ ...formData, sl_placement: v })} customOptions={variables.sl_placement || []} variableType="sl_placement" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
+                        <div className="col-span-2 space-y-1"><Label className="text-[9px] text-muted-foreground/50 font-mono uppercase tracking-wide">Placement TP</Label><CustomizableMultiSelect value={formData.tp_placement} onChange={(v) => setFormData({ ...formData, tp_placement: v })} customOptions={variables.tp_placement || []} variableType="tp_placement" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
                       </div>
                     </div>
 

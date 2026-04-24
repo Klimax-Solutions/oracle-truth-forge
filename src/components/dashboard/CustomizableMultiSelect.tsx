@@ -21,6 +21,8 @@ interface CustomizableMultiSelectProps {
   variableType: string;
   placeholder?: string;
   onOptionsChanged: () => void;
+  /** Compact mode: smaller trigger, settings icon barely visible until hover */
+  compact?: boolean;
 }
 
 export const CustomizableMultiSelect = ({
@@ -31,6 +33,7 @@ export const CustomizableMultiSelect = ({
   variableType,
   placeholder = "Sélectionner...",
   onOptionsChanged,
+  compact = false,
 }: CustomizableMultiSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isManaging, setIsManaging] = useState(false);
@@ -124,7 +127,8 @@ export const CustomizableMultiSelect = ({
             variant="outline"
             role="combobox"
             className={cn(
-              "flex-1 h-auto min-h-10 justify-start text-left font-normal overflow-hidden",
+              "flex-1 h-auto justify-start text-left font-normal overflow-hidden",
+              compact ? "min-h-8 text-xs" : "min-h-10",
               selectedValues.length === 0 && "text-muted-foreground"
             )}
           >
@@ -199,8 +203,10 @@ export const CustomizableMultiSelect = ({
       {/* Manage options popover */}
       <Popover open={isManaging} onOpenChange={setIsManaging}>
         <PopoverTrigger asChild>
-          <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" title="Gérer les options">
-            <Settings2 className="w-4 h-4" />
+          <Button type="button" variant="ghost" size="icon"
+            className={cn("shrink-0 transition-opacity", compact ? "h-7 w-6 opacity-20 hover:opacity-80" : "h-10 w-10 opacity-50 hover:opacity-100")}
+            title="Gérer les options">
+            <Settings2 className={compact ? "w-3 h-3" : "w-4 h-4"} />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-72 p-3 z-[100]" align="end" side="bottom" onWheel={(e) => e.stopPropagation()}>
