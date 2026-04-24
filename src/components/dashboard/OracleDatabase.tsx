@@ -154,12 +154,21 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
     .flatMap(([, value]) => value as string[])
     .length + (filters.hasScreenshots ? 1 : 0);
 
-  const toggleFilter = (category: keyof Omit<Filters, 'hasScreenshots'>, value: string) => {
+  const toggleFilter = (category: Exclude<keyof Filters, 'hasScreenshots' | 'cycle'>, value: string) => {
     setFilters(prev => ({
       ...prev,
       [category]: prev[category].includes(value)
         ? prev[category].filter(v => v !== value)
         : [...prev[category], value]
+    }));
+  };
+
+  const toggleCycle = (cycleNum: number) => {
+    setFilters(prev => ({
+      ...prev,
+      cycle: prev.cycle.includes(cycleNum)
+        ? prev.cycle.filter(v => v !== cycleNum)
+        : [...prev.cycle, cycleNum]
     }));
   };
 
@@ -177,6 +186,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
       quarter: [],
       year: [],
       contributor: [],
+      cycle: [],
       hasScreenshots: false,
     });
   };
