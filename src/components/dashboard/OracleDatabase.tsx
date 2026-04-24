@@ -77,7 +77,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
   const { isEarlyAccess } = useEarlyAccess();
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
-  const [filters, setFilters] = useState<Filters>(initialFilters ? { ...initialFilters, contributor: (initialFilters as any).contributor || [] } : {
+  const [filters, setFilters] = useState<Filters>(initialFilters ? { ...initialFilters, contributor: (initialFilters as any).contributor || [], cycle: (initialFilters as any).cycle || [] } : {
     direction: [],
     direction_structure: [],
     setup_type: [],
@@ -90,6 +90,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
     quarter: [],
     year: [],
     contributor: [],
+    cycle: [],
     hasScreenshots: false,
   });
 
