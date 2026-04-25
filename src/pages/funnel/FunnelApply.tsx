@@ -278,17 +278,17 @@ export default function FunnelApply() {
         /* ── Phase VSL : tient en 100vh, pas de scroll ── */
         <div className="h-screen flex flex-col overflow-hidden">
 
-          {/* Headline — compact, en haut */}
-          <div className="shrink-0 text-center px-4 pt-5 pb-2">
+          {/* Headline — plus bas, plus grand, forcé sur 2 lignes via max-w */}
+          <div className="shrink-0 text-center px-4 pt-12 md:pt-16 pb-3">
             <AccentText
               html={config.apply_headline || 'Découvre la méthode'}
-              className="text-lg sm:text-xl md:text-2xl font-display text-white leading-snug"
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display text-white leading-tight max-w-3xl mx-auto"
             />
             {(config.apply_subtitle || config.landing_subtitle) && (
               <AccentText
                 html={config.apply_subtitle || config.landing_subtitle}
                 as="p"
-                className="text-sm md:text-base font-display text-white/55 max-w-xl mx-auto mt-1.5 leading-snug"
+                className="text-base md:text-lg font-display text-white/55 max-w-2xl mx-auto mt-3 leading-snug"
               />
             )}
           </div>
@@ -307,8 +307,8 @@ export default function FunnelApply() {
             </div>
           </div>
 
-          {/* CTA + footer — en bas, compact */}
-          <div className="shrink-0 pb-4 pt-2 text-center space-y-2">
+          {/* CTA + footer — remonté pour ne pas coller au bas */}
+          <div className="shrink-0 pb-10 md:pb-14 pt-3 text-center space-y-2">
             <div className={`transition-all duration-700 ${ctaVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3 pointer-events-none'}`}>
               <button
                 onClick={() => setShowForm(true)}
