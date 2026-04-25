@@ -369,30 +369,27 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
             style={{
               opacity: firstName ? 1 : 0,
               transition: "opacity 0.5s ease",
-              marginBottom: "48px",
+              marginBottom: "36px",
             }}
           >
             <p style={{
-              fontSize: "13px",
-              fontWeight: 400,
+              fontSize: "22px",
+              fontWeight: 500,
               fontFamily: "'Inter', system-ui, sans-serif",
-              color: "rgba(255,255,255,0.30)",
-              marginBottom: "6px",
+              letterSpacing: "-0.02em",
+              lineHeight: 1,
+              color: "rgba(255,255,255,0.38)",
             }}>
               {(() => {
                 const h = new Date().getHours();
                 return h < 12 ? "Bonjour," : h < 19 ? "Bon après-midi," : "Bonsoir,";
-              })()}
-            </p>
-            <p style={{
-              fontSize: "26px",
-              fontWeight: 700,
-              fontFamily: "'Inter', system-ui, sans-serif",
-              letterSpacing: "-0.025em",
-              color: "rgba(255,255,255,0.88)",
-              lineHeight: 1,
-            }}>
-              {firstName}
+              })()}{" "}
+              <span style={{
+                color: "rgba(255,255,255,0.88)",
+                fontWeight: 700,
+              }}>
+                {firstName}
+              </span>
             </p>
           </div>
 
