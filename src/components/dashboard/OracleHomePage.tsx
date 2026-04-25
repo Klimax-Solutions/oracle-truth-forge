@@ -370,36 +370,20 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
           }}
         >
 
-          {/* ── Greeting — chaud, personnel, visible ── */}
-          <div style={{ opacity: firstName ? 1 : 0, transition: "opacity 0.5s ease", marginBottom: "40px" }}>
-            <p style={{
-              fontSize: "19px",
-              fontWeight: 400,
-              fontFamily: "'Inter', system-ui, sans-serif",
-              letterSpacing: "-0.01em",
-              lineHeight: 1,
-              color: "rgba(255,255,255,0.55)",
-            }}>
-              {(() => { const h = new Date().getHours(); return h < 12 ? "Bonjour," : h < 19 ? "Bon après-midi," : "Bonsoir,"; })()}{" "}
+          {/* ── Greeting — discret, en haut ── */}
+          {firstName && (
+            <div style={{ marginBottom: "18px", opacity: 1, transition: "opacity 0.6s ease" }}>
               <span style={{
-                fontWeight: 700,
-                color: "rgba(255,255,255,0.92)",
-                backgroundImage: "linear-gradient(135deg, #ffffff 40%, rgba(255,255,255,0.65) 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
+                fontSize: "12px",
+                fontWeight: 400,
+                fontFamily: "'Inter', system-ui, sans-serif",
+                letterSpacing: "0.02em",
+                color: "rgba(255,255,255,0.28)",
               }}>
-                {firstName}
+                {(() => { const h = new Date().getHours(); return h < 12 ? "Bonjour" : h < 19 ? "Bon après-midi" : "Bonsoir"; })()}, {firstName}
               </span>
-            </p>
-            {/* Fine ligne de séparation sous le greeting */}
-            <div style={{
-              marginTop: "14px",
-              height: "1px",
-              width: "100%",
-              background: "linear-gradient(to right, rgba(255,255,255,0.07) 0%, transparent 80%)",
-            }} />
-          </div>
+            </div>
+          )}
 
           {/* ── Slide content ── */}
           <div key={`content-${slide}`}>
