@@ -143,6 +143,7 @@ async function migrateOneUser(
   target: Client,
   uid: string,
   errors: string[],
+  cycleMap: Map<string, string>,
 ): Promise<{ uid: string; status: string; counts: Record<string, number>; storage: { files: number; bytes: number } }> {
   const counts: Record<string, number> = {};
 
@@ -189,7 +190,7 @@ async function migrateOneUser(
 
   // 3) All per-user tables in dependency order
   for (const table of COPY_ORDER) {
-    counts[table] = await copyTableForUser(source, target, table, uid, errors);
+    counts[table] = await copyTableForUser(source, target, table, uid, errors, cycleMap);
   }
 
   // 4) admin_trade_notes (linked via verification_request_id of this user)
