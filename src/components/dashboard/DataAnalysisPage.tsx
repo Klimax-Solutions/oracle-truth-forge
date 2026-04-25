@@ -94,7 +94,9 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
         .order("updated_at", { ascending: false });
       if (cancelled) return;
       const list: AnalysisSession[] = ((data as any[]) || []).map((s) => ({
-        id: s.id, name: s.name, asset: s.asset, type: s.type,
+        id: s.id, name: s.name, asset: s.asset,
+        // DB stores "live_trading", SessionAnalysisSelector expects "live"
+        type: (s.type === "live_trading" ? "live" : s.type) as AnalysisSession["type"],
       }));
       setSessions(list);
       // NOTE: we no longer auto-preselect a session here. The default dataset is Setup Oracle Core
@@ -200,8 +202,8 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
     );
   }
 
-  // Empty state for perso-only with no trades (legacy fallback when sessions exist but are empty)
-  if (isPersoOnly && displayTrades.length === 0) {
+  // Empty state for perso-only with no trades AND no sessions (if sessions exist, let the selector show)
+  if (isPersoOnly && displayTrades.length === 0 && sessions.length === 0) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 text-center">
         <BarChart3 className="w-10 h-10 text-muted-foreground mb-4" />

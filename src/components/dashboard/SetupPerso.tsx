@@ -1,21 +1,24 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Upload, 
-  FileSpreadsheet, 
-  Trash2, 
-  Loader2, 
-  AlertCircle, 
+import {
+  Upload,
+  FileSpreadsheet,
+  Trash2,
+  Loader2,
+  AlertCircle,
   CheckCircle2,
   Plus,
   Download,
   Target,
-  Settings2
+  Settings2,
+  SlidersHorizontal,
+  X,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -69,6 +72,16 @@ const DAYS_MAP: Record<number, string> = {
 
 const DEFAULT_TARGET_TRADES = 300;
 
+// ── Filter types (module-level) ──
+type FilterFieldKey = "direction" | "direction_structure" | "setup_type" | "entry_timing" | "day_of_week";
+const FILTER_FIELDS: { key: FilterFieldKey; label: string }[] = [
+  { key: "direction", label: "Direction" },
+  { key: "direction_structure", label: "Structure" },
+  { key: "setup_type", label: "Type de Setup" },
+  { key: "entry_timing", label: "Entry Timing" },
+  { key: "day_of_week", label: "Jour" },
+];
+
 interface SetupPersoProps {
   customSetupId?: string;
   customSetupName?: string;
@@ -91,6 +104,12 @@ export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupP
   const [showAssetDialog, setShowAssetDialog] = useState(false);
   const [newAsset, setNewAsset] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Filters ──
+  const [activeFilterFields, setActiveFilterFields] = useState<FilterFieldKey[]>([]);
+  const [filterValues, setFilterValues] = useState<Partial<Record<FilterFieldKey, string>>>({});
+  const [showFilterChooser, setShowFilterChooser] = useState(false);
+  const filterChooserRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { isEarlyAccess } = useEarlyAccess();
 
@@ -547,6 +566,33 @@ export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupP
   const avgRR = trades.length > 0 ? totalRR / trades.length : 0;
   const progressPercent = targetTrades > 0 ? Math.min((trades.length / targetTrades) * 100, 100) : 0;
 
+  // ── Filtered trades for display ──
+  const filteredTrades = useMemo(() => {
+    return trades.filter(trade => {
+      for (const field of activeFilterFields) {
+        const val = filterValues[field];
+        if (val && val !== "__all__") {
+          const tradeVal = (trade[field as keyof PersonalTrade] as string) || "";
+          if (tradeVal !== val) return false;
+        }
+      }
+      return true;
+    });
+  }, [trades, activeFilterFields, filterValues]);
+
+  // ── Unique values per field (for dropdown options) ──
+  const fieldOptions = useMemo(() => {
+    const opts: Partial<Record<FilterFieldKey, string[]>> = {};
+    const allFields: FilterFieldKey[] = ["direction", "direction_structure", "setup_type", "entry_timing", "day_of_week"];
+    for (const field of allFields) {
+      const vals = Array.from(new Set(
+        trades.map(t => (t[field as keyof PersonalTrade] as string) || "").filter(Boolean)
+      )).sort();
+      opts[field] = vals;
+    }
+    return opts;
+  }, [trades]);
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -666,8 +712,8 @@ export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupP
           </div>
         </div>
 
-        {/* Progress Bar 0/300 */}
-        <div className="bg-card border border-border rounded-lg p-4">
+        {/* Progress Bar 0/300 — hidden in session mode */}
+        {!sessionId && <div className="bg-card border border-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Target className="w-4 h-4 text-primary" />
@@ -698,14 +744,14 @@ export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupP
           </div>
           {targetTrades > 0 && <Progress value={progressPercent} className="h-2" />}
           <p className="text-xs text-muted-foreground mt-2">
-            {targetTrades > 0 && trades.length >= targetTrades 
+            {targetTrades > 0 && trades.length >= targetTrades
               ? "🎉 Objectif atteint ! Continuez à récolter de la data."
-              : targetTrades > 0 
+              : targetTrades > 0
                 ? `${targetTrades - trades.length} trades restants pour atteindre votre objectif.`
                 : "Aucun objectif défini. Récoltez autant de data que nécessaire."
             }
           </p>
-        </div>
+        </div>}
       </div>
 
       {/* Import result */}
@@ -758,6 +804,108 @@ export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupP
         </div>
       )}
 
+      {/* ── Filter bar ── */}
+      {trades.length > 0 && (
+        <div className="px-4 md:px-6 py-2.5 border-b border-border flex flex-wrap items-center gap-2">
+          {/* Active filter chips */}
+          {activeFilterFields.map(field => {
+            const label = FILTER_FIELDS.find(f => f.key === field)?.label ?? field;
+            const opts = fieldOptions[field] ?? [];
+            const currentVal = filterValues[field] ?? "__all__";
+            return (
+              <div key={field} className="flex items-center gap-1 bg-muted rounded-md pl-2 pr-1 h-7">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
+                <select
+                  value={currentVal}
+                  onChange={e => setFilterValues(prev => ({ ...prev, [field]: e.target.value }))}
+                  className="bg-transparent text-[11px] text-foreground border-none outline-none h-7 pr-1 cursor-pointer"
+                >
+                  <option value="__all__">Tous</option>
+                  {opts.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+                <button
+                  onClick={() => {
+                    setActiveFilterFields(prev => prev.filter(f => f !== field));
+                    setFilterValues(prev => { const n = { ...prev }; delete n[field]; return n; });
+                  }}
+                  className="text-muted-foreground hover:text-foreground ml-0.5 flex items-center"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            );
+          })}
+
+          {/* Add filter field chooser */}
+          <div className="relative" ref={filterChooserRef}>
+            <button
+              onClick={() => setShowFilterChooser(v => !v)}
+              className={cn(
+                "flex items-center gap-1.5 h-7 px-2 rounded-md text-[11px] transition-colors",
+                activeFilterFields.length > 0
+                  ? "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted border border-dashed border-border"
+              )}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              {activeFilterFields.length === 0 && <span>Filtrer</span>}
+              <ChevronDown className="w-3 h-3" />
+            </button>
+            {showFilterChooser && (
+              <div className="absolute left-0 top-9 z-50 bg-card border border-border rounded-lg shadow-lg p-2 min-w-[160px]">
+                {FILTER_FIELDS.map(f => {
+                  const isActive = activeFilterFields.includes(f.key);
+                  return (
+                    <button
+                      key={f.key}
+                      onClick={() => {
+                        if (isActive) {
+                          setActiveFilterFields(prev => prev.filter(k => k !== f.key));
+                          setFilterValues(prev => { const n = { ...prev }; delete n[f.key]; return n; });
+                        } else {
+                          setActiveFilterFields(prev => [...prev, f.key]);
+                        }
+                        setShowFilterChooser(false);
+                      }}
+                      className={cn(
+                        "w-full text-left px-3 py-1.5 rounded text-xs transition-colors",
+                        isActive
+                          ? "text-foreground bg-muted font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      {isActive ? "✓ " : ""}{f.label}
+                    </button>
+                  );
+                })}
+                {activeFilterFields.length > 0 && (
+                  <>
+                    <div className="border-t border-border my-1" />
+                    <button
+                      onClick={() => {
+                        setActiveFilterFields([]);
+                        setFilterValues({});
+                        setShowFilterChooser(false);
+                      }}
+                      className="w-full text-left px-3 py-1.5 rounded text-xs text-red-400 hover:bg-muted"
+                    >
+                      Effacer tout
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Count when filtered */}
+          {activeFilterFields.some(f => filterValues[f] && filterValues[f] !== "__all__") && (
+            <span className="text-[10px] font-mono text-muted-foreground ml-auto">
+              {filteredTrades.length} / {trades.length} trades
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 overflow-auto">
         {trades.length === 0 ? (
@@ -802,7 +950,7 @@ export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupP
               </TableRow>
             </TableHeader>
             <TableBody>
-              {trades.map((trade) => (
+              {filteredTrades.map((trade) => (
                 <TableRow 
                   key={trade.id} 
                   className="cursor-pointer hover:bg-muted/50"

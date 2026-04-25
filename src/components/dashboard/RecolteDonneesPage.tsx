@@ -7,10 +7,10 @@
 // → bloc Prime Setup Oracle (locked, placeholder)
 // ============================================
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  LineChart, Play, Lock, Loader2, ChevronRight, Plus, Database,
+  LineChart, Play, Lock, Loader2, ChevronRight, Plus, Database, Pencil, Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ActionButton } from "./ActionButton";
@@ -20,6 +20,7 @@ import { StepBadge } from "./StepBadge";
 const TEAL   = "#1AAFA0";
 const TEAL_G = "rgba(26,175,160,0.18)";
 const ORANGE = "#F97316";
+import { Input } from "@/components/ui/input";
 import NewSessionDialog, { SessionType } from "./NewSessionDialog";
 import { SetupPerso } from "./SetupPerso";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
@@ -58,6 +59,11 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
   const [loading, setLoading] = useState(true);
   const [dialogType, setDialogType] = useState<SessionType | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+
+  // ── Rename state ──
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
   // ── Fetch sessions + stats ──
   const loadSessions = useCallback(async () => {
@@ -117,6 +123,21 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
     loadSessions();
   };
 
+  const startRename = (s: TradingSession, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRenamingId(s.id);
+    setRenameValue(s.name);
+    setTimeout(() => renameInputRef.current?.focus(), 50);
+  };
+
+  const commitRename = async (sessionId: string) => {
+    const trimmed = renameValue.trim();
+    if (!trimmed) { setRenamingId(null); return; }
+    await supabase.from("trading_sessions").update({ name: trimmed }).eq("id", sessionId);
+    setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, name: trimmed } : s));
+    setRenamingId(null);
+  };
+
   // Séparer backtesting vs live
   const backtestingSessions = useMemo(() => sessions.filter(s => s.type === "backtesting"), [sessions]);
   const liveSessions = useMemo(() => sessions.filter(s => s.type === "live_trading"), [sessions]);
@@ -145,7 +166,37 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
                   {session.type === "backtesting" ? "BACKTESTING" : "LIVE TRADING"}
                 </span>
                 {session.asset && <span className="text-[10px] text-white/40">· {session.asset}</span>}
-                <span className="text-base font-semibold text-white">{session.name}</span>
+                {renamingId === session.id ? (
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      ref={renameInputRef}
+                      value={renameValue}
+                      onChange={e => setRenameValue(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") commitRename(session.id);
+                        if (e.key === "Escape") setRenamingId(null);
+                      }}
+                      className="h-7 text-sm font-semibold bg-white/5 border-white/20 text-white w-52"
+                      onClick={e => e.stopPropagation()}
+                    />
+                    <button
+                      onClick={() => commitRename(session.id)}
+                      className="text-white/60 hover:text-white transition-colors"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 group/rename">
+                    <span className="text-base font-semibold text-white">{session.name}</span>
+                    <button
+                      onClick={e => startRename(session, e)}
+                      className="opacity-0 group-hover/rename:opacity-100 transition-opacity text-white/40 hover:text-white"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -341,7 +392,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
                     return (
                       <button
                         key={s.id}
-                        onClick={() => setActiveSessionId(s.id)}
+                        onClick={() => renamingId !== s.id && setActiveSessionId(s.id)}
                         className="group w-full text-left rounded-2xl p-5 border transition-all hover:scale-[1.01]"
                         style={{ borderColor: `${TEAL}33`, backgroundColor: "rgba(255,255,255,0.02)" }}
                       >
@@ -349,11 +400,37 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
                           <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${TEAL}22` }}>
                             <LineChart className="w-4 h-4" style={{ color: TEAL }} />
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="text-[9px] font-semibold tracking-[0.15em] uppercase" style={{ color: TEAL }}>
                               BACKTESTING{s.asset && <span className="ml-1 opacity-60">· {s.asset}</span>}
                             </p>
-                            <h4 className="text-base font-bold text-white truncate">{s.name}</h4>
+                            {renamingId === s.id ? (
+                              <div className="flex items-center gap-1.5 mt-0.5" onClick={e => e.stopPropagation()}>
+                                <Input
+                                  ref={renameInputRef}
+                                  value={renameValue}
+                                  onChange={e => setRenameValue(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === "Enter") commitRename(s.id);
+                                    if (e.key === "Escape") setRenamingId(null);
+                                  }}
+                                  className="h-7 text-sm font-bold bg-white/5 border-white/20 text-white flex-1"
+                                />
+                                <button onClick={() => commitRename(s.id)} className="text-white/60 hover:text-white shrink-0">
+                                  <Check className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 group/name">
+                                <h4 className="text-base font-bold text-white truncate">{s.name}</h4>
+                                <button
+                                  onClick={e => startRename(s, e)}
+                                  className="opacity-0 group-hover/name:opacity-100 transition-opacity text-white/30 hover:text-white shrink-0"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="grid grid-cols-4 gap-2 mb-4">
@@ -391,7 +468,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
                     return (
                       <button
                         key={s.id}
-                        onClick={() => setActiveSessionId(s.id)}
+                        onClick={() => renamingId !== s.id && setActiveSessionId(s.id)}
                         className="group w-full text-left rounded-2xl p-5 border transition-all hover:scale-[1.01]"
                         style={{ borderColor: `${ORANGE}33`, backgroundColor: "rgba(255,255,255,0.02)" }}
                       >
@@ -399,11 +476,37 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
                           <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${ORANGE}22` }}>
                             <Play className="w-4 h-4" style={{ color: ORANGE }} />
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="text-[9px] font-semibold tracking-[0.15em] uppercase" style={{ color: ORANGE }}>
                               LIVE TRADING{s.asset && <span className="ml-1 opacity-60">· {s.asset}</span>}
                             </p>
-                            <h4 className="text-base font-bold text-white truncate">{s.name}</h4>
+                            {renamingId === s.id ? (
+                              <div className="flex items-center gap-1.5 mt-0.5" onClick={e => e.stopPropagation()}>
+                                <Input
+                                  ref={renameInputRef}
+                                  value={renameValue}
+                                  onChange={e => setRenameValue(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === "Enter") commitRename(s.id);
+                                    if (e.key === "Escape") setRenamingId(null);
+                                  }}
+                                  className="h-7 text-sm font-bold bg-white/5 border-white/20 text-white flex-1"
+                                />
+                                <button onClick={() => commitRename(s.id)} className="text-white/60 hover:text-white shrink-0">
+                                  <Check className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 group/name">
+                                <h4 className="text-base font-bold text-white truncate">{s.name}</h4>
+                                <button
+                                  onClick={e => startRename(s, e)}
+                                  className="opacity-0 group-hover/name:opacity-100 transition-opacity text-white/30 hover:text-white shrink-0"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="grid grid-cols-4 gap-2 mb-4">
