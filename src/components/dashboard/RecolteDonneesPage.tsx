@@ -46,10 +46,13 @@ const BLUE = "#3B82F6";
 
 interface RecolteDonneesPageProps {
   onNavigateToSetupOracle?: () => void;
+  /** SA role simulation — si défini, override le hook useEarlyAccess */
+  overrideIsEarlyAccess?: boolean;
 }
 
-export default function RecolteDonneesPage({ onNavigateToSetupOracle }: RecolteDonneesPageProps = {}) {
-  const { isEarlyAccess } = useEarlyAccess();
+export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIsEarlyAccess }: RecolteDonneesPageProps = {}) {
+  const { isEarlyAccess: isEarlyAccessFromDB } = useEarlyAccess();
+  const isEarlyAccess = overrideIsEarlyAccess !== undefined ? overrideIsEarlyAccess : isEarlyAccessFromDB;
   const [sessions, setSessions] = useState<TradingSession[]>([]);
   const [sessionStats, setSessionStats] = useState<Record<string, SessionStats>>({});
   const [loading, setLoading] = useState(true);

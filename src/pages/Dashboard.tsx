@@ -302,10 +302,13 @@ const Dashboard = () => {
 
         const tokenExists = (sessions || []).some(s => s.session_token === localToken);
         if (!tokenExists) {
-          await supabase.auth.signOut();
+          // Token stale (ex: reconnecté depuis un autre domaine/device — même fingerprint, token mis à jour).
+          // On nettoie le localStorage SANS forcer signOut — l'utilisateur a encore une session Supabase valide.
+          // Le signOut forcé créait une boucle : clear cache → relog → ok → relog depuis localhost → stale sur Vercel.
+          console.warn("[Dashboard] oracle_session_token stale — cleared, continuing with valid Supabase session");
           localStorage.removeItem("oracle_session_token");
-          navigate("/auth");
-          return false;
+          // Ne pas rediriger — on laisse passer. La prochaine fois il n'y a plus de localToken → pas de check.
+          return true;
         }
       }
       return true;
@@ -515,7 +518,10 @@ const Dashboard = () => {
         if (recolteView === "oracle") {
           return <OraclePage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} isAdmin={isAdmin || isSuperAdmin} onBack={() => setRecolteView("landing")} />;
         }
-        return <RecolteDonneesPage onNavigateToSetupOracle={() => setRecolteView("oracle")} />;
+        return <RecolteDonneesPage
+          onNavigateToSetupOracle={() => setRecolteView("oracle")}
+          overrideIsEarlyAccess={simulatedRole !== "none" ? isEarlyAccess : undefined}
+        />;
       case "setup":
         return <SetupOracleLanding trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} onBack={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => setActiveTab("data-analysis")} />;
       case "data-analysis": {
