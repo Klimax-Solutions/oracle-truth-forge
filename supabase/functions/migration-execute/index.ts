@@ -63,7 +63,14 @@ async function copyTableForUser(
   }
   if (!data || data.length === 0) return 0;
 
-  const { error: insErr } = await target.from(table).insert(data);
+  // user_roles: trigger handle_new_user_role auto-inserts a 'member' row → use upsert with ignore
+  // Other tables: plain insert (assumed empty for new auth user)
+  const insertOptions = table === "user_roles"
+    ? { onConflict: "user_id,role", ignoreDuplicates: true }
+    : undefined;
+  const { error: insErr } = insertOptions
+    ? await target.from(table).upsert(data, insertOptions)
+    : await target.from(table).insert(data);
   if (insErr) {
     errors.push(`[${uid}] insert ${table} (${data.length} rows): ${insErr.message}`);
     return 0;
