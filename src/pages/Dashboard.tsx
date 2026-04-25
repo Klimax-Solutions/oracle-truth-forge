@@ -162,6 +162,9 @@ const Dashboard = () => {
   
   // Role switching for super admins
   const [simulatedRole, setSimulatedRole] = useState<SimulatedRole>("none");
+
+  // Sub-navigation pour "recolte-donnees" : landing (RecolteDonneesPage) ou oracle (OraclePage)
+  const [recolteView, setRecolteView] = useState<"landing" | "oracle">("landing");
   const { effectiveIsAdmin, effectiveIsSuperAdmin, effectiveIsEarlyAccess, effectiveIsSetter, effectiveIsCloser } =
     getEffectiveRoles(realIsSuperAdmin, simulatedRole, realIsSetter, realIsCloser);
   
@@ -221,6 +224,11 @@ const Dashboard = () => {
       setActiveTab("execution");
     }
   }, [loadingRoles, isSetterOnly, simulatedRole, isAdmin, isSuperAdmin, isSetter, isCloser, isEarlyAccess, activeTab]);
+
+  // Reset sub-nav recolte quand on quitte l'onglet
+  useEffect(() => {
+    if (activeTab !== "recolte-donnees") setRecolteView("landing");
+  }, [activeTab]);
 
   useEffect(() => {
     try {
@@ -504,7 +512,10 @@ const Dashboard = () => {
       case "execution":
         return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} />;
       case "recolte-donnees":
-        return <OraclePage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} isAdmin={isAdmin || isSuperAdmin} />;
+        if (recolteView === "oracle") {
+          return <OraclePage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} isAdmin={isAdmin || isSuperAdmin} />;
+        }
+        return <RecolteDonneesPage onNavigateToSetupOracle={() => setRecolteView("oracle")} />;
       case "setup":
         return <SetupOracleLanding trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} onBack={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => setActiveTab("data-analysis")} />;
       case "data-analysis": {
