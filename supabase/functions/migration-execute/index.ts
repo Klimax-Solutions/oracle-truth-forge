@@ -311,7 +311,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ---- 3) Migration (no RPC trigger toggle: auth.users belongs to supabase_auth_admin
+    // ---- 3) Build cycle remap (source.cycle_id → target.cycle_id via cycle_number) ----
+    const cycleMap = new Map<string, string>();
+    {
+      const { data: srcCycles } = await source.from("cycles").select("id, cycle_number");
+      const { data: tgtCycles } = await target.from("cycles").select("id, cycle_number");
+      const tgtByNum = new Map<number, string>();
+      for (const c of tgtCycles ?? []) tgtByNum.set(c.cycle_number, c.id);
+      for (const c of srcCycles ?? []) {
+        const tgtId = tgtByNum.get(c.cycle_number);
+        if (tgtId) cycleMap.set(c.id, tgtId);
+      }
+    }
+
+    // ---- 4) Migration (no RPC trigger toggle: auth.users belongs to supabase_auth_admin
     //         and cannot be ALTERed even with SECURITY DEFINER. We use upsert on profiles
     //         and onConflict-ignore on user_roles to handle the auto-trigger inserts.) ----
     const errors: string[] = [];
@@ -319,7 +332,7 @@ Deno.serve(async (req) => {
 
     // Sequential to avoid storage rate limits & easier error tracing
     for (const uid of batch) {
-      const result = await migrateOneUser(source, target, uid, errors);
+      const result = await migrateOneUser(source, target, uid, errors, cycleMap);
       results.push(result);
     }
 
