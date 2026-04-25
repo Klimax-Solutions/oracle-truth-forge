@@ -161,7 +161,13 @@ const Auth = () => {
             }, { onConflict: "user_id,device_fingerprint" });
           localStorage.setItem("oracle_session_token", sessionToken);
 
-          setUserName((profile as any)?.first_name || profile?.display_name || email.split("@")[0]);
+          // Source de vérité = profiles.first_name (rempli par funnel ou
+          // WelcomeNameDialog au 1er login dans Dashboard.tsx).
+          // ⚠️ Ne PAS fallback sur display_name : le trigger handle_new_user
+          // y stocke le email handle ("regenwetteremilien") quand user_metadata
+          // est vide → on aurait "Bonjour, regenwetteremilien". Fallback neutre.
+          const fn = (profile as any)?.first_name?.trim();
+          setUserName(fn || "à toi");
         }
 
         setIsLoading(false);

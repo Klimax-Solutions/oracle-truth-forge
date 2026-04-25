@@ -41,6 +41,7 @@ import FunnelEditorPage from "@/components/dashboard/admin/FunnelEditorPage";
 import { CycleReportPopup } from "@/components/dashboard/CycleReportPopup";
 import { EarlyAccessLoginPopup } from "@/components/dashboard/EarlyAccessLoginPopup";
 import { EAPendingPopup } from "@/components/dashboard/EAPendingPopup";
+import { WelcomeNameDialog } from "@/components/dashboard/WelcomeNameDialog";
 import { ResultNotificationPopup } from "@/components/dashboard/ResultNotificationPopup";
 import { EarlyAccessExpiredPopup } from "@/components/dashboard/EarlyAccessExpiredPopup";
 interface Trade {
@@ -152,6 +153,7 @@ const Dashboard = () => {
   const [databaseFilters, setDatabaseFilters] = useState<any>(() => persistedState.databaseFilters ?? null);
   const [dataSource, setDataSource] = useState<DataSource>(() => persistedState.dataSource || "oracle");
   const [displayName, setDisplayName] = useState<string>("");
+  const [needsName, setNeedsName] = useState<boolean>(false);
   const { trades: personalTrades } = usePersonalTrades();
   const { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter, isCloser: realIsCloser, loadingRoles } = useSidebarRoles();
   const questData = useQuestData();
@@ -275,12 +277,18 @@ const Dashboard = () => {
 
       const { data } = await supabase
         .from("profiles")
-        .select("display_name, status")
+        .select("display_name, first_name, status")
         .eq("user_id", uid)
         .single();
-      
+
       if (data?.display_name) setDisplayName(data.display_name);
-      
+
+      // Source de vérité du prénom : profiles.first_name (rempli par funnel +
+      // approve-early-access ou par WelcomeNameDialog au 1er login).
+      // Si null/vide → on déclenche le dialog plus bas pour forcer la saisie.
+      const fn = (data as any)?.first_name?.trim();
+      setNeedsName(!fn);
+
       const status = (data as any)?.status;
       if (status === "pending" || status === "frozen" || status === "banned") {
         await supabase.auth.signOut();
@@ -673,6 +681,19 @@ const Dashboard = () => {
       {/* EA Pending Popup - super admin only */}
       {isSuperAdmin && (
         <EAPendingPopup onNavigateToEA={() => setActiveTab("admin")} />
+      )}
+
+      {/* Welcome Name Dialog — bloque le dashboard tant que first_name est vide
+          (admins/setters/closers créés via "Add user" Dashboard, ou anciens
+          comptes importés sans prénom). Source de vérité = profiles.first_name. */}
+      {needsName && userId && (
+        <WelcomeNameDialog
+          userId={userId}
+          onComplete={(firstName) => {
+            setDisplayName(firstName);
+            setNeedsName(false);
+          }}
+        />
       )}
       
       {/* Cycle Report Popup for members */}
