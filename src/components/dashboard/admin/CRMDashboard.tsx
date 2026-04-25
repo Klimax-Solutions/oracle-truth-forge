@@ -754,7 +754,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                                 {approvingId === lead.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <UserCheck className="w-2.5 h-2.5" />}
                                 {approvingId === lead.id ? '...' : 'Approuver'}
                               </button>
-                            ) : (lead.status === 'approuvée' && lead.user_id && !lead.paid_at) ? (
+                            ) : (lead.user_id && lead.status !== 'closed_won' && lead.status !== 'doublon') ? (
                               <button
                                 onClick={e => handleCloseLead(e, lead)}
                                 disabled={closingId === lead.id}
