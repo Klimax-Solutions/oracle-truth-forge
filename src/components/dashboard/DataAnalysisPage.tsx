@@ -483,27 +483,28 @@ const DonneesClés = ({ trades }: { trades: { rr: number; direction?: string; tr
   );
 };
 
-// ─── DatasetPill — compact pill header pour sélection dataset ───
-const DatasetPill = ({
-  active, label, color, icon: Icon, onClick,
+// ─── OraclePill — styled toggle button pour le sélecteur hero ───
+const OraclePill = ({
+  active, icon: Icon, label, sublabel, color, onClick,
 }: {
-  active: boolean; label: string; color: string;
-  icon: React.ElementType; onClick: () => void;
+  active: boolean; icon: React.ElementType;
+  label: string; sublabel: string; color: string; onClick: () => void;
 }) => (
   <button
     onClick={onClick}
+    className={cn("group flex items-stretch gap-0 rounded-lg border-2 transition-all overflow-hidden min-w-[180px]", "hover:shadow-lg")}
     style={{
-      display: "inline-flex", alignItems: "center", gap: "5px",
-      padding: "4px 10px", borderRadius: "8px", fontSize: "12px",
-      fontWeight: active ? 600 : 400, cursor: "pointer",
-      background: active ? `${color}18` : "transparent",
-      color: active ? color : "rgba(255,255,255,0.38)",
-      border: `1px solid ${active ? `${color}45` : "rgba(255,255,255,0.07)"}`,
-      boxShadow: active ? `0 0 12px ${color}20` : "none",
-      transition: "all 0.15s ease", whiteSpace: "nowrap",
+      borderColor: active ? color : `${color}40`,
+      backgroundColor: active ? `${color}10` : "transparent",
+      boxShadow: active ? `0 0 0 1px ${color}30, 0 4px 16px ${color}20` : undefined,
     }}
   >
-    <Icon style={{ width: "11px", height: "11px" }} />
-    {label}
+    <div className="flex items-center justify-center px-3 py-2.5 transition-colors" style={{ backgroundColor: active ? color : `${color}20`, color: active ? "#fff" : color }}>
+      <Icon className="w-4 h-4" strokeWidth={2.5} />
+    </div>
+    <div className="flex-1 flex flex-col items-start justify-center px-3 py-1.5 text-left">
+      <span className="text-[10px] font-mono font-bold uppercase tracking-[0.15em] leading-none" style={{ color }}>{label}</span>
+      <span className={cn("text-xs font-semibold mt-0.5 leading-tight", active ? "text-foreground" : "text-muted-foreground")}>{sublabel}</span>
+    </div>
   </button>
 );
