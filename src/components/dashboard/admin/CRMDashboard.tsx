@@ -363,21 +363,69 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
     if (selectedLead?.id === lead.id) setSelectedLead(null);
   };
 
+  /**
+   * Activer un lead comme membre payant (full conversion en 1 clic).
+   * Fait tout :
+   *   - profiles.is_client = true + status = active
+   *   - user_roles : ajoute "member", retire "early_access" (clear timer)
+   *   - early_access_requests : status = closed_won, paid_at si null
+   *   - lead_events : log "activated_as_member"
+   * L'email de bienvenue est géré côté Lovable (SMTP intégré).
+   */
   const handleCloseLead = async (e: React.MouseEvent, lead: PipelineLead) => {
     e.stopPropagation();
     if (!lead.user_id) { toast({ title: "Impossible", description: "Le lead n'a pas encore de compte. Approuvez-le d'abord.", variant: "destructive" }); return; }
-    if (!confirm(`Closer ${lead.first_name} (${lead.email}) comme client payant ? Cette action mettra is_client=true et archivera la ligne CRM.`)) return;
+    if (!confirm(`Activer ${lead.first_name} (${lead.email}) comme membre actif ?\n\nCette action :\n• Ajoute le rôle "member" (accès complet)\n• Retire "early_access" (clear timer)\n• Marque le profil comme client payant\n• Archive le lead en closed_won`)) return;
     setClosingId(lead.id);
     try {
       const now = new Date().toISOString();
-      await Promise.all([
-        supabase.from("early_access_requests").update({ status: "closed_won" as any, paid_at: now }).eq("id", lead.id),
-        supabase.from("profiles").update({ is_client: true } as any).eq("user_id", lead.user_id),
-      ]);
-      toast({ title: "✅ Closé", description: `${lead.first_name} est maintenant client. Visible dans Gestion.` });
+      const userId = lead.user_id;
+
+      // 1) Profil : passe en client + statut actif (en cas de gel précédent)
+      const profileUpdate = supabase.from("profiles")
+        .update({ is_client: true, status: "active" as any } as any)
+        .eq("user_id", userId);
+
+      // 2) Role : ajoute "member" si pas déjà présent
+      const memberRoleInsert = supabase.from("user_roles")
+        .upsert({ user_id: userId, role: "member" as any } as any, { onConflict: "user_id,role", ignoreDuplicates: true });
+
+      // 3) Role : retire "early_access" (libère le timer, supprime les restrictions EA)
+      const earlyAccessDelete = supabase.from("user_roles")
+        .delete()
+        .eq("user_id", userId)
+        .eq("role", "early_access" as any);
+
+      // 4) CRM lead row
+      const crmUpdate = supabase.from("early_access_requests")
+        .update({
+          status: "closed_won" as any,
+          paid_at: lead.paid_at || now,
+        } as any)
+        .eq("id", lead.id);
+
+      // 5) Event log (best-effort, ne bloque pas la conversion si fail)
+      const eventLog = supabase.from("lead_events").insert({
+        request_id: lead.id,
+        event_type: "activated_as_member" as any,
+        metadata: { paid_amount: lead.paid_amount, paid_at: lead.paid_at || now },
+      } as any).then(() => {}).catch(() => {});
+
+      const [pRes, mRes, eaRes, cRes] = await Promise.all([profileUpdate, memberRoleInsert, earlyAccessDelete, crmUpdate]);
+      await eventLog;
+
+      // Vérif erreurs critiques
+      const firstError = [pRes, mRes, eaRes, cRes].find((r: any) => r.error);
+      if (firstError && (firstError as any).error) throw (firstError as any).error;
+
+      toast({
+        title: "✅ Membre activé",
+        description: `${lead.first_name} a accès complet à la plateforme. Visible dans Gestion.`,
+      });
       loadLeads();
     } catch (err: any) {
-      toast({ title: "Erreur closing", description: err.message, variant: "destructive" });
+      toast({ title: "Erreur activation", description: err.message, variant: "destructive" });
+      console.error("[ActivateMember]", err);
     } finally {
       setClosingId(null);
     }
@@ -713,7 +761,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                                 className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-display font-semibold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/25 hover:bg-emerald-500/20 transition-all disabled:opacity-50"
                               >
                                 {closingId === lead.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <CheckCircle2 className="w-2.5 h-2.5" />}
-                                {closingId === lead.id ? '...' : 'Closer →'}
+                                {closingId === lead.id ? '...' : 'Activer membre'}
                               </button>
                             ) : null}
                           </div>

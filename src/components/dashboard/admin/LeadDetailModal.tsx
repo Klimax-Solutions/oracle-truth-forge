@@ -162,6 +162,39 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
     else { toast({ title: "Sauvegardé" }); onLeadUpdated?.(); }
   }, [lead.id, toast, onLeadUpdated]);
 
+  // ── Activate as paid member (1-clic) ─────────────────────────────────
+  // Conversion complète : profile.is_client + role member, retire EA, log event.
+  // Email envoyé côté Lovable (SMTP intégré).
+  const [activating, setActivating] = useState(false);
+  const activateAsMember = useCallback(async () => {
+    if (!lead.user_id) {
+      toast({ title: "Impossible", description: "Le lead n'a pas encore de compte (approuver d'abord).", variant: "destructive" });
+      return;
+    }
+    if (!confirm(`Activer ${lead.first_name} comme membre actif ?\n\n• Ajoute le rôle "member" (accès complet)\n• Retire "early_access" (clear timer)\n• Marque comme client payant\n• Archive en closed_won`)) return;
+    setActivating(true);
+    try {
+      const now = new Date().toISOString();
+      const userId = lead.user_id;
+      const [pRes, mRes, eaRes, cRes] = await Promise.all([
+        supabase.from("profiles").update({ is_client: true, status: "active" as any } as any).eq("user_id", userId),
+        supabase.from("user_roles").upsert({ user_id: userId, role: "member" as any } as any, { onConflict: "user_id,role", ignoreDuplicates: true }),
+        supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "early_access" as any),
+        supabase.from("early_access_requests").update({ status: "closed_won" as any, paid_at: lead.paid_at || now } as any).eq("id", lead.id),
+      ]);
+      const firstError = [pRes, mRes, eaRes, cRes].find((r: any) => r.error);
+      if (firstError && (firstError as any).error) throw (firstError as any).error;
+      emitEvent("activated_as_member", { paid_at: lead.paid_at || now });
+      toast({ title: "✅ Membre activé", description: `${lead.first_name} a accès complet.` });
+      onLeadUpdated?.();
+    } catch (err: any) {
+      toast({ title: "Erreur activation", description: err.message, variant: "destructive" });
+      console.error("[ActivateMember]", err);
+    } finally {
+      setActivating(false);
+    }
+  }, [lead.id, lead.user_id, lead.first_name, lead.paid_at, toast, onLeadUpdated, emitEvent]);
+
   // Submit note
   const submitNote = async () => {
     if (!newNote.trim()) return;
@@ -899,6 +932,24 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                     }} className="w-full h-8 mt-2 bg-emerald-500 hover:bg-emerald-500/90 text-white font-display text-xs rounded-lg">
                       Enregistrer le paiement
                     </Button>
+                  )}
+
+                  {/* Activer comme membre — 1 clic full conversion */}
+                  {canEditCall && lead.user_id && lead.status !== "closed_won" && (
+                    <Button
+                      onClick={activateAsMember}
+                      disabled={activating}
+                      className="w-full h-9 mt-2 bg-cyan-500 hover:bg-cyan-500/90 text-[#0A0B10] font-display text-xs font-bold tracking-wide rounded-lg gap-2"
+                    >
+                      {activating ? <Clock className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                      {activating ? "Activation..." : "Activer comme membre"}
+                    </Button>
+                  )}
+                  {canEditCall && lead.user_id && lead.status === "closed_won" && (
+                    <div className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[11px] font-display">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Membre actif sur la plateforme
+                    </div>
                   )}
                 </div>
               </div>
