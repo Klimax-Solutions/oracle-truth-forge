@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ExternalLink, Check, Lock, Unlock, Play, ChevronRight } from "lucide-react";
+import { StepBadge } from "./StepBadge";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
@@ -333,24 +334,14 @@ const OraclePlayer = ({
             key={selectedVideo?.id ?? "none"}
             className="space-y-3"
           >
-            {/* Badge étape — avec pulse dot (identique OracleHomePage) */}
+            {/* Badge étape — StepBadge partagé (cohérent RecolteDonneesPage) */}
             <div {...fadeIn(0)}>
-              <span
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-semibold uppercase tracking-[0.14em] border"
-                style={{ background: palette.badgeBg, color: palette.badgeText, borderColor: palette.border }}
-              >
-                <span className="relative flex h-1.5 w-1.5 shrink-0">
-                  <span
-                    className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60"
-                    style={{ background: palette.accent }}
-                  />
-                  <span
-                    className="relative inline-flex rounded-full h-1.5 w-1.5"
-                    style={{ background: palette.accent }}
-                  />
-                </span>
-                {idx >= 0 ? `Chapitre ${String(idx + 1).padStart(2, "0")} · Fondations Oracle` : "Fondations Oracle"}
-              </span>
+              <StepBadge
+                index="01"
+                label="Fondations"
+                accent={palette.accent}
+                sub={idx >= 0 ? `· Chapitre ${String(idx + 1).padStart(2, "0")}` : undefined}
+              />
             </div>
 
             {/* Grand titre — Inter 900, gradient blanc, identique OracleHomePage */}
@@ -608,16 +599,12 @@ const MercureSection = ({
     {/* Header Mercure — même style badge/titre qu'Oracle */}
     <div className="px-6 md:px-10 pt-5 pb-4 shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.045)" }}>
       <div className="flex items-center gap-3">
-        <span
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-semibold uppercase tracking-[0.14em] border"
-          style={{ background: palette.badgeBg, color: palette.badgeText, borderColor: palette.border }}
-        >
-          <span className="relative flex h-1.5 w-1.5 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style={{ background: palette.accent }} />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: palette.accent }} />
-          </span>
-          Institut Mercure · Sessions bonus
-        </span>
+        <StepBadge
+          index="01"
+          label="Fondations"
+          accent={palette.accent}
+          sub="· Institut Mercure"
+        />
       </div>
     </div>
     <div className="flex-1 overflow-hidden">

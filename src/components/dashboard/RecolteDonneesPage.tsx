@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ActionButton } from "./ActionButton";
+import { StepBadge } from "./StepBadge";
 
 // Couleurs thème Récolte (cohérence homepage slide 02)
 const TEAL   = "#1AAFA0";
@@ -177,12 +178,9 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle }: RecolteD
 
         {/* ── Header éditorial ── */}
         <div className="mb-10">
-          <p style={{
-            fontSize: "11px", fontWeight: 600, letterSpacing: "0.14em",
-            textTransform: "uppercase", color: TEAL, opacity: 0.9, marginBottom: "10px",
-          }}>
-            Étape 02 — Récolte
-          </p>
+          <div style={{ marginBottom: "12px" }}>
+            <StepBadge index="02" label="Récolte" accent={TEAL} />
+          </div>
           <h1 style={{
             fontSize: "clamp(2.2rem, 5vw, 3.8rem)",
             fontWeight: 900,
