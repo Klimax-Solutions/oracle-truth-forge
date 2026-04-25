@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Play, Database, ShieldCheck, ExternalLink,
-  Check, Clock, AlertCircle, Send, Loader2,
+  Check, Clock, AlertCircle, Send, Loader2, Lock,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
