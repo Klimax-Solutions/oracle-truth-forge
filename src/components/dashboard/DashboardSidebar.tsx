@@ -279,10 +279,11 @@ export const useSidebarRoles = () => {
         return;
       }
 
-      setIsAdmin(!!adminRes.data);
-      setIsSuperAdmin(!!superAdminRes.data);
-      setIsSetter(!!setterRes.data);
-      setIsCloser(!!closerRes.data);
+      // Ne mettre à jour un rôle que si le RPC a réussi — évite de nullifier un rôle déjà établi en cas d'AbortError (HMR dev)
+      if (!adminRes.error) setIsAdmin(!!adminRes.data);
+      if (!superAdminRes.error) setIsSuperAdmin(!!superAdminRes.data);
+      if (!setterRes.error) setIsSetter(!!setterRes.data);
+      if (!closerRes.error) setIsCloser(!!closerRes.data);
     } catch (err) {
       console.warn("[Roles] aborted or failed, using defaults", err);
     } finally {

@@ -365,7 +365,7 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
             width: "42%",
             paddingLeft: "clamp(2.5rem, 5vw, 5rem)",
             paddingRight: "2rem",
-            paddingTop: "clamp(3.5rem, 9vh, 5.5rem)",
+            paddingTop: "clamp(5rem, 13vh, 8rem)",
             paddingBottom: "clamp(2rem, 5vh, 3rem)",
           }}
         >

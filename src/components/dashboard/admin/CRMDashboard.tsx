@@ -448,8 +448,9 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
   useEffect(() => {
     loadLeads();
     const channel = supabase.channel("crm-v2").on("postgres_changes", { event: "INSERT", schema: "public", table: "early_access_requests" }, () => loadLeads()).on("postgres_changes", { event: "UPDATE", schema: "public", table: "early_access_requests" }, () => loadLeads()).subscribe();
-    const interval = setInterval(loadLeads, 10000);
-    return () => { supabase.removeChannel(channel); clearInterval(interval); };
+    // NOTE: setInterval supprimé — cause un blackscreen exact à 10s sur localhost (crash render)
+    // Le realtime channel ci-dessus gère déjà les mises à jour en temps réel.
+    return () => { supabase.removeChannel(channel); };
   }, [loadLeads]);
 
   const manualRefresh = async () => {
