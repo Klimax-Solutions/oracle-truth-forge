@@ -158,9 +158,12 @@ async function migrateOneUser(
     imported_from_prod: true,
     imported_at: new Date().toISOString(),
   };
-  const { error: profInsErr } = await target.from("profiles").insert(profileToInsert);
+  // Use upsert because trigger handle_new_user auto-creates a stub profile on auth.users INSERT
+  const { error: profInsErr } = await target
+    .from("profiles")
+    .upsert(profileToInsert, { onConflict: "user_id" });
   if (profInsErr) {
-    errors.push(`[${uid}] insert profile: ${profInsErr.message}`);
+    errors.push(`[${uid}] upsert profile: ${profInsErr.message}`);
     // Don't abort — try to continue with the rest
   } else {
     counts["profiles"] = 1;
