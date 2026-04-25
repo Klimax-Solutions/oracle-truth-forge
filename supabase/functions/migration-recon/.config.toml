@@ -1,0 +1,2 @@
+[functions.migration-recon]
+verify_jwt = false
