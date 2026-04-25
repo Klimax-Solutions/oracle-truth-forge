@@ -64,15 +64,15 @@ async function copyTableForUser(
   }
   if (!data || data.length === 0) return 0;
 
-  // user_cycles: remap cycle_id (source UUID → target UUID) via cycle_number lookup
+  // user_cycles & verification_requests: remap cycle_id (source UUID → target UUID) via cycle_number lookup
   let rows = data;
-  if (table === "user_cycles" && cycleMap) {
+  if ((table === "user_cycles" || table === "verification_requests") && cycleMap) {
     const remapped: Record<string, unknown>[] = [];
     for (const row of data as Record<string, unknown>[]) {
       const srcCycleId = row.cycle_id as string;
       const tgtCycleId = cycleMap.get(srcCycleId);
       if (!tgtCycleId) {
-        errors.push(`[${uid}] WARN user_cycles: no target cycle for src=${srcCycleId} → row skipped`);
+        errors.push(`[${uid}] WARN ${table}: no target cycle for src=${srcCycleId} → row skipped`);
         continue;
       }
       remapped.push({ ...row, cycle_id: tgtCycleId });
