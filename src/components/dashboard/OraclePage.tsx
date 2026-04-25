@@ -5,6 +5,7 @@ import { UserDataEntry } from "./UserDataEntry";
 import { Database, PenLine, AlertTriangle, AlertCircle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { deriveOracleCycleWindows } from "@/lib/oracle-cycle-windows";
 
 interface Trade {
   id: string;
@@ -44,6 +45,7 @@ interface OraclePageProps {
   initialFilters?: any;
   analyzedTradeNumbers?: number[];
   onAnalysisToggle?: (tradeNumber: number, checked: boolean) => void;
+  isAdmin?: boolean;
 }
 
 interface TradeComparison {
@@ -53,7 +55,7 @@ interface TradeComparison {
   status: 'match' | 'warning' | 'error' | 'no-match';
 }
 
-export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAnalysisToggle }: OraclePageProps) => {
+export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAnalysisToggle, isAdmin }: OraclePageProps) => {
   const [activeSubTab, setActiveSubTab] = useState(() => {
     try {
       const saved = localStorage.getItem("oracle_active_subtab");
@@ -141,6 +143,12 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
     });
   }, [userExecutions, trades]);
 
+  // R4 — Fenêtres temporelles Oracle dérivées des trades réels
+  const oracleCycleWindows = useMemo(
+    () => deriveOracleCycleWindows(trades),
+    [trades]
+  );
+
   // Stats
   const comparisonStats = useMemo(() => {
     const total = tradeComparisons.length;
@@ -193,11 +201,24 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
 
         {/* Content */}
         <TabsContent value="verification" className="flex-1 m-0 data-[state=inactive]:hidden">
-          <OracleDatabase trades={trades} initialFilters={initialFilters} analyzedTradeNumbers={analyzedTradeNumbers} onAnalysisToggle={onAnalysisToggle} />
+          {/* R1 — userTotalTrades limite l'accès Oracle aux cycles complétés */}
+          <OracleDatabase
+            trades={trades}
+            initialFilters={initialFilters}
+            analyzedTradeNumbers={analyzedTradeNumbers}
+            onAnalysisToggle={onAnalysisToggle}
+            isAdmin={isAdmin}
+            userTotalTrades={isAdmin ? undefined : userExecutions.length}
+          />
         </TabsContent>
 
         <TabsContent value="saisie" className="flex-1 m-0 data-[state=inactive]:hidden">
-          <UserDataEntry tradeComparisons={tradeComparisons} oracleTrades={trades} />
+          {/* R2+R3+R4 — fenêtres Oracle passées pour guidage et validation */}
+          <UserDataEntry
+            tradeComparisons={tradeComparisons}
+            oracleTrades={trades}
+            oracleCycleWindows={oracleCycleWindows}
+          />
         </TabsContent>
       </Tabs>
     </div>

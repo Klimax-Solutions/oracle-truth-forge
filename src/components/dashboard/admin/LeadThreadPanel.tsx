@@ -123,15 +123,24 @@ export default function LeadThreadPanel({ lead }: { lead: CRMLead }) {
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Antifragile: if lead_events / lead_comments don't exist yet (pre-migration env),
+  // just show an empty thread instead of crashing.
   const loadThread = async () => {
     setLoading(true);
-    const [eventsRes, commentsRes] = await Promise.all([
-      supabase.from("lead_events").select("*").eq("request_id", lead.id).order("timestamp", { ascending: true }),
-      supabase.from("lead_comments").select("*").eq("request_id", lead.id).order("created_at", { ascending: true }),
-    ]);
-    setEvents((eventsRes.data || []) as LeadEvent[]);
-    setComments((commentsRes.data || []) as LeadComment[]);
-    setLoading(false);
+    try {
+      const [eventsRes, commentsRes] = await Promise.all([
+        supabase.from("lead_events").select("*").eq("request_id", lead.id).order("timestamp", { ascending: true }),
+        supabase.from("lead_comments").select("*").eq("request_id", lead.id).order("created_at", { ascending: true }),
+      ]);
+      setEvents((eventsRes.data || []) as LeadEvent[]);
+      setComments((commentsRes.data || []) as LeadComment[]);
+    } catch (err) {
+      console.warn("[ThreadPanel] loadThread failed (non-blocking):", err);
+      setEvents([]);
+      setComments([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { loadThread(); }, [lead.id]);

@@ -42,6 +42,27 @@ Avant TOUTE modification de schema DB ou de structure de donnees, se poser syste
 
 ---
 
+## Environnements de déploiement
+
+| Environnement | URL | Branch | DB Supabase | Qui gère |
+|--------------|-----|--------|-------------|---------|
+| **PROD** | `oracle-truth-forge.lovable.app` | `main` | `pggkwyhtplxyarctuoze` | Lovable Cloud (auto-deploy) |
+| **TEST / Staging** | `oracle-truth-forge.vercel.app` | `crm-integration` | `mkogljvoqqcnqrgcnfau` (mkog) | Nous (deploy manuel `vercel --prod`) |
+
+**Règle** : Vercel est le serveur de test interne (équipe setters/closers). Lovable est la vraie prod (leads réels).
+Ne jamais pointer Vercel vers la DB prod (`pggkwyhtplxyarctuoze`).
+
+### Deploy TEST (Vercel)
+```bash
+# 1. Si edge functions modifiées :
+supabase functions deploy approve-early-access --project-ref mkogljvoqqcnqrgcnfau
+
+# 2. Deploy frontend :
+vercel --prod
+```
+
+---
+
 ## Architecture
 
 ### Projets
@@ -125,17 +146,43 @@ Avant TOUTE modification de schema DB ou de structure de donnees, se poser syste
 
 ---
 
-## Separation CRM / Gestion
+## Separation CRM / Gestion / Config — Règle architecturale
 
-| | CRM (nouveau) | Gestion (existant) |
-|---|---|---|
-| **Quand** | AVANT le closing | APRES le closing |
-| **Qui** | Closers, setters | CSM, admins |
-| **Quoi** | Pipeline leads, metriques, calendrier | EA management, verif trades, videos, roles |
-| **Tables** | early_access_requests, profiles | Memes tables + user_executions, trades, videos |
-| **Ou dans l'UI** | Sidebar > CRM | Sidebar > Early Access + Verifications Admin |
+### Modèle mental (dans le marbre)
+- **CRM** = tout ce qui concerne les personnes qui n'ont PAS encore payé (leads, EA en trial, no-shows, perdus)
+- **Gestion** = UNIQUEMENT les clients qui ont payé (is_client = true)
+- **Config → Rôles** = UNIQUEMENT l'équipe interne (admin, setter, super_admin) — 3 à 5 personnes
 
-Les 2 volets lisent les MEMES tables. Un lead dans le CRM EST un user dans la Gestion.
+### L'EA n'est PAS un statut produit. C'est un outil de vente.
+Le trial 7j permet au lead d'évaluer avant d'acheter. Il reste dans le CRM. Il n'apparaît PAS dans Gestion.
+
+### Qui fait quoi
+
+| Action | CRM | Gestion | Config → Rôles |
+|--------|-----|---------|----------------|
+| Approuver un lead EA | ✅ | — | — |
+| Étendre le timer EA | ✅ (outil de vente) | — | — |
+| Freeze / ban un EA | ✅ | — | — |
+| Marquer is_client = true (closing) | ✅ (closed won) | ✅ (accès créé) | — |
+| Freeze / ban un client | — | ✅ | — |
+| Assigner admin / setter | — | — | ✅ |
+| Upsells | — | ✅ (manuel) | — |
+
+### Funnel complet
+```
+CRM seulement                Transition (paie)    Gestion seulement
+─────────────────────────    ─────────────────    ─────────────────
+Lead en_attente
+Lead approuvé (EA 7j trial)
+Call / contacté
+Closed lost
+                         →   is_client=true   →   Gestion → Users
+```
+
+### Ce qui ne doit PAS se produire
+- Afficher un EA dans Gestion → Users : NON
+- Gérer un client payé depuis le pipeline CRM : NON
+- Assigner des rôles staff depuis Gestion : NON
 
 ---
 

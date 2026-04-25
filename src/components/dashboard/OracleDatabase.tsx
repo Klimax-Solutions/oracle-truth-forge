@@ -1,5 +1,6 @@
 import React from "react";
-import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X, CheckSquare, Lock, Pencil } from "lucide-react";
+import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X, CheckSquare, Lock, Pencil, EyeOff } from "lucide-react";
+import { getOracleAccessLimit, ORACLE_CYCLE_BOUNDARIES } from "@/lib/oracle-cycle-windows";
 import { SignedImageCard } from "./SignedImageCard";
 import { cn } from "@/lib/utils";
 import { useState, useMemo, useEffect } from "react";
@@ -54,6 +55,12 @@ interface OracleDatabaseProps {
   isDataGenerale?: boolean;
   isAdmin?: boolean;
   onTradeUpdated?: () => void;
+  /**
+   * R1 — Nombre total de trades saisis par l'utilisateur.
+   * Quand fourni (vue utilisateur), les cycles Oracle non encore débloqués
+   * sont masqués. Si absent (vue admin), tous les cycles sont visibles.
+   */
+  userTotalTrades?: number;
 }
 
 interface Filters {
@@ -117,7 +124,7 @@ const cycleColor = (phase: number) => {
   };
 };
 
-export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [], onAnalysisToggle, isDataGenerale, isAdmin, onTradeUpdated }: OracleDatabaseProps) => {
+export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [], onAnalysisToggle, isDataGenerale, isAdmin, onTradeUpdated, userTotalTrades }: OracleDatabaseProps) => {
   const chartColors = useChartColors();
   const { isEarlyAccess } = useEarlyAccess();
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
@@ -158,9 +165,24 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
     contributor: [...new Set(trades.map(t => t.contributor).filter(Boolean))],
   }), [trades]);
 
+  // R1 — Accès Oracle limité au cycle précédent (règle hard)
+  // Admin (isAdmin = true) et vues sans userTotalTrades voient tout.
+  const accessLimit = useMemo(() => {
+    if (isAdmin || userTotalTrades === undefined) return Infinity;
+    return getOracleAccessLimit(userTotalTrades);
+  }, [isAdmin, userTotalTrades]);
+
+  // Cycles Oracle verrouillés (à afficher en placeholder "locked")
+  const lockedCycles = useMemo(() => {
+    if (accessLimit === Infinity) return [];
+    return ORACLE_CYCLE_BOUNDARIES.filter(b => b.tradeStart > accessLimit);
+  }, [accessLimit]);
+
   // Apply filters
   const filteredTrades = useMemo(() => {
     return trades.filter(trade => {
+      // R1 — exclure les trades des cycles non encore débloqués
+      if (trade.trade_number > accessLimit) return false;
       if (filters.direction.length > 0 && !filters.direction.includes(trade.direction)) return false;
       if (filters.direction_structure.length > 0 && !filters.direction_structure.includes(trade.direction_structure)) return false;
       if (filters.setup_type.length > 0 && !filters.setup_type.includes(trade.setup_type)) return false;
@@ -810,11 +832,13 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                                     storagePath={trade.screenshot_m15_m5}
                                     alt={`Trade ${trade.trade_number} M15`}
                                     label="M15 / Contexte"
+                                    bucket="oracle-screenshots"
                                   />
                                   <SignedImageCard
                                     storagePath={trade.screenshot_m1}
                                     alt={`Trade ${trade.trade_number} M5`}
                                     label="M5 / Entrée"
+                                    bucket="oracle-screenshots"
                                   />
                                 </div>
                               ) : (
@@ -839,11 +863,13 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                                   storagePath={trade.screenshot_m15_m5}
                                   alt={`Trade ${trade.trade_number} M15`}
                                   label="M15 / Contexte"
+                                  bucket="oracle-screenshots"
                                 />
                                 <SignedImageCard
                                   storagePath={trade.screenshot_m1}
                                   alt={`Trade ${trade.trade_number} M5`}
                                   label="M5 / Entrée"
+                                  bucket="oracle-screenshots"
                                 />
                               </div>
                             )
@@ -865,6 +891,22 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
         ) : (
           /* ── Oracle Vérif : groupé par cycle avec rail latéral sticky ── */
           <div className="space-y-8">
+            {/* R1 — Banner d'information si des cycles sont verrouillés */}
+            {lockedCycles.length > 0 && (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-white/[.03] border border-white/[.07] mx-1">
+                <EyeOff className="w-4 h-4 text-muted-foreground/50 shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground/70 leading-relaxed">
+                  <span className="font-semibold text-muted-foreground">
+                    {lockedCycles.length === 1
+                      ? `${lockedCycles[0].name} masqué`
+                      : `${lockedCycles.length} cycles masqués`}
+                  </span>
+                  {" — "}
+                  Les trades Oracle de ton cycle en cours et des suivants seront révélés une fois chaque cycle complété de ton côté.
+                </p>
+              </div>
+            )}
+
             {groups.map((group) => {
               const cycle = group.cycle;
               const colors = cycleColor(cycle?.phase ?? 1);
@@ -888,11 +930,11 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                       )}>
                         {/* Numéro/abrév — grand et lisible */}
                         <span className={cn("text-xl font-black font-mono leading-none", colors.text)}>
-                          {cycle?.num === 0 ? "É" : String(cycle?.num)}
+                          {String(cycle?.num ?? "?")}
                         </span>
                         {/* Label phase */}
                         <span className={cn("text-[10px] font-bold font-mono tracking-widest leading-none", colors.text)}>
-                          {cycle?.num === 0 ? "bauche" : `Cycle ${cycle?.num}`}
+                          {cycle?.num === 0 ? "Ébauche" : `Cycle ${cycle?.num}`}
                         </span>
                         {/* Séparateur */}
                         <div className="w-6 border-t border-border/60 my-0.5" />
@@ -1041,8 +1083,8 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                                         isEarlyAccess ? (
                                           tradeIdx % 2 === 0 && tradeIdx < 50 ? (
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                                              <SignedImageCard storagePath={trade.screenshot_m15_m5} alt={`Trade ${trade.trade_number} M15`} label="M15 / Contexte" />
-                                              <SignedImageCard storagePath={trade.screenshot_m1} alt={`Trade ${trade.trade_number} M5`} label="M5 / Entrée" />
+                                              <SignedImageCard storagePath={trade.screenshot_m15_m5} alt={`Trade ${trade.trade_number} M15`} label="M15 / Contexte" bucket="oracle-screenshots" />
+                                              <SignedImageCard storagePath={trade.screenshot_m1} alt={`Trade ${trade.trade_number} M5`} label="M5 / Entrée" bucket="oracle-screenshots" />
                                             </div>
                                           ) : (
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
@@ -1052,8 +1094,8 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                                           )
                                         ) : (
                                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                                            <SignedImageCard storagePath={trade.screenshot_m15_m5} alt={`Trade ${trade.trade_number} M15`} label="M15 / Contexte" />
-                                            <SignedImageCard storagePath={trade.screenshot_m1} alt={`Trade ${trade.trade_number} M5`} label="M5 / Entrée" />
+                                            <SignedImageCard storagePath={trade.screenshot_m15_m5} alt={`Trade ${trade.trade_number} M15`} label="M15 / Contexte" bucket="oracle-screenshots" />
+                                            <SignedImageCard storagePath={trade.screenshot_m1} alt={`Trade ${trade.trade_number} M5`} label="M5 / Entrée" bucket="oracle-screenshots" />
                                           </div>
                                         )
                                       ) : (

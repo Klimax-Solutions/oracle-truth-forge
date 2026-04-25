@@ -425,8 +425,12 @@ const SuccessPage = () => {
     let presenceChannel: ReturnType<typeof supabase.channel> | null = null;
 
     const init = async () => {
+      try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
       setUserId(user.id);
 
       const [roleData, profile, allProfiles] = await Promise.all([
@@ -484,6 +488,10 @@ const SuccessPage = () => {
             await presenceChannel!.track({ display_name: displayName, avatar_url: avatarUrl, online_at: new Date().toISOString() });
           }
         });
+      } catch (err) {
+        console.warn("[SuccessPage] init error:", err);
+        setLoading(false);
+      }
     };
     init();
 
@@ -515,10 +523,11 @@ const SuccessPage = () => {
 
   const fetchSuccesses = async (uid: string) => {
     setLoading(true);
+    try {
     const { data, error } = await supabase
       .from("user_successes").select("*").order("created_at", { ascending: true });
 
-    if (error) { console.error(error); setLoading(false); return; }
+    if (error) { console.error(error); return; }
 
     // Only fetch profiles/roles for users not in cache
     const userIds = [...new Set((data || []).map((s) => s.user_id))];
@@ -584,7 +593,11 @@ const SuccessPage = () => {
       });
     }
 
-    setLoading(false);
+    } catch (err) {
+      console.warn("[SuccessPage] fetchSuccesses error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

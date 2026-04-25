@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { 
-  CheckCircle, 
-  Circle, 
-  Target, 
-  TrendingUp, 
-  Lock, 
-  Clock, 
-  Send, 
+import {
+  CheckCircle,
+  Circle,
+  Target,
+  TrendingUp,
+  Lock,
+  Clock,
+  Send,
   AlertCircle,
   Play,
   ChevronDown,
@@ -17,8 +17,11 @@ import {
   Award,
   ArrowUpRight,
   ArrowDownRight,
-  XCircle
+  XCircle,
+  Shield,
 } from "lucide-react";
+import { deriveOracleCycleWindows } from "@/lib/oracle-cycle-windows";
+import { TradeRulesDoc } from "./admin/TradeRulesDoc";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -116,6 +119,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   const [requestedCycleIds, setRequestedCycleIds] = useState<Set<string>>(new Set());
   const [verificationAttempts, setVerificationAttempts] = useState<Record<string, number>>({});
   const [verificationDismissed, setVerificationDismissed] = useState(false);
+  const [verificationRequestDates, setVerificationRequestDates] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const { isEarlyAccess, expiresAt, earlyAccessType } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
@@ -124,95 +128,111 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   // Fetch cycles, user cycles, and user executions
   useEffect(() => {
     const fetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Fetch cycles
-      const { data: cyclesData } = await supabase
-        .from("cycles")
-        .select("*")
-        .order("cycle_number", { ascending: true });
-
-      if (cyclesData) {
-        setCycles(cyclesData as Cycle[]);
-      }
-
-      // Initialize user cycles if needed
-      await supabase.rpc("initialize_user_cycles", { p_user_id: user.id });
-
-      // Fetch user cycles
-      const { data: userCyclesData } = await supabase
-        .from("user_cycles")
-        .select("*")
-        .eq("user_id", user.id);
-
-      if (userCyclesData) {
-        setUserCycles(userCyclesData as UserCycle[]);
-      }
-
-      // Fetch existing verification requests for this user
-      const { data: verificationRequestsData } = await supabase
-        .from("verification_requests")
-        .select("cycle_id, status")
-        .eq("user_id", user.id);
-
-      if (verificationRequestsData) {
-        const requestedIds = new Set(
-          verificationRequestsData
-            .filter((request: any) => request.status === "pending")
-            .map((request: any) => request.cycle_id)
-        );
-        setRequestedCycleIds(requestedIds);
-        
-        // Count attempts per cycle
-        const attempts: Record<string, number> = {};
-        verificationRequestsData.forEach((request: any) => {
-          attempts[request.cycle_id] = (attempts[request.cycle_id] || 0) + 1;
-        });
-        setVerificationAttempts(attempts);
-      } else {
-        setRequestedCycleIds(new Set());
-      }
-
-      // Fetch user executions for progress tracking
-      const { data: userExecsData } = await supabase
-        .from("user_executions")
-        .select("id, trade_number, rr, trade_date, direction, direction_structure, entry_time, exit_time, setup_type, entry_model, entry_timing, screenshot_url, screenshot_entry_url, notes")
-        .eq("user_id", user.id)
-        .order("trade_number", { ascending: true });
-
-      if (userExecsData) {
-        setUserExecutions(userExecsData as UserExecution[]);
-      }
-
-      setLoading(false);
-
-      // Check admin status and fetch global stats
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
-      
-      const hasAdmin = roles?.some(r => r.role === "admin" || r.role === "super_admin");
-      setIsAdmin(!!hasAdmin);
-
-      if (hasAdmin) {
-        // Fetch all user_executions across all users for global overview
-        const { data: allExecs } = await supabase
-          .from("user_executions")
-          .select("user_id, rr");
-        
-        if (allExecs) {
-          const uniqueUsers = new Set(allExecs.map(e => e.user_id));
-          const totalData = allExecs.length + trades.length; // user executions + oracle trades
-          const totalRR = allExecs.reduce((s, e) => s + (e.rr || 0), 0) + trades.reduce((s, t) => s + (t.rr || 0), 0);
-          setGlobalStats({
-            totalData,
-            totalRR,
-            avgRR: totalData > 0 ? totalRR / totalData : 0,
-            totalUsers: uniqueUsers.size,
-          });
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setLoading(false);
+          return;
         }
+
+        // Fetch cycles
+        const { data: cyclesData } = await supabase
+          .from("cycles")
+          .select("*")
+          .order("cycle_number", { ascending: true });
+
+        if (cyclesData) {
+          setCycles(cyclesData as Cycle[]);
+        }
+
+        // Initialize user cycles if needed
+        await supabase.rpc("initialize_user_cycles", { p_user_id: user.id });
+
+        // Fetch user cycles
+        const { data: userCyclesData } = await supabase
+          .from("user_cycles")
+          .select("*")
+          .eq("user_id", user.id);
+
+        if (userCyclesData) {
+          setUserCycles(userCyclesData as UserCycle[]);
+        }
+
+        // Fetch existing verification requests for this user
+        const { data: verificationRequestsData } = await supabase
+          .from("verification_requests")
+          .select("cycle_id, status, created_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (verificationRequestsData) {
+          const requestedIds = new Set(
+            verificationRequestsData
+              .filter((request: any) => request.status === "pending")
+              .map((request: any) => request.cycle_id)
+          );
+          setRequestedCycleIds(requestedIds);
+
+          // Store the date of the most recent pending request per cycle
+          const dates: Record<string, string> = {};
+          verificationRequestsData
+            .filter((r: any) => r.status === "pending")
+            .forEach((r: any) => { if (!dates[r.cycle_id]) dates[r.cycle_id] = r.created_at; });
+          setVerificationRequestDates(dates);
+
+          // Count attempts per cycle
+          const attempts: Record<string, number> = {};
+          verificationRequestsData.forEach((request: any) => {
+            attempts[request.cycle_id] = (attempts[request.cycle_id] || 0) + 1;
+          });
+          setVerificationAttempts(attempts);
+        } else {
+          setRequestedCycleIds(new Set());
+        }
+
+        // Fetch user executions for progress tracking
+        const { data: userExecsData } = await supabase
+          .from("user_executions")
+          .select("id, trade_number, rr, trade_date, direction, direction_structure, entry_time, exit_time, setup_type, entry_model, entry_timing, screenshot_url, screenshot_entry_url, notes")
+          .eq("user_id", user.id)
+          .order("trade_number", { ascending: true });
+
+        if (userExecsData) {
+          setUserExecutions(userExecsData as UserExecution[]);
+        }
+
+        setLoading(false);
+
+        // Check admin status and fetch global stats (secondary — non-blocking)
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+
+        const hasAdmin = roles?.some(r => r.role === "admin" || r.role === "super_admin");
+        setIsAdmin(!!hasAdmin);
+
+        if (hasAdmin) {
+          // Fetch all user_executions across all users for global overview
+          const { data: allExecs } = await supabase
+            .from("user_executions")
+            .select("user_id, rr");
+
+          if (allExecs) {
+            const uniqueUsers = new Set(allExecs.map(e => e.user_id));
+            const totalData = allExecs.length + trades.length; // user executions + oracle trades
+            const totalRR = allExecs.reduce((s, e) => s + (e.rr || 0), 0) + trades.reduce((s, t) => s + (t.rr || 0), 0);
+            setGlobalStats({
+              totalData,
+              totalRR,
+              avgRR: totalData > 0 ? totalRR / totalData : 0,
+              totalUsers: uniqueUsers.size,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("[OracleExecution] fetch error:", err);
+        setLoading(false);
       }
     };
 
@@ -525,6 +545,53 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
     return null;
   }, [loading, isStaff, verificationDismissed, ebauche, currentCycle, requestedCycleIds, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
 
+  // ── Time helper ──────────────────────────────────────────────────────────────
+  const formatTimeSince = (dateStr: string): string => {
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const minutes = Math.floor(diffMs / (1000 * 60));
+    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} heure${hours > 1 ? 's' : ''}`;
+    const days = Math.floor(hours / 24);
+    return `${days} jour${days > 1 ? 's' : ''}`;
+  };
+
+  // ── Panel 1 — vidéos ─────────────────────────────────────────────────────────
+  const videosWatched = questData?.viewedVideos ?? 0;
+  const videosTotal = questData?.totalVideos ?? 0;
+  const allVideosWatched = questData?.allVideosWatched ?? false;
+  const panel1CTAText = videosWatched === 0 ? "Démarrer" : allVideosWatched ? "Revoir les vidéos" : "Reprendre";
+  const panel1Description = videosWatched === 0
+    ? "Commence par les vidéos du Setup Oracle : introduction et méthodologie de récolte."
+    : allVideosWatched
+    ? "Tu as regardé toutes les vidéos. Retourne les revoir à tout moment."
+    : `Tu as regardé ${videosWatched} vidéo${videosWatched > 1 ? 's' : ''} sur ${videosTotal}. Continue où tu en étais.`;
+
+  // ── Panel 2 — récolte ────────────────────────────────────────────────────────
+  const hasPendingVerif = requestedCycleIds.size > 0;
+  const cycleProgressDone = currentCycle?.userExecutions.length ?? 0;
+  const cycleProgressTotal = currentCycle?.total_trades ?? 0;
+  const cycleProgressPct = cycleProgressTotal > 0 ? (cycleProgressDone / cycleProgressTotal) * 100 : 0;
+  const panel2Description = hasPendingVerif
+    ? "Ta récolte est complète. La vérification par nos experts est en cours."
+    : cycleProgressDone === 0
+    ? "Applique la méthodologie. Chaque trade récolté fait émerger les patterns gagnants."
+    : cycleProgressPct >= 80
+    ? `Tu y es presque ! ${cycleProgressDone}/${cycleProgressTotal} trades saisis sur le ${currentCycle?.name}.`
+    : `${cycleProgressDone}/${cycleProgressTotal} trades saisis. Reprends où tu en étais.`;
+  const panel2CycleLabel = currentCycle
+    ? currentCycle.cycle_number === 0
+      ? "de l'Ébauche"
+      : `du ${currentCycle.name}`
+    : "";
+  const panel2CTAText = hasPendingVerif
+    ? "Voir mon avancement"
+    : `Saisir ma data ${panel2CycleLabel}`.trim();
+
+  // ── Panel 3 — vérification ───────────────────────────────────────────────────
+  const pendingCycleId = [...requestedCycleIds][0];
+  const pendingVerifDate = pendingCycleId ? verificationRequestDates[pendingCycleId] : null;
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -548,8 +615,8 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
           onRequestVerification={verificationPopupData.handler}
         />
       )}
-      {/* Header AVE — premium */}
-      <div className="px-6 md:px-10 pt-8 md:pt-12 pb-10 md:pb-16 border-b border-border">
+      {/* Header AVE — visible uniquement pour les membres (non-EA) */}
+      {!isEarlyAccess && <div className="px-6 md:px-10 pt-8 md:pt-12 pb-10 md:pb-16 border-b border-border">
         <div className="max-w-6xl mx-auto space-y-10 md:space-y-14">
 
           {/* Title block */}
@@ -577,64 +644,131 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                   <h3 className="text-xl md:text-2xl font-bold text-foreground leading-tight">Regarde les vidéos</h3>
                 </div>
               </div>
+              {/* Progress indicator */}
+              {videosTotal > 0 && (
+                <div className="relative flex items-center gap-2">
+                  <div className="flex-1 h-1 bg-white/[0.06] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-white/40 rounded-full transition-all duration-500"
+                      style={{ width: `${videosTotal > 0 ? (videosWatched / videosTotal) * 100 : 0}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-mono text-muted-foreground/50 shrink-0">
+                    {videosWatched}/{videosTotal}
+                  </span>
+                </div>
+              )}
               <p className="relative text-sm text-muted-foreground/80 leading-relaxed flex-1 min-h-[60px]">
-                Accède aux vidéos du Setup Oracle : introduction et méthodologie de récolte.
+                {panel1Description}
               </p>
               <button
                 onClick={() => onNavigateToVideos?.()}
                 className="relative w-full h-12 rounded-xl bg-white text-black text-sm font-bold tracking-wide hover:bg-white/90 hover:shadow-[0_8px_24px_rgba(255,255,255,0.12)] transition-all inline-flex items-center justify-center gap-2 group/btn"
               >
-                Accéder aux vidéos
+                {panel1CTAText}
                 <span className="transition-transform group-hover/btn:translate-x-1">→</span>
               </button>
             </div>
 
             {/* 2 — Vérification (primary focus) */}
-            <div className="group relative bg-gradient-to-br from-emerald-500/[0.08] to-emerald-500/[0.02] border border-emerald-500/30 hover:border-emerald-500/50 rounded-2xl p-7 md:p-8 flex flex-col gap-6 transition-all duration-300 hover:translate-y-[-2px] shadow-[0_8px_32px_-12px_rgba(16,185,129,0.15)] hover:shadow-[0_20px_48px_-16px_rgba(16,185,129,0.3)]">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-500/[0.04] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <div className={cn(
+              "group relative rounded-2xl p-7 md:p-8 flex flex-col gap-6 transition-all duration-300 hover:translate-y-[-2px]",
+              hasPendingVerif
+                ? "bg-gradient-to-br from-orange-500/[0.08] to-orange-500/[0.02] border border-orange-500/30 hover:border-orange-500/50 shadow-[0_8px_32px_-12px_rgba(249,115,22,0.15)] hover:shadow-[0_20px_48px_-16px_rgba(249,115,22,0.3)]"
+                : "bg-gradient-to-br from-emerald-500/[0.08] to-emerald-500/[0.02] border border-emerald-500/30 hover:border-emerald-500/50 shadow-[0_8px_32px_-12px_rgba(16,185,129,0.15)] hover:shadow-[0_20px_48px_-16px_rgba(16,185,129,0.3)]"
+            )}>
+              <div className={cn(
+                "absolute inset-0 rounded-2xl bg-gradient-to-br to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none",
+                hasPendingVerif ? "from-orange-500/[0.04]" : "from-emerald-500/[0.04]"
+              )} />
               <div className="relative flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
-                  <span className="font-bold text-xl text-emerald-400">2</span>
+                <div className={cn(
+                  "w-12 h-12 rounded-xl border flex items-center justify-center shrink-0",
+                  hasPendingVerif
+                    ? "bg-orange-500/15 border-orange-500/40 shadow-[0_0_20px_rgba(249,115,22,0.15)]"
+                    : "bg-emerald-500/15 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.15)]"
+                )}>
+                  <span className={cn("font-bold text-xl", hasPendingVerif ? "text-orange-400" : "text-emerald-400")}>2</span>
                 </div>
                 <div className="flex-1 pt-0.5">
-                  <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-400/60 mb-1">Vérification</p>
+                  <p className={cn("text-[10px] font-mono uppercase tracking-[0.2em] mb-1", hasPendingVerif ? "text-orange-400/60" : "text-emerald-400/60")}>Vérification</p>
                   <h3 className="text-xl md:text-2xl font-bold text-foreground leading-tight">Récolte ta data</h3>
                 </div>
               </div>
+              {/* Cycle progress bar */}
+              {!hasPendingVerif && cycleProgressTotal > 0 && (
+                <div className="relative flex items-center gap-2">
+                  <div className="flex-1 h-1 bg-emerald-500/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500/60 rounded-full transition-all duration-500"
+                      style={{ width: `${cycleProgressPct}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-mono text-muted-foreground/50 shrink-0">
+                    {cycleProgressDone}/{cycleProgressTotal}
+                  </span>
+                </div>
+              )}
               <p className="relative text-sm text-muted-foreground/90 leading-relaxed flex-1 min-h-[60px]">
-                Applique la méthodologie. Chaque trade récolté fait émerger les patterns gagnants.
+                {panel2Description}
               </p>
               <button
                 onClick={() => (onNavigateToRecolte ?? onNavigateToSetup)?.()}
-                className="relative w-full h-12 rounded-xl bg-emerald-500 text-white text-sm font-bold tracking-wide hover:bg-emerald-400 shadow-[0_8px_24px_rgba(16,185,129,0.25)] hover:shadow-[0_12px_32px_rgba(16,185,129,0.4)] transition-all inline-flex items-center justify-center gap-2 group/btn"
+                className={cn(
+                  "relative w-full h-12 rounded-xl text-white text-sm font-bold tracking-wide transition-all inline-flex items-center justify-center gap-2 group/btn",
+                  hasPendingVerif
+                    ? "bg-orange-500 hover:bg-orange-400 shadow-[0_8px_24px_rgba(249,115,22,0.25)] hover:shadow-[0_12px_32px_rgba(249,115,22,0.4)]"
+                    : "bg-emerald-500 hover:bg-emerald-400 shadow-[0_8px_24px_rgba(16,185,129,0.25)] hover:shadow-[0_12px_32px_rgba(16,185,129,0.4)]"
+                )}
               >
-                Récolter ma data
+                {panel2CTAText}
                 <span className="transition-transform group-hover/btn:translate-x-1">→</span>
               </button>
             </div>
 
-            {/* 3 — Exécution (coming soon) */}
-            <div className="relative bg-gradient-to-br from-white/[0.02] to-transparent border border-dashed border-white/[0.08] rounded-2xl p-7 md:p-8 flex flex-col gap-6 opacity-70">
+            {/* 3 — Exécution / statut vérification */}
+            <div className={cn(
+              "relative rounded-2xl p-7 md:p-8 flex flex-col gap-6 transition-all duration-300",
+              pendingVerifDate
+                ? "bg-gradient-to-br from-blue-500/[0.06] to-blue-500/[0.01] border border-blue-500/20"
+                : "bg-gradient-to-br from-white/[0.02] to-transparent border border-dashed border-white/[0.08] opacity-70"
+            )}>
               <div className="relative flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-center shrink-0">
-                  <span className="font-bold text-xl text-muted-foreground/60">3</span>
+                <div className={cn(
+                  "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
+                  pendingVerifDate
+                    ? "bg-blue-500/10 border border-blue-500/30"
+                    : "bg-white/[0.02] border border-white/[0.06]"
+                )}>
+                  <span className={cn("font-bold text-xl", pendingVerifDate ? "text-blue-400" : "text-muted-foreground/60")}>3</span>
                 </div>
                 <div className="flex-1 pt-0.5">
-                  <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground/40 mb-1">Exécution</p>
-                  <h3 className="text-xl md:text-2xl font-bold text-muted-foreground leading-tight">La finalité</h3>
+                  <p className={cn("text-[10px] font-mono uppercase tracking-[0.2em] mb-1", pendingVerifDate ? "text-blue-400/60" : "text-muted-foreground/40")}>Exécution</p>
+                  <h3 className={cn("text-xl md:text-2xl font-bold leading-tight", pendingVerifDate ? "text-foreground" : "text-muted-foreground")}>La finalité</h3>
                 </div>
               </div>
-              <p className="relative text-sm text-muted-foreground/60 leading-relaxed flex-1 min-h-[60px]">
-                Exécute en temps réel les patterns identifiés. Capitalise sur ce qui fonctionne, élimine ce qui ne fonctionne pas.
+              <p className={cn("relative text-sm leading-relaxed flex-1 min-h-[60px]", pendingVerifDate ? "text-muted-foreground/90" : "text-muted-foreground/60")}>
+                {pendingVerifDate
+                  ? `Validation demandée il y a ${formatTimeSince(pendingVerifDate)}. Nos experts sont en train de corriger ton cycle.`
+                  : currentCycle
+                  ? `Termine le ${currentCycle.name} (${cycleProgressDone}/${cycleProgressTotal} trades) pour soumettre ta vérification.`
+                  : "Exécute en temps réel les patterns identifiés. Capitalise sur ce qui fonctionne, élimine ce qui ne fonctionne pas."}
               </p>
-              <div className="w-full h-12 rounded-xl flex items-center justify-center gap-2 text-[11px] font-mono uppercase tracking-[0.25em] text-muted-foreground/30 border border-dashed border-white/[0.06]">
-                ↳ Coming soon
-              </div>
+              {pendingVerifDate ? (
+                <div className="w-full h-12 rounded-xl flex items-center justify-center gap-2 text-[11px] font-mono uppercase tracking-[0.2em] text-blue-400/60 border border-blue-500/20 bg-blue-500/[0.04]">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                  En cours de vérification
+                </div>
+              ) : (
+                <div className="w-full h-12 rounded-xl flex items-center justify-center gap-2 text-[11px] font-mono uppercase tracking-[0.25em] text-muted-foreground/30 border border-dashed border-white/[0.06]">
+                  ↳ Coming soon
+                </div>
+              )}
             </div>
 
           </div>
         </div>
-      </div>
+      </div>}
 
       <div className="flex-1 p-4 md:p-6 overflow-auto space-y-6 md:space-y-8">
       {/* Early Access: Key Stats + Cumulative Evolution + Results */}
@@ -893,19 +1027,26 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                       )}
                       onClick={() => hasFeedback && setExpandedCycle(isExpanded ? null : cycle.cycle_number)}
                     >
-                      <div className={cn(
-                        "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                        cycle.userCycle?.status === 'validated'
-                          ? "bg-emerald-500/20 text-emerald-400" 
-                          : cycle.userCycle?.status === 'in_progress'
-                          ? "bg-blue-500/20 text-blue-400"
-                          : cycle.userCycle?.status === 'pending_review'
-                          ? "bg-orange-500/20 text-orange-400"
-                          : cycle.userCycle?.status === 'rejected'
-                          ? "bg-red-500/20 text-red-400"
-                          : "bg-muted text-muted-foreground"
-                      )}>
-                        {isEbauche ? "É" : cycle.cycle_number}
+                      <div className="flex flex-col items-center gap-0.5">
+                        <div className={cn(
+                          "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                          cycle.userCycle?.status === 'validated'
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : cycle.userCycle?.status === 'in_progress'
+                            ? "bg-blue-500/20 text-blue-400"
+                            : cycle.userCycle?.status === 'pending_review'
+                            ? "bg-orange-500/20 text-orange-400"
+                            : cycle.userCycle?.status === 'rejected'
+                            ? "bg-red-500/20 text-red-400"
+                            : "bg-muted text-muted-foreground"
+                        )}>
+                          {cycle.cycle_number}
+                        </div>
+                        {isEbauche && (
+                          <span className="text-[8px] font-medium leading-none text-muted-foreground/60 tracking-wide">
+                            Ébauche
+                          </span>
+                        )}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
@@ -1004,6 +1145,9 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
           </div>
         )}
 
+        {/* Rules doc — collapsible, visible par tous */}
+        <TradeRulesSection trades={trades} />
+
         {/* Results section at bottom - Early Access only */}
         {isEarlyAccess && (
           <div className="border border-border rounded-md bg-card overflow-hidden">
@@ -1022,6 +1166,38 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
     </div>
   );
 };
+
+// ── TradeRulesSection — collapsible doc des règles de saisie ─────────────────
+function TradeRulesSection({ trades }: { trades: { trade_number: number; trade_date: string }[] }) {
+  const [open, setOpen] = useState(false);
+  const windows = useMemo(() => deriveOracleCycleWindows(trades), [trades]);
+
+  return (
+    <div className="border border-border rounded-md overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-3.5 bg-transparent hover:bg-white/[.02] transition-colors"
+      >
+        <div className="flex items-center gap-2.5">
+          <Shield className="w-4 h-4 text-muted-foreground/50" />
+          <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+            Règles de saisie des trades
+          </span>
+        </div>
+        <ChevronDown className={cn(
+          "w-4 h-4 text-muted-foreground/40 transition-transform duration-200",
+          open && "rotate-180"
+        )} />
+      </button>
+      {open && (
+        <div className="px-5 pb-5 pt-1 border-t border-border">
+          <TradeRulesDoc oracleCycleWindows={windows} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Cycle Card Component
 interface CycleCardProps {

@@ -2,6 +2,53 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
 import { useEffect, useState } from 'react';
 import { Loader2, Calendar, CheckCircle2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+// ── SLICE: syncBookingToDB ────────────────────────────────────────────────────
+// Self-contained, antifragile. Never throws — failure is logged but never blocks
+// the redirect flow. Writes call_booked + call_scheduled_at + call_meeting_url
+// to early_access_requests, then emits a lead_events row for the timeline.
+// ─────────────────────────────────────────────────────────────────────────────
+async function syncBookingToDB(opts: {
+  email: string;
+  scheduledAt: string | null;
+  meetingUrl: string | null;
+}) {
+  try {
+    // 1. Find the request row by email
+    const { data: rows, error: findErr } = await supabase
+      .from('early_access_requests')
+      .select('id')
+      .ilike('email', opts.email.trim())
+      .limit(1);
+    if (findErr || !rows?.length) return;
+
+    const requestId = rows[0].id;
+
+    // 2. Update booking fields
+    await supabase.from('early_access_requests').update({
+      call_booked: true,
+      ...(opts.scheduledAt ? { call_scheduled_at: opts.scheduledAt } : {}),
+      ...(opts.meetingUrl   ? { call_meeting_url: opts.meetingUrl }   : {}),
+    }).eq('id', requestId);
+
+    // 3. Emit timeline event (best-effort — table may not exist on older envs)
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('lead_events').insert({
+      request_id: requestId,
+      event_type: 'call_booked',
+      source: 'funnel',
+      metadata: {
+        scheduled_at: opts.scheduledAt,
+        meeting_url: opts.meetingUrl,
+      },
+      created_by: user?.id || null,
+    });
+  } catch (err) {
+    // Non-blocking — funnel redirect continues regardless
+    console.warn('[Discovery] syncBookingToDB failed (non-blocking):', err);
+  }
+}
 
 // ============================================
 // Funnel Discovery Page — Cal.com iframe embed
@@ -48,9 +95,8 @@ export default function FunnelDiscovery() {
   const prefillName = searchParams.get('name') || undefined;
   const prefillEmail = searchParams.get('email') || undefined;
   const prefillPhone = searchParams.get('phone') || undefined;
-  const embedUrl = config?.discovery_cal_link
-    ? appendCalPrefill(buildCalEmbedUrl(config.discovery_cal_link)!, prefillName, prefillEmail, prefillPhone)
-    : null;
+  const calBase = config?.discovery_cal_link ? buildCalEmbedUrl(config.discovery_cal_link) : null;
+  const embedUrl = calBase ? appendCalPrefill(calBase, prefillName, prefillEmail, prefillPhone) : null;
 
   // Listen for Cal.com booking success via postMessage
   // Cal.com sends messages in various formats — catch them all
@@ -82,14 +128,22 @@ export default function FunnelDiscovery() {
       if (isBooking) {
         setBooked(true);
         const bookingData = data.Cal?.data || data.data || {};
-        const date = bookingData.date || bookingData.startTime || bookingData.booking?.startTime || '';
+        const rawDate = bookingData.date || bookingData.startTime || bookingData.booking?.startTime || '';
         const email = bookingData.attendees?.[0]?.email || bookingData.email || prefillEmail || '';
+        const meetingUrl = bookingData.meeting?.url || bookingData.meetingUrl || bookingData.booking?.metadata?.videoCallUrl || null;
 
+        // ISO timestamp for DB, formatted label for the confirmation page
+        const scheduledAt = rawDate ? new Date(rawDate).toISOString() : null;
         let dateLabel = '';
-        if (date) {
+        if (rawDate) {
           try {
-            dateLabel = new Date(date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
-          } catch { dateLabel = date; }
+            dateLabel = new Date(rawDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+          } catch { dateLabel = rawDate; }
+        }
+
+        // ── SLICE: persist booking to DB (non-blocking, antifragile) ──
+        if (email) {
+          syncBookingToDB({ email, scheduledAt, meetingUrl });
         }
 
         const params = new URLSearchParams();

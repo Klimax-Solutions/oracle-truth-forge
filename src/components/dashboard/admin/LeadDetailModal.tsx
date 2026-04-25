@@ -67,10 +67,13 @@ function expiresIn(d: string | null): string | null {
   return `${Math.floor(h / 24)}j ${h % 24}h restantes`;
 }
 
-const OUTCOMES = [
-  { value: "not_closed", label: "Non closé", cls: "bg-red-500/15 text-red-400 border-red-500/25 hover:bg-red-500/25" },
-  { value: "closing_in_progress", label: "En cours", cls: "bg-amber-500/15 text-amber-400 border-amber-500/25 hover:bg-amber-500/25" },
-  { value: "contracted", label: "Contracté ✓", cls: "bg-violet-500/15 text-violet-400 border-violet-500/25 hover:bg-violet-500/25" },
+// Outcomes canoniques — valeurs stockées en DB
+// Alignées avec CALL_OUTCOME_STYLES dans @/lib/admin/types
+const CALL_OUTCOMES = [
+  { value: "vendu",                label: "Vendu ✓",              cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/25" },
+  { value: "contracte_en_attente", label: "Contracté: en attente", cls: "bg-violet-500/15  text-violet-400  border-violet-500/25  hover:bg-violet-500/25"  },
+  { value: "pas_vendu",            label: "Pas vendu",             cls: "bg-red-500/15     text-red-400     border-red-500/25     hover:bg-red-500/25"     },
+  { value: "rappel",               label: "Rappel",                cls: "bg-amber-500/15   text-amber-400   border-amber-500/25   hover:bg-amber-500/25"   },
 ];
 
 export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialView = "lead", canEditSetting = true, canEditCall = true }: Props) {
@@ -81,13 +84,19 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
   const [submitting, setSubmitting] = useState(false);
   const [outcome, setOutcome] = useState(lead.call_outcome || "");
   const [debrief, setDebrief] = useState(lead.call_debrief || "");
-  const [briefCloser, setBriefCloser] = useState((lead as any).brief_closer || "");
+  const [briefCloser, setBriefCloser] = useState(lead.brief_closer || "");
   const [offerAmount, setOfferAmount] = useState(lead.offer_amount || "");
   const [saving, setSaving] = useState(false);
   const [settersList, setSettersList] = useState<string[]>([]);
   const [callDone, setCallDone] = useState(lead.call_done);
   const [paidAmount, setPaidAmount] = useState(lead.paid_amount?.toString() || "");
   const [paidAt, setPaidAt] = useState(lead.paid_at ? new Date(lead.paid_at).toISOString().slice(0, 16) : "");
+  // ── SLICE: reschedule call ─────────────────────────────────────────────────
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState(
+    lead.call_scheduled_at ? new Date(lead.call_scheduled_at).toISOString().slice(0, 16) : ""
+  );
+  const [rescheduling, setRescheduling] = useState(false);
 
   const copy = (t: string, l: string) => { navigator.clipboard.writeText(t); toast({ title: `${l} copié` }); };
 
@@ -128,16 +137,23 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
       .then(({ data }) => { if (data) setNotes(data as LeadNote[]); });
   }, [lead.id]);
 
-  // Quick field update — single field, instant save
+  // ── SLICE: emitEvent — antifragile, never throws ──────────────────────────
+  // lead_events table may not exist on older envs (prod pre-migration).
+  // Failures are swallowed — UI continues to work regardless.
+  // ─────────────────────────────────────────────────────────────────────────
   const emitEvent = useCallback(async (eventType: string, metadata?: Record<string, any>) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("lead_events").insert({
-      request_id: lead.id,
-      event_type: eventType,
-      source: "admin",
-      metadata: metadata || {},
-      created_by: user?.id || null,
-    });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from("lead_events").insert({
+        request_id: lead.id,
+        event_type: eventType,
+        source: "admin",
+        metadata: metadata || {},
+        created_by: user?.id || null,
+      });
+    } catch (err) {
+      console.warn("[CRM] emitEvent failed (non-blocking):", eventType, err);
+    }
   }, [lead.id]);
 
   const updateField = useCallback(async (fields: Record<string, any>) => {
@@ -176,10 +192,10 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
       toast({ title: "Sauvegardé" });
       if (outcome) {
         setCallDone(true);
-        const evtType = outcome === "contracted" ? "outcome_contracted" : outcome === "closing_in_progress" ? "outcome_closing_in_progress" : outcome === "not_closed" ? "outcome_not_closed" : null;
-        if (evtType && outcome !== lead.call_outcome) {
+        // Émettre l'event de changement d'outcome si nouveau
+        if (outcome !== lead.call_outcome) {
           if (lead.call_outcome) emitEvent("outcome_changed", { previous_outcome: lead.call_outcome, new_outcome: outcome });
-          else emitEvent(evtType);
+          else emitEvent(`outcome_${outcome}`); // outcome_vendu, outcome_rappel, etc.
         }
       }
       if ((outcome ? true : callDone) && !lead.call_done) emitEvent("call_done");
@@ -196,7 +212,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
     { key: "form", label: "Form", icon: FileText, color: "amber", done: true, date: lead.created_at, view: "lead" as LeadModalView },
     { key: "ea", label: "EA", icon: Shield, color: "cyan", done: lead.status === "approuvée", date: lead.reviewed_at, view: "lead" as LeadModalView },
     { key: "setting", label: "Setting", icon: PhoneForwarded, color: "purple", done: lead.contacted, date: (lead as any).contacted_at || null, view: "setting" as LeadModalView },
-    { key: "call", label: "Call", icon: Headphones, color: "blue", done: lead.call_done || lead.call_booked, date: lead.call_scheduled_at || (lead as any).call_done_at || null, view: "call" as LeadModalView },
+    { key: "call", label: "Call", icon: Headphones, color: "blue", done: lead.call_done || lead.call_booked, date: lead.call_scheduled_at || lead.call_done_at || null, view: "call" as LeadModalView },
     { key: "paid", label: "Paye", icon: CheckCircle2, color: "emerald", done: !!lead.paid_at, date: lead.paid_at, view: "lead" as LeadModalView },
   ];
 
@@ -455,6 +471,26 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                 )}
               </div>
 
+              {/* Qualification — réponses au formulaire d'inscription */}
+              {Object.keys(lead.form_answers || {}).length > 0 && (
+                <div className="rounded-2xl border border-white/[0.08] overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.02] flex items-center gap-2">
+                    <FileText className="w-3.5 h-3.5 text-amber-400/70" />
+                    <span className="text-[10px] font-display uppercase tracking-widest text-white/30">Qualification</span>
+                  </div>
+                  <div className="divide-y divide-white/[0.04]">
+                    {Object.entries(lead.form_answers).map(([key, value]) => (
+                      <div key={key} className="flex items-start justify-between gap-4 px-4 py-2.5">
+                        <span className="text-[10px] text-white/25 font-display capitalize shrink-0 pt-0.5" style={{ maxWidth: '38%' }}>
+                          {key.replace(/_/g, ' ')}
+                        </span>
+                        <span className="text-[11px] text-white/70 font-display text-right leading-relaxed">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Meta */}
               <div className="text-[10px] text-white/15 font-mono space-y-0.5 pt-1">
                 <p>{lead.id}</p>
@@ -531,16 +567,6 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                         {settersList.map(s => <SelectItem key={s} value={s} className="font-display text-xs">{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    {/* Toggle contacté aujourd'hui */}
-                    <button onClick={() => { if (!canEditSetting) return; updateField({ contacte_aujourdhui: !lead.contacte_aujourdhui, derniere_interaction: new Date().toISOString() }); }}
-                      disabled={!canEditSetting}
-                      className={cn("ml-auto flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-display font-semibold transition-all border",
-                        lead.contacte_aujourdhui ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "border-white/[0.10] text-white/30 hover:text-white/60",
-                        !canEditSetting && "opacity-40 cursor-not-allowed"
-                      )}>
-                      <div className={cn("w-2 h-2 rounded-full", lead.contacte_aujourdhui ? "bg-emerald-400" : "bg-white/20")} />
-                      {lead.contacte_aujourdhui ? 'Contacté' : 'Pas contacté'}
-                    </button>
                   </div>
                   {/* WhatsApp + canal */}
                   <div className="flex gap-1.5">
@@ -611,7 +637,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                 </div>
 
                 {/* Save brief closer */}
-                {canEditSetting && briefCloser !== ((lead as any).brief_closer || "") && (
+                {canEditSetting && briefCloser !== (lead.brief_closer || "") && (
                   <Button
                     onClick={async () => { setSaving(true); await updateField({ brief_closer: briefCloser || null }); emitEvent("setting_debrief_saved"); setSaving(false); }}
                     disabled={saving}
@@ -717,6 +743,51 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                   )}>
                   <UserX className="w-3 h-3" /> No-show
                 </button>
+                {canEditCall && (
+                  <button onClick={() => setShowReschedule(v => !v)}
+                    className={cn("flex items-center gap-1.5 px-3 py-2 rounded-lg border text-[10px] font-display transition-all",
+                      showReschedule ? "bg-amber-500/10 border-amber-500/25 text-amber-400" : "border-white/[0.08] text-white/30 hover:text-amber-400"
+                    )}>
+                    <RotateCcw className="w-3 h-3" /> Reprogrammer
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* ── SLICE: reschedule inline ──────────────────────────────────── */}
+            {showReschedule && canEditCall && (
+              <div className="bg-[#111318] border border-amber-500/20 rounded-lg p-3 space-y-2.5">
+                <p className="text-[10px] font-display uppercase tracking-widest text-amber-400/60">Nouvelle date du call</p>
+                <input
+                  type="datetime-local"
+                  value={rescheduleDate}
+                  onChange={e => setRescheduleDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-[#0c0d12] border border-white/[0.10] text-sm text-white font-mono focus:border-amber-500/40 outline-none transition-all [color-scheme:dark]"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      if (!rescheduleDate) return;
+                      setRescheduling(true);
+                      const prevDate = lead.call_scheduled_at;
+                      await updateField({ call_scheduled_at: new Date(rescheduleDate).toISOString(), call_booked: true });
+                      await emitEvent("call_rescheduled", {
+                        previous_scheduled_at: prevDate,
+                        new_scheduled_at: new Date(rescheduleDate).toISOString(),
+                      });
+                      setShowReschedule(false);
+                      setRescheduling(false);
+                    }}
+                    disabled={rescheduling || !rescheduleDate}
+                    className="flex-1 h-8 rounded-lg bg-amber-500 hover:bg-amber-500/90 text-white font-display text-[11px] font-bold disabled:opacity-50 transition-all"
+                  >
+                    {rescheduling ? "..." : "Confirmer la reprogrammation"}
+                  </button>
+                  <button onClick={() => setShowReschedule(false)}
+                    className="px-3 h-8 rounded-lg border border-white/[0.08] text-white/30 hover:text-white font-display text-[11px] transition-all">
+                    Annuler
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -757,12 +828,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
             <div>
               <p className="text-[10px] font-display uppercase tracking-widest text-white/30 mb-2">Issue du call</p>
               <div className="grid grid-cols-2 gap-1.5">
-                {[
-                  { value: "vendu", label: "Vendu", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
-                  { value: "contracte_en_attente", label: "Contracté: en attente", cls: "bg-violet-500/15 text-violet-400 border-violet-500/30" },
-                  { value: "pas_vendu", label: "Pas vendu", cls: "bg-red-500/15 text-red-400 border-red-500/30" },
-                  { value: "rappel", label: "Rappel", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
-                ].map(o => (
+                {CALL_OUTCOMES.map(o => (
                   <button key={o.value} onClick={() => { if (!canEditCall) return; setOutcome(o.value); if (o.value !== outcome) emitEvent("outcome_changed", { previous: outcome, new_outcome: o.value }); }}
                     disabled={!canEditCall}
                     className={cn("px-3 py-2.5 rounded-lg text-[11px] font-display font-semibold border transition-all text-center",

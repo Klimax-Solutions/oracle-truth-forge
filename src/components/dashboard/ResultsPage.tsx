@@ -40,30 +40,35 @@ export const ResultsPage = ({ isAdmin = false }: { isAdmin?: boolean }) => {
 
   useEffect(() => {
     const fetchResults = async () => {
-      const { data } = await supabase
-        .from("results")
-        .select("*")
-        .order("result_date", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false });
-      
-      if (data) {
-        const sorted = (data as ResultItem[]);
-        setResults(sorted);
-        const paths = sorted.map((r: any) => r.image_path).filter(Boolean);
-        if (paths.length > 0) {
-          const { data: signed } = await supabase.storage
-            .from("result-screenshots")
-            .createSignedUrls(paths, 3600);
-          if (signed) {
-            const urlMap: Record<string, string> = {};
-            signed.forEach((s: any) => {
-              if (s.signedUrl) urlMap[s.path] = s.signedUrl;
-            });
-            setSignedUrls(urlMap);
+      try {
+        const { data } = await supabase
+          .from("results")
+          .select("*")
+          .order("result_date", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false });
+
+        if (data) {
+          const sorted = (data as ResultItem[]);
+          setResults(sorted);
+          const paths = sorted.map((r: any) => r.image_path).filter(Boolean);
+          if (paths.length > 0) {
+            const { data: signed } = await supabase.storage
+              .from("result-screenshots")
+              .createSignedUrls(paths, 3600);
+            if (signed) {
+              const urlMap: Record<string, string> = {};
+              signed.forEach((s: any) => {
+                if (s.signedUrl) urlMap[s.path] = s.signedUrl;
+              });
+              setSignedUrls(urlMap);
+            }
           }
         }
+      } catch (err) {
+        console.warn("[ResultsPage] fetch error:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchResults();
   }, []);

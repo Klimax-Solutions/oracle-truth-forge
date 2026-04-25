@@ -37,6 +37,21 @@ interface CalPayload {
   };
 }
 
+// ── Logger ──
+// Préfixe structuré pour retrouver facilement les logs dans Supabase Edge Logs.
+// Format : [cal-webhook][EVENT] message
+// Chaque opération critique logue : input → résultat → erreur éventuelle.
+const log = {
+  info:  (ctx: string, msg: string, data?: unknown) =>
+    console.log(`[cal-webhook][${ctx}] ${msg}`, data !== undefined ? JSON.stringify(data) : ""),
+  warn:  (ctx: string, msg: string, data?: unknown) =>
+    console.warn(`[cal-webhook][${ctx}] ⚠️ ${msg}`, data !== undefined ? JSON.stringify(data) : ""),
+  error: (ctx: string, msg: string, data?: unknown) =>
+    console.error(`[cal-webhook][${ctx}] ❌ ${msg}`, data !== undefined ? JSON.stringify(data) : ""),
+  ok:    (ctx: string, msg: string, data?: unknown) =>
+    console.log(`[cal-webhook][${ctx}] ✅ ${msg}`, data !== undefined ? JSON.stringify(data) : ""),
+};
+
 // ── HMAC-SHA256 Signature Verification ──
 async function verifySignature(bodyText: string, signature: string, secret: string): Promise<boolean> {
   const encoder = new TextEncoder();
@@ -56,12 +71,23 @@ async function verifySignature(bodyText: string, signature: string, secret: stri
 
 // ── Main Handler ──
 Deno.serve(async (req: Request) => {
+  // Log chaque requête entrante — méthode + headers utiles
+  log.info("REQUEST", `${req.method} ${req.url}`, {
+    headers: {
+      "content-type": req.headers.get("content-type"),
+      "x-cal-signature-256": req.headers.get("x-cal-signature-256") ? "[present]" : "[absent]",
+      "cal-signature": req.headers.get("cal-signature") ? "[present]" : "[absent]",
+    },
+  });
+
   // CORS preflight
   if (req.method === "OPTIONS") {
+    log.info("REQUEST", "CORS preflight — OK");
     return new Response(null, { headers: corsHeaders });
   }
 
   if (req.method !== "POST") {
+    log.warn("REQUEST", `Method not allowed: ${req.method}`);
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -70,34 +96,40 @@ Deno.serve(async (req: Request) => {
 
   try {
     const bodyText = await req.text();
+    // Log le body brut (tronqué à 2000 chars pour éviter les logs trop lourds)
+    log.info("BODY", `Raw body (${bodyText.length} chars)`, bodyText.slice(0, 2000));
 
-    // ── Verify webhook signature ──
+    // ── Vérification du secret ──
     const calWebhookSecret = Deno.env.get("CAL_WEBHOOK_SECRET");
     if (!calWebhookSecret) {
-      console.error("CAL_WEBHOOK_SECRET not configured");
+      log.error("CONFIG", "CAL_WEBHOOK_SECRET n'est pas configuré dans les secrets de la fonction");
       return new Response(JSON.stringify({ error: "Webhook secret not configured" }), {
         status: 503,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    log.info("CONFIG", "CAL_WEBHOOK_SECRET présent ✓");
 
-    // Allow PING events without signature (Cal.com test button doesn't sign)
+    // ── PING : Cal.com envoie un PING sans signature pour tester ──
     const parsedForPing = (() => { try { return JSON.parse(bodyText); } catch { return null; } })();
     if (parsedForPing?.triggerEvent === "PING") {
-      console.log("[Cal.com] PING received — OK");
+      log.ok("PING", "PING reçu — réponse 200");
       return new Response(JSON.stringify({ success: true, event: "PING" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // ── Vérification de la signature HMAC ──
     const signature =
       req.headers.get("x-cal-signature-256") ||
       req.headers.get("X-Cal-Signature-256") ||
       req.headers.get("cal-signature");
 
+    log.info("SIGNATURE", `Header reçu: ${signature ? signature.slice(0, 20) + "..." : "ABSENT"}`);
+
     if (!signature) {
-      console.error("No signature header found");
+      log.error("SIGNATURE", "Aucun header de signature trouvé — requête rejetée");
       return new Response(JSON.stringify({ error: "Missing signature" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -106,86 +138,99 @@ Deno.serve(async (req: Request) => {
 
     const isValid = await verifySignature(bodyText, signature, calWebhookSecret);
     if (!isValid) {
-      console.error("Invalid webhook signature");
+      log.error("SIGNATURE", "Signature invalide — requête rejetée", { received: signature.slice(0, 20) });
       return new Response(JSON.stringify({ error: "Invalid signature" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    log.ok("SIGNATURE", "Signature vérifiée");
 
-    console.log("✅ Webhook signature verified");
-
-    // ── Parse payload ──
+    // ── Parse du payload ──
     const payload: CalPayload = JSON.parse(bodyText);
     const event = payload.triggerEvent;
     const booking = payload.payload;
 
-    console.log(`[Cal.com] Event: ${event}, UID: ${booking.uid}`);
+    log.info("EVENT", `Type: ${event}`, {
+      uid: booking.uid,
+      title: booking.title,
+      startTime: booking.startTime,
+      attendees: booking.attendees?.map(a => ({ name: a.name, email: a.email })),
+      location: booking.location,
+    });
 
-    // ── Init Supabase (service role for DB writes) ──
+    // ── Init Supabase (service role pour les writes DB) ──
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    log.info("SUPABASE", `Init client — URL: ${supabaseUrl}`);
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // ── Extract attendee info ──
+    // ── Extraction de l'email de l'attendee ──
     const attendee = booking.attendees?.[0];
     const attendeeEmail = attendee?.email?.toLowerCase().trim();
     const attendeeName = attendee?.name || "";
 
+    log.info("ATTENDEE", `email=${attendeeEmail}, name=${attendeeName}`);
+
     if (!attendeeEmail) {
-      console.warn("[Cal.com] No attendee email found, skipping");
+      log.warn("ATTENDEE", "Aucun email d'attendee — event ignoré");
       return new Response(JSON.stringify({ success: true, skipped: "no_email" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Skip Cal.com internal emails (but NOT @sms.cal.com — those are phone bookings)
+    // Skip les emails Cal.com internes (sauf @sms.cal.com = booking par SMS)
     if (attendeeEmail.endsWith("@cal.com") && !attendeeEmail.endsWith("@sms.cal.com")) {
-      console.log("[Cal.com] Skipping Cal.com system email:", attendeeEmail);
+      log.info("ATTENDEE", `Email système Cal.com ignoré: ${attendeeEmail}`);
       return new Response(JSON.stringify({ success: true, skipped: "system_email" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // For @sms.cal.com emails, extract the phone number to match by phone
+    // Pour les bookings SMS (@sms.cal.com) : extraire le numéro de téléphone
     const isSmsBooking = attendeeEmail.endsWith("@sms.cal.com");
     let smsPhone: string | null = null;
     if (isSmsBooking) {
-      // Email format: 33781748022@sms.cal.com → extract digits, add +
+      // Format : 33781748022@sms.cal.com → +33781748022
       const digits = attendeeEmail.split("@")[0];
       smsPhone = `+${digits}`;
-      console.log(`[Cal.com] SMS booking detected, phone: ${smsPhone}`);
+      log.info("SMS", `Booking SMS détecté — téléphone extrait: ${smsPhone}`);
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // BOOKING_CREATED
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Quand un lead réserve un call via Cal.com :
+    // → on cherche son lead dans early_access_requests (par email ou tel)
+    // → on met à jour call_booked=true + les infos de rdv
+    // → si pas de lead trouvé, on en crée un nouveau
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if (event === "BOOKING_CREATED") {
-      console.log(`[BOOKING_CREATED] ${attendeeName} <${attendeeEmail}> at ${booking.startTime}`);
+      log.info("BOOKING_CREATED", `Recherche du lead pour ${attendeeEmail}`);
 
-      // Find lead by email, or by phone for SMS bookings
       let leads: any[] | null = null;
       let lookupError: any = null;
 
       if (!isSmsBooking) {
+        // Lookup par email
+        log.info("BOOKING_CREATED", `Lookup DB par email: ${attendeeEmail}`);
         const res = await supabase
           .from("early_access_requests")
-          .select("*")
+          .select("id, first_name, email, phone, call_booked, status")
           .eq("email", attendeeEmail)
           .order("created_at", { ascending: false })
           .limit(5);
         leads = res.data;
         lookupError = res.error;
+        log.info("BOOKING_CREATED", `Résultat lookup email`, { count: leads?.length, error: lookupError?.message });
       } else if (smsPhone) {
-        // Match by phone: try with +33, then with +33 spaced format
-        // DB stores phone as "+33 6 12 34 56 78", Cal sends "33612345678"
+        // Lookup par téléphone (normalisation des digits)
         const digits = smsPhone.replace(/\D/g, '');
-        console.log(`[BOOKING_CREATED] Looking up by phone digits: ${digits}`);
+        log.info("BOOKING_CREATED", `Lookup DB par téléphone, digits: ${digits}`);
         const res = await supabase
           .from("early_access_requests")
-          .select("*")
+          .select("id, first_name, email, phone, call_booked, status")
           .order("created_at", { ascending: false })
           .limit(50);
         leads = (res.data || []).filter((l: any) => {
@@ -194,78 +239,86 @@ Deno.serve(async (req: Request) => {
           return leadDigits === digits || leadDigits === digits.replace(/^0+/, '');
         });
         lookupError = res.error;
-        if (leads && leads.length > 0) {
-          console.log(`[BOOKING_CREATED] Matched ${leads.length} lead(s) by phone`);
-        }
+        log.info("BOOKING_CREATED", `Résultat lookup téléphone`, { matched: leads?.length });
       }
 
       if (lookupError) {
-        console.error("[BOOKING_CREATED] Lookup error:", lookupError);
+        log.error("BOOKING_CREATED", "Erreur lors du lookup DB", lookupError);
         throw new Error(`Lookup error: ${lookupError.message}`);
       }
 
       const callScheduledAt = booking.startTime
         ? new Date(booking.startTime).toISOString()
         : new Date().toISOString();
-
-      // Build meeting URL from location or Cal.com default
       const meetingUrl = booking.location || null;
 
+      log.info("BOOKING_CREATED", `Données à écrire`, {
+        call_booked: true,
+        call_scheduled_at: callScheduledAt,
+        call_meeting_url: meetingUrl,
+        booking_event_id: booking.uid,
+      });
+
       if (leads && leads.length > 0) {
-        // Prefer lead with form_submitted=true, fallback to most recent
+        // Préférer le lead avec form_submitted=true, fallback sur le plus récent
         const lead = leads.find((l: any) => l.form_submitted) || leads[0];
+        log.info("BOOKING_CREATED", `Lead sélectionné: ${lead.id} (${lead.first_name} — ${lead.email})`);
 
-        console.log(`[BOOKING_CREATED] Matched lead: ${lead.id} (${lead.first_name})`);
+        const updateData = {
+          call_booked: true,
+          call_scheduled_at: callScheduledAt,
+          call_meeting_url: meetingUrl,
+          call_no_show: false,
+          booking_event_id: booking.uid || null,
+        };
 
+        log.info("BOOKING_CREATED", `UPDATE early_access_requests id=${lead.id}`, updateData);
         const { error: updateError } = await supabase
           .from("early_access_requests")
-          .update({
-            call_booked: true,
-            call_scheduled_at: callScheduledAt,
-            call_meeting_url: meetingUrl,
-            call_no_show: false,
-            booking_event_id: booking.uid || null,
-          })
+          .update(updateData)
           .eq("id", lead.id);
 
         if (updateError) {
-          console.error("[BOOKING_CREATED] Update error:", updateError);
+          log.error("BOOKING_CREATED", "Erreur UPDATE", updateError);
           throw new Error(`Update error: ${updateError.message}`);
         }
 
-        console.log(`[BOOKING_CREATED] ✅ Lead ${lead.id} updated — call_booked=true, scheduled=${callScheduledAt}`);
+        log.ok("BOOKING_CREATED", `Lead ${lead.id} mis à jour — call_booked=true, scheduled=${callScheduledAt}`);
       } else {
-        // No matching lead → create a new one from the booking
-        console.log(`[BOOKING_CREATED] No existing lead for ${attendeeEmail}, creating new`);
+        // Aucun lead trouvé → création automatique depuis le booking
+        log.warn("BOOKING_CREATED", `Aucun lead trouvé pour ${attendeeEmail} — création d'un nouveau lead`);
 
         const firstName = attendeeName.split(" ")[0] || attendeeEmail.split("@")[0];
-        // Try to get phone from responses
         let phone = null;
         if (booking.responses) {
           const r = booking.responses as Record<string, any>;
           phone = r.phone?.value || r.phone || r.smsReminderNumber?.value || null;
+          log.info("BOOKING_CREATED", `Téléphone extrait des responses: ${phone}`);
         }
 
+        const insertData = {
+          first_name: firstName,
+          email: attendeeEmail,
+          phone: phone || "",
+          status: "en_attente",
+          form_submitted: false,
+          call_booked: true,
+          call_scheduled_at: callScheduledAt,
+          call_meeting_url: meetingUrl,
+          booking_event_id: booking.uid || null,
+        };
+
+        log.info("BOOKING_CREATED", `INSERT early_access_requests`, insertData);
         const { error: insertError } = await supabase
           .from("early_access_requests")
-          .insert({
-            first_name: firstName,
-            email: attendeeEmail,
-            phone: phone || "",
-            status: "en_attente",
-            form_submitted: false,
-            call_booked: true,
-            call_scheduled_at: callScheduledAt,
-            call_meeting_url: meetingUrl,
-            booking_event_id: booking.uid || null,
-          });
+          .insert(insertData);
 
         if (insertError) {
-          console.error("[BOOKING_CREATED] Insert error:", insertError);
+          log.error("BOOKING_CREATED", "Erreur INSERT", insertError);
           throw new Error(`Insert error: ${insertError.message}`);
         }
 
-        console.log(`[BOOKING_CREATED] ✅ New lead created for ${attendeeEmail}`);
+        log.ok("BOOKING_CREATED", `Nouveau lead créé pour ${attendeeEmail}`);
       }
 
       return new Response(JSON.stringify({ success: true, event: "booking_created", email: attendeeEmail }), {
@@ -274,61 +327,78 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // BOOKING_CANCELLED
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Quand un lead annule son call :
+    // → on cherche par booking_event_id (le plus fiable) puis par email
+    // → call_booked=false + on efface les champs de rdv
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if (event === "BOOKING_CANCELLED") {
-      console.log(`[BOOKING_CANCELLED] ${attendeeEmail}, uid=${booking.uid}`);
+      log.info("BOOKING_CANCELLED", `uid=${booking.uid}, email=${attendeeEmail}`);
 
-      // Try by booking_event_id first, then fallback to email
       let lead = null;
 
+      // Étape 1 : recherche par booking_event_id (le plus fiable — évite les faux matchs)
       if (booking.uid) {
-        const { data } = await supabase
+        log.info("BOOKING_CANCELLED", `Lookup par booking_event_id: ${booking.uid}`);
+        const { data, error } = await supabase
           .from("early_access_requests")
-          .select("*")
+          .select("id, first_name, email, call_booked")
           .eq("booking_event_id", booking.uid)
           .maybeSingle();
+        log.info("BOOKING_CANCELLED", `Résultat lookup uid`, { found: !!data, error: error?.message });
         lead = data;
       }
 
+      // Étape 2 : fallback par email si UID ne match pas
       if (!lead && !isSmsBooking) {
-        const { data } = await supabase
+        log.info("BOOKING_CANCELLED", `Fallback lookup par email: ${attendeeEmail}`);
+        const { data, error } = await supabase
           .from("early_access_requests")
-          .select("*")
+          .select("id, first_name, email, call_booked")
           .eq("email", attendeeEmail)
           .eq("call_booked", true)
           .order("call_scheduled_at", { ascending: false })
           .limit(1)
           .maybeSingle();
+        log.info("BOOKING_CANCELLED", `Résultat lookup email`, { found: !!data, error: error?.message });
         lead = data;
       }
 
+      // Étape 3 : fallback par téléphone pour SMS bookings
       if (!lead && isSmsBooking && smsPhone) {
         const digits = smsPhone.replace(/\D/g, '');
-        const { data: all } = await supabase.from("early_access_requests").select("*").eq("call_booked", true);
+        log.info("BOOKING_CANCELLED", `Fallback lookup par téléphone, digits: ${digits}`);
+        const { data: all } = await supabase
+          .from("early_access_requests")
+          .select("id, first_name, email, phone, call_booked")
+          .eq("call_booked", true);
         lead = (all || []).find((l: any) => l.phone && l.phone.replace(/\D/g, '') === digits) || null;
+        log.info("BOOKING_CANCELLED", `Résultat lookup téléphone`, { found: !!lead });
       }
 
       if (lead) {
+        const updateData = {
+          call_booked: false,
+          call_scheduled_at: null,
+          call_meeting_url: null,
+          call_rescheduled_at: null,
+        };
+
+        log.info("BOOKING_CANCELLED", `UPDATE lead ${lead.id} (${lead.first_name})`, updateData);
         const { error } = await supabase
           .from("early_access_requests")
-          .update({
-            call_booked: false,
-            call_scheduled_at: null,
-            call_meeting_url: null,
-            call_rescheduled_at: null,
-          })
+          .update(updateData)
           .eq("id", lead.id);
 
         if (error) {
-          console.error("[BOOKING_CANCELLED] Update error:", error);
+          log.error("BOOKING_CANCELLED", "Erreur UPDATE", error);
           throw error;
         }
 
-        console.log(`[BOOKING_CANCELLED] ✅ Lead ${lead.id} — call_booked=false`);
+        log.ok("BOOKING_CANCELLED", `Lead ${lead.id} — call_booked=false, champs rdv effacés`);
       } else {
-        console.warn(`[BOOKING_CANCELLED] No lead found for uid=${booking.uid} / email=${attendeeEmail}`);
+        log.warn("BOOKING_CANCELLED", `Aucun lead trouvé — uid=${booking.uid}, email=${attendeeEmail}`);
       }
 
       return new Response(JSON.stringify({ success: true, event: "booking_cancelled" }), {
@@ -337,49 +407,66 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // BOOKING_RESCHEDULED
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Quand un lead reprogramme son call :
+    // → on cherche par uid ou rescheduledFrom uid, puis par email
+    // → on met à jour le nouveau créneau + call_rescheduled_at (ancienne heure)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if (event === "BOOKING_RESCHEDULED") {
-      console.log(`[BOOKING_RESCHEDULED] ${attendeeEmail}, new time=${booking.startTime}`);
+      log.info("BOOKING_RESCHEDULED", `uid=${booking.uid}, rescheduledFrom=${booking.rescheduledFrom}, newTime=${booking.startTime}`);
 
       let lead = null;
 
-      // Find by booking_event_id or rescheduledFrom uid
+      // Étape 1 : par uid courant
       if (booking.uid) {
-        const { data } = await supabase
+        log.info("BOOKING_RESCHEDULED", `Lookup par booking_event_id (uid courant): ${booking.uid}`);
+        const { data, error } = await supabase
           .from("early_access_requests")
-          .select("*")
+          .select("id, first_name, email, call_booked, call_meeting_url, booking_event_id")
           .eq("booking_event_id", booking.uid)
           .maybeSingle();
+        log.info("BOOKING_RESCHEDULED", `Résultat lookup uid courant`, { found: !!data, error: error?.message });
         lead = data;
       }
 
+      // Étape 2 : par l'ancien uid (rescheduledFrom)
       if (!lead && booking.rescheduledFrom) {
-        const { data } = await supabase
+        log.info("BOOKING_RESCHEDULED", `Lookup par rescheduledFrom: ${booking.rescheduledFrom}`);
+        const { data, error } = await supabase
           .from("early_access_requests")
-          .select("*")
+          .select("id, first_name, email, call_booked, call_meeting_url, booking_event_id")
           .eq("booking_event_id", booking.rescheduledFrom)
           .maybeSingle();
+        log.info("BOOKING_RESCHEDULED", `Résultat lookup rescheduledFrom`, { found: !!data, error: error?.message });
         lead = data;
       }
 
+      // Étape 3 : fallback par email
       if (!lead && !isSmsBooking) {
-        const { data } = await supabase
+        log.info("BOOKING_RESCHEDULED", `Fallback lookup par email: ${attendeeEmail}`);
+        const { data, error } = await supabase
           .from("early_access_requests")
-          .select("*")
+          .select("id, first_name, email, call_booked, call_meeting_url, booking_event_id")
           .eq("email", attendeeEmail)
           .eq("call_booked", true)
           .order("call_scheduled_at", { ascending: false })
           .limit(1)
           .maybeSingle();
+        log.info("BOOKING_RESCHEDULED", `Résultat lookup email`, { found: !!data, error: error?.message });
         lead = data;
       }
 
+      // Étape 4 : fallback par téléphone
       if (!lead && isSmsBooking && smsPhone) {
         const digits = smsPhone.replace(/\D/g, '');
-        const { data: all } = await supabase.from("early_access_requests").select("*").eq("call_booked", true);
+        log.info("BOOKING_RESCHEDULED", `Fallback lookup par téléphone, digits: ${digits}`);
+        const { data: all } = await supabase
+          .from("early_access_requests")
+          .select("id, first_name, email, phone, call_booked, call_meeting_url, booking_event_id")
+          .eq("call_booked", true);
         lead = (all || []).find((l: any) => l.phone && l.phone.replace(/\D/g, '') === digits) || null;
+        log.info("BOOKING_RESCHEDULED", `Résultat lookup téléphone`, { found: !!lead });
       }
 
       if (lead) {
@@ -387,25 +474,28 @@ Deno.serve(async (req: Request) => {
           ? new Date(booking.startTime).toISOString()
           : null;
 
+        const updateData = {
+          call_booked: true,
+          call_scheduled_at: newTime,
+          call_rescheduled_at: new Date().toISOString(), // heure de la reprogrammation
+          call_meeting_url: booking.location || lead.call_meeting_url,
+          booking_event_id: booking.uid || lead.booking_event_id,
+        };
+
+        log.info("BOOKING_RESCHEDULED", `UPDATE lead ${lead.id} (${lead.first_name})`, updateData);
         const { error } = await supabase
           .from("early_access_requests")
-          .update({
-            call_booked: true,
-            call_scheduled_at: newTime,
-            call_rescheduled_at: new Date().toISOString(),
-            call_meeting_url: booking.location || lead.call_meeting_url,
-            booking_event_id: booking.uid || lead.booking_event_id,
-          })
+          .update(updateData)
           .eq("id", lead.id);
 
         if (error) {
-          console.error("[BOOKING_RESCHEDULED] Update error:", error);
+          log.error("BOOKING_RESCHEDULED", "Erreur UPDATE", error);
           throw error;
         }
 
-        console.log(`[BOOKING_RESCHEDULED] ✅ Lead ${lead.id} — new time=${newTime}`);
+        log.ok("BOOKING_RESCHEDULED", `Lead ${lead.id} — nouveau créneau: ${newTime}`);
       } else {
-        console.warn(`[BOOKING_RESCHEDULED] No lead found for ${attendeeEmail}`);
+        log.warn("BOOKING_RESCHEDULED", `Aucun lead trouvé — uid=${booking.uid}, email=${attendeeEmail}`);
       }
 
       return new Response(JSON.stringify({ success: true, event: "booking_rescheduled" }), {
@@ -414,8 +504,8 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ── Unhandled event ──
-    console.log(`[Cal.com] Unhandled event: ${event} — ignoring`);
+    // ── Événement non géré ──
+    log.warn("EVENT", `Événement non géré: ${event} — ignoré`);
     return new Response(JSON.stringify({ success: true, event, skipped: "unhandled_event" }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -423,7 +513,7 @@ Deno.serve(async (req: Request) => {
 
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : JSON.stringify(err);
-    console.error("[Cal.com] Webhook error:", errMsg, err);
+    log.error("CATCH", `Erreur non gérée: ${errMsg}`, err);
     return new Response(JSON.stringify({ error: "Internal server error", details: errMsg }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

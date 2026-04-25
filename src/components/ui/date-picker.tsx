@@ -13,6 +13,8 @@ interface DatePickerProps {
   placeholder?: string;
   error?: boolean;
   className?: string;
+  /** Date minimale autorisée (ISO YYYY-MM-DD). Les dates antérieures sont grisées dans le calendrier. */
+  minDate?: string;
 }
 
 /**
@@ -26,6 +28,7 @@ export function DatePicker({
   placeholder = "JJ/MM/AAAA",
   error,
   className,
+  minDate,
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [dropPos, setDropPos] = React.useState<{ top: number; left: number } | null>(null);
@@ -200,6 +203,7 @@ export function DatePicker({
               onSelect={handleSelect}
               locale={fr}
               className="p-3"
+              disabled={minDate ? { before: parse(minDate, "yyyy-MM-dd", new Date()) } : undefined}
             />
 
             {/* Footer */}

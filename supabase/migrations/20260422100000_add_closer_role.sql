@@ -22,6 +22,8 @@ $$;
 -- Update lead_comments RLS to include closer
 DROP POLICY IF EXISTS "Setters can manage own comments" ON public.lead_comments;
 DROP POLICY IF EXISTS "Setters can view all comments" ON public.lead_comments;
+DROP POLICY IF EXISTS "Setters and closers can manage own comments" ON public.lead_comments;
+DROP POLICY IF EXISTS "Setters and closers can view all comments" ON public.lead_comments;
 
 CREATE POLICY "Setters and closers can manage own comments" ON public.lead_comments
   FOR ALL USING (
@@ -33,6 +35,7 @@ CREATE POLICY "Setters and closers can view all comments" ON public.lead_comment
 
 -- Update lead_events RLS to include closer
 DROP POLICY IF EXISTS "Setters can view lead events" ON public.lead_events;
+DROP POLICY IF EXISTS "Setters and closers can view lead events" ON public.lead_events;
 CREATE POLICY "Setters and closers can view lead events" ON public.lead_events
   FOR SELECT USING (public.is_setter() OR public.is_closer());
 

@@ -5,6 +5,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global scale — interface à 90% */
+html { font-size: 90%; }
+
 /* Force font-display — Russo One exact match */
 .font-display {
   font-family: "Russo One", Satoshi, "DM Sans", sans-serif !important;
@@ -106,7 +109,8 @@
   }
 
   html {
-    zoom: 0.9;
+    /* zoom: 0.9 supprimé — causait un gap noir en bas sur tous les panels
+       (100vh en CSS = pleine hauteur viewport, mais rendu visuel = 90% → 10% de fond visible) */
   }
 
   body {

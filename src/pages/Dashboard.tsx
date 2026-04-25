@@ -25,7 +25,10 @@ import { SetupPage } from "@/components/dashboard/SetupPage";
 import { SetupOracleLanding } from "@/components/dashboard/SetupOracleLanding";
 import RecolteDonneesPage from "@/components/dashboard/RecolteDonneesPage";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
+import { OracleHomePage } from "@/components/dashboard/OracleHomePage";
+import { OraclePage } from "@/components/dashboard/OraclePage";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
+import { VideoManager } from "@/components/dashboard/VideoManager";
 import { AdminVerification } from "@/components/dashboard/AdminVerification";
 // RoleManagement is now embedded in AdminVerification
 import { BatchImportPage } from "@/components/dashboard/BatchImportPage";
@@ -132,7 +135,7 @@ const getAllowedTabs = (opts: {
 
   // Tabs admin
   if (isAdmin || isSuperAdmin) {
-    ["crm", "gestion", "config", "admin", "roles",
+    ["crm", "gestion", "config", "video-admin", "admin", "roles",
      "funnel-editor", "early-access-mgmt"].forEach(id => t.add(id));
   }
 
@@ -494,14 +497,14 @@ const Dashboard = () => {
     if (!loadingRoles) {
       const allowed = getAllowedTabs({ isAdmin, isSuperAdmin, isSetter, isCloser, isEarlyAccess, isSetterOnly });
       if (!allowed.has(activeTab)) {
-        return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => setActiveTab("data-analysis")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
+        return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} />;
       }
     }
     switch (activeTab) {
       case "execution":
-        return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToVideos={() => setActiveTab("videos")} onNavigateToSetup={() => setActiveTab("setup")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => setActiveTab("data-analysis")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
+        return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} />;
       case "recolte-donnees":
-        return <RecolteDonneesPage onNavigateToSetupOracle={() => setActiveTab("setup")} />;
+        return <OraclePage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} isAdmin={isAdmin || isSuperAdmin} />;
       case "setup":
         return <SetupOracleLanding trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} onBack={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => setActiveTab("data-analysis")} />;
       case "data-analysis": {
@@ -523,7 +526,7 @@ const Dashboard = () => {
         );
       }
       case "videos":
-        return <VideoSetup overrideIsAdmin={isAdmin} overrideIsEarlyAccess={simulatedRole !== "none" ? isEarlyAccess : undefined} />;
+        return <VideoSetup overrideIsEarlyAccess={simulatedRole !== "none" ? isEarlyAccess : undefined} />;
       case "successes":
         return <SuccessPage />;
       case "results":
@@ -536,6 +539,8 @@ const Dashboard = () => {
         return <AdminVerification />;
       case "crm":
         return <CRMDashboard overrideRoles={simulatedRole !== "none" ? { isAdmin: effectiveIsAdmin, isSuperAdmin: effectiveIsSuperAdmin, isSetter: effectiveIsSetter, isCloser: effectiveIsCloser } : undefined} />;
+      case "video-admin":
+        return <VideoManager />;
       case "funnel-editor":
         return <FunnelEditorPage />;
       case "early-access-mgmt":
@@ -549,7 +554,7 @@ const Dashboard = () => {
         return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><ConfigPanel /></React.Suspense>;
       }
       default:
-        return <OracleExecution trades={trades} dataGeneraleTrades={isEarlyAccess ? dataGenerale : undefined} onNavigateToSetup={() => setActiveTab("setup")} questData={questData} isStaff={isAdmin || isSuperAdmin} />;
+        return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} />;
     }
   };
 

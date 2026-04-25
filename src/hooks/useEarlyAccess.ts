@@ -14,8 +14,7 @@ export const useEarlyAccess = () => {
     if (data) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.rpc("activate_ea_timer" as any);
-
+        // activate_ea_timer() supprimé — expires_at est posé à l'approbation (J+7 déterministe)
         const { data: roleData } = await supabase
           .from("user_roles")
           .select("expires_at, early_access_type" as any)

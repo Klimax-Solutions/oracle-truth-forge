@@ -43,6 +43,7 @@ const tabs: SidebarTab[] = [
 const crmTab: SidebarTab = { id: "crm", label: "CRM", icon: TrendingUp, section: "admin" };
 const gestionTab: SidebarTab = { id: "gestion", label: "Gestion", icon: UsersIcon, section: "admin" };
 const configTab: SidebarTab = { id: "config", label: "Configuration", icon: Settings, section: "admin" };
+const videosAdminTab: SidebarTab = { id: "video-admin", label: "Médiathèque", icon: Video, section: "admin" };
 
 // ── DEPRECATED admin tabs (still accessible, with warning) ──
 const adminTab: SidebarTab = { id: "admin", label: "Vérif. Admin", icon: ShieldCheck, deprecated: true, section: "admin" };
@@ -144,7 +145,7 @@ export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: Dash
 
   // Admin V2: CRM + Gestion + Config + deprecated tabs
   if (isAdmin || isSuperAdmin) {
-    allTabs = [...allTabs, crmTab, gestionTab, configTab, adminTab, eaMgmtTab];
+    allTabs = [...allTabs, crmTab, gestionTab, configTab, videosAdminTab, adminTab, eaMgmtTab];
   }
 
   return (

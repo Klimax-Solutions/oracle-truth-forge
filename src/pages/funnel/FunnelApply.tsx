@@ -163,45 +163,78 @@ export default function FunnelApply() {
     try {
       const email = contact.email.trim().toLowerCase();
       const phone = contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : null;
-      // Extract structured fields from form answers
-      const investmentAnswer = answers['investment_amount'] || '';
-      const difficulte = answers['main_difficulty'] || null;
-      const importanceRaw = answers['time_commitment'] || '';
 
-      // Parse budget number from range string (e.g. "3 000 € - 5 000 €" → 3000)
+      // ── PRE-CHECK: état de l'email dans le pipeline ───────────────────────
+      // POLITIQUE (dans le marbre) :
+      //   - 'approuvée' → lead déjà membre, ne pas créer de doublon, rediriger vers login
+      //   - 'en_attente' → lead a déjà soumis, on met à jour sa demande existante (pas de nouvelle row)
+      //   - absent ou autre → nouveau lead, INSERT normal
+      // Cette logique garantit que chaque email n'a qu'une seule demande active.
+      const { data: existingReq } = await supabase
+        .from('early_access_requests')
+        .select('id, status')
+        .ilike('email', email)
+        .in('status', ['approuvée', 'en_attente'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingReq?.status === 'approuvée') {
+        // Membre actif → ne pas créer de doublon. Orienter vers login.
+        setSubmitting(false);
+        setError('Vous avez déjà un accès Oracle. Connectez-vous directement.');
+        return;
+      }
+
+      let isUpdate = false;
+      if (existingReq?.status === 'en_attente') {
+        // Soumission multiple → mettre à jour la demande existante, pas d'INSERT
+        isUpdate = true;
+        await supabase.from('early_access_requests').update({
+          first_name: contact.first_name.trim(),
+          phone: phone ?? undefined,
+          form_submitted: true,
+        } as any).eq('id', existingReq.id);
+      }
+
+      // ── SLICE A: Core submit — colonnes garanties, jamais en échec ────────
+      // Seules les colonnes du schéma Lovable de base. Antifragile par design.
+      if (!isUpdate) {
+        const { error: dbError } = await supabase.from('early_access_requests').insert({
+          first_name: contact.first_name.trim(), email, phone,
+          status: 'en_attente', form_submitted: true,
+        } as any);
+        if (dbError) { setError(dbError.message); setSubmitting(false); return; }
+      }
+
+      // ── SLICE B: CRM enrichment — best-effort, jamais bloquant ───────────
+      // Colonnes ajoutées par migrations CRM. Si absentes → warn + continue.
+      const investmentAnswer = answers['investment_amount'] || '';
       const budgetMatch = investmentAnswer.match(/(\d[\d\s]*)\s*€/);
       const budgetAmount = budgetMatch ? parseInt(budgetMatch[1].replace(/\s/g, ''), 10) : null;
-
-      // Auto-calculate priority from budget
-      const priorite = budgetAmount && budgetAmount >= 5000 ? 'P1' : budgetAmount && budgetAmount >= 3000 ? 'P2' : budgetAmount && budgetAmount >= 1000 ? 'P3' : null;
-
-      // Parse importance (1-10) from range string (e.g. "7-9" → 8)
-      const impMatch = importanceRaw.match(/(\d+)/);
+      const priorite = budgetAmount && budgetAmount >= 5000 ? 'P1'
+        : budgetAmount && budgetAmount >= 3000 ? 'P2'
+        : budgetAmount && budgetAmount >= 1000 ? 'P3' : null;
+      const impMatch = (answers['time_commitment'] || '').match(/(\d+)/);
       const importance = impMatch ? parseInt(impMatch[1], 10) : null;
 
-      const specFields: any = {
-        form_answers: answers,
-        offer_amount: investmentAnswer || null,
-        budget_amount: budgetAmount,
-        priorite,
-        difficulte_principale: difficulte,
-        importance_trading: importance,
-      };
+      const enrichment: Record<string, any> = {};
+      if (Object.keys(answers).length > 0) enrichment.form_answers = answers;
+      if (investmentAnswer)        enrichment.offer_amount           = investmentAnswer;
+      if (budgetAmount != null)    enrichment.budget_amount          = budgetAmount;
+      if (priorite)                enrichment.priorite               = priorite;
+      if (answers['main_difficulty']) enrichment.difficulte_principale = answers['main_difficulty'];
+      if (importance != null)      enrichment.importance_trading     = importance;
 
-      const row: any = {
-        first_name: contact.first_name.trim(), email, phone,
-        status: 'en_attente', form_submitted: true,
-        ...specFields,
-      };
-      const { error: dbError } = await supabase.from('early_access_requests').insert(row);
-      if (dbError) {
-        if (dbError.message.includes('duplicate') || dbError.message.includes('unique') || dbError.code === '23505') {
-          await supabase.from('early_access_requests').update({
-            first_name: contact.first_name.trim(), phone: phone || undefined,
-            form_submitted: true, ...specFields,
-          }).eq('email', email);
-        } else { setError(dbError.message); setSubmitting(false); return; }
+      if (Object.keys(enrichment).length > 0) {
+        const { error: enrichErr } = await supabase
+          .from('early_access_requests')
+          .update(enrichment as any)
+          .eq('email', email);
+        if (enrichErr) console.warn('[Apply] CRM enrichment skipped (non-blocking):', enrichErr.message);
       }
+
+      // ── Proceed ──────────────────────────────────────────────────────────
       setSubmitted(true);
       const params = new URLSearchParams();
       params.set('name', contact.first_name.trim());
@@ -242,63 +275,59 @@ export default function FunnelApply() {
       {/* PHASE 1: VSL — spike-launch exact style         */}
       {/* ═══════════════════════════════════════════════ */}
       {hasVSL && !showForm && !disqualified && !submitted ? (
-        <div className="relative z-10">
-          <div className="px-3 md:px-4 pt-6 md:pt-10 pb-8 md:pb-10">
-            <div className="max-w-7xl mx-auto space-y-6 md:space-y-8">
+        /* ── Phase VSL : tient en 100vh, pas de scroll ── */
+        <div className="h-screen flex flex-col overflow-hidden">
 
-              {/* Headline — near full-width on desktop */}
-              <div className="text-center space-y-6">
-                <AccentText
-                  html={config.apply_headline || 'Découvre la méthode'}
-                  className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display text-white leading-[1.3] md:leading-[1.35] px-2"
-                />
-                {(config.apply_subtitle || config.landing_subtitle) && (
-                  <AccentText
-                    html={config.apply_subtitle || config.landing_subtitle}
-                    as="p"
-                    className="text-xl sm:text-2xl md:text-3xl font-display text-white/90 max-w-2xl mx-auto mt-6 md:mt-10 px-4 leading-relaxed"
-                  />
-                )}
-              </div>
+          {/* Headline — compact, en haut */}
+          <div className="shrink-0 text-center px-4 pt-5 pb-2">
+            <AccentText
+              html={config.apply_headline || 'Découvre la méthode'}
+              className="text-lg sm:text-xl md:text-2xl font-display text-white leading-snug"
+            />
+            {(config.apply_subtitle || config.landing_subtitle) && (
+              <AccentText
+                html={config.apply_subtitle || config.landing_subtitle}
+                as="p"
+                className="text-sm md:text-base font-display text-white/55 max-w-xl mx-auto mt-1.5 leading-snug"
+              />
+            )}
+          </div>
 
-              {/* VSL — full-width glowing container */}
-              <div className="w-full max-w-6xl mx-auto">
-                <div className="relative pt-4 md:pt-6 pb-4 md:pb-6 px-2 md:px-4">
-                  <div className="relative z-10 rounded-lg md:rounded-xl overflow-hidden border border-primary/30 md:border-2 md:border-primary/40 shadow-[0_0_8px_0px_rgba(25,183,201,0.3)] md:shadow-[0_0_12px_0px_rgba(25,183,201,0.4),0_0_25px_5px_rgba(25,183,201,0.25),0_0_50px_10px_rgba(25,183,201,0.15),0_0_80px_20px_rgba(25,183,201,0.08)]">
-                    {hasVSLEmbed ? renderEmbed() : (
-                      <div className="w-full aspect-video bg-white/[0.02] flex items-center justify-center">
-                        <p className="text-sm text-white/20 font-display">VSL — coller le code Vidalytics dans la config</p>
-                      </div>
-                    )}
+          {/* VSL — prend tout l'espace restant, 16:9 contraint */}
+          <div className="flex-1 flex items-center justify-center px-3 md:px-6 py-2 min-h-0">
+            <div className="w-full max-w-5xl">
+              <div className="relative rounded-lg md:rounded-xl overflow-hidden border border-primary/30 md:border-2 md:border-primary/40
+                shadow-[0_0_12px_0px_rgba(25,183,201,0.35),0_0_30px_8px_rgba(25,183,201,0.18),0_0_60px_16px_rgba(25,183,201,0.09)]">
+                {hasVSLEmbed ? renderEmbed() : (
+                  <div className="w-full aspect-video bg-white/[0.02] flex items-center justify-center">
+                    <p className="text-sm text-white/20 font-display">VSL — coller le code Vidalytics dans la config</p>
                   </div>
-                </div>
-              </div>
-
-              {/* CTA — big, glowing, appears after delay */}
-              <div className={`w-full text-center transition-all duration-700 ${ctaVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-                <button
-                  onClick={() => setShowForm(true)}
-                  className="group relative px-12 py-5 bg-[#19B7C9] text-[#0A0B10] font-display text-lg font-bold uppercase tracking-wider rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(25,183,201,0.3)]"
-                >
-                  <span className="absolute inset-0 rounded-xl bg-primary/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <span className="relative flex items-center gap-3 justify-center">
-                    {config.landing_cta_text || 'Candidater'}
-                    <ArrowRight className="w-5 h-5" />
-                  </span>
-                </button>
-                {config.landing_cta_subtext && (
-                  <p className="text-xs text-white/25 mt-4">{config.landing_cta_subtext}</p>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Footer */}
-          <footer className="py-4 text-center">
-            <p className="text-[10px] text-white/15 font-display">
+          {/* CTA + footer — en bas, compact */}
+          <div className="shrink-0 pb-4 pt-2 text-center space-y-2">
+            <div className={`transition-all duration-700 ${ctaVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3 pointer-events-none'}`}>
+              <button
+                onClick={() => setShowForm(true)}
+                className="group relative inline-flex items-center gap-3 px-10 py-3.5 bg-[#19B7C9] text-[#0A0B10] font-display text-sm font-bold uppercase tracking-wider rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(25,183,201,0.35)]"
+              >
+                <span className="absolute inset-0 rounded-xl bg-primary/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                <span className="relative flex items-center gap-2.5">
+                  {config.landing_cta_text || 'Candidater'}
+                  <ArrowRight className="w-4 h-4" />
+                </span>
+              </button>
+              {config.landing_cta_subtext && (
+                <p className="text-[11px] text-white/20 mt-2">{config.landing_cta_subtext}</p>
+              )}
+            </div>
+            <p className="text-[9px] text-white/10 tracking-[0.3em] uppercase font-display">
               {config.brand_footer_text?.replace('{year}', new Date().getFullYear().toString()) || `© ${new Date().getFullYear()} Oracle`}
             </p>
-          </footer>
+          </div>
         </div>
       ) : (
 

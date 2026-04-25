@@ -938,8 +938,10 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
                 <h1 className="font-display text-sm tracking-[0.2em] text-white uppercase">
                   {funnelName || 'Funnel Editor'}
                 </h1>
-                {funnelSlug && (
-                  <p className="text-[10px] text-primary/50 tracking-wider font-mono">/{funnelSlug}/apply</p>
+                {funnelSlug && activeTabInfo?.path && (
+                  <p className="text-[10px] text-primary/50 tracking-wider font-mono">
+                    {activeTabInfo.path}
+                  </p>
                 )}
               </div>
             </div>
@@ -951,10 +953,10 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
                   {statusIndicator.text}
                 </span>
               </div>
-              {funnelSlug && (
+              {funnelSlug && activeTabInfo?.path && (
                 <div className="flex items-center gap-2">
                   <a
-                    href={`/${funnelSlug}/apply`}
+                    href={activeTabInfo.path}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-display tracking-wider uppercase text-white/40 hover:text-primary border border-white/[0.06] hover:border-primary/30 transition-all"
@@ -963,7 +965,7 @@ export default function AdminFunnel({ funnelId, onBack }: { funnelId?: string; o
                     Voir en live
                   </a>
                   <a
-                    href={`/${funnelSlug}/apply`}
+                    href={`/${funnelSlug}/landing`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-display tracking-wider uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25 transition-all"

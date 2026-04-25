@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  OracleCycleWindow,
+  getMinTradeDate,
+  getUserCurrentCycleNum,
+  computeUserOffset,
+  getRecommendedWindow,
+  checkDateInWindow,
+  formatDateShort,
+  USER_CYCLE_THRESHOLDS,
+} from "@/lib/oracle-cycle-windows";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -222,6 +232,8 @@ const shouldShowComparisonStatus = (tradeNumber: number, totalTrades: number): b
 interface UserDataEntryProps {
   tradeComparisons?: TradeComparison[];
   oracleTrades?: OracleTrade[];
+  /** Fenêtres temporelles Oracle dérivées des trades réels — pour le guidage R4 */
+  oracleCycleWindows?: OracleCycleWindow[];
 }
 
 const initialFormData: FormData = {
@@ -252,7 +264,7 @@ const initialFormData: FormData = {
 };
 
 
-export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: UserDataEntryProps) => {
+export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracleCycleWindows = [] }: UserDataEntryProps) => {
   const [executions, setExecutions] = useState<UserExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -399,6 +411,46 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
     if (executions.length === 0) return 1;
     return Math.max(...executions.map(e => e.trade_number)) + 1;
   };
+
+  // ── R2 + R3 — Date minimale pour un nouveau trade ───────────────────────────
+  // Chaque trade doit être ≥ au trade précédent (trade_date ET exit_date).
+  const minTradeDate = useMemo(() => {
+    if (editingId) {
+      // En édition : min = max des dates des trades avec trade_number inférieur
+      const editingNum = parseInt(formData.trade_number);
+      const prevTrades = executions.filter(e => e.trade_number < editingNum);
+      return getMinTradeDate(prevTrades);
+    }
+    // Nouveau trade : min = max de toutes les dates existantes
+    return getMinTradeDate(executions);
+  }, [executions, editingId, formData.trade_number]);
+
+  // ── R4 — Fenêtre temporelle Oracle et guidage doux ──────────────────────────
+  const temporalGuidance = useMemo(() => {
+    if (oracleCycleWindows.length === 0) return null;
+    const currentCycleNum = getUserCurrentCycleNum(executions.length);
+    if (currentCycleNum >= USER_CYCLE_THRESHOLDS.length) return null; // tout complété
+
+    const offsetDays = computeUserOffset(
+      currentCycleNum,
+      oracleCycleWindows,
+      executions
+    );
+    const recommendedWindow = getRecommendedWindow(
+      currentCycleNum,
+      oracleCycleWindows,
+      offsetDays
+    );
+    const oracleWindow = oracleCycleWindows.find(w => w.cycleNum === currentCycleNum) ?? null;
+
+    return { currentCycleNum, offsetDays, recommendedWindow, oracleWindow };
+  }, [executions, oracleCycleWindows]);
+
+  // Statut de la date saisie vis-à-vis de la fenêtre recommandée
+  const dateWindowStatus = useMemo(() => {
+    if (!temporalGuidance?.recommendedWindow || !formData.trade_date) return "unknown";
+    return checkDateInWindow(formData.trade_date, temporalGuidance.recommendedWindow);
+  }, [formData.trade_date, temporalGuidance]);
 
   // Validate entry time (15:20 - 22:00)
   const validateEntryTime = (time: string): boolean => {
@@ -553,6 +605,24 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
   const handleSave = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    // R2 + R3 — Validation chronologique stricte
+    if (minTradeDate && formData.trade_date && formData.trade_date < minTradeDate) {
+      toast({
+        title: "Date invalide",
+        description: `La date d'entrée doit être le ${new Date(minTradeDate).toLocaleDateString("fr-FR")} ou plus tard (ordre chronologique strict).`,
+        variant: "destructive",
+      });
+      return;
+    }
+    if (minTradeDate && formData.exit_date && formData.exit_date < minTradeDate) {
+      toast({
+        title: "Date de sortie invalide",
+        description: `La date de sortie doit être le ${new Date(minTradeDate).toLocaleDateString("fr-FR")} ou plus tard.`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Validate times
     if (formData.entry_time && !validateEntryTime(formData.entry_time)) {
@@ -883,14 +953,82 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [] }: User
                     {/* Section: Timing */}
                     <div className="px-6 pt-4 pb-4 border-b border-white/[.10]">
                       <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-foreground mb-3">Timing</p>
+
+                      {/* R4 — Fenêtre temporelle Oracle (guidage doux) */}
+                      {temporalGuidance?.recommendedWindow && (
+                        <div className={cn(
+                          "mb-3 px-3 py-2 rounded-lg border text-[11px] leading-snug",
+                          dateWindowStatus === "outside"
+                            ? "border-orange-500/30 bg-orange-500/[.06]"
+                            : dateWindowStatus === "warning"
+                            ? "border-amber-500/25 bg-amber-500/[.05]"
+                            : "border-white/[.08] bg-white/[.02]"
+                        )}>
+                          <div className="flex items-start gap-2">
+                            <Calendar className={cn(
+                              "w-3 h-3 shrink-0 mt-0.5",
+                              dateWindowStatus === "outside" ? "text-orange-400" :
+                              dateWindowStatus === "warning" ? "text-amber-400" : "text-foreground/40"
+                            )} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                <span className={cn(
+                                  "font-semibold",
+                                  dateWindowStatus === "outside" ? "text-orange-400" :
+                                  dateWindowStatus === "warning" ? "text-amber-400" : "text-foreground/60"
+                                )}>
+                                  Fenêtre {temporalGuidance.oracleWindow?.name}
+                                </span>
+                                <span className="font-mono text-foreground/50">
+                                  {formatDateShort(temporalGuidance.recommendedWindow.start)}
+                                  {" → "}
+                                  {formatDateShort(temporalGuidance.recommendedWindow.end)}
+                                </span>
+                                {temporalGuidance.offsetDays !== 0 && (
+                                  <span className="text-foreground/35 italic">
+                                    (Oracle + {temporalGuidance.offsetDays > 0 ? "+" : ""}{temporalGuidance.offsetDays}j offset)
+                                  </span>
+                                )}
+                              </div>
+                              {dateWindowStatus === "outside" && (
+                                <p className="mt-0.5 text-orange-400/80">
+                                  ⚠ Date très éloignée de la fenêtre Oracle — vérifie que tu compares les mêmes conditions de marché.
+                                </p>
+                              )}
+                              {dateWindowStatus === "warning" && (
+                                <p className="mt-0.5 text-amber-400/80">
+                                  Date en limite de fenêtre (±tolérance 30%).
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {/* Oracle reference */}
+                          {temporalGuidance.oracleWindow?.oracleStart && (
+                            <div className="mt-1.5 flex items-center gap-1.5 text-foreground/30">
+                              <span className="font-mono text-[10px]">Oracle réf.</span>
+                              <span className="font-mono text-[10px]">
+                                {formatDateShort(temporalGuidance.oracleWindow.oracleStart)}
+                                {" → "}
+                                {formatDateShort(temporalGuidance.oracleWindow.oracleEnd)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-4 gap-2">
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-foreground/85">N°</Label>
                           <Input type="number" value={formData.trade_number} onChange={(e) => setFormData({ ...formData, trade_number: e.target.value })} className="h-9 border-white/30 bg-white/[.04]" />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-foreground/85">Date</Label>
-                          <DatePicker value={formData.trade_date} onChange={handleEntryDateChange} className="border-white/30 bg-white/[.04]" />
+                          <Label className="text-xs font-semibold text-foreground/85">
+                            Date
+                            {minTradeDate && !editingId && (
+                              <span className="ml-1 text-foreground/35 font-normal normal-case">min {new Date(minTradeDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
+                            )}
+                          </Label>
+                          <DatePicker value={formData.trade_date} onChange={handleEntryDateChange} className="border-white/30 bg-white/[.04]" minDate={!editingId ? (minTradeDate ?? undefined) : undefined} />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-foreground/85">H. Entrée</Label>
