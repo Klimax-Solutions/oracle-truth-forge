@@ -13,6 +13,11 @@ import {
   LineChart, Play, Lock, Loader2, ChevronRight, Plus, Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Couleurs thème Récolte (cohérence homepage slide 02)
+const TEAL   = "#1AAFA0";
+const TEAL_G = "rgba(26,175,160,0.18)";
+const ORANGE = "#F97316";
 import NewSessionDialog, { SessionType } from "./NewSessionDialog";
 import { SetupPerso } from "./SetupPerso";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
@@ -36,7 +41,6 @@ interface SessionStats {
 }
 
 const BLUE = "#3B82F6";
-const ORANGE = "#F97316";
 
 interface RecolteDonneesPageProps {
   onNavigateToSetupOracle?: () => void;
@@ -152,13 +156,49 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle }: RecolteD
 
   // ── Vue principale ──
   return (
-    <div className="h-full overflow-auto bg-[#0A0B10] text-white">
-      <div className="max-w-5xl mx-auto px-6 py-10">
+    <div className="h-full overflow-auto bg-[#07070A] text-white relative" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
 
-        {/* Header */}
-        <div className="text-center mb-10">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Récolte de données</h1>
-          <p className="text-sm text-white/50 mt-2">Explorez et gérez vos données de trading</p>
+      {/* Grain texture */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" style={{ opacity: 0.022 }} aria-hidden>
+        <filter id="recolte-grain">
+          <feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="4" stitchTiles="stitch" />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#recolte-grain)" />
+      </svg>
+
+      {/* Radial glow */}
+      <div className="absolute inset-0 pointer-events-none z-0" style={{
+        background: `radial-gradient(ellipse 55% 45% at 15% 20%, ${TEAL_G}, transparent 65%)`,
+      }} />
+
+      <div className="relative z-10 max-w-5xl mx-auto px-6 md:px-10 py-10">
+
+        {/* ── Header éditorial ── */}
+        <div className="mb-10">
+          <p style={{
+            fontSize: "11px", fontWeight: 600, letterSpacing: "0.14em",
+            textTransform: "uppercase", color: TEAL, opacity: 0.9, marginBottom: "10px",
+          }}>
+            Étape 02 — Récolte
+          </p>
+          <h1 style={{
+            fontSize: "clamp(2.2rem, 5vw, 3.8rem)",
+            fontWeight: 900,
+            letterSpacing: "-0.04em",
+            lineHeight: "0.95",
+            paddingBottom: "0.06em",
+            backgroundImage: "linear-gradient(160deg, #ffffff 35%, rgba(255,255,255,0.30) 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+            marginBottom: "12px",
+          }}>
+            Ta récolte
+          </h1>
+          <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.40)", lineHeight: 1.6, maxWidth: "44ch" }}>
+            Saisie de tes exécutions, sessions backtesting et accès à la base Oracle.
+          </p>
         </div>
 
         {/* ═══ Setup Oracle — HERO en haut ═══ */}
@@ -226,40 +266,34 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle }: RecolteD
 
         {/* Nouvelle session — 2 CTA */}
         <section className="mb-10">
-          <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-3">Nouvelle session</p>
+          <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: "12px" }}>
+            Nouvelle session
+          </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* BACKTESTING */}
             <button
               onClick={() => setDialogType("backtesting")}
               className="group text-left rounded-2xl p-6 border transition-all hover:scale-[1.01]"
-              style={{
-                borderColor: `${BLUE}33`,
-                backgroundColor: `${BLUE}08`,
-              }}
+              style={{ borderColor: `${TEAL}30`, backgroundColor: `${TEAL}07` }}
             >
               <div className="flex items-start gap-3 mb-3">
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: `${BLUE}22` }}
-                >
-                  <LineChart className="w-5 h-5" style={{ color: BLUE }} />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${TEAL}18` }}>
+                  <LineChart className="w-5 h-5" style={{ color: TEAL }} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold tracking-[0.15em] uppercase" style={{ color: BLUE }}>
+                  <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: TEAL }}>
                     Backtesting
                   </p>
-                  <h3 className="text-lg font-bold text-white leading-tight">Entamer une session</h3>
+                  <h3 style={{ fontSize: "17px", fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>Entamer une session</h3>
                 </div>
               </div>
-              <p className="text-xs text-white/50 leading-relaxed mb-5">
+              <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.42)", lineHeight: 1.6, marginBottom: "20px" }}>
                 Récolte des trades gagnants dans le passé pour identifier ce qui fonctionne.
               </p>
-              <div
-                className="w-full h-11 rounded-lg flex items-center justify-center gap-2 text-sm font-semibold text-white transition-all group-hover:brightness-110"
-                style={{ backgroundColor: BLUE }}
-              >
-                Commencer une session <ChevronRight className="w-4 h-4" />
+              <div className="w-full h-10 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold text-white transition-all group-hover:brightness-110"
+                style={{ background: `linear-gradient(135deg, ${TEAL} 0%, #158A7E 100%)`, boxShadow: `0 4px 16px -4px rgba(26,175,160,0.45)` }}>
+                Commencer <ChevronRight className="w-4 h-4" />
               </div>
             </button>
 
@@ -267,33 +301,25 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle }: RecolteD
             <button
               onClick={() => setDialogType("live_trading")}
               className="group text-left rounded-2xl p-6 border transition-all hover:scale-[1.01]"
-              style={{
-                borderColor: `${ORANGE}33`,
-                backgroundColor: `${ORANGE}08`,
-              }}
+              style={{ borderColor: `${ORANGE}30`, backgroundColor: `${ORANGE}07` }}
             >
               <div className="flex items-start gap-3 mb-3">
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: `${ORANGE}22` }}
-                >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${ORANGE}18` }}>
                   <Play className="w-5 h-5" style={{ color: ORANGE }} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold tracking-[0.15em] uppercase" style={{ color: ORANGE }}>
+                  <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: ORANGE }}>
                     Live Trading
                   </p>
-                  <h3 className="text-lg font-bold text-white leading-tight">Récolter ma data en session</h3>
+                  <h3 style={{ fontSize: "17px", fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>Récolter en live</h3>
                 </div>
               </div>
-              <p className="text-xs text-white/50 leading-relaxed mb-5">
-                Traquer les patterns de mes sessions de trading pour les comparer au passé.
+              <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.42)", lineHeight: 1.6, marginBottom: "20px" }}>
+                Traquer les patterns de mes sessions pour les comparer au passé.
               </p>
-              <div
-                className="w-full h-11 rounded-lg flex items-center justify-center gap-2 text-sm font-semibold text-white transition-all group-hover:brightness-110"
-                style={{ backgroundColor: ORANGE }}
-              >
-                Démarrer ma session live <ChevronRight className="w-4 h-4" />
+              <div className="w-full h-10 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold text-white transition-all group-hover:brightness-110"
+                style={{ background: `linear-gradient(135deg, ${ORANGE} 0%, #e06510 100%)`, boxShadow: `0 4px 16px -4px rgba(249,115,22,0.40)` }}>
+                Démarrer <ChevronRight className="w-4 h-4" />
               </div>
             </button>
           </div>
@@ -301,10 +327,12 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle }: RecolteD
 
         {/* Mes sessions en cours */}
         <section className="mb-12">
-          <div className="flex items-baseline justify-between mb-3">
-            <p className="text-[10px] font-mono uppercase tracking-widest text-white/40">Mes sessions en cours</p>
-            <p className="text-[10px] font-mono text-white/30">
-              {sessions.length} session{sessions.length > 1 ? "s" : ""}
+          <div className="flex items-baseline justify-between mb-4">
+            <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)" }}>
+              Mes sessions
+            </p>
+            <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.22)", fontVariantNumeric: "tabular-nums" }}>
+              {sessions.length} session{sessions.length !== 1 ? "s" : ""}
             </p>
           </div>
 
@@ -324,7 +352,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle }: RecolteD
               {sessions.map(s => {
                 const stats = sessionStats[s.id] || { trades: 0, rr: 0, winRate: 0, avgRR: 0 };
                 const isBacktest = s.type === "backtesting";
-                const accent = isBacktest ? BLUE : ORANGE;
+                const accent = isBacktest ? TEAL : ORANGE;
                 return (
                   <button
                     key={s.id}
@@ -412,7 +440,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle }: RecolteD
           )}
         </section>
 
-      </div>
+      </div>{/* end max-w-5xl */}
 
       {/* Popup de création */}
       <NewSessionDialog

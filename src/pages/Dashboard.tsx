@@ -513,7 +513,7 @@ const Dashboard = () => {
         return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} />;
       case "recolte-donnees":
         if (recolteView === "oracle") {
-          return <OraclePage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} isAdmin={isAdmin || isSuperAdmin} />;
+          return <OraclePage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} isAdmin={isAdmin || isSuperAdmin} onBack={() => setRecolteView("landing")} />;
         }
         return <RecolteDonneesPage onNavigateToSetupOracle={() => setRecolteView("oracle")} />;
       case "setup":

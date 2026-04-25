@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { OracleDatabase } from "./OracleDatabase";
 import { UserDataEntry } from "./UserDataEntry";
-import { Database, PenLine, AlertTriangle, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Database, PenLine, AlertTriangle, AlertCircle, CheckCircle2, ChevronLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { deriveOracleCycleWindows } from "@/lib/oracle-cycle-windows";
@@ -46,6 +46,7 @@ interface OraclePageProps {
   analyzedTradeNumbers?: number[];
   onAnalysisToggle?: (tradeNumber: number, checked: boolean) => void;
   isAdmin?: boolean;
+  onBack?: () => void;
 }
 
 interface TradeComparison {
@@ -55,7 +56,7 @@ interface TradeComparison {
   status: 'match' | 'warning' | 'error' | 'no-match';
 }
 
-export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAnalysisToggle, isAdmin }: OraclePageProps) => {
+export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAnalysisToggle, isAdmin, onBack }: OraclePageProps) => {
   const [activeSubTab, setActiveSubTab] = useState(() => {
     try {
       const saved = localStorage.getItem("oracle_active_subtab");
@@ -161,38 +162,78 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
   return (
     <div className="flex flex-col min-h-full">
       <Tabs value={activeSubTab} onValueChange={handleSubTabChange} className="flex-1 flex flex-col">
-        {/* Sub-tabs header - responsive */}
-        <div className="border-b border-border bg-card px-3 md:px-6 py-2 md:py-3">
-          <div className="flex items-center justify-between gap-2">
-            <TabsList className="bg-muted/50 h-auto p-0.5 md:p-1">
-              <TabsTrigger value="verification" className="gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs data-[state=active]:bg-background">
-                <Database className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Oracle</span> Vérif
-              </TabsTrigger>
-              <TabsTrigger value="saisie" className="gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs data-[state=active]:bg-background">
-                <PenLine className="w-3 h-3 md:w-4 md:h-4" />
-                Saisie
-              </TabsTrigger>
-            </TabsList>
 
-            {/* Comparison status badge - compact on mobile */}
+        {/* ── Header sticky ── */}
+        <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-sm px-4 md:px-6 py-3">
+          <div className="flex items-center gap-3">
+
+            {/* Back chevron */}
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-white/8 transition-colors flex-shrink-0"
+                style={{ color: "rgba(255,255,255,0.45)" }}
+                title="Retour"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Toggle pill */}
+            <div
+              style={{
+                display: "inline-flex",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "10px",
+                padding: "3px",
+                gap: "2px",
+              }}
+            >
+              {(["verification", "saisie"] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => handleSubTabChange(tab)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "5px 12px",
+                    borderRadius: "7px",
+                    fontSize: "12px",
+                    fontWeight: activeSubTab === tab ? 600 : 400,
+                    letterSpacing: "-0.01em",
+                    background: activeSubTab === tab ? "rgba(255,255,255,0.09)" : "transparent",
+                    color: activeSubTab === tab ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.35)",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                    boxShadow: activeSubTab === tab ? "0 1px 0 rgba(255,255,255,0.06) inset" : "none",
+                  }}
+                >
+                  {tab === "verification"
+                    ? <><Database className="w-3 h-3" style={{ opacity: 0.7 }} />Oracle Vérif</>
+                    : <><PenLine className="w-3 h-3" style={{ opacity: 0.7 }} />Saisie</>
+                  }
+                </button>
+              ))}
+            </div>
+
+            {/* Stats badge saisie */}
             {userExecutions.length > 0 && activeSubTab === "saisie" && (
-              <div className="flex items-center gap-2 md:gap-4 text-[10px] md:text-xs font-mono flex-shrink-0">
-                <div className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-500" />
-                  <span className="text-muted-foreground">{comparisonStats.matches}</span>
-                </div>
+              <div className="flex items-center gap-3 text-xs font-mono ml-1 flex-shrink-0">
+                <span className="flex items-center gap-1 text-emerald-400/80">
+                  <CheckCircle2 className="w-3.5 h-3.5" />{comparisonStats.matches}
+                </span>
                 {comparisonStats.warnings > 0 && (
-                  <div className="flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3 md:w-3.5 md:h-3.5 text-orange-500" />
-                    <span className="text-orange-500">{comparisonStats.warnings}</span>
-                  </div>
+                  <span className="flex items-center gap-1 text-orange-400/80">
+                    <AlertTriangle className="w-3.5 h-3.5" />{comparisonStats.warnings}
+                  </span>
                 )}
                 {comparisonStats.errors > 0 && (
-                  <div className="flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3 md:w-3.5 md:h-3.5 text-red-500" />
-                    <span className="text-red-500">{comparisonStats.errors}</span>
-                  </div>
+                  <span className="flex items-center gap-1 text-red-400/80">
+                    <AlertCircle className="w-3.5 h-3.5" />{comparisonStats.errors}
+                  </span>
                 )}
               </div>
             )}
