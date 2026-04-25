@@ -127,11 +127,23 @@ interface EaInfo {
   remainingLabel: string | null; // "23h restantes" or "Expiré il y a 3j"
 }
 
+interface CrmLeadData {
+  id: string;
+  formSubmittedAt: string;   // early_access_requests.created_at
+  paidAt: string | null;     // early_access_requests.paid_at
+  paidAmount: number | null;
+  offerAmount: string | null;
+  callDoneAt: string | null;
+  setterName: string | null;
+  closerName: string | null;
+}
+
 interface PlatformUser {
   id: string;
   displayName: string;
   firstName: string | null;
   created_at: string;
+  joinedAt: string;            // paid_at from CRM, fallback profiles.created_at
   currentCycle: Cycle | null;
   userCycles: UserCycleData[];
   totalTrades: number;
@@ -150,6 +162,7 @@ interface PlatformUser {
   isInstitute: boolean;           // has 'institute' role
   followups: FollowupEntry[];
   lastSeen: string | null;        // last_heartbeat from ea_activity_tracking
+  crmLead: CrmLeadData | null;   // linked early_access_request (if any)
 }
 
 interface PendingRequest {
@@ -354,7 +367,7 @@ export default function GestionPanel() {
   const [verificationAssigneeFilter, setVerificationAssigneeFilter] = useState("all");
   const [userFilter, setUserFilter] = useState<string>("all");
   const [userSort, setUserSort] = useState<string>("priority");
-  const [activeSubTab, setActiveSubTab] = useState<Record<string, "cycles" | "trades" | "profil">>({});
+  const [activeSubTab, setActiveSubTab] = useState<Record<string, "cycles" | "trades" | "origine" | "profil">>({});
   // Fiche user — drawer latéral (depuis vérifs ou alertes)
   const [ficheUserId, setFicheUserId] = useState<string | null>(null);
   // Filter verifications by user (from fiche link)
@@ -402,6 +415,7 @@ export default function GestionPanel() {
       const [
         profilesRes, cyclesRes, userCyclesRes, executionsRes, sessionsRes, activityRes,
         rolesRes, vrsRes, allVrsRes, processedVrsRes, alertsRes, oracleRes, adminRolesRes,
+        crmLeadsRes,
       ] = await Promise.all([
         supabase.from("profiles").select("*"),
         supabase.from("cycles").select("*").order("cycle_number"),
@@ -416,6 +430,9 @@ export default function GestionPanel() {
         supabase.from("security_alerts").select("*").eq("resolved", false).order("created_at", { ascending: false }),
         supabase.from("trades").select("id, trade_number, trade_date, entry_time, direction, rr, screenshot_m15_m5, screenshot_m1").order("trade_number"),
         supabase.from("user_roles").select("user_id").in("role", ["admin", "super_admin"]),
+        supabase.from("early_access_requests")
+          .select("id, user_id, created_at, paid_at, paid_amount, offer_amount, call_done_at, setter_name, closer_name")
+          .not("user_id", "is", null),
       ]);
 
       const profiles = (profilesRes.data || []) as any[];
@@ -431,6 +448,11 @@ export default function GestionPanel() {
       const alertsData = alertsRes.data || [];
       const oracleData = (oracleRes.data || []) as OracleTrade[];
       const adminRoles = adminRolesRes.data || [];
+      const crmLeads = (crmLeadsRes.data || []) as any[];
+
+      // CRM lead map: user_id → early_access_request
+      const crmMap: Record<string, any> = {};
+      crmLeads.forEach((l: any) => { if (l.user_id) crmMap[l.user_id] = l; });
 
       setCycles(cyclesData);
       setOracleTrades(oracleData);
@@ -498,11 +520,15 @@ export default function GestionPanel() {
         if (hasPending) userStatus = "pending";
         if (allValidated && ucs.length === cyclesData.length) userStatus = "completed";
 
+        const crmLead = crmMap[userId] || null;
+        const joinedAt = crmLead?.paid_at || profile?.created_at || new Date().toISOString();
+
         return {
           id: userId,
           displayName: profile?.display_name || profile?.first_name || `User ${userId.slice(0, 8)}`,
           firstName: profile?.first_name || null,
           created_at: profile?.created_at || ucs[0]?.started_at || new Date().toISOString(),
+          joinedAt,
           currentCycle: currentCycleData || null,
           userCycles: ucs,
           totalTrades: userExecs.length,
@@ -521,6 +547,16 @@ export default function GestionPanel() {
           eaInfo: buildEaInfo(userId),
           isInstitute: (rolesMap[userId] || []).includes("institute"),
           followups: [],
+          crmLead: crmLead ? {
+            id: crmLead.id,
+            formSubmittedAt: crmLead.created_at,
+            paidAt: crmLead.paid_at || null,
+            paidAmount: crmLead.paid_amount ? Number(crmLead.paid_amount) : null,
+            offerAmount: crmLead.offer_amount || null,
+            callDoneAt: crmLead.call_done_at || null,
+            setterName: crmLead.setter_name || null,
+            closerName: crmLead.closer_name || null,
+          } : null,
         };
       }).sort((a, b) => {
         // Priority sort: frozen/banned first, then pending verif, then by trades
@@ -1068,6 +1104,9 @@ export default function GestionPanel() {
                         {u.isInstitute && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-blue-500/10 text-blue-400 rounded leading-none">Institut</span>}
                         {u.teamRoles.map((r) => <span key={r} className="px-1.5 py-0.5 text-[9px] font-mono bg-violet-500/10 text-violet-400 rounded leading-none">{getRoleLabel(r)}</span>)}
                       </div>
+                      <p className="text-[9px] font-mono text-white/25 mt-0.5 leading-none">
+                        {u.crmLead?.paidAt ? "Payé" : "Rejoint"} {fmtDate(u.joinedAt)}
+                      </p>
                     </div>
 
                     {/* Current cycle */}
@@ -1146,6 +1185,7 @@ export default function GestionPanel() {
                         {([
                           { key: "cycles" as const, label: "Cycles", detail: `${u.userCycles.filter((uc) => uc.status === "validated").length}/${cycles.length}` },
                           { key: "trades" as const, label: "Trades", detail: `${u.executions.length}` },
+                          { key: "origine" as const, label: "Origine", detail: u.crmLead ? "✓" : undefined },
                           { key: "profil" as const, label: "Profil & Actions" },
                         ]).map((st) => (
                           <button
@@ -1254,6 +1294,45 @@ export default function GestionPanel() {
                                   </Table>
                                 </ScrollArea>
                               </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* ── Sub-tab: Origine CRM ── */}
+                        {subTab === "origine" && (
+                          <div className="space-y-2 py-1">
+                            {u.crmLead ? (
+                              <>
+                                <div className="grid grid-cols-3 gap-2">
+                                  {[
+                                    { label: "Form soumis", value: fmtDate(u.crmLead.formSubmittedAt), sub: new Date(u.crmLead.formSubmittedAt).getFullYear().toString(), color: "" },
+                                    { label: "Call fait", value: u.crmLead.callDoneAt ? fmtDate(u.crmLead.callDoneAt) : "—", sub: "", color: "" },
+                                    { label: "Paiement", value: u.crmLead.paidAt ? fmtDate(u.crmLead.paidAt) : "—", sub: u.crmLead.offerAmount || (u.crmLead.paidAmount ? `${u.crmLead.paidAmount} €` : ""), color: "emerald" },
+                                  ].map((item) => (
+                                    <div key={item.label} className={cn("p-2.5 rounded-lg space-y-0.5", item.color === "emerald" ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-accent/30")}>
+                                      <p className={cn("text-[9px] font-mono uppercase", item.color === "emerald" ? "text-emerald-400/70" : "text-muted-foreground")}>{item.label}</p>
+                                      <p className={cn("text-xs font-bold", item.color === "emerald" ? "text-emerald-400" : "text-foreground")}>{item.value}</p>
+                                      {item.sub && <p className="text-[9px] font-mono text-muted-foreground">{item.sub}</p>}
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {[
+                                    { label: "Setter", value: u.crmLead.setterName || "—" },
+                                    { label: "Closer", value: u.crmLead.closerName || "—" },
+                                  ].map((item) => (
+                                    <div key={item.label} className="p-2.5 rounded-lg bg-accent/30 space-y-0.5">
+                                      <p className="text-[9px] font-mono uppercase text-muted-foreground">{item.label}</p>
+                                      <p className="text-xs font-semibold">{item.value}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="py-6 text-center">
+                                <p className="text-xs text-muted-foreground">Aucun lead CRM lié.</p>
+                                <p className="text-[10px] text-muted-foreground/40 mt-1">Utilisateur créé sans passer par le funnel d'acquisition.</p>
+                              </div>
                             )}
                           </div>
                         )}
