@@ -358,19 +358,20 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
       {/* ── Main content area ── */}
       <div className="flex-1 flex min-h-0 relative z-10">
 
-        {/* ── Left column — centré verticalement ── */}
+        {/* ── Left column ── */}
         <div
-          className="shrink-0 flex flex-col justify-center"
+          className="shrink-0 flex flex-col"
           style={{
             width: "42%",
             paddingLeft: "clamp(2.5rem, 5vw, 5rem)",
             paddingRight: "2rem",
             paddingTop: "clamp(2rem, 4vh, 3rem)",
-            paddingBottom: "clamp(2rem, 4vh, 3rem)",
+            paddingBottom: "clamp(1.5rem, 3vh, 2.5rem)",
           }}
         >
 
-          {/* ── Slide content ── */}
+          {/* ── Slide content — centré dans le flex-1 ── */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <div key={`content-${slide}`}>
 
             {/* Étape — label uppercase au-dessus du heading */}
@@ -394,7 +395,8 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
               fontSize: "clamp(3rem, 6.2vw, 5rem)",
               fontWeight: 900,
               letterSpacing: "-0.045em",
-              lineHeight: "0.90",
+              lineHeight: "0.95",
+              paddingBottom: "0.08em",
               backgroundImage: "linear-gradient(170deg, #ffffff 30%, rgba(255,255,255,0.28) 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
@@ -507,6 +509,87 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
             </div>
 
           </div>
+          </div>{/* end flex-1 center wrapper */}
+
+          {/* ── Steps status block — ancré en bas ── */}
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            paddingTop: "20px",
+            borderTop: "1px solid rgba(255,255,255,0.05)",
+            opacity: entered ? 1 : 0,
+            transition: "opacity 0.6s ease 0.4s",
+          }}>
+            {SLIDES.map((s, i) => {
+              const isDone = i < slide;
+              const isCurrent = i === slide;
+              return (
+                <button
+                  key={i}
+                  onClick={() => goTo(i)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    background: "none",
+                    border: "none",
+                    padding: "2px 0",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    opacity: i > slide ? 0.28 : 1,
+                    transition: "opacity 0.2s ease",
+                  }}
+                >
+                  {/* Dot */}
+                  <div style={{
+                    width: "18px",
+                    height: "18px",
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    border: isDone ? "none" : `1.5px solid ${isCurrent ? s.accent : "rgba(255,255,255,0.15)"}`,
+                    background: isDone ? s.accent : "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    {isDone && <Check style={{ width: "9px", height: "9px", color: "#000", strokeWidth: 3 }} />}
+                    {isCurrent && <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: s.accent }} />}
+                  </div>
+
+                  {/* Label */}
+                  <span style={{
+                    fontSize: "12px",
+                    fontWeight: isCurrent ? 600 : 400,
+                    fontFamily: "'Inter', system-ui, sans-serif",
+                    letterSpacing: "-0.01em",
+                    color: isDone
+                      ? "rgba(255,255,255,0.55)"
+                      : isCurrent
+                        ? "rgba(255,255,255,0.88)"
+                        : "rgba(255,255,255,0.20)",
+                  }}>
+                    {s.label}
+                  </span>
+
+                  {/* Status right-aligned */}
+                  <span style={{
+                    marginLeft: "auto",
+                    fontSize: "11px",
+                    fontFamily: "'Inter', system-ui, sans-serif",
+                    color: isDone
+                      ? s.accent
+                      : isCurrent
+                        ? "rgba(255,255,255,0.30)"
+                        : "rgba(255,255,255,0.12)",
+                  }}>
+                    {stepStatus[i]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
         </div>
 
         {/* ── Right panel : floating screen in 3D space ── */}
