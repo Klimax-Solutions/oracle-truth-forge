@@ -63,7 +63,14 @@ async function copyTableForUser(
   }
   if (!data || data.length === 0) return 0;
 
-  const { error: insErr } = await target.from(table).insert(data);
+  // user_roles: trigger handle_new_user_role auto-inserts a 'member' row → use upsert with ignore
+  // Other tables: plain insert (assumed empty for new auth user)
+  const insertOptions = table === "user_roles"
+    ? { onConflict: "user_id,role", ignoreDuplicates: true }
+    : undefined;
+  const { error: insErr } = insertOptions
+    ? await target.from(table).upsert(data, insertOptions)
+    : await target.from(table).insert(data);
   if (insErr) {
     errors.push(`[${uid}] insert ${table} (${data.length} rows): ${insErr.message}`);
     return 0;
@@ -151,9 +158,12 @@ async function migrateOneUser(
     imported_from_prod: true,
     imported_at: new Date().toISOString(),
   };
-  const { error: profInsErr } = await target.from("profiles").insert(profileToInsert);
+  // Use upsert because trigger handle_new_user auto-creates a stub profile on auth.users INSERT
+  const { error: profInsErr } = await target
+    .from("profiles")
+    .upsert(profileToInsert, { onConflict: "user_id" });
   if (profInsErr) {
-    errors.push(`[${uid}] insert profile: ${profInsErr.message}`);
+    errors.push(`[${uid}] upsert profile: ${profInsErr.message}`);
     // Don't abort — try to continue with the rest
   } else {
     counts["profiles"] = 1;
@@ -282,30 +292,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ---- 3) Migration with try/finally around triggers ----
+    // ---- 3) Migration (no RPC trigger toggle: auth.users belongs to supabase_auth_admin
+    //         and cannot be ALTERed even with SECURITY DEFINER. We use upsert on profiles
+    //         and onConflict-ignore on user_roles to handle the auto-trigger inserts.) ----
     const errors: string[] = [];
     const results: Array<Awaited<ReturnType<typeof migrateOneUser>>> = [];
-    let triggersDisabled = false;
 
-    try {
-      const { error: disableErr } = await target.rpc("disable_import_triggers");
-      if (disableErr) {
-        throw new Error(`disable_import_triggers RPC failed: ${disableErr.message}`);
-      }
-      triggersDisabled = true;
-
-      // Sequential to avoid storage rate limits & easier error tracing
-      for (const uid of batch) {
-        const result = await migrateOneUser(source, target, uid, errors);
-        results.push(result);
-      }
-    } finally {
-      if (triggersDisabled) {
-        const { error: enableErr } = await target.rpc("enable_import_triggers");
-        if (enableErr) {
-          errors.push(`CRITICAL enable_import_triggers RPC failed: ${enableErr.message}`);
-        }
-      }
+    // Sequential to avoid storage rate limits & easier error tracing
+    for (const uid of batch) {
+      const result = await migrateOneUser(source, target, uid, errors);
+      results.push(result);
     }
 
     // ---- 4) Aggregate report ----
