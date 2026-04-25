@@ -358,32 +358,17 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
       {/* ── Main content area ── */}
       <div className="flex-1 flex min-h-0 relative z-10">
 
-        {/* ── Left column — ancré en haut, éditorial ── */}
+        {/* ── Left column — centré verticalement ── */}
         <div
-          className="shrink-0 flex flex-col justify-start"
+          className="shrink-0 flex flex-col justify-center"
           style={{
             width: "42%",
             paddingLeft: "clamp(2.5rem, 5vw, 5rem)",
             paddingRight: "2rem",
-            paddingTop: "clamp(5rem, 13vh, 8rem)",
-            paddingBottom: "clamp(2rem, 5vh, 3rem)",
+            paddingTop: "clamp(2rem, 4vh, 3rem)",
+            paddingBottom: "clamp(2rem, 4vh, 3rem)",
           }}
         >
-
-          {/* ── Greeting — discret, en haut ── */}
-          {firstName && (
-            <div style={{ marginBottom: "18px", opacity: 1, transition: "opacity 0.6s ease" }}>
-              <span style={{
-                fontSize: "12px",
-                fontWeight: 400,
-                fontFamily: "'Inter', system-ui, sans-serif",
-                letterSpacing: "0.02em",
-                color: "rgba(255,255,255,0.28)",
-              }}>
-                {(() => { const h = new Date().getHours(); return h < 12 ? "Bonjour" : h < 19 ? "Bon après-midi" : "Bonsoir"; })()}, {firstName}
-              </span>
-            </div>
-          )}
 
           {/* ── Slide content ── */}
           <div key={`content-${slide}`}>
