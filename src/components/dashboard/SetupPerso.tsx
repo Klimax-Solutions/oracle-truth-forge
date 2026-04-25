@@ -560,14 +560,19 @@ export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupP
       {/* Header */}
       <div className="p-3 md:p-6 border-b border-border">
         <div className="flex flex-col gap-3 md:gap-4 md:flex-row md:items-center md:justify-between mb-3 md:mb-4">
-          <div>
-            <h2 className="text-base md:text-xl font-semibold text-foreground mb-0.5 md:mb-1">
-              {customSetupName || "Setup Perso"}
-            </h2>
-            <p className="text-[10px] md:text-sm text-muted-foreground font-mono">
-              Gérez vos trades {customSetupName ? `— ${customSetupName}` : "personnels"}
-            </p>
-          </div>
+          {/* Title block — hidden in session mode (parent already shows session name) */}
+          {!sessionId ? (
+            <div>
+              <h2 className="text-base md:text-xl font-semibold text-foreground mb-0.5 md:mb-1">
+                {customSetupName || "Setup Perso"}
+              </h2>
+              <p className="text-[10px] md:text-sm text-muted-foreground font-mono">
+                {customSetupName ? `Setup personnalisé · ${customSetupName}` : "Gérez vos trades personnels"}
+              </p>
+            </div>
+          ) : (
+            <div />
+          )}
           
           {/* Actions - scrollable on mobile */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
@@ -792,7 +797,7 @@ export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupP
                 <TableHead>Direction</TableHead>
                 <TableHead>Structure</TableHead>
                 <TableHead>Entrée</TableHead>
-                <TableHead>Setup</TableHead>
+                <TableHead>Type de Setup</TableHead>
                 <TableHead className="text-right">RR</TableHead>
               </TableRow>
             </TableHeader>

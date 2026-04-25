@@ -612,7 +612,7 @@ export const PersonalTradeDialog = ({
           {/* Row 4: Structure & Type de Setup (multi-select) */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Contexte</Label>
+              <Label>Structure</Label>
               <CustomizableMultiSelect
                 value={formData.direction_structure}
                 onChange={(value) => setFormData({ ...formData, direction_structure: value })}
@@ -623,7 +623,7 @@ export const PersonalTradeDialog = ({
               />
             </div>
             <div className="space-y-2">
-              <Label>Type de Configuration</Label>
+              <Label>Type de Setup</Label>
               <CustomizableMultiSelect
                 value={formData.setup_type}
                 onChange={(value) => setFormData({ ...formData, setup_type: value })}
@@ -651,7 +651,7 @@ export const PersonalTradeDialog = ({
               />
             </div>
             <div className="space-y-2">
-              <Label>Timing</Label>
+              <Label>Entry Timing</Label>
               <CustomizableMultiSelect
                 value={formData.entry_timing}
                 onChange={(value) => setFormData({ ...formData, entry_timing: value })}

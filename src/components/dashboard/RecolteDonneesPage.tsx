@@ -153,7 +153,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
 
         {/* Session content : SetupPerso filtered by sessionId */}
         <div className="flex-1 overflow-auto">
-          <SetupPerso sessionId={activeSessionId} />
+          <SetupPerso sessionId={activeSessionId} customSetupName={session?.name} />
         </div>
       </div>
     );
