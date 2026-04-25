@@ -649,7 +649,13 @@ export default function GestionPanel() {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+    // Safety: si une requête reste pending (RLS lente, network, session stale),
+    // on force la sortie du spinner après 15s pour éviter le load infini.
+    const safety = setTimeout(() => setLoading((prev) => (prev ? false : prev)), 15000);
+    return () => clearTimeout(safety);
+  }, [loadData]);
 
   // ── Trade notes ──
   const loadTradeNotes = async (requestId: string) => {

@@ -430,14 +430,14 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
       if (userIds.length === 0) return;
       const [rolesRes, activityRes, sessionsRes, execsRes, videoViewsRes] = await Promise.all([
         supabase.from("user_roles").select("user_id, expires_at, early_access_type").in("user_id", userIds).eq("role", "early_access"),
-        supabase.from("ea_activity_tracking").select("user_id, is_active, active_tab, last_heartbeat").in("user_id", userIds),
+        supabase.from("ea_activity_tracking").select("user_id, active_tab, last_heartbeat").in("user_id", userIds),
         supabase.from("user_sessions").select("user_id").in("user_id", userIds),
         supabase.from("user_executions").select("user_id").in("user_id", userIds),
         supabase.from("user_video_views").select("user_id").in("user_id", userIds),
       ]);
       const rolesMap: Record<string, any> = {}, activityMap: Record<string, any> = {}, sessionMap: Record<string, number> = {}, execMap: Record<string, number> = {}, videoViewMap: Record<string, number> = {};
       rolesRes.data?.forEach((r: any) => { rolesMap[r.user_id] = r; });
-      activityRes.data?.forEach((a: any) => { activityMap[a.user_id] = { is_active: a.is_active && a.last_heartbeat && (Date.now() - new Date(a.last_heartbeat).getTime()) < 60000, active_tab: a.active_tab }; });
+      activityRes.data?.forEach((a: any) => { activityMap[a.user_id] = { is_active: !!(a.last_heartbeat && (Date.now() - new Date(a.last_heartbeat).getTime()) < 60000), active_tab: a.active_tab }; });
       sessionsRes.data?.forEach((s: any) => { sessionMap[s.user_id] = (sessionMap[s.user_id] || 0) + 1; });
       execsRes.data?.forEach((e: any) => { execMap[e.user_id] = (execMap[e.user_id] || 0) + 1; });
       videoViewsRes.data?.forEach((v: any) => { videoViewMap[v.user_id] = (videoViewMap[v.user_id] || 0) + 1; });
