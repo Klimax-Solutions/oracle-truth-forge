@@ -292,30 +292,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ---- 3) Migration with try/finally around triggers ----
+    // ---- 3) Migration (no RPC trigger toggle: auth.users belongs to supabase_auth_admin
+    //         and cannot be ALTERed even with SECURITY DEFINER. We use upsert on profiles
+    //         and onConflict-ignore on user_roles to handle the auto-trigger inserts.) ----
     const errors: string[] = [];
     const results: Array<Awaited<ReturnType<typeof migrateOneUser>>> = [];
-    let triggersDisabled = false;
 
-    try {
-      const { error: disableErr } = await target.rpc("disable_import_triggers");
-      if (disableErr) {
-        throw new Error(`disable_import_triggers RPC failed: ${disableErr.message}`);
-      }
-      triggersDisabled = true;
-
-      // Sequential to avoid storage rate limits & easier error tracing
-      for (const uid of batch) {
-        const result = await migrateOneUser(source, target, uid, errors);
-        results.push(result);
-      }
-    } finally {
-      if (triggersDisabled) {
-        const { error: enableErr } = await target.rpc("enable_import_triggers");
-        if (enableErr) {
-          errors.push(`CRITICAL enable_import_triggers RPC failed: ${enableErr.message}`);
-        }
-      }
+    // Sequential to avoid storage rate limits & easier error tracing
+    for (const uid of batch) {
+      const result = await migrateOneUser(source, target, uid, errors);
+      results.push(result);
     }
 
     // ---- 4) Aggregate report ----
