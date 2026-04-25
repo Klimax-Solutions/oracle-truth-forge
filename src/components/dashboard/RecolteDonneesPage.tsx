@@ -314,7 +314,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
 
         {/* Mes sessions en cours */}
         <section className="mb-12">
-          <div className="flex items-baseline justify-between mb-4">
+          <div className="flex items-baseline justify-between mb-5">
             <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)" }}>
               Mes sessions
             </p>
@@ -327,102 +327,109 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
             <div className="flex items-center justify-center py-16">
               <Loader2 className="w-6 h-6 animate-spin text-white/30" />
             </div>
-          ) : sessions.length === 0 ? (
-            <div className="text-center py-16 border border-dashed border-white/[0.08] rounded-2xl">
-              <p className="text-sm text-white/30">Aucune session en cours</p>
-              <p className="text-xs text-white/20 mt-1">
-                Démarre une session backtesting ou live trading pour commencer
-              </p>
-            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {sessions.map(s => {
-                const stats = sessionStats[s.id] || { trades: 0, rr: 0, winRate: 0, avgRR: 0 };
-                const isBacktest = s.type === "backtesting";
-                const accent = isBacktest ? TEAL : ORANGE;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => setActiveSessionId(s.id)}
-                    className="group text-left rounded-2xl p-5 border transition-all hover:scale-[1.01]"
-                    style={{
-                      borderColor: `${accent}33`,
-                      backgroundColor: "rgba(255,255,255,0.02)",
-                    }}
-                  >
-                    <div className="flex items-start gap-3 mb-4">
-                      <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: `${accent}22` }}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              {/* ── Colonne Backtesting ── */}
+              <div>
+                <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: TEAL, marginBottom: "12px", opacity: 0.8 }}>
+                  Backtesting · {backtestingSessions.length}
+                </p>
+                <div className="space-y-3">
+                  {backtestingSessions.map(s => {
+                    const stats = sessionStats[s.id] || { trades: 0, rr: 0, winRate: 0, avgRR: 0 };
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => setActiveSessionId(s.id)}
+                        className="group w-full text-left rounded-2xl p-5 border transition-all hover:scale-[1.01]"
+                        style={{ borderColor: `${TEAL}33`, backgroundColor: "rgba(255,255,255,0.02)" }}
                       >
-                        {isBacktest
-                          ? <LineChart className="w-4 h-4" style={{ color: accent }} />
-                          : <Play className="w-4 h-4" style={{ color: accent }} />}
-                      </div>
-                      <div className="min-w-0">
-                        <p
-                          className="text-[9px] font-semibold tracking-[0.15em] uppercase"
-                          style={{ color: accent }}
-                        >
-                          {isBacktest ? "BACKTESTING" : "LIVE TRADING"}
-                          {s.asset && <span className="ml-1 opacity-60">· {s.asset}</span>}
-                        </p>
-                        <h4 className="text-base font-bold text-white truncate">{s.name}</h4>
-                      </div>
-                    </div>
-
-                    {/* Stats 4 columns */}
-                    <div className="grid grid-cols-4 gap-2 mb-4">
-                      <div className="text-left">
-                        <p className="text-[9px] font-mono uppercase text-white/30">Trades</p>
-                        <p className="text-base font-bold text-white">{stats.trades}</p>
-                      </div>
-                      <div className="text-left">
-                        <p className="text-[9px] font-mono uppercase text-white/30">RR</p>
-                        <p className={cn(
-                          "text-base font-bold font-mono",
-                          stats.rr >= 0 ? "text-emerald-400" : "text-red-400"
-                        )}>
-                          {stats.rr >= 0 ? "+" : ""}{stats.rr.toFixed(1)}
-                        </p>
-                      </div>
-                      <div className="text-left">
-                        <p className="text-[9px] font-mono uppercase text-white/30">WR</p>
-                        <p className="text-base font-bold text-white">{stats.winRate.toFixed(0)}%</p>
-                      </div>
-                      <div className="text-left">
-                        <p className="text-[9px] font-mono uppercase text-white/30">Moy</p>
-                        <p className="text-base font-bold text-white">{stats.avgRR.toFixed(2)}</p>
-                      </div>
-                    </div>
-
-                    {/* CTA */}
-                    <div
-                      className="w-full h-10 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold transition-all group-hover:brightness-110"
-                      style={{
-                        backgroundColor: `${accent}15`,
-                        color: accent,
-                      }}
-                    >
-                      ▶ Continuer ma récolte
-                    </div>
+                        <div className="flex items-start gap-3 mb-4">
+                          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${TEAL}22` }}>
+                            <LineChart className="w-4 h-4" style={{ color: TEAL }} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[9px] font-semibold tracking-[0.15em] uppercase" style={{ color: TEAL }}>
+                              BACKTESTING{s.asset && <span className="ml-1 opacity-60">· {s.asset}</span>}
+                            </p>
+                            <h4 className="text-base font-bold text-white truncate">{s.name}</h4>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 mb-4">
+                          <div><p className="text-[9px] font-mono uppercase text-white/30">Trades</p><p className="text-base font-bold text-white">{stats.trades}</p></div>
+                          <div><p className="text-[9px] font-mono uppercase text-white/30">RR</p><p className={cn("text-base font-bold font-mono", stats.rr >= 0 ? "text-emerald-400" : "text-red-400")}>{stats.rr >= 0 ? "+" : ""}{stats.rr.toFixed(1)}</p></div>
+                          <div><p className="text-[9px] font-mono uppercase text-white/30">WR</p><p className="text-base font-bold text-white">{stats.winRate.toFixed(0)}%</p></div>
+                          <div><p className="text-[9px] font-mono uppercase text-white/30">Moy</p><p className="text-base font-bold text-white">{stats.avgRR.toFixed(2)}</p></div>
+                        </div>
+                        <div className="w-full h-10 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold transition-all group-hover:brightness-110" style={{ backgroundColor: `${TEAL}15`, color: TEAL }}>
+                          ▶ Continuer ma récolte
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {/* Slot ajouter */}
+                  <button
+                    onClick={() => setDialogType("backtesting")}
+                    className="w-full rounded-2xl p-4 border border-dashed hover:border-white/[0.15] transition-colors flex items-center justify-center gap-2 min-h-[60px]"
+                    style={{ borderColor: `${TEAL}22` }}
+                  >
+                    <Plus className="w-4 h-4" style={{ color: `${TEAL}60` }} />
+                    <span style={{ fontSize: "11px", color: `${TEAL}60` }}>Nouvelle session backtesting</span>
                   </button>
-                );
-              })}
+                </div>
+              </div>
 
-              {/* Emplacement libre visuel (si moins de 4 sessions) */}
-              {sessions.length < 4 && (
-                <button
-                  onClick={() => setDialogType("backtesting")}
-                  className="group text-left rounded-2xl p-5 border border-dashed border-white/[0.08] hover:border-white/[0.15] transition-colors flex items-center justify-center min-h-[180px]"
-                >
-                  <div className="text-center">
-                    <Plus className="w-6 h-6 text-white/20 mx-auto mb-2" />
-                    <p className="text-xs text-white/30">Emplacement libre</p>
-                    <p className="text-[10px] text-white/20 mt-0.5">pour une nouvelle session</p>
-                  </div>
-                </button>
-              )}
+              {/* ── Colonne Live Trading ── */}
+              <div>
+                <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: ORANGE, marginBottom: "12px", opacity: 0.8 }}>
+                  Live Trading · {liveSessions.length}
+                </p>
+                <div className="space-y-3">
+                  {liveSessions.map(s => {
+                    const stats = sessionStats[s.id] || { trades: 0, rr: 0, winRate: 0, avgRR: 0 };
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => setActiveSessionId(s.id)}
+                        className="group w-full text-left rounded-2xl p-5 border transition-all hover:scale-[1.01]"
+                        style={{ borderColor: `${ORANGE}33`, backgroundColor: "rgba(255,255,255,0.02)" }}
+                      >
+                        <div className="flex items-start gap-3 mb-4">
+                          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${ORANGE}22` }}>
+                            <Play className="w-4 h-4" style={{ color: ORANGE }} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[9px] font-semibold tracking-[0.15em] uppercase" style={{ color: ORANGE }}>
+                              LIVE TRADING{s.asset && <span className="ml-1 opacity-60">· {s.asset}</span>}
+                            </p>
+                            <h4 className="text-base font-bold text-white truncate">{s.name}</h4>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 mb-4">
+                          <div><p className="text-[9px] font-mono uppercase text-white/30">Trades</p><p className="text-base font-bold text-white">{stats.trades}</p></div>
+                          <div><p className="text-[9px] font-mono uppercase text-white/30">RR</p><p className={cn("text-base font-bold font-mono", stats.rr >= 0 ? "text-emerald-400" : "text-red-400")}>{stats.rr >= 0 ? "+" : ""}{stats.rr.toFixed(1)}</p></div>
+                          <div><p className="text-[9px] font-mono uppercase text-white/30">WR</p><p className="text-base font-bold text-white">{stats.winRate.toFixed(0)}%</p></div>
+                          <div><p className="text-[9px] font-mono uppercase text-white/30">Moy</p><p className="text-base font-bold text-white">{stats.avgRR.toFixed(2)}</p></div>
+                        </div>
+                        <div className="w-full h-10 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold transition-all group-hover:brightness-110" style={{ backgroundColor: `${ORANGE}15`, color: ORANGE }}>
+                          ▶ Continuer ma récolte
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {/* Slot ajouter */}
+                  <button
+                    onClick={() => setDialogType("live_trading")}
+                    className="w-full rounded-2xl p-4 border border-dashed hover:border-white/[0.15] transition-colors flex items-center justify-center gap-2 min-h-[60px]"
+                    style={{ borderColor: `${ORANGE}22` }}
+                  >
+                    <Plus className="w-4 h-4" style={{ color: `${ORANGE}60` }} />
+                    <span style={{ fontSize: "11px", color: `${ORANGE}60` }}>Nouvelle session live trading</span>
+                  </button>
+                </div>
+              </div>
+
             </div>
           )}
         </section>
