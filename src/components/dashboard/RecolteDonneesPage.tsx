@@ -213,7 +213,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
               <div className="absolute inset-0 pointer-events-none" style={{
                 backgroundImage: `radial-gradient(circle at 85% 15%, ${TEAL}20, transparent 55%)`
               }} />
-              <div className="relative flex items-start gap-5">
+              <div className="relative flex items-center gap-5">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{
                   background: `${TEAL}18`, border: `1px solid ${TEAL}40`,
                   boxShadow: `0 0 24px ${TEAL}25`,
@@ -224,12 +224,12 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
                   <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.20em", textTransform: "uppercase", color: TEAL, marginBottom: "6px" }}>
                     Prime Setup Oracle · verrouillé
                   </p>
-                  <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#fff", marginBottom: "8px" }}>Accéder au Setup Oracle</h2>
-                  <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.50)", lineHeight: 1.6, maxWidth: "46ch", marginBottom: "20px" }}>
-                    Base de données de <strong style={{ color: "#fff" }}>314 trades de référence</strong> + méthodologie complète. Débloqué en passant membre.
+                  <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#fff", marginBottom: "6px" }}>Accéder au Setup Oracle</h2>
+                  <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.50)", lineHeight: 1.5 }}>
+                    Base de données de <strong style={{ color: "#fff" }}>314 trades de référence</strong> + méthodologie complète
                   </p>
-                  <ActionButton label="Débloquer" icon={<Lock className="w-4 h-4" />} bg="#158A7E" shadow="rgba(21,138,126,0.45)" disabled />
                 </div>
+                <ActionButton label="Débloquer" icon={<Lock className="w-4 h-4" />} bg="#158A7E" shadow="rgba(21,138,126,0.45)" disabled />
               </div>
             </div>
           ) : (
