@@ -121,10 +121,14 @@ Deno.serve(async (req) => {
 
           // Per-table counts
           for (const t of PER_USER_TABLES) {
-            const { count, error } = await source
-              .from(t)
-              .select("*", { count: "exact", head: true })
-              .eq("user_id", uid);
+            let q = source.from(t).select("*", { count: "exact", head: true });
+            // custom_setups has no user_id col — use created_by OR assigned_to
+            if (t === "custom_setups") {
+              q = q.or(`created_by.eq.${uid},assigned_to.eq.${uid}`);
+            } else {
+              q = q.eq("user_id", uid);
+            }
+            const { count, error } = await q;
             if (error) {
               counts[t] = `ERR: ${error.message}`;
             } else {
