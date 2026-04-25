@@ -72,8 +72,8 @@ async function copyTableForUser(
 }
 
 async function copyStorageForUser(
-  source: ReturnType<typeof createClient>,
-  target: ReturnType<typeof createClient>,
+  source: Client,
+  target: Client,
   uid: string,
   errors: string[],
 ): Promise<{ files: number; bytes: number }> {
@@ -114,8 +114,8 @@ async function copyStorageForUser(
 }
 
 async function migrateOneUser(
-  source: ReturnType<typeof createClient>,
-  target: ReturnType<typeof createClient>,
+  source: Client,
+  target: Client,
   uid: string,
   errors: string[],
 ): Promise<{ uid: string; status: string; counts: Record<string, number>; storage: { files: number; bytes: number } }> {
