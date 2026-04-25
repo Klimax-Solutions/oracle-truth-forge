@@ -24,7 +24,7 @@ const COPY_ORDER = [
   "user_quest_flags",
   "user_successes",
   "user_notifications",
-  "user_video_views",
+  // user_video_views: skipped (low value, no FK overlap between source & target videos)
   "user_trade_analyses",
 ] as const;
 
@@ -49,6 +49,7 @@ async function copyTableForUser(
   table: string,
   uid: string,
   errors: string[],
+  cycleMap?: Map<string, string>,
 ): Promise<number> {
   let query = source.from(table).select("*");
   if (table === "custom_setups") {
@@ -63,19 +64,36 @@ async function copyTableForUser(
   }
   if (!data || data.length === 0) return 0;
 
+  // user_cycles & verification_requests: remap cycle_id (source UUID → target UUID) via cycle_number lookup
+  let rows = data;
+  if ((table === "user_cycles" || table === "verification_requests") && cycleMap) {
+    const remapped: Record<string, unknown>[] = [];
+    for (const row of data as Record<string, unknown>[]) {
+      const srcCycleId = row.cycle_id as string;
+      const tgtCycleId = cycleMap.get(srcCycleId);
+      if (!tgtCycleId) {
+        errors.push(`[${uid}] WARN ${table}: no target cycle for src=${srcCycleId} → row skipped`);
+        continue;
+      }
+      remapped.push({ ...row, cycle_id: tgtCycleId });
+    }
+    rows = remapped;
+    if (rows.length === 0) return 0;
+  }
+
   // user_roles: trigger handle_new_user_role auto-inserts a 'member' row → use upsert with ignore
   // Other tables: plain insert (assumed empty for new auth user)
   const insertOptions = table === "user_roles"
     ? { onConflict: "user_id,role", ignoreDuplicates: true }
     : undefined;
   const { error: insErr } = insertOptions
-    ? await target.from(table).upsert(data, insertOptions)
-    : await target.from(table).insert(data);
+    ? await target.from(table).upsert(rows, insertOptions)
+    : await target.from(table).insert(rows);
   if (insErr) {
-    errors.push(`[${uid}] insert ${table} (${data.length} rows): ${insErr.message}`);
+    errors.push(`[${uid}] insert ${table} (${rows.length} rows): ${insErr.message}`);
     return 0;
   }
-  return data.length;
+  return rows.length;
 }
 
 async function copyStorageForUser(
@@ -125,6 +143,7 @@ async function migrateOneUser(
   target: Client,
   uid: string,
   errors: string[],
+  cycleMap: Map<string, string>,
 ): Promise<{ uid: string; status: string; counts: Record<string, number>; storage: { files: number; bytes: number } }> {
   const counts: Record<string, number> = {};
 
@@ -171,7 +190,7 @@ async function migrateOneUser(
 
   // 3) All per-user tables in dependency order
   for (const table of COPY_ORDER) {
-    counts[table] = await copyTableForUser(source, target, table, uid, errors);
+    counts[table] = await copyTableForUser(source, target, table, uid, errors, cycleMap);
   }
 
   // 4) admin_trade_notes (linked via verification_request_id of this user)
@@ -292,7 +311,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ---- 3) Migration (no RPC trigger toggle: auth.users belongs to supabase_auth_admin
+    // ---- 3) Build cycle remap (source.cycle_id → target.cycle_id via cycle_number) ----
+    const cycleMap = new Map<string, string>();
+    {
+      const { data: srcCycles } = await source.from("cycles").select("id, cycle_number");
+      const { data: tgtCycles } = await target.from("cycles").select("id, cycle_number");
+      const tgtByNum = new Map<number, string>();
+      for (const c of tgtCycles ?? []) tgtByNum.set(c.cycle_number, c.id);
+      for (const c of srcCycles ?? []) {
+        const tgtId = tgtByNum.get(c.cycle_number);
+        if (tgtId) cycleMap.set(c.id, tgtId);
+      }
+    }
+
+    // ---- 4) Migration (no RPC trigger toggle: auth.users belongs to supabase_auth_admin
     //         and cannot be ALTERed even with SECURITY DEFINER. We use upsert on profiles
     //         and onConflict-ignore on user_roles to handle the auto-trigger inserts.) ----
     const errors: string[] = [];
@@ -300,7 +332,7 @@ Deno.serve(async (req) => {
 
     // Sequential to avoid storage rate limits & easier error tracing
     for (const uid of batch) {
-      const result = await migrateOneUser(source, target, uid, errors);
+      const result = await migrateOneUser(source, target, uid, errors, cycleMap);
       results.push(result);
     }
 
