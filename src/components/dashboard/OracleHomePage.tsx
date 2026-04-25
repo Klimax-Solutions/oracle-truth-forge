@@ -358,35 +358,75 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
       {/* ── Main content area ── */}
       <div className="flex-1 flex min-h-0 relative z-10">
 
-        {/* ── Left column : fixed width, scrollable content ── */}
+        {/* ── Left column — ancré en haut, éditorial ── */}
         <div
-          className="shrink-0 flex flex-col justify-center py-10"
-          style={{ width: "42%", paddingLeft: "clamp(2rem, 5vw, 5rem)", paddingRight: "2rem" }}
+          className="shrink-0 flex flex-col justify-start"
+          style={{
+            width: "42%",
+            paddingLeft: "clamp(2.5rem, 5vw, 5rem)",
+            paddingRight: "2rem",
+            paddingTop: "clamp(3.5rem, 9vh, 5.5rem)",
+            paddingBottom: "clamp(2rem, 5vh, 3rem)",
+          }}
         >
 
-          {/* ── Context line : greeting + étape ── */}
-          <div style={{ opacity: firstName ? 1 : 0, transition: "opacity 0.5s ease", marginBottom: "28px", minHeight: "18px" }}>
-            <p style={{ fontSize: "13px", fontWeight: 500, fontFamily: "'Inter', system-ui, sans-serif", color: "rgba(255,255,255,0.34)", display: "flex", alignItems: "center", gap: "7px" }}>
-              <span>
-                {(() => { const h = new Date().getHours(); return h < 12 ? "Bonjour," : h < 19 ? "Bon après-midi," : "Bonsoir,"; })()}{" "}
-                <span style={{ color: "rgba(255,255,255,0.68)", fontWeight: 600 }}>{firstName}</span>
+          {/* ── Greeting — chaud, personnel, visible ── */}
+          <div style={{ opacity: firstName ? 1 : 0, transition: "opacity 0.5s ease", marginBottom: "40px" }}>
+            <p style={{
+              fontSize: "19px",
+              fontWeight: 400,
+              fontFamily: "'Inter', system-ui, sans-serif",
+              letterSpacing: "-0.01em",
+              lineHeight: 1,
+              color: "rgba(255,255,255,0.55)",
+            }}>
+              {(() => { const h = new Date().getHours(); return h < 12 ? "Bonjour," : h < 19 ? "Bon après-midi," : "Bonsoir,"; })()}{" "}
+              <span style={{
+                fontWeight: 700,
+                color: "rgba(255,255,255,0.92)",
+                backgroundImage: "linear-gradient(135deg, #ffffff 40%, rgba(255,255,255,0.65) 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}>
+                {firstName}
               </span>
-              <span style={{ color: "rgba(255,255,255,0.14)" }}>·</span>
-              <span style={{ color: meta.accent, fontWeight: 600 }}>Étape {String(slide + 1).padStart(2, "0")}</span>
             </p>
+            {/* Fine ligne de séparation sous le greeting */}
+            <div style={{
+              marginTop: "14px",
+              height: "1px",
+              width: "100%",
+              background: "linear-gradient(to right, rgba(255,255,255,0.07) 0%, transparent 80%)",
+            }} />
           </div>
 
           {/* ── Slide content ── */}
           <div key={`content-${slide}`}>
 
-            {/* Heading — héro */}
+            {/* Étape — label uppercase au-dessus du heading */}
+            <div style={{ ...fadeIn(0), marginBottom: "8px" }}>
+              <span style={{
+                fontSize: "11px",
+                fontWeight: 600,
+                fontFamily: "'Inter', system-ui, sans-serif",
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: meta.accent,
+                opacity: 0.9,
+              }}>
+                Étape {String(slide + 1).padStart(2, "0")} — {meta.label}
+              </span>
+            </div>
+
+            {/* Heading — héro absolu */}
             <h2 style={{
-              ...fadeIn(0),
-              fontSize: "clamp(2.6rem, 5.5vw, 4.4rem)",
+              ...fadeIn(20),
+              fontSize: "clamp(3rem, 6.2vw, 5rem)",
               fontWeight: 900,
-              letterSpacing: "-0.04em",
-              lineHeight: "0.92",
-              backgroundImage: "linear-gradient(175deg, #ffffff 25%, rgba(255,255,255,0.35) 100%)",
+              letterSpacing: "-0.045em",
+              lineHeight: "0.90",
+              backgroundImage: "linear-gradient(170deg, #ffffff 30%, rgba(255,255,255,0.28) 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
@@ -397,10 +437,10 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
               {meta.heading}
             </h2>
 
-            {/* Metric — si non-zéro */}
+            {/* Metric — si pertinente */}
             {bigMetric !== "—" && bigMetric !== "0" && bigMetric !== "0%" && (
-              <div style={{ ...fadeIn(60), display: "flex", alignItems: "baseline", gap: "10px", marginBottom: "10px" }}>
-                <span style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)", fontWeight: 800, fontFamily: "'Inter', system-ui, sans-serif", color: meta.accent, letterSpacing: "-0.04em", lineHeight: 1 }}>
+              <div style={{ ...fadeIn(70), display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "8px" }}>
+                <span style={{ fontSize: "clamp(1.4rem, 2.8vw, 1.9rem)", fontWeight: 800, fontFamily: "'Inter', system-ui, sans-serif", color: meta.accent, letterSpacing: "-0.04em", lineHeight: 1 }}>
                   {bigMetric}
                 </span>
                 <span style={{ fontSize: "12px", fontWeight: 400, fontFamily: "'Inter', system-ui, sans-serif", color: "rgba(255,255,255,0.30)" }}>
@@ -409,13 +449,13 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
               </div>
             )}
 
-            {/* Message contextuel */}
+            {/* Message */}
             <p style={{
               ...fadeIn(100),
-              fontSize: "13.5px",
-              lineHeight: "1.6",
-              color: "rgba(255,255,255,0.38)",
-              maxWidth: "34ch",
+              fontSize: "14px",
+              lineHeight: "1.65",
+              color: "rgba(255,255,255,0.42)",
+              maxWidth: "36ch",
               marginBottom: "32px",
             }}>
               {contextMsg}
@@ -443,14 +483,57 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
                   }
                 />
               )}
-              {slide === 2 && (
+              {slide === 2 && isComplete && !isPending && !isValidated && (
                 <ActionButton
                   onClick={handleRequestVerification}
                   bg={meta.ctaBg} shadow={meta.ctaShadow}
-                  icon={submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : isPending ? <Clock className="w-4 h-4" /> : isValidated ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-                  label={submitting ? "Envoi..." : isPending ? "En attente de validation" : isValidated ? "Cycle validé" : "Soumettre mon cycle"}
-                  disabled={!isComplete || isPending || isValidated || submitting}
+                  icon={submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  label={submitting ? "Envoi..." : "Soumettre mon cycle"}
                 />
+              )}
+              {slide === 2 && !isComplete && (
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{
+                    display: "inline-flex", alignItems: "center", gap: "8px",
+                    padding: "11px 18px", borderRadius: "12px",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: "rgba(255,255,255,0.03)",
+                    fontSize: "13px", fontWeight: 500,
+                    fontFamily: "'Inter', system-ui, sans-serif",
+                    color: "rgba(255,255,255,0.30)",
+                  }}>
+                    <Lock className="w-3.5 h-3.5" style={{ opacity: 0.5 }} />
+                    {currentCycle ? `${currentCycle.userProgress}/${currentCycle.total_trades} trades requis` : "Cycle incomplet"}
+                  </div>
+                </div>
+              )}
+              {slide === 2 && isPending && (
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: "8px",
+                  padding: "11px 18px", borderRadius: "12px",
+                  border: `1px solid ${meta.accent}30`,
+                  background: `${meta.accent}0a`,
+                  fontSize: "13px", fontWeight: 500,
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                  color: meta.accent,
+                }}>
+                  <Clock className="w-3.5 h-3.5" />
+                  En attente de validation
+                </div>
+              )}
+              {slide === 2 && isValidated && (
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: "8px",
+                  padding: "11px 18px", borderRadius: "12px",
+                  border: "1px solid rgba(52,211,153,0.25)",
+                  background: "rgba(52,211,153,0.06)",
+                  fontSize: "13px", fontWeight: 600,
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                  color: "#34d399",
+                }}>
+                  <Check className="w-3.5 h-3.5" />
+                  Cycle validé
+                </div>
               )}
             </div>
 
