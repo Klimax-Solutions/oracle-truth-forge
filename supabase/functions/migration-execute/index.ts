@@ -1,13 +1,22 @@
 // migration-execute — REAL writes on TARGET (mkog).
 // Idempotent (skip-list by uuid). Resumable via offset. Batch by 5.
 // try/finally ensures triggers are re-enabled on TARGET even on crash.
+//
+// Modes:
+//   default          → full migration of unmigrated paying users
+//   ?dry_run=1       → preview only, no writes
+//   ?repair=trades   → for users already imported (imported_from_prod=true),
+//                      delete & re-copy trade-related tables (user_executions,
+//                      user_personal_trades, verification_requests,
+//                      admin_trade_notes, user_trade_analyses, user_successes).
+//                      Does NOT touch auth.users, profiles, user_cycles, user_roles.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-migration-token",
 };
 
 // Order matters (FK dependencies)
@@ -24,7 +33,17 @@ const COPY_ORDER = [
   "user_quest_flags",
   "user_successes",
   "user_notifications",
-  // user_video_views: skipped (low value, no FK overlap between source & target videos)
+  "user_video_views",
+  "user_trade_analyses",
+] as const;
+
+// Tables to wipe & re-copy in repair=trades mode (in FK-safe insert order)
+const REPAIR_TABLES_INSERT_ORDER = [
+  "user_executions",
+  "user_personal_trades",
+  "verification_requests",
+  // admin_trade_notes handled separately (needs vr ids)
+  "user_successes",
   "user_trade_analyses",
 ] as const;
 
@@ -49,7 +68,6 @@ async function copyTableForUser(
   table: string,
   uid: string,
   errors: string[],
-  cycleMap?: Map<string, string>,
 ): Promise<number> {
   let query = source.from(table).select("*");
   if (table === "custom_setups") {
@@ -64,36 +82,15 @@ async function copyTableForUser(
   }
   if (!data || data.length === 0) return 0;
 
-  // user_cycles & verification_requests: remap cycle_id (source UUID → target UUID) via cycle_number lookup
-  let rows = data;
-  if ((table === "user_cycles" || table === "verification_requests") && cycleMap) {
-    const remapped: Record<string, unknown>[] = [];
-    for (const row of data as Record<string, unknown>[]) {
-      const srcCycleId = row.cycle_id as string;
-      const tgtCycleId = cycleMap.get(srcCycleId);
-      if (!tgtCycleId) {
-        errors.push(`[${uid}] WARN ${table}: no target cycle for src=${srcCycleId} → row skipped`);
-        continue;
-      }
-      remapped.push({ ...row, cycle_id: tgtCycleId });
-    }
-    rows = remapped;
-    if (rows.length === 0) return 0;
-  }
-
-  // user_roles: trigger handle_new_user_role auto-inserts a 'member' row → use upsert with ignore
-  // Other tables: plain insert (assumed empty for new auth user)
-  const insertOptions = table === "user_roles"
-    ? { onConflict: "user_id,role", ignoreDuplicates: true }
-    : undefined;
-  const { error: insErr } = insertOptions
-    ? await target.from(table).upsert(rows, insertOptions)
-    : await target.from(table).insert(rows);
+  const { error: insErr } = await target.from(table).insert(data);
   if (insErr) {
-    errors.push(`[${uid}] insert ${table} (${rows.length} rows): ${insErr.message}`);
+    // Verbose error so we don't lose info on FK/CHECK/null violations
+    errors.push(
+      `[${uid}] insert ${table} (${data.length} rows): ${insErr.message} | code=${insErr.code ?? "?"} | details=${insErr.details ?? "?"} | hint=${insErr.hint ?? "?"}`,
+    );
     return 0;
   }
-  return rows.length;
+  return data.length;
 }
 
 async function copyStorageForUser(
@@ -143,7 +140,6 @@ async function migrateOneUser(
   target: Client,
   uid: string,
   errors: string[],
-  cycleMap: Map<string, string>,
 ): Promise<{ uid: string; status: string; counts: Record<string, number>; storage: { files: number; bytes: number } }> {
   const counts: Record<string, number> = {};
 
@@ -177,12 +173,9 @@ async function migrateOneUser(
     imported_from_prod: true,
     imported_at: new Date().toISOString(),
   };
-  // Use upsert because trigger handle_new_user auto-creates a stub profile on auth.users INSERT
-  const { error: profInsErr } = await target
-    .from("profiles")
-    .upsert(profileToInsert, { onConflict: "user_id" });
+  const { error: profInsErr } = await target.from("profiles").insert(profileToInsert);
   if (profInsErr) {
-    errors.push(`[${uid}] upsert profile: ${profInsErr.message}`);
+    errors.push(`[${uid}] insert profile: ${profInsErr.message}`);
     // Don't abort — try to continue with the rest
   } else {
     counts["profiles"] = 1;
@@ -190,7 +183,7 @@ async function migrateOneUser(
 
   // 3) All per-user tables in dependency order
   for (const table of COPY_ORDER) {
-    counts[table] = await copyTableForUser(source, target, table, uid, errors, cycleMap);
+    counts[table] = await copyTableForUser(source, target, table, uid, errors);
   }
 
   // 4) admin_trade_notes (linked via verification_request_id of this user)
@@ -221,6 +214,71 @@ async function migrateOneUser(
   return { uid, status: "OK", counts, storage };
 }
 
+// =====================================================================
+// REPAIR mode — for already-imported users only
+// Wipes & re-copies trade-related tables. Does NOT touch auth/profiles/cycles.
+// =====================================================================
+async function repairTradesForUser(
+  source: Client,
+  target: Client,
+  uid: string,
+  errors: string[],
+): Promise<Record<string, number>> {
+  const counts: Record<string, number> = {};
+
+  // ---- 1) DELETE existing rows on target (in reverse FK order) ----
+  // admin_trade_notes first (FK to verification_requests)
+  const { data: vrTarget } = await target
+    .from("verification_requests")
+    .select("id")
+    .eq("user_id", uid);
+  if (vrTarget && vrTarget.length > 0) {
+    const vrIds = vrTarget.map((v: { id: string }) => v.id);
+    const { error: delAtnErr } = await target
+      .from("admin_trade_notes")
+      .delete()
+      .in("verification_request_id", vrIds);
+    if (delAtnErr) errors.push(`[${uid}] DEL admin_trade_notes: ${delAtnErr.message}`);
+  }
+
+  for (const table of REPAIR_TABLES_INSERT_ORDER.slice().reverse()) {
+    const { error: delErr } = await target.from(table).delete().eq("user_id", uid);
+    if (delErr) errors.push(`[${uid}] DEL ${table}: ${delErr.message}`);
+  }
+
+  // ---- 2) RE-COPY from source (in FK-safe insert order) ----
+  for (const table of REPAIR_TABLES_INSERT_ORDER) {
+    counts[table] = await copyTableForUser(source, target, table, uid, errors);
+  }
+
+  // admin_trade_notes (linked via verification_requests of this user on SOURCE)
+  const { data: vrSource } = await source
+    .from("verification_requests")
+    .select("id")
+    .eq("user_id", uid);
+  if (vrSource && vrSource.length > 0) {
+    const vrSourceIds = vrSource.map((v: { id: string }) => v.id);
+    const { data: notes, error: notesErr } = await source
+      .from("admin_trade_notes")
+      .select("*")
+      .in("verification_request_id", vrSourceIds);
+    if (notesErr) {
+      errors.push(`[${uid}] read admin_trade_notes: ${notesErr.message}`);
+    } else if (notes && notes.length > 0) {
+      const { error: insErr } = await target.from("admin_trade_notes").insert(notes);
+      if (insErr) {
+        errors.push(
+          `[${uid}] insert admin_trade_notes (${notes.length}): ${insErr.message} | code=${insErr.code ?? "?"} | details=${insErr.details ?? "?"}`,
+        );
+      } else {
+        counts["admin_trade_notes"] = notes.length;
+      }
+    }
+  }
+
+  return counts;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -241,6 +299,7 @@ Deno.serve(async (req) => {
     const batchSize = parseInt(url.searchParams.get("batch_size") ?? "5", 10);
     const offset = parseInt(url.searchParams.get("offset") ?? "0", 10);
     const dryRun = url.searchParams.get("dry_run") === "1";
+    const repairMode = url.searchParams.get("repair") === "trades";
 
     const SOURCE_URL = Deno.env.get("SUPABASE_URL")!;
     const SOURCE_SR = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -253,6 +312,74 @@ Deno.serve(async (req) => {
     const target = createClient(TARGET_URL, TARGET_SR, {
       auth: { persistSession: false },
     });
+
+    // =================================================================
+    // REPAIR mode — short-circuit, no auth/profile work
+    // =================================================================
+    if (repairMode) {
+      const errors: string[] = [];
+
+      // 1) List target users with imported_from_prod=true
+      const { data: importedRows, error: impErr } = await target
+        .from("profiles")
+        .select("user_id")
+        .eq("imported_from_prod", true)
+        .order("user_id");
+      if (impErr) throw new Error(`target.profiles imported list: ${impErr.message}`);
+
+      const allImportedUids = (importedRows ?? []).map((r: { user_id: string }) => r.user_id);
+      const batch = allImportedUids.slice(offset, offset + batchSize);
+
+      if (dryRun) {
+        return new Response(
+          JSON.stringify({
+            mode: "repair=trades",
+            dry_run: true,
+            imported_total: allImportedUids.length,
+            this_batch_offset: offset,
+            this_batch_size: batch.length,
+            this_batch_uids: batch,
+            next_offset: offset + batch.length,
+          }, null, 2),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const results: Array<{ uid: string; counts: Record<string, number> }> = [];
+      for (const uid of batch) {
+        const counts = await repairTradesForUser(source, target, uid, errors);
+        results.push({ uid, counts });
+      }
+
+      // Aggregate totals
+      const totals: Record<string, number> = {};
+      for (const r of results) {
+        for (const [k, v] of Object.entries(r.counts)) {
+          totals[k] = (totals[k] ?? 0) + v;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          mode: "repair=trades",
+          timestamp: new Date().toISOString(),
+          imported_total: allImportedUids.length,
+          offset,
+          batch_size_processed: batch.length,
+          next_offset: offset + batch.length,
+          remaining_after: allImportedUids.length - (offset + batch.length),
+          totals_inserted: totals,
+          errors_count: errors.length,
+          errors: errors.slice(0, 50),
+          per_user: results,
+        }, null, 2),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // =================================================================
+    // STANDARD migration flow (unchanged)
+    // =================================================================
 
     // ---- 1) Eligible users (source) ----
     const { data: allRoles, error: rolesErr } = await source
@@ -321,29 +448,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ---- 3) Build cycle remap (source.cycle_id → target.cycle_id via cycle_number) ----
-    const cycleMap = new Map<string, string>();
-    {
-      const { data: srcCycles } = await source.from("cycles").select("id, cycle_number");
-      const { data: tgtCycles } = await target.from("cycles").select("id, cycle_number");
-      const tgtByNum = new Map<number, string>();
-      for (const c of tgtCycles ?? []) tgtByNum.set(c.cycle_number, c.id);
-      for (const c of srcCycles ?? []) {
-        const tgtId = tgtByNum.get(c.cycle_number);
-        if (tgtId) cycleMap.set(c.id, tgtId);
-      }
-    }
-
-    // ---- 4) Migration (no RPC trigger toggle: auth.users belongs to supabase_auth_admin
-    //         and cannot be ALTERed even with SECURITY DEFINER. We use upsert on profiles
-    //         and onConflict-ignore on user_roles to handle the auto-trigger inserts.) ----
+    // ---- 3) Migration with try/finally around triggers ----
     const errors: string[] = [];
     const results: Array<Awaited<ReturnType<typeof migrateOneUser>>> = [];
+    let triggersDisabled = false;
 
-    // Sequential to avoid storage rate limits & easier error tracing
-    for (const uid of batch) {
-      const result = await migrateOneUser(source, target, uid, errors, cycleMap);
-      results.push(result);
+    try {
+      const { error: disableErr } = await target.rpc("disable_import_triggers");
+      if (disableErr) {
+        throw new Error(`disable_import_triggers RPC failed: ${disableErr.message}`);
+      }
+      triggersDisabled = true;
+
+      // Sequential to avoid storage rate limits & easier error tracing
+      for (const uid of batch) {
+        const result = await migrateOneUser(source, target, uid, errors);
+        results.push(result);
+      }
+    } finally {
+      if (triggersDisabled) {
+        const { error: enableErr } = await target.rpc("enable_import_triggers");
+        if (enableErr) {
+          errors.push(`CRITICAL enable_import_triggers RPC failed: ${enableErr.message}`);
+        }
+      }
     }
 
     // ---- 4) Aggregate report ----
