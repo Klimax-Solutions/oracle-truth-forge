@@ -40,9 +40,12 @@ function anonymizedEmail(uid: string): string {
   return `user-${uid.slice(0, 8)}@imported-prod.oracle.local`;
 }
 
+// deno-lint-ignore no-explicit-any
+type Client = any;
+
 async function copyTableForUser(
-  source: ReturnType<typeof createClient>,
-  target: ReturnType<typeof createClient>,
+  source: Client,
+  target: Client,
   table: string,
   uid: string,
   errors: string[],
