@@ -364,53 +364,72 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
           style={{ width: "42%", paddingLeft: "clamp(2rem, 5vw, 5rem)", paddingRight: "2rem" }}
         >
 
-          {/* ── Greeting ── */}
+          {/* ── Greeting — une ligne, style heading ── */}
           <div
             style={{
               opacity: firstName ? 1 : 0,
               transition: "opacity 0.5s ease",
-              marginBottom: "36px",
+              marginBottom: "32px",
+              minHeight: "44px",
             }}
           >
             <p style={{
-              fontSize: "22px",
-              fontWeight: 500,
+              fontSize: "clamp(1.9rem, 3.4vw, 2.6rem)",
+              fontWeight: 900,
               fontFamily: "'Inter', system-ui, sans-serif",
-              letterSpacing: "-0.02em",
-              lineHeight: 1,
-              color: "rgba(255,255,255,0.38)",
+              letterSpacing: "-0.04em",
+              lineHeight: 0.95,
+              backgroundImage: "linear-gradient(160deg, #ffffff 20%, rgba(255,255,255,0.38) 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              filter: "drop-shadow(0 0 16px rgba(255,255,255,0.08))",
             }}>
-              {(() => {
-                const h = new Date().getHours();
-                return h < 12 ? "Bonjour," : h < 19 ? "Bon après-midi," : "Bonsoir,";
-              })()}{" "}
-              <span style={{
-                color: "rgba(255,255,255,0.88)",
-                fontWeight: 700,
-              }}>
-                {firstName}
+              <span style={{ WebkitTextFillColor: "rgba(255,255,255,0.45)" }}>
+                {(() => {
+                  const h = new Date().getHours();
+                  return h < 12 ? "Bonjour, " : h < 19 ? "Bon après-midi, " : "Bonsoir, ";
+                })()}
               </span>
+              {firstName}
             </p>
           </div>
 
           {/* ── Slide content ── */}
           <div key={`content-${slide}`}>
 
-            {/* Étape label */}
-            <div style={{ ...fadeIn(0), marginBottom: "12px" }}>
-              <span style={{
-                fontSize: "13px",
-                fontWeight: 600,
-                fontFamily: "'Inter', system-ui, sans-serif",
-                letterSpacing: "0.05em",
-                color: meta.accent,
-              }}>
-                Étape {String(slide + 1).padStart(2, "0")}
-              </span>
-            </div>
+            {/* Étape label + Heading — groupés visuellement */}
+            <div style={{ ...fadeIn(0), marginBottom: "20px" }}>
+              {/* Pill étape */}
+              <div style={{ marginBottom: "14px" }}>
+                <span style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: meta.accent,
+                  background: `${meta.accent}14`,
+                  border: `1px solid ${meta.accent}28`,
+                  padding: "3px 10px",
+                  borderRadius: "9999px",
+                }}>
+                  <span style={{
+                    width: "4px",
+                    height: "4px",
+                    borderRadius: "50%",
+                    background: meta.accent,
+                    boxShadow: `0 0 5px 1px ${meta.accent}88`,
+                    flexShrink: 0,
+                  }} />
+                  Étape {String(slide + 1).padStart(2, "0")} — {meta.label}
+                </span>
+              </div>
 
-            {/* Heading */}
-            <div style={{ ...fadeIn(50), marginBottom: "20px" }}>
+              {/* Heading */}
               <h2 style={{
                 fontSize: "clamp(2.6rem, 5.5vw, 4.4rem)",
                 fontWeight: 900,
@@ -428,12 +447,12 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
 
             {/* Accent separator */}
             <div style={{
-              ...fadeIn(100),
+              ...fadeIn(80),
               height: "1px",
-              width: "120px",
+              width: "48px",
               borderRadius: "9999px",
-              background: `linear-gradient(to right, ${meta.accent}, transparent)`,
-              marginBottom: "20px",
+              background: `linear-gradient(to right, ${meta.accent}88, transparent)`,
+              marginBottom: "18px",
             }} />
 
             {/* Secondary metric — only when non-zero */}
@@ -988,14 +1007,40 @@ const ActionButton = ({ onClick, bg, shadow, icon, label, disabled = false }: {
   <button
     onClick={onClick}
     disabled={disabled}
-    className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
     style={{
-      background: bg,
-      boxShadow: disabled ? "none" : `0 6px 28px -4px ${shadow}`,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "10px",
+      padding: "13px 22px",
+      borderRadius: "14px",
+      fontSize: "14px",
+      fontWeight: 700,
       fontFamily: "'Inter', system-ui, sans-serif",
+      letterSpacing: "-0.01em",
+      color: "#ffffff",
+      background: disabled
+        ? "rgba(255,255,255,0.05)"
+        : `linear-gradient(135deg, ${bg} 0%, ${bg}cc 100%)`,
+      border: disabled
+        ? "1px solid rgba(255,255,255,0.08)"
+        : `1px solid ${shadow.replace("0.50", "0.55")}`,
+      boxShadow: disabled
+        ? "none"
+        : [
+            `0 0 0 1px rgba(255,255,255,0.06)`,
+            `0 8px 32px -6px ${shadow}`,
+            `0 2px 0 0 rgba(255,255,255,0.10) inset`,
+          ].join(", "),
+      cursor: disabled ? "not-allowed" : "pointer",
+      opacity: disabled ? 0.35 : 1,
+      transition: "all 0.18s ease",
     }}
+    onMouseEnter={e => { if (!disabled) { (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px) scale(1.02)"; (e.currentTarget as HTMLButtonElement).style.boxShadow = [`0 0 0 1px rgba(255,255,255,0.09)`, `0 12px 40px -6px ${shadow}`, `0 2px 0 0 rgba(255,255,255,0.12) inset`].join(", "); } }}
+    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = "none"; (e.currentTarget as HTMLButtonElement).style.boxShadow = disabled ? "none" : [`0 0 0 1px rgba(255,255,255,0.06)`, `0 8px 32px -6px ${shadow}`, `0 2px 0 0 rgba(255,255,255,0.10) inset`].join(", "); }}
+    onMouseDown={e => { if (!disabled) (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0px) scale(0.98)"; }}
+    onMouseUp={e => { if (!disabled) (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px) scale(1.02)"; }}
   >
-    {icon}
+    <span style={{ opacity: 0.9, display: "flex", alignItems: "center" }}>{icon}</span>
     {label}
   </button>
 );
