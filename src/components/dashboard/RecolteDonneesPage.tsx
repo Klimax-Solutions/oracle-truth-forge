@@ -13,6 +13,7 @@ import {
   LineChart, Play, Lock, Loader2, ChevronRight, Plus, Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ActionButton } from "./ActionButton";
 
 // Couleurs thème Récolte (cohérence homepage slide 02)
 const TEAL   = "#1AAFA0";
@@ -201,127 +202,112 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle }: RecolteD
           </p>
         </div>
 
-        {/* ═══ Setup Oracle — HERO en haut ═══ */}
+        {/* ═══ Setup Oracle — HERO ═══ */}
         <section className="mb-12">
           {isEarlyAccess ? (
-            /* EA : locked, hero */
-            <div className="relative overflow-hidden rounded-2xl border border-blue-500/25 p-8 md:p-10 bg-gradient-to-br from-blue-500/[0.12] via-blue-500/[0.04] to-transparent">
+            <div className="relative overflow-hidden rounded-2xl p-8 md:p-10" style={{
+              border: `1px solid ${TEAL}28`,
+              background: `linear-gradient(135deg, ${TEAL}10 0%, transparent 60%)`,
+            }}>
               <div className="absolute inset-0 pointer-events-none" style={{
-                backgroundImage: "radial-gradient(circle at 85% 15%, rgba(59,130,246,0.18), transparent 55%)"
+                backgroundImage: `radial-gradient(circle at 85% 15%, ${TEAL}20, transparent 55%)`
               }} />
               <div className="relative flex items-start gap-5">
-                <div className="w-16 h-16 rounded-2xl bg-blue-500/15 border border-blue-500/40 flex items-center justify-center shrink-0 shadow-[0_0_24px_rgba(59,130,246,0.2)]">
-                  <Lock className="w-7 h-7 text-blue-400" />
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{
+                  background: `${TEAL}18`, border: `1px solid ${TEAL}40`,
+                  boxShadow: `0 0 24px ${TEAL}25`,
+                }}>
+                  <Lock className="w-6 h-6" style={{ color: TEAL }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-semibold tracking-[0.22em] uppercase text-blue-400 mb-1.5">
+                  <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.20em", textTransform: "uppercase", color: TEAL, marginBottom: "6px" }}>
                     Prime Setup Oracle · verrouillé
                   </p>
-                  <h2 className="text-xl md:text-2xl font-bold text-white mb-2">
-                    Accéder au Setup Oracle
-                  </h2>
-                  <p className="text-sm text-white/60 max-w-xl mb-5 leading-relaxed">
-                    Base de données de <span className="text-white font-semibold">314 trades de référence</span> + méthodologie complète.
-                    Débloqué en passant membre.
+                  <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#fff", marginBottom: "8px" }}>Accéder au Setup Oracle</h2>
+                  <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.50)", lineHeight: 1.6, maxWidth: "46ch", marginBottom: "20px" }}>
+                    Base de données de <strong style={{ color: "#fff" }}>314 trades de référence</strong> + méthodologie complète. Débloqué en passant membre.
                   </p>
-                  <button
-                    disabled
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-500/40 text-white text-sm font-semibold opacity-70 cursor-not-allowed border border-blue-400/30"
-                  >
-                    <Lock className="w-4 h-4" />
-                    Débloquer le Prime Setup Oracle
-                  </button>
+                  <ActionButton label="Débloquer" icon={<Lock className="w-4 h-4" />} bg="#158A7E" shadow="rgba(21,138,126,0.45)" disabled />
                 </div>
               </div>
             </div>
           ) : (
-            /* Membre / Admin : hero débloqué, bouton saillant */
-            <button
+            <div className="relative overflow-hidden rounded-2xl p-8 md:p-10 cursor-pointer group transition-all" style={{
+              border: `1px solid ${TEAL}35`,
+              background: `linear-gradient(135deg, ${TEAL}12 0%, transparent 60%)`,
+            }}
               onClick={() => onNavigateToSetupOracle?.()}
-              className="group relative overflow-hidden w-full text-left rounded-2xl border border-blue-500/40 hover:border-blue-400/60 p-8 md:p-10 transition-all bg-gradient-to-br from-blue-500/[0.14] via-blue-500/[0.06] to-transparent hover:shadow-[0_20px_48px_-16px_rgba(59,130,246,0.35)]"
             >
-              <div className="absolute inset-0 pointer-events-none" style={{
-                backgroundImage: "radial-gradient(circle at 85% 15%, rgba(59,130,246,0.22), transparent 55%)"
+              <div className="absolute inset-0 pointer-events-none transition-opacity duration-300" style={{
+                backgroundImage: `radial-gradient(circle at 85% 15%, ${TEAL}25, transparent 55%)`
               }} />
               <div className="relative flex items-center gap-5">
-                <div className="w-16 h-16 rounded-2xl bg-blue-500/20 border border-blue-500/50 flex items-center justify-center shrink-0 shadow-[0_0_28px_rgba(59,130,246,0.3)] group-hover:shadow-[0_0_40px_rgba(59,130,246,0.5)] transition-shadow">
-                  <Database className="w-7 h-7 text-blue-300" />
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{
+                  background: `${TEAL}20`, border: `1px solid ${TEAL}50`,
+                  boxShadow: `0 0 28px ${TEAL}30`,
+                }}>
+                  <Database className="w-6 h-6" style={{ color: TEAL }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-semibold tracking-[0.22em] uppercase text-blue-400 mb-1.5">
+                  <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.20em", textTransform: "uppercase", color: TEAL, marginBottom: "6px" }}>
                     Prime Setup Oracle · débloqué
                   </p>
-                  <h2 className="text-xl md:text-2xl font-bold text-white mb-1">
-                    Accéder au Setup Oracle
-                  </h2>
-                  <p className="text-sm text-white/60 leading-relaxed">
-                    Base de données de <span className="text-white font-semibold">314 trades de référence</span> + méthodologie complète
+                  <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#fff", marginBottom: "6px" }}>Accéder au Setup Oracle</h2>
+                  <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.50)", lineHeight: 1.5 }}>
+                    Base de données de <strong style={{ color: "#fff" }}>314 trades de référence</strong> + méthodologie complète
                   </p>
                 </div>
-                <ChevronRight className="w-6 h-6 text-blue-300 shrink-0 transition-transform group-hover:translate-x-1.5" />
+                <ActionButton
+                  label="Ouvrir"
+                  icon={<ChevronRight className="w-4 h-4" />}
+                  bg="#158A7E"
+                  shadow="rgba(21,138,126,0.50)"
+                />
               </div>
-            </button>
+            </div>
           )}
         </section>
 
         {/* Nouvelle session — 2 CTA */}
         <section className="mb-10">
-          <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: "12px" }}>
+          <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: "14px" }}>
             Nouvelle session
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* BACKTESTING */}
-            <button
-              onClick={() => setDialogType("backtesting")}
-              className="group text-left rounded-2xl p-6 border transition-all hover:scale-[1.01]"
-              style={{ borderColor: `${TEAL}30`, backgroundColor: `${TEAL}07` }}
-            >
+            <div className="rounded-2xl p-6 border" style={{ borderColor: `${TEAL}30`, backgroundColor: `${TEAL}07` }}>
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${TEAL}18` }}>
                   <LineChart className="w-5 h-5" style={{ color: TEAL }} />
                 </div>
                 <div>
-                  <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: TEAL }}>
-                    Backtesting
-                  </p>
+                  <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: TEAL }}>Backtesting</p>
                   <h3 style={{ fontSize: "17px", fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>Entamer une session</h3>
                 </div>
               </div>
               <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.42)", lineHeight: 1.6, marginBottom: "20px" }}>
                 Récolte des trades gagnants dans le passé pour identifier ce qui fonctionne.
               </p>
-              <div className="w-full h-10 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold text-white transition-all group-hover:brightness-110"
-                style={{ background: `linear-gradient(135deg, ${TEAL} 0%, #158A7E 100%)`, boxShadow: `0 4px 16px -4px rgba(26,175,160,0.45)` }}>
-                Commencer <ChevronRight className="w-4 h-4" />
-              </div>
-            </button>
+              <ActionButton onClick={() => setDialogType("backtesting")} label="Commencer" icon={<ChevronRight className="w-4 h-4" />} bg="#158A7E" shadow="rgba(21,138,126,0.50)" fullWidth />
+            </div>
 
             {/* LIVE TRADING */}
-            <button
-              onClick={() => setDialogType("live_trading")}
-              className="group text-left rounded-2xl p-6 border transition-all hover:scale-[1.01]"
-              style={{ borderColor: `${ORANGE}30`, backgroundColor: `${ORANGE}07` }}
-            >
+            <div className="rounded-2xl p-6 border" style={{ borderColor: `${ORANGE}30`, backgroundColor: `${ORANGE}07` }}>
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${ORANGE}18` }}>
                   <Play className="w-5 h-5" style={{ color: ORANGE }} />
                 </div>
                 <div>
-                  <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: ORANGE }}>
-                    Live Trading
-                  </p>
+                  <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: ORANGE }}>Live Trading</p>
                   <h3 style={{ fontSize: "17px", fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>Récolter en live</h3>
                 </div>
               </div>
               <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.42)", lineHeight: 1.6, marginBottom: "20px" }}>
                 Traquer les patterns de mes sessions pour les comparer au passé.
               </p>
-              <div className="w-full h-10 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold text-white transition-all group-hover:brightness-110"
-                style={{ background: `linear-gradient(135deg, ${ORANGE} 0%, #e06510 100%)`, boxShadow: `0 4px 16px -4px rgba(249,115,22,0.40)` }}>
-                Démarrer <ChevronRight className="w-4 h-4" />
-              </div>
-            </button>
+              <ActionButton onClick={() => setDialogType("live_trading")} label="Démarrer" icon={<Play className="w-4 h-4" />} bg="#e06510" shadow="rgba(249,115,22,0.45)" fullWidth />
+            </div>
           </div>
         </section>
 
