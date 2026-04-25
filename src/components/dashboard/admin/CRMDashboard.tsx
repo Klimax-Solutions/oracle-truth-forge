@@ -33,6 +33,8 @@ import AgendaTab from "./AgendaTab";
 import CockpitTab from "./CockpitTab";
 import ConversionsTab from "./ConversionsTab";
 import PeriodSelector, { type PeriodMode } from "./PeriodSelector";
+import { LoadingFallback } from "@/components/LoadingFallback";
+import { withTimeout, isAuthError, clearStaleSession } from "@/lib/safeFetch";
 import type { LeadModalView } from "./LeadDetailModal";
 
 // ── Types — CRMLead imported from @/lib/admin/types (source de verite unique) ──
@@ -418,9 +420,15 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
 
   const loadLeads = useCallback(async () => {
     try {
-      const { data: requests, error } = await supabase
-        .from("early_access_requests").select("*").order("created_at", { ascending: false });
-      if (error || !requests) { setLoading(false); return; }
+      const { data: requests, error } = await withTimeout(
+        supabase.from("early_access_requests").select("*").order("created_at", { ascending: false }),
+        12000,
+      );
+      if (error) {
+        if (isAuthError(error)) { await clearStaleSession("crm_load_401"); return; }
+        setLoading(false); return;
+      }
+      if (!requests) { setLoading(false); return; }
 
       setLeads(requests.map(r => mapLead(r)));
       setLoading(false);
@@ -442,7 +450,11 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
       execsRes.data?.forEach((e: any) => { execMap[e.user_id] = (execMap[e.user_id] || 0) + 1; });
       videoViewsRes.data?.forEach((v: any) => { videoViewMap[v.user_id] = (videoViewMap[v.user_id] || 0) + 1; });
       setLeads(requests.map(r => mapLead(r, { rolesMap, activityMap, sessionMap, execMap, videoViewMap })));
-    } catch (err) { console.warn("[CRM] Load error:", err); setLoading(false); }
+    } catch (err) {
+      console.warn("[CRM] Load error:", err);
+      if (isAuthError(err)) { await clearStaleSession("crm_load_catch"); return; }
+      setLoading(false);
+    }
   }, [mapLead]);
 
   useEffect(() => {
@@ -514,11 +526,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
   const canEditSetting = isSetterRole || isAdminRole || isSuperAdmin;
   const canEditCall    = isCloserRole || isAdminRole || isSuperAdmin;
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
-    </div>
-  );
+  if (loading) return <LoadingFallback onRetry={loadLeads} message="Chargement du CRM..." />;
 
   return (
     <div className="h-full overflow-auto">

@@ -42,6 +42,8 @@ import { useSidebarRoles } from "../DashboardSidebar";
 import { AdminUserDataViewer } from "./AdminUserDataViewer";
 import { AdminTradeNotesViewer } from "./AdminTradeNotesViewer";
 import { TradeNavigationLightbox, type TradeScreenshotItem } from "../TradeNavigationLightbox";
+import { withTimeout, isAuthError, clearStaleSession } from "@/lib/safeFetch";
+import { LoadingFallback } from "@/components/LoadingFallback";
 
 // ── Types ──
 
@@ -443,7 +445,7 @@ export default function GestionPanel() {
         profilesRes, cyclesRes, userCyclesData, executionsData, sessionsRes, activityRes,
         rolesRes, vrsRes, allVrsData, processedVrsRes, alertsRes, oracleRes, adminRolesRes,
         crmLeadsRes,
-      ] = await Promise.all([
+      ] = await withTimeout(Promise.all([
         supabase.from("profiles").select("*"),
         supabase.from("cycles").select("*").order("cycle_number"),
         fetchAll(() => supabase.from("user_cycles").select("*").order("created_at")),
@@ -460,7 +462,7 @@ export default function GestionPanel() {
         supabase.from("early_access_requests")
           .select("id, user_id, created_at, paid_at, paid_amount, offer_amount, call_done_at, setter_name, closer_name")
           .not("user_id", "is", null),
-      ]);
+      ]), 12000);
 
       const profiles = (profilesRes.data || []) as any[];
       const cyclesData = (cyclesRes.data || []) as Cycle[];
@@ -644,6 +646,11 @@ export default function GestionPanel() {
       }
     } catch (err) {
       console.error("[Gestion] Load error:", err);
+      // Auto-cleanup si la session est morte → évite le "vider cache + reco" manuel
+      if (isAuthError(err)) {
+        await clearStaleSession("gestion_load_401");
+        return;
+      }
     } finally {
       setLoading(false);
     }
@@ -971,7 +978,7 @@ export default function GestionPanel() {
     return map[actionType || "freeze"];
   }, [actionType, actionUserId, users]);
 
-  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (loading) return <LoadingFallback onRetry={loadData} message="Chargement de la gestion utilisateurs..." />;
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
