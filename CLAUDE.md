@@ -24,7 +24,17 @@ npm run build  # DOIT passer sans erreur
 git diff --stat  # Verifier les fichiers modifies
 ```
 
-### 5. Framework "Migration" — reflexe obligatoire
+### 5. Soft-lock 24h sur les décisions de cycle (intégrité audit)
+- Une fois qu'un cycle est `validated` ou `rejected` par un admin, les boutons inline ✓/neutre/✗ se **verrouillent automatiquement 24h après `verified_at`**.
+- Au-delà de 24h, ils deviennent grisés et non-cliquables avec tooltip "Verrouillé (>24h). Utilise 'Réouvrir le cycle' pour modifier."
+- Pour modifier une décision verrouillée, l'admin doit explicitement cliquer **"Réouvrir le cycle"** (bouton bleu dans le drill-down panel) → repasse le cycle en `in_progress`, clear `verified_at` + `completed_at`.
+- Logique : 24h pour corriger une erreur évidente, ensuite friction obligatoire pour audit trail.
+- Implémentation : `GestionPanel.tsx`, sub-tab Cycles, calcul `lockedSince24h = (Date.now() - verified_at) > 24h`.
+- ⚠️ Ne pas contourner cette règle. Elle protège l'intégrité des décisions admin.
+- Validation = `confirm()` dialog explicite (pas de validation accidentelle).
+- Évolution future : quand on a du volume, ajouter table `cycle_status_changes` (audit log complet : old_status, new_status, changed_by, changed_at, reason).
+
+### 6. Framework "Migration" — reflexe obligatoire
 Avant TOUTE modification de schema DB ou de structure de donnees, se poser systematiquement :
 
 1. **Qu'est-ce qu'il y a deja en prod ?** — combien d'users, combien de rows impactees

@@ -13,7 +13,7 @@ import {
   Lock, Play, ArrowUpRight, ArrowDownRight,
   MessageSquare, Save, User, Crown, ShieldCheck,
   Snowflake, Ban, UserX, Award, UserPlus, Tag, ExternalLink,
-  Edit2, RotateCcw,
+  Edit2, RotateCcw, Database, MinusCircle,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
@@ -75,6 +75,10 @@ interface UserExecution {
   exit_price: number | null;
   stop_loss: number | null;
   take_profit: number | null;
+  context_timeframe: string | null;
+  sl_placement: string | null;
+  tp_placement: string | null;
+  stop_loss_size: string | null;
   notes: string | null;
   screenshot_url: string | null;
   screenshot_entry_url: string | null;
@@ -99,6 +103,7 @@ interface UserCycleData {
   completed_trades: number;
   total_rr: number;
   completed_at: string | null;
+  verified_at: string | null;       // timestamp de la validation/rejet
   admin_feedback: string | null;
   started_at: string | null;
 }
@@ -160,6 +165,8 @@ interface PlatformUser {
   hasEarlyAccess: boolean;        // row exists in user_roles
   eaInfo: EaInfo | null;          // null if no EA role
   isInstitute: boolean;           // has 'institute' role
+  importedFromProd: boolean;      // imported via migration pggk → mkog
+  importedAt: string | null;      // timestamp d'import (NULL si fake/test user)
   followups: FollowupEntry[];
   lastSeen: string | null;        // last_heartbeat from ea_activity_tracking
   crmLead: CrmLeadData | null;   // linked early_access_request (if any)
@@ -368,6 +375,8 @@ export default function GestionPanel() {
   const [userFilter, setUserFilter] = useState<string>("all");
   const [userSort, setUserSort] = useState<string>("priority");
   const [activeSubTab, setActiveSubTab] = useState<Record<string, "cycles" | "trades" | "origine" | "profil">>({});
+  // Cycle drill-down dans l'onglet "Cycles" — par user, ID du cycle expand (ou null)
+  const [expandedCycleByUser, setExpandedCycleByUser] = useState<Record<string, string | null>>({});
   // Fiche user — drawer latéral (depuis vérifs ou alertes)
   const [ficheUserId, setFicheUserId] = useState<string | null>(null);
   // Filter verifications by user (from fiche link)
@@ -412,20 +421,37 @@ export default function GestionPanel() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      // Helper : Supabase plafonne à 1000 rows par requête. Pour les tables
+      // qui dépassent ce seuil avec les imports prod, on pagine.
+      const fetchAll = async <T = any,>(
+        builder: () => any,
+      ): Promise<T[]> => {
+        const PAGE = 1000;
+        const out: T[] = [];
+        for (let from = 0; ; from += PAGE) {
+          const { data, error } = await builder().range(from, from + PAGE - 1);
+          if (error) throw error;
+          if (!data || data.length === 0) break;
+          out.push(...(data as T[]));
+          if (data.length < PAGE) break;
+        }
+        return out;
+      };
+
       const [
-        profilesRes, cyclesRes, userCyclesRes, executionsRes, sessionsRes, activityRes,
-        rolesRes, vrsRes, allVrsRes, processedVrsRes, alertsRes, oracleRes, adminRolesRes,
+        profilesRes, cyclesRes, userCyclesData, executionsData, sessionsRes, activityRes,
+        rolesRes, vrsRes, allVrsData, processedVrsRes, alertsRes, oracleRes, adminRolesRes,
         crmLeadsRes,
       ] = await Promise.all([
         supabase.from("profiles").select("*"),
         supabase.from("cycles").select("*").order("cycle_number"),
-        supabase.from("user_cycles").select("*").order("created_at"),
-        supabase.from("user_executions").select("*").order("trade_number"),
+        fetchAll(() => supabase.from("user_cycles").select("*").order("created_at")),
+        fetchAll(() => supabase.from("user_executions").select("*").order("trade_number")),
         supabase.from("user_sessions").select("user_id"),
         supabase.from("ea_activity_tracking").select("user_id, last_heartbeat"),
         supabase.from("user_roles").select("user_id, role, expires_at, early_access_type"),
         supabase.from("verification_requests").select("*").eq("status", "pending").order("requested_at"),
-        supabase.from("verification_requests").select("user_id, cycle_id").order("requested_at"),
+        fetchAll(() => supabase.from("verification_requests").select("user_id, cycle_id").order("requested_at")),
         supabase.from("verification_requests").select("*").neq("status", "pending").order("reviewed_at", { ascending: false }).limit(50),
         supabase.from("security_alerts").select("*").eq("resolved", false).order("created_at", { ascending: false }),
         supabase.from("trades").select("id, trade_number, trade_date, entry_time, direction, rr, screenshot_m15_m5, screenshot_m1").order("trade_number"),
@@ -437,13 +463,13 @@ export default function GestionPanel() {
 
       const profiles = (profilesRes.data || []) as any[];
       const cyclesData = (cyclesRes.data || []) as Cycle[];
-      const userCycles = (userCyclesRes.data || []) as UserCycleData[];
-      const allExecutions = (executionsRes.data || []) as UserExecution[];
+      const userCycles = (userCyclesData || []) as UserCycleData[];
+      const allExecutions = (executionsData || []) as UserExecution[];
       const sessions = sessionsRes.data || [];
       const activity = activityRes.data || [];
       const allRoles = rolesRes.data || [];
       const pendingVrs = vrsRes.data || [];
-      const allVrs = allVrsRes.data || [];
+      const allVrs = allVrsData || [];
       const processedVrs = processedVrsRes.data || [];
       const alertsData = alertsRes.data || [];
       const oracleData = (oracleRes.data || []) as OracleTrade[];
@@ -546,6 +572,8 @@ export default function GestionPanel() {
           hasEarlyAccess: (rolesMap[userId] || []).includes("early_access"),
           eaInfo: buildEaInfo(userId),
           isInstitute: (rolesMap[userId] || []).includes("institute"),
+          importedFromProd: profile?.imported_from_prod === true,
+          importedAt: profile?.imported_at || null,
           followups: [],
           crmLead: crmLead ? {
             id: crmLead.id,
@@ -712,7 +740,7 @@ export default function GestionPanel() {
     try {
       const ud: any = { status: targetStatus };
       if (targetStatus === "validated") { ud.verified_at = new Date().toISOString(); ud.completed_at = new Date().toISOString(); }
-      if (["rejected", "locked", "in_progress"].includes(targetStatus)) { ud.verified_at = null; ud.completed_at = null; }
+      if (["rejected", "locked", "in_progress", "pending_review"].includes(targetStatus)) { ud.verified_at = null; ud.completed_at = null; }
       if (targetStatus === "in_progress" && !userCycle.started_at) ud.started_at = new Date().toISOString();
       await supabase.from("user_cycles").update(ud).eq("id", userCycle.id);
       if (targetStatus === "validated" || targetStatus === "rejected") {
@@ -855,6 +883,7 @@ export default function GestionPanel() {
     online: users.filter((u) => u.isOnline).length,
     pending: users.filter((u) => u.userStatus === "pending").length,
     institute: users.filter((u) => u.isInstitute).length,
+    imported: users.filter((u) => u.importedFromProd).length,
     frozen: users.filter((u) => u.profileStatus === "frozen").length,
     banned: users.filter((u) => u.profileStatus === "banned").length,
   }), [users]);
@@ -867,6 +896,7 @@ export default function GestionPanel() {
       else if (userFilter === "pending") list = list.filter((u) => u.userStatus === "pending");
       else if (userFilter === "online") list = list.filter((u) => u.isOnline);
       else if (userFilter === "institute") list = list.filter((u) => u.isInstitute);
+      else if (userFilter === "imported") list = list.filter((u) => u.importedFromProd);
       else list = list.filter((u) => u.roles.includes(userFilter));
     }
     if (search) {
@@ -975,6 +1005,7 @@ export default function GestionPanel() {
                   { key: "pending", label: "En vérif", count: filterCounts.pending, dot: "orange" },
                   { key: "online", label: "En ligne", count: filterCounts.online, dot: "emerald" },
                   { key: "institute", label: "Institut", count: filterCounts.institute },
+                  { key: "imported", label: "Importés prod", count: filterCounts.imported },
                   { key: "frozen", label: "Gelés", count: filterCounts.frozen },
                 ] as const).map((f) => (
                   <button
@@ -1101,6 +1132,14 @@ export default function GestionPanel() {
                         {u.profileStatus === "frozen" && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-blue-500/15 text-blue-400 rounded leading-none">Gelé</span>}
                         {u.profileStatus === "banned" && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-red-500/15 text-red-400 rounded leading-none">Banni</span>}
                         {u.userStatus === "pending" && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-orange-500/15 text-orange-400 rounded leading-none animate-pulse">Vérif</span>}
+                        {u.importedFromProd && (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 rounded border border-amber-500/40 leading-none shadow-[0_0_8px_rgba(245,158,11,0.25)]"
+                            title={u.importedAt ? `Importé prod le ${new Date(u.importedAt).toLocaleDateString("fr-FR")}` : "User importé depuis prod (pggk)"}
+                          >
+                            <Database className="w-2.5 h-2.5" />Importé prod
+                          </span>
+                        )}
                         {u.isInstitute && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-blue-500/10 text-blue-400 rounded leading-none">Institut</span>}
                         {u.teamRoles.map((r) => <span key={r} className="px-1.5 py-0.5 text-[9px] font-mono bg-violet-500/10 text-violet-400 rounded leading-none">{getRoleLabel(r)}</span>)}
                       </div>
@@ -1208,32 +1247,101 @@ export default function GestionPanel() {
                       <div className="px-4 pb-3 pt-2">
 
                         {/* ── Sub-tab: Cycles ── */}
-                        {subTab === "cycles" && (
+                        {subTab === "cycles" && (() => {
+                          const expandedCycleId = expandedCycleByUser[u.id] || null;
+                          const expandedCycle = expandedCycleId ? cycles.find((c) => c.id === expandedCycleId) : null;
+                          const expandedUc = expandedCycle ? u.userCycles.find((x) => x.cycle_id === expandedCycle.id) : null;
+                          const expandedExecs = expandedCycle
+                            ? u.executions.filter((ex) => ex.trade_number >= expandedCycle.trade_start && ex.trade_number <= expandedCycle.trade_end)
+                            : [];
+                          const expandedStatus = expandedUc?.status || "locked";
+                          return (
                           <div className="space-y-3">
                             <Progress value={progress} className="h-2" />
                             <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-1.5">
                               {cycles.map((cycle) => {
                                 const uc = u.userCycles.find((x) => x.cycle_id === cycle.id);
                                 const st2 = uc?.status || "locked";
+                                const isExpanded = expandedCycleId === cycle.id;
+                                const clickable = st2 !== "locked";
                                 return (
-                                  <div key={cycle.id} className={cn("p-2 border rounded-md text-center",
-                                    st2 === "locked" && "bg-muted/20 border-border/30 opacity-40",
-                                    st2 === "in_progress" && "bg-blue-500/10 border-blue-500/30",
-                                    st2 === "pending_review" && "bg-orange-500/10 border-orange-500/30",
-                                    st2 === "validated" && "bg-emerald-500/10 border-emerald-500/30",
-                                    st2 === "rejected" && "bg-red-500/10 border-red-500/30",
-                                  )}>
+                                  <div
+                                    key={cycle.id}
+                                    onClick={(e) => {
+                                      if (!clickable) return;
+                                      e.stopPropagation();
+                                      setExpandedCycleByUser((prev) => ({ ...prev, [u.id]: prev[u.id] === cycle.id ? null : cycle.id }));
+                                    }}
+                                    className={cn("p-2 border rounded-md text-center transition-all",
+                                      clickable && "cursor-pointer hover:ring-1 hover:ring-primary/40",
+                                      isExpanded && "ring-2 ring-primary",
+                                      st2 === "locked" && "bg-muted/20 border-border/30 opacity-40",
+                                      st2 === "in_progress" && "bg-blue-500/10 border-blue-500/30",
+                                      st2 === "pending_review" && "bg-orange-500/10 border-orange-500/30",
+                                      st2 === "validated" && "bg-emerald-500/10 border-emerald-500/30",
+                                      st2 === "rejected" && "bg-red-500/10 border-red-500/30",
+                                    )}
+                                  >
                                     <div className="flex items-center justify-center mb-0.5">{getStatusIcon(st2)}</div>
                                     <p className="text-[9px] font-mono font-bold">{cycle.cycle_number === 0 ? "Éb." : `C${cycle.cycle_number}`}</p>
                                     {uc && uc.total_rr != null && <p className={cn("text-[9px] font-mono", (uc.total_rr || 0) >= 0 ? "text-emerald-400" : "text-red-400")}>{(uc.total_rr || 0) >= 0 ? "+" : ""}{(uc.total_rr || 0).toFixed(0)}</p>}
-                                    {uc && st2 !== "locked" && (
-                                      <div className="flex gap-0.5 mt-1 justify-center">
-                                        <button className={cn("p-0.5 rounded", st2 === "validated" ? "bg-emerald-500/30 text-emerald-400" : "hover:bg-emerald-500/20 text-muted-foreground hover:text-emerald-400")}
-                                          onClick={(e) => { e.stopPropagation(); if (st2 !== "validated") handleCycleStatusChangeDirectly(u.id, cycle, uc, "validated"); }}><CheckCircle className="w-2.5 h-2.5" /></button>
-                                        <button className={cn("p-0.5 rounded", st2 === "rejected" ? "bg-red-500/30 text-red-400" : "hover:bg-red-500/20 text-muted-foreground hover:text-red-400")}
-                                          onClick={(e) => { e.stopPropagation(); if (st2 !== "rejected") handleCycleStatusChangeDirectly(u.id, cycle, uc, "rejected"); }}><XCircle className="w-2.5 h-2.5" /></button>
-                                      </div>
-                                    )}
+                                    {uc && st2 !== "locked" && (() => {
+                                      // Soft-lock 24h : après une décision (validated/rejected), les boutons inline
+                                      // sont désactivés au-delà de 24h. Pour modifier, l'admin doit cliquer
+                                      // "Réouvrir le cycle" dans le drill-down (audit trail explicite).
+                                      const decided = st2 === "validated" || st2 === "rejected";
+                                      const verifiedAtMs = uc.verified_at ? new Date(uc.verified_at).getTime() : null;
+                                      const lockedSince24h = decided && verifiedAtMs != null && (Date.now() - verifiedAtMs) > 24 * 60 * 60 * 1000;
+                                      const lockTitle = lockedSince24h ? "Verrouillé (>24h). Utilise 'Réouvrir le cycle' pour modifier." : "";
+                                      return (
+                                        <div className="flex gap-0.5 mt-1 justify-center">
+                                          <button
+                                            disabled={lockedSince24h}
+                                            className={cn("p-0.5 rounded transition-opacity",
+                                              st2 === "validated" ? "bg-emerald-500/30 text-emerald-400" : "hover:bg-emerald-500/20 text-muted-foreground hover:text-emerald-400",
+                                              lockedSince24h && "opacity-40 cursor-not-allowed hover:bg-transparent",
+                                            )}
+                                            title={lockedSince24h ? lockTitle : "Valider le cycle"}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (lockedSince24h) return;
+                                              if (st2 === "validated") return;
+                                              const label = cycle.cycle_number === 0 ? "le cycle Ébauche" : `le Cycle ${cycle.cycle_number}`;
+                                              if (confirm(`Valider ${label} pour ${u.displayName} ?\n\n→ Le cycle suivant sera déverrouillé\n→ Action loggée avec timestamp\n→ Soft-lock 24h après validation\n\nConfirmer la validation ?`)) {
+                                                handleCycleStatusChangeDirectly(u.id, cycle, uc, "validated");
+                                              }
+                                            }}
+                                          ><CheckCircle className="w-2.5 h-2.5" /></button>
+                                          <button
+                                            disabled={lockedSince24h}
+                                            className={cn("p-0.5 rounded transition-opacity",
+                                              st2 === "pending_review" || st2 === "in_progress" ? "bg-white/10 text-muted-foreground" : "hover:bg-white/10 text-muted-foreground/50 hover:text-muted-foreground",
+                                              lockedSince24h && "opacity-40 cursor-not-allowed hover:bg-transparent",
+                                            )}
+                                            title={lockedSince24h ? lockTitle : "Neutre — repasser en attente de revue"}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (lockedSince24h) return;
+                                              if (st2 === "pending_review") return;
+                                              handleCycleStatusChangeDirectly(u.id, cycle, uc, "pending_review");
+                                            }}
+                                          ><MinusCircle className="w-2.5 h-2.5" /></button>
+                                          <button
+                                            disabled={lockedSince24h}
+                                            className={cn("p-0.5 rounded transition-opacity",
+                                              st2 === "rejected" ? "bg-red-500/30 text-red-400" : "hover:bg-red-500/20 text-muted-foreground hover:text-red-400",
+                                              lockedSince24h && "opacity-40 cursor-not-allowed hover:bg-transparent",
+                                            )}
+                                            title={lockedSince24h ? lockTitle : "Rejeter le cycle"}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (lockedSince24h) return;
+                                              if (st2 !== "rejected") handleCycleStatusChangeDirectly(u.id, cycle, uc, "rejected");
+                                            }}
+                                          ><XCircle className="w-2.5 h-2.5" /></button>
+                                        </div>
+                                      );
+                                    })()}
                                     {uc && (st2 === "validated" || st2 === "rejected") && (
                                       <button className="mt-0.5 p-0.5 rounded text-primary hover:text-primary/80" onClick={async (e) => {
                                         e.stopPropagation();
@@ -1245,8 +1353,116 @@ export default function GestionPanel() {
                                 );
                               })}
                             </div>
+
+                            {/* ── Cycle drill-down panel ── */}
+                            {expandedCycle && expandedUc && (
+                              <div className="border border-primary/40 rounded-md bg-card/50 p-3 space-y-3">
+                                {/* Header */}
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs font-mono font-bold">
+                                      {expandedCycle.cycle_number === 0 ? "Éb." : `Cycle ${expandedCycle.cycle_number}`}
+                                    </span>
+                                    <span className={cn("px-1.5 py-0.5 text-[9px] font-mono uppercase rounded border",
+                                      expandedStatus === "in_progress" && "bg-blue-500/10 border-blue-500/30 text-blue-400",
+                                      expandedStatus === "pending_review" && "bg-orange-500/10 border-orange-500/30 text-orange-400",
+                                      expandedStatus === "validated" && "bg-emerald-500/10 border-emerald-500/30 text-emerald-400",
+                                      expandedStatus === "rejected" && "bg-red-500/10 border-red-500/30 text-red-400",
+                                    )}>{getStatusLabel(expandedStatus)}</span>
+                                    <span className="text-[10px] font-mono text-muted-foreground">
+                                      Trades #{expandedCycle.trade_start}–{expandedCycle.trade_end} · {expandedExecs.length} saisis
+                                    </span>
+                                    {expandedUc.total_rr != null && (
+                                      <span className={cn("text-[10px] font-mono font-bold", (expandedUc.total_rr || 0) >= 0 ? "text-emerald-400" : "text-red-400")}>
+                                        {(expandedUc.total_rr || 0) >= 0 ? "+" : ""}{(expandedUc.total_rr || 0).toFixed(1)} RR
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    {/* Réouvrir : visible si validé / rejeté / pending_review */}
+                                    {(expandedStatus === "validated" || expandedStatus === "rejected" || expandedStatus === "pending_review") && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (confirm(`Réouvrir le ${expandedCycle.cycle_number === 0 ? "cycle Ébauche" : `Cycle ${expandedCycle.cycle_number}`} pour ${u.displayName} ?\n\nLe cycle repassera en "En cours". Les vérifications passées sont conservées en historique.`)) {
+                                            handleCycleStatusChangeDirectly(u.id, expandedCycle, expandedUc, "in_progress");
+                                          }
+                                        }}
+                                        className="px-2 py-1 text-[10px] font-mono rounded border border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 inline-flex items-center gap-1"
+                                        title="Repasse le cycle en 'En cours' (l'élève peut re-soumettre)"
+                                      >
+                                        <RotateCcw className="w-3 h-3" />Réouvrir le cycle
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setExpandedCycleByUser((prev) => ({ ...prev, [u.id]: null })); }}
+                                      className="px-2 py-1 text-[10px] font-mono rounded border border-border bg-muted/30 hover:bg-muted/50"
+                                    >Fermer</button>
+                                  </div>
+                                </div>
+
+                                {/* Trades détaillés du cycle */}
+                                {expandedExecs.length === 0 ? (
+                                  <div className="text-center py-6 text-[11px] text-muted-foreground">Aucun trade saisi sur ce cycle</div>
+                                ) : (
+                                  <ScrollArea className="max-h-[420px] rounded-md border border-border">
+                                    <Table>
+                                      <TableHeader>
+                                        <TableRow className="bg-muted/50">
+                                          {["#", "Date", "Dir", "H. Entrée", "H. Sortie", "Contexte", "Prix Entrée", "Prix Sortie", "SL", "TP", "RR", "Setup", "Screens", "Note"].map((h) => (
+                                            <TableHead key={h} className={cn("h-7 text-[9px] font-mono whitespace-nowrap", (h === "RR" || h.startsWith("Prix") || h === "SL" || h === "TP") && "text-right")}>{h}</TableHead>
+                                          ))}
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {expandedExecs.map((exec) => {
+                                          const ctx = exec.context_timeframe || exec.entry_timeframe;
+                                          return (
+                                            <TableRow key={exec.id} className="hover:bg-muted/30">
+                                              <TableCell className="py-1 text-[10px] font-mono font-bold">{exec.trade_number}</TableCell>
+                                              <TableCell className="py-1 text-[10px] font-mono text-muted-foreground whitespace-nowrap">{fmtDate(exec.trade_date)}</TableCell>
+                                              <TableCell className="py-1">
+                                                <span className={cn("text-[10px] font-mono", exec.direction === "Long" ? "text-emerald-400" : "text-red-400")}>{exec.direction === "Long" ? "▲ Long" : "▼ Short"}</span>
+                                              </TableCell>
+                                              <TableCell className="py-1 text-[10px] font-mono text-muted-foreground">{exec.entry_time || "—"}</TableCell>
+                                              <TableCell className="py-1 text-[10px] font-mono text-muted-foreground">{exec.exit_time || "—"}</TableCell>
+                                              <TableCell className="py-1 text-[10px] font-mono text-muted-foreground">{ctx || "—"}</TableCell>
+                                              <TableCell className="py-1 text-[10px] font-mono text-right">{exec.entry_price != null ? exec.entry_price : "—"}</TableCell>
+                                              <TableCell className="py-1 text-[10px] font-mono text-right">{exec.exit_price != null ? exec.exit_price : "—"}</TableCell>
+                                              <TableCell className="py-1 text-[10px] font-mono text-right text-red-400/80" title={exec.sl_placement || undefined}>{exec.stop_loss != null ? exec.stop_loss : "—"}</TableCell>
+                                              <TableCell className="py-1 text-[10px] font-mono text-right text-emerald-400/80" title={exec.tp_placement || undefined}>{exec.take_profit != null ? exec.take_profit : "—"}</TableCell>
+                                              <TableCell className="py-1 text-right">
+                                                <span className={cn("font-mono font-bold text-[10px]", (exec.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400")}>{(exec.rr || 0) >= 0 ? "+" : ""}{(exec.rr || 0).toFixed(1)}</span>
+                                              </TableCell>
+                                              <TableCell className="py-1 text-[10px] font-mono text-muted-foreground">{exec.setup_type || "—"}</TableCell>
+                                              <TableCell className="py-1">
+                                                <div className="flex gap-1">
+                                                  {exec.screenshot_url && <button className="text-[9px] font-mono text-primary hover:underline" onClick={(e) => { e.stopPropagation(); const idx = u.executions.findIndex((x) => x.id === exec.id); openGallery(u.executions, idx >= 0 ? idx : 0, "m15"); }}>M15</button>}
+                                                  {exec.screenshot_entry_url && <button className="text-[9px] font-mono text-primary hover:underline" onClick={(e) => { e.stopPropagation(); const idx = u.executions.findIndex((x) => x.id === exec.id); openGallery(u.executions, idx >= 0 ? idx : 0, "m5"); }}>M5</button>}
+                                                  {!exec.screenshot_url && !exec.screenshot_entry_url && <span className="text-[9px] text-muted-foreground">—</span>}
+                                                </div>
+                                              </TableCell>
+                                              <TableCell className="py-1 text-[10px] text-muted-foreground max-w-[160px] truncate" title={exec.notes || undefined}>{exec.notes || "—"}</TableCell>
+                                            </TableRow>
+                                          );
+                                        })}
+                                      </TableBody>
+                                    </Table>
+                                  </ScrollArea>
+                                )}
+
+                                {/* Feedback admin du cycle (si présent) */}
+                                {expandedUc.admin_feedback && (
+                                  <div className="p-2 rounded-md border border-border bg-muted/20">
+                                    <p className="text-[9px] font-mono uppercase text-muted-foreground mb-1">Feedback admin</p>
+                                    <p className="text-[11px] text-foreground whitespace-pre-wrap">{expandedUc.admin_feedback}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        )}
+                          );
+                        })()}
 
                         {/* ── Sub-tab: Trades ── */}
                         {subTab === "trades" && (
@@ -1366,10 +1582,18 @@ export default function GestionPanel() {
                                   {u.teamRoles.map((r) => <span key={r} className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono border", getRoleBadgeCls(r))}>{getRoleIcon(r)}{getRoleLabel(r)}</span>)}
                                 </div>
                               )}
-                              {u.isInstitute && (
-                                <div className="flex items-center gap-2">
+                              {(u.importedFromProd || u.isInstitute) && (
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-[10px] font-mono uppercase text-muted-foreground w-12">Tags</span>
-                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-mono border bg-blue-500/10 text-blue-500 border-blue-500/30"><Award className="w-2.5 h-2.5" />Institut</span>
+                                  {u.importedFromProd && (
+                                    <span
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold border bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.25)]"
+                                      title={u.importedAt ? `Importé le ${new Date(u.importedAt).toLocaleDateString("fr-FR")}` : ""}
+                                    >
+                                      <Database className="w-2.5 h-2.5" />Importé prod
+                                    </span>
+                                  )}
+                                  {u.isInstitute && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-mono border bg-blue-500/10 text-blue-500 border-blue-500/30"><Award className="w-2.5 h-2.5" />Institut</span>}
                                 </div>
                               )}
                             </div>
@@ -1823,6 +2047,14 @@ export default function GestionPanel() {
                         {u.profileStatus === "active" && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/20">Actif</span>}
                         {u.profileStatus === "frozen" && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-blue-500/10 text-blue-400 rounded border border-blue-500/20">Gelé</span>}
                         {u.profileStatus === "banned" && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-red-500/10 text-red-400 rounded border border-red-500/20">Banni</span>}
+                        {u.importedFromProd && (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 rounded border border-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.25)]"
+                            title={u.importedAt ? `Importé prod le ${new Date(u.importedAt).toLocaleDateString("fr-FR")}` : ""}
+                          >
+                            <Database className="w-2.5 h-2.5" />Importé prod
+                          </span>
+                        )}
                         {u.isInstitute && <span className="px-1.5 py-0.5 text-[9px] font-mono bg-blue-500/10 text-blue-400 rounded border border-blue-500/20">Institut</span>}
                         {u.teamRoles.map((r) => <span key={r} className={cn("px-1.5 py-0.5 text-[9px] font-mono rounded border", getRoleBadgeCls(r))}>{getRoleLabel(r)}</span>)}
                         {u.isOnline
@@ -1946,11 +2178,19 @@ export default function GestionPanel() {
                         </div>
                       </div>
                       {/* Tags */}
-                      {u.isInstitute && (
+                      {(u.importedFromProd || u.isInstitute) && (
                         <div className="space-y-2">
                           <p className="text-[10px] font-mono uppercase text-white/30 tracking-wider">Tags</p>
                           <div className="flex gap-1.5 flex-wrap">
-                            <span className="px-2 py-1 text-[10px] font-mono bg-violet-500/10 text-violet-400 rounded border border-violet-500/20">Institut</span>
+                            {u.importedFromProd && (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 rounded border border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
+                                title={u.importedAt ? `Importé le ${new Date(u.importedAt).toLocaleDateString("fr-FR")}` : ""}
+                              >
+                                <Database className="w-3 h-3" />Importé prod
+                              </span>
+                            )}
+                            {u.isInstitute && <span className="px-2 py-1 text-[10px] font-mono bg-violet-500/10 text-violet-400 rounded border border-violet-500/20">Institut</span>}
                           </div>
                         </div>
                       )}
