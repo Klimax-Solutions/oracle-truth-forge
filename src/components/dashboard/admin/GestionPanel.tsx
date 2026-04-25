@@ -373,6 +373,7 @@ export default function GestionPanel() {
   const [assigningRequest, setAssigningRequest] = useState<string | null>(null);
   const [verificationAssigneeFilter, setVerificationAssigneeFilter] = useState("all");
   const [userFilter, setUserFilter] = useState<string>("all");
+  const [cycleFilter, setCycleFilter] = useState<string>("all"); // "all" | "ebauche" | "c1".."c8" | "graduated"
   const [userSort, setUserSort] = useState<string>("priority");
   const [activeSubTab, setActiveSubTab] = useState<Record<string, "cycles" | "trades" | "origine" | "profil">>({});
   // Cycle drill-down dans l'onglet "Cycles" — par user, ID du cycle expand (ou null)
@@ -886,6 +887,7 @@ export default function GestionPanel() {
     imported: users.filter((u) => u.importedFromProd).length,
     frozen: users.filter((u) => u.profileStatus === "frozen").length,
     banned: users.filter((u) => u.profileStatus === "banned").length,
+    graduated: users.filter((u) => u.userStatus === "completed").length,
   }), [users]);
 
   const filteredUsers = useMemo(() => {
@@ -897,7 +899,17 @@ export default function GestionPanel() {
       else if (userFilter === "online") list = list.filter((u) => u.isOnline);
       else if (userFilter === "institute") list = list.filter((u) => u.isInstitute);
       else if (userFilter === "imported") list = list.filter((u) => u.importedFromProd);
+      else if (userFilter === "graduated") list = list.filter((u) => u.userStatus === "completed");
       else list = list.filter((u) => u.roles.includes(userFilter));
+    }
+    // Cycle progression filter — based on current in-progress / pending_review cycle
+    if (cycleFilter !== "all") {
+      if (cycleFilter === "graduated") {
+        list = list.filter((u) => u.userStatus === "completed");
+      } else {
+        const target = cycleFilter === "ebauche" ? 0 : parseInt(cycleFilter.replace("c", ""), 10);
+        list = list.filter((u) => u.currentCycle?.cycle_number === target);
+      }
     }
     if (search) {
       const q = search.toLowerCase();
@@ -919,7 +931,7 @@ export default function GestionPanel() {
       });
     }
     return list;
-  }, [users, search, userFilter, userSort]);
+  }, [users, search, userFilter, cycleFilter, userSort]);
 
   const filteredRequests = useMemo(() => {
     let r = requests;
@@ -1004,9 +1016,11 @@ export default function GestionPanel() {
                   { key: "all", label: "Clients", count: filterCounts.all },
                   { key: "pending", label: "En vérif", count: filterCounts.pending, dot: "orange" },
                   { key: "online", label: "En ligne", count: filterCounts.online, dot: "emerald" },
-                  { key: "institute", label: "Institut", count: filterCounts.institute },
+                  { key: "institute", label: "Mercure", count: filterCounts.institute },
                   { key: "imported", label: "Importés prod", count: filterCounts.imported },
+                  { key: "graduated", label: "Diplômés", count: filterCounts.graduated },
                   { key: "frozen", label: "Gelés", count: filterCounts.frozen },
+                  { key: "banned", label: "Bannis", count: filterCounts.banned, dot: "red" },
                 ] as const).map((f) => (
                   <button
                     key={f.key}
@@ -1030,6 +1044,27 @@ export default function GestionPanel() {
                     <span className={cn("font-mono text-[11px]", userFilter === f.key ? "text-white/70" : "text-white/30")}>{f.count}</span>
                   </button>
                 ))}
+
+                <div className="w-px h-5 bg-white/10 mx-1" />
+
+                <Select value={cycleFilter} onValueChange={setCycleFilter}>
+                  <SelectTrigger className="w-[130px] h-8 bg-white/[0.04] border-white/[0.08] rounded-lg text-white/70 text-xs hover:bg-white/[0.06] transition-all">
+                    <SelectValue placeholder="Cycle" />
+                  </SelectTrigger>
+                  <SelectContent className={cn("border-white/[0.10] rounded-xl shadow-2xl backdrop-blur-xl p-1", BG)}>
+                    <SelectItem value="all" className="text-white/70 text-xs">Tous cycles</SelectItem>
+                    <SelectItem value="ebauche" className="text-white/70 text-xs">Ébauche</SelectItem>
+                    <SelectItem value="c1" className="text-white/70 text-xs">Cycle 1</SelectItem>
+                    <SelectItem value="c2" className="text-white/70 text-xs">Cycle 2</SelectItem>
+                    <SelectItem value="c3" className="text-white/70 text-xs">Cycle 3</SelectItem>
+                    <SelectItem value="c4" className="text-white/70 text-xs">Cycle 4</SelectItem>
+                    <SelectItem value="c5" className="text-white/70 text-xs">Cycle 5</SelectItem>
+                    <SelectItem value="c6" className="text-white/70 text-xs">Cycle 6</SelectItem>
+                    <SelectItem value="c7" className="text-white/70 text-xs">Cycle 7</SelectItem>
+                    <SelectItem value="c8" className="text-white/70 text-xs">Cycle 8</SelectItem>
+                    <SelectItem value="graduated" className="text-white/70 text-xs">Diplômés</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 <div className="w-px h-5 bg-white/10 mx-1" />
 
