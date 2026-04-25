@@ -173,7 +173,7 @@ async function migrateOneUser(
     const { data: notes, error: notesErr } = await source
       .from("admin_trade_notes")
       .select("*")
-      .in("verification_request_id", vrIds.map((v) => v.id));
+      .in("verification_request_id", vrIds.map((v: { id: string }) => v.id));
     if (notesErr) {
       errors.push(`[${uid}] read admin_trade_notes: ${notesErr.message}`);
     } else if (notes && notes.length > 0) {
