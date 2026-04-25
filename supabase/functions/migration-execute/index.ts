@@ -24,7 +24,7 @@ const COPY_ORDER = [
   "user_quest_flags",
   "user_successes",
   "user_notifications",
-  "user_video_views",
+  // user_video_views: skipped (low value, no FK overlap between source & target videos)
   "user_trade_analyses",
 ] as const;
 
