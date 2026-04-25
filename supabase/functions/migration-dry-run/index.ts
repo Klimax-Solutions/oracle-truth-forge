@@ -119,26 +119,25 @@ Deno.serve(async (req) => {
           const profile = profileByUid.get(uid);
           const counts: Record<string, number | string> = {};
 
-          // Per-table counts
-          for (const t of PER_USER_TABLES) {
-            let q = source.from(t).select("*", { count: "exact", head: true });
-            // custom_setups has no user_id col — use created_by OR assigned_to
-            if (t === "custom_setups") {
-              q = q.or(`created_by.eq.${uid},assigned_to.eq.${uid}`);
-            } else {
-              q = q.eq("user_id", uid);
-            }
-            const { count, error } = await q;
-            if (error) {
-              counts[t] = `ERR: ${error.message}`;
-            } else {
-              counts[t] = count ?? 0;
-              totals[t] += count ?? 0;
-            }
+          // Per-table counts in parallel
+          const countResults = await Promise.all(
+            PER_USER_TABLES.map(async (t) => {
+              let q = source.from(t).select("*", { count: "exact", head: true });
+              if (t === "custom_setups") {
+                q = q.or(`created_by.eq.${uid},assigned_to.eq.${uid}`);
+              } else {
+                q = q.eq("user_id", uid);
+              }
+              const { count, error } = await q;
+              return { t, count: error ? `ERR: ${error.message}` : (count ?? 0) };
+            }),
+          );
+          for (const { t, count } of countResults) {
+            counts[t] = count;
+            if (typeof count === "number") totals[t] += count;
           }
 
           // admin_trade_notes via verification_requests of this user
-          // (admin_trade_notes has no user_id col — link via verification_request_id)
           const { data: vrIds } = await source
             .from("verification_requests")
             .select("id")
