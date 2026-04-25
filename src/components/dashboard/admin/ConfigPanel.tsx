@@ -63,7 +63,7 @@ interface RoleUser {
 
 // ── Helpers ──
 function getRoleLabel(r: string) {
-  const m: Record<string, string> = { super_admin: "Super Admin", admin: "Admin", early_access: "Early Access", institute: "Institut", setter: "Setter", member: "Membre" };
+  const m: Record<string, string> = { super_admin: "Super Admin", admin: "Admin", early_access: "Early Access", institute: "Institut", setter: "Setter", closer: "Closer", member: "Membre" };
   return m[r] || r;
 }
 function getRoleCls(r: string) {
@@ -334,7 +334,7 @@ export default function ConfigPanel() {
   // ── Config → Rôles: équipe uniquement (super_admin, admin, setter) ──
   // Seuls les membres de l'équipe interne apparaissent ici (3-5 personnes max).
   // Les membres/EA/clients sont dans Gestion, pas dans Config.
-  const TEAM_ROLES = ["super_admin", "admin", "setter"];
+  const TEAM_ROLES = ["super_admin", "admin", "setter", "closer"];
   const teamUsers = useMemo(() => users.filter((u) => u.roles.some((r) => TEAM_ROLES.includes(r))), [users]);
 
   const filterCounts = useMemo(() => ({
@@ -342,6 +342,7 @@ export default function ConfigPanel() {
     super_admin: teamUsers.filter((u) => u.roles.includes("super_admin")).length,
     admin: teamUsers.filter((u) => u.roles.includes("admin")).length,
     setter: teamUsers.filter((u) => u.roles.includes("setter")).length,
+    closer: teamUsers.filter((u) => u.roles.includes("closer")).length,
   }), [teamUsers]);
 
   const filteredUsers = useMemo(() => {
@@ -524,6 +525,7 @@ export default function ConfigPanel() {
                     { key: "super_admin", label: "Super Admin", count: filterCounts.super_admin },
                     { key: "admin", label: "Admin", count: filterCounts.admin },
                     { key: "setter", label: "Setter", count: filterCounts.setter },
+                    { key: "closer", label: "Closer", count: filterCounts.closer },
                   ] as const).map((f) => (
                     <button key={f.key} onClick={() => setRoleFilter(roleFilter === f.key ? "all" : f.key)}
                       className={cn(
@@ -726,6 +728,7 @@ export default function ConfigPanel() {
               { value: "early_access", label: "Early Access" },
               { value: "institute", label: "Institut" },
               { value: "setter", label: "Setter" },
+              { value: "closer", label: "Closer" },
               { value: "super_admin", label: "Super Admin" },
             ].map((r) => {
               const sel = roleDialogSelected.includes(r.value);
