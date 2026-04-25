@@ -226,6 +226,16 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ---- Custom auth: X-Migration-Token header must match MIGRATION_SECRET ----
+  const expectedToken = Deno.env.get("MIGRATION_SECRET");
+  const providedToken = req.headers.get("X-Migration-Token");
+  if (!expectedToken || !providedToken || providedToken !== expectedToken) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized: invalid or missing X-Migration-Token" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   try {
     const url = new URL(req.url);
     const batchSize = parseInt(url.searchParams.get("batch_size") ?? "5", 10);
