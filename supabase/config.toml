@@ -1,1 +1,16 @@
 project_id = "pggkwyhtplxyarctuoze"
+
+[functions.migration-execute]
+verify_jwt = false
+
+[functions.migration-dry-run]
+verify_jwt = false
+
+[functions.migration-fk-check]
+verify_jwt = false
+
+[functions.migration-recon]
+verify_jwt = false
+
+[functions.migration-status]
+verify_jwt = false
