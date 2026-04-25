@@ -222,126 +222,122 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
   return (
     <div className="h-full flex flex-col overflow-hidden">
 
-      {/* ── Sticky compact header ── */}
-      <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-sm px-4 md:px-6 py-3 flex-shrink-0">
-        <div className="flex items-center gap-2 flex-wrap">
-
-          {/* Oracle pills */}
-          {onDataSourceChange && (
-            <>
-              <DatasetPill
-                active={dataSource === "oracle" && !selectedSessionId}
-                label="Oracle Core"
-                color={TEAL}
-                icon={Database}
-                onClick={() => { setSelectedSessionId(null); onDataSourceChange("oracle"); }}
-              />
-              {showDataGenerale && (
-                <DatasetPill
-                  active={dataSource === "data-generale" && !selectedSessionId}
-                  label="Oracle Max"
-                  color={AMBER}
-                  icon={Globe}
-                  onClick={() => { setSelectedSessionId(null); onDataSourceChange("data-generale"); }}
-                />
-              )}
-              {/* Séparateur */}
-              <div className="w-px h-4 bg-border self-center mx-0.5 shrink-0" />
-            </>
-          )}
-
-          {/* Sessions compactes */}
-          {(["backtesting", "live"] as const).map((type) => {
-            const color  = type === "backtesting" ? "#3B82F6" : "#F97316";
-            const Icon   = type === "backtesting" ? FlaskConical : Radio;
-            const typeSessions = sessions.filter(s => s.type === type);
-            const current = sessions.find(s => s.id === selectedSessionId && s.type === type);
-            const isActive = !!current;
-            const otherActive = !isActive && !!selectedSessionId;
-            return (
-              <DropdownMenu key={type}>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: "5px",
-                      padding: "4px 10px", borderRadius: "8px", fontSize: "12px",
-                      fontWeight: isActive ? 600 : 400, cursor: "pointer",
-                      background: isActive ? `${color}18` : "transparent",
-                      color: isActive ? color : "rgba(255,255,255,0.38)",
-                      border: `1px solid ${isActive ? `${color}45` : "rgba(255,255,255,0.07)"}`,
-                      opacity: otherActive ? 0.4 : 1,
-                      transition: "all 0.15s ease", whiteSpace: "nowrap",
-                    }}
-                  >
-                    <Icon style={{ width: "11px", height: "11px" }} />
-                    <span className="truncate max-w-[100px]">
-                      {current ? current.name : (type === "backtesting" ? "Backtest" : "Live")}
-                    </span>
-                    <ChevronDown style={{ width: "10px", height: "10px", opacity: 0.6 }} />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-64 bg-popover border border-border">
-                  <div className="px-3 py-2 border-b border-border flex items-center gap-2" style={{ backgroundColor: `${color}08` }}>
-                    <Icon className="w-3.5 h-3.5" style={{ color }} />
-                    <span className="text-[10px] font-mono uppercase tracking-widest font-bold" style={{ color }}>
-                      {type === "backtesting" ? "Backtesting" : "Live Trading"}
-                    </span>
-                  </div>
-                  <DropdownMenuRadioGroup
-                    value={isActive ? (selectedSessionId as string) : "__none__"}
-                    onValueChange={(v) => {
-                      const id = v === "__none__" ? null : v;
-                      setSelectedSessionId(id);
-                      if (id && onDataSourceChange) onDataSourceChange("perso");
-                      else if (!id && onDataSourceChange) onDataSourceChange("oracle");
-                    }}
-                  >
-                    <DropdownMenuRadioItem value="__none__" className="cursor-pointer text-muted-foreground italic text-xs">
-                      — Aucune session
-                    </DropdownMenuRadioItem>
-                    {typeSessions.length === 0 && (
-                      <div className="px-2 py-2 text-[10px] text-muted-foreground italic">Aucune session créée</div>
-                    )}
-                    {typeSessions.map(s => (
-                      <DropdownMenuRadioItem key={s.id} value={s.id} className="cursor-pointer text-xs">
-                        <span className="truncate">{s.name}</span>
-                        {s.asset && <span className="ml-1 text-muted-foreground font-mono">· {s.asset}</span>}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            );
-          })}
-
-          {/* Stats — droite */}
-          <div className="flex items-center gap-1.5 text-[11px] font-mono ml-auto flex-shrink-0">
-            <span className="text-foreground/60">{displayTrades.length} trades</span>
-            <span className="text-border opacity-50">·</span>
-            <span className={totalRR >= 0 ? "text-emerald-400/80" : "text-red-400/80"}>
+      {/* ── Header minimaliste — une seule ligne ── */}
+      <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-sm px-4 md:px-6 py-2.5 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          {/* Dataset actif — badge coloré */}
+          <span className="text-[11px] font-semibold" style={{
+            color: selectedSessionId
+              ? (sessions.find(s => s.id === selectedSessionId)?.type === "backtesting" ? "#3B82F6" : "#F97316")
+              : dataSource === "data-generale" ? AMBER : TEAL,
+          }}>
+            {selectedSessionId
+              ? (sessions.find(s => s.id === selectedSessionId)?.name ?? "Session")
+              : dataSource === "data-generale" ? "Oracle Max" : "Oracle Core"}
+          </span>
+          <span className="text-border/60 text-[11px]">·</span>
+          {/* Stats */}
+          <div className="flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground">
+            <span>{displayTrades.length} trades</span>
+            <span className="opacity-40">·</span>
+            <span className={totalRR >= 0 ? "text-emerald-400/75" : "text-red-400/75"}>
               {totalRR >= 0 ? "+" : ""}{totalRR.toFixed(1)} RR
             </span>
-            <span className="text-border opacity-50">·</span>
-            <span className="text-foreground/60">WR {winRate}%</span>
+            <span className="opacity-40">·</span>
+            <span>WR {winRate}%</span>
           </div>
+          {/* EA note inline */}
+          {isEarlyAccess && (
+            <span className="ml-auto text-[10px] text-amber-400/60 flex items-center gap-1 flex-shrink-0">
+              <Info className="w-3 h-3" />
+              WR réelle 69–80%
+            </span>
+          )}
         </div>
-
-        {/* EA note — compact */}
-        {isEarlyAccess && (
-          <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-400/65">
-            <Info className="w-3 h-3 shrink-0" />
-            <span>Data récoltée sur trades gagnants — WR réelle estimée entre 69% et 80%.</span>
-          </div>
-        )}
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
         <div className="p-4 md:p-6 space-y-6 max-w-full">
 
+          {/* ── Sélecteur hero — central et élégant ── */}
+          <div
+            className={cn(
+              "relative rounded-xl border border-border/60 bg-gradient-to-br from-card via-card/80 to-card/60 px-6 py-6 md:px-10 md:py-8",
+              "flex flex-col items-center justify-center gap-5 text-center shadow-lg",
+              isEntering && "opacity-0",
+            )}
+            style={{
+              animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms forwards",
+              backgroundImage:
+                `radial-gradient(circle at 20% 0%, ${TEAL}18, transparent 55%), radial-gradient(circle at 80% 100%, rgba(249,115,22,0.06), transparent 55%)`,
+            }}
+          >
+            <div className="space-y-1">
+              <p className="text-[10px] md:text-[11px] font-mono uppercase tracking-[0.25em] text-muted-foreground/80">
+                Setup à analyser
+              </p>
+              <h3 className="text-base md:text-lg font-semibold text-foreground">
+                Choisissez le dataset que vous voulez analyser
+              </h3>
+            </div>
+
+            <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 w-full">
+              {/* Oracle pills */}
+              {onDataSourceChange && (
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60">
+                    Setup Oracle
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap justify-center">
+                    <OraclePill
+                      active={dataSource === "oracle" && !selectedSessionId}
+                      icon={Database}
+                      label="Core"
+                      sublabel="314 trades"
+                      color={TEAL}
+                      onClick={() => { setSelectedSessionId(null); onDataSourceChange("oracle"); }}
+                    />
+                    {showDataGenerale && (
+                      <OraclePill
+                        active={dataSource === "data-generale" && !selectedSessionId}
+                        icon={Globe}
+                        label="Max"
+                        sublabel="+ complémentaires"
+                        color={AMBER}
+                        onClick={() => { setSelectedSessionId(null); onDataSourceChange("data-generale"); }}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {onDataSourceChange && (
+                <span className="text-[11px] font-mono font-bold text-muted-foreground/70 uppercase tracking-[0.25em] px-1 self-center">
+                  OU
+                </span>
+              )}
+
+              {/* Sessions */}
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60">
+                  Mes sessions
+                </p>
+                <SessionAnalysisSelector
+                  sessions={sessions}
+                  selectedId={selectedSessionId}
+                  onChange={(id) => {
+                    setSelectedSessionId(id);
+                    if (id && onDataSourceChange) onDataSourceChange("perso");
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Row 1: Données clés + quick access */}
           <div
             className={cn("space-y-4", isEntering && "opacity-0")}
-            style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 40ms forwards" }}
+            style={{ animation: isEntering ? "none" : "data-card-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 80ms forwards" }}
           >
             <div className="relative">
               {isExpired && <ExpiredOverlay />}
