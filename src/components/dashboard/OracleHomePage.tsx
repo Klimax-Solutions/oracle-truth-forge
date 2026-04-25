@@ -364,135 +364,65 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
           style={{ width: "42%", paddingLeft: "clamp(2rem, 5vw, 5rem)", paddingRight: "2rem" }}
         >
 
-          {/* ── Greeting — une ligne, style heading ── */}
-          <div
-            style={{
-              opacity: firstName ? 1 : 0,
-              transition: "opacity 0.5s ease",
-              marginBottom: "32px",
-              minHeight: "44px",
-            }}
-          >
-            <p style={{
-              fontSize: "clamp(1.9rem, 3.4vw, 2.6rem)",
-              fontWeight: 900,
-              fontFamily: "'Inter', system-ui, sans-serif",
-              letterSpacing: "-0.04em",
-              lineHeight: 0.95,
-              backgroundImage: "linear-gradient(160deg, #ffffff 20%, rgba(255,255,255,0.38) 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-              filter: "drop-shadow(0 0 16px rgba(255,255,255,0.08))",
-            }}>
-              <span style={{ WebkitTextFillColor: "rgba(255,255,255,0.45)" }}>
-                {(() => {
-                  const h = new Date().getHours();
-                  return h < 12 ? "Bonjour, " : h < 19 ? "Bon après-midi, " : "Bonsoir, ";
-                })()}
+          {/* ── Context line : greeting + étape ── */}
+          <div style={{ opacity: firstName ? 1 : 0, transition: "opacity 0.5s ease", marginBottom: "28px", minHeight: "18px" }}>
+            <p style={{ fontSize: "13px", fontWeight: 500, fontFamily: "'Inter', system-ui, sans-serif", color: "rgba(255,255,255,0.34)", display: "flex", alignItems: "center", gap: "7px" }}>
+              <span>
+                {(() => { const h = new Date().getHours(); return h < 12 ? "Bonjour," : h < 19 ? "Bon après-midi," : "Bonsoir,"; })()}{" "}
+                <span style={{ color: "rgba(255,255,255,0.68)", fontWeight: 600 }}>{firstName}</span>
               </span>
-              {firstName}
+              <span style={{ color: "rgba(255,255,255,0.14)" }}>·</span>
+              <span style={{ color: meta.accent, fontWeight: 600 }}>Étape {String(slide + 1).padStart(2, "0")}</span>
             </p>
           </div>
 
           {/* ── Slide content ── */}
           <div key={`content-${slide}`}>
 
-            {/* Étape label + Heading — groupés visuellement */}
-            <div style={{ ...fadeIn(0), marginBottom: "20px" }}>
-              {/* Pill étape */}
-              <div style={{ marginBottom: "14px" }}>
-                <span style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  fontFamily: "'Inter', system-ui, sans-serif",
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  color: meta.accent,
-                  background: `${meta.accent}14`,
-                  border: `1px solid ${meta.accent}28`,
-                  padding: "3px 10px",
-                  borderRadius: "9999px",
-                }}>
-                  <span style={{
-                    width: "4px",
-                    height: "4px",
-                    borderRadius: "50%",
-                    background: meta.accent,
-                    boxShadow: `0 0 5px 1px ${meta.accent}88`,
-                    flexShrink: 0,
-                  }} />
-                  Étape {String(slide + 1).padStart(2, "0")} — {meta.label}
-                </span>
-              </div>
+            {/* Heading — héro */}
+            <h2 style={{
+              ...fadeIn(0),
+              fontSize: "clamp(2.6rem, 5.5vw, 4.4rem)",
+              fontWeight: 900,
+              letterSpacing: "-0.04em",
+              lineHeight: "0.92",
+              backgroundImage: "linear-gradient(175deg, #ffffff 25%, rgba(255,255,255,0.35) 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              fontFamily: "'Inter', system-ui, sans-serif",
+              marginBottom: "28px",
+              display: "block",
+            }}>
+              {meta.heading}
+            </h2>
 
-              {/* Heading */}
-              <h2 style={{
-                fontSize: "clamp(2.6rem, 5.5vw, 4.4rem)",
-                fontWeight: 900,
-                letterSpacing: "-0.04em",
-                lineHeight: "0.92",
-                backgroundImage: "linear-gradient(175deg, #ffffff 25%, rgba(255,255,255,0.35) 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-                fontFamily: "'Inter', system-ui, sans-serif",
-              }}>
-                {meta.heading}
-              </h2>
-            </div>
-
-            {/* Accent separator */}
-            <div style={{
-              ...fadeIn(80),
-              height: "1px",
-              width: "48px",
-              borderRadius: "9999px",
-              background: `linear-gradient(to right, ${meta.accent}88, transparent)`,
-              marginBottom: "18px",
-            }} />
-
-            {/* Secondary metric — only when non-zero */}
+            {/* Metric — si non-zéro */}
             {bigMetric !== "—" && bigMetric !== "0" && bigMetric !== "0%" && (
-              <div style={{ ...fadeIn(130), display: "flex", alignItems: "baseline", gap: "10px", marginBottom: "16px" }}>
-                <span style={{
-                  fontSize: "clamp(1.6rem, 3.2vw, 2.2rem)",
-                  fontWeight: 800,
-                  fontFamily: "'Inter', system-ui, sans-serif",
-                  color: meta.accent,
-                  letterSpacing: "-0.04em",
-                  lineHeight: 1,
-                }}>
+              <div style={{ ...fadeIn(60), display: "flex", alignItems: "baseline", gap: "10px", marginBottom: "10px" }}>
+                <span style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)", fontWeight: 800, fontFamily: "'Inter', system-ui, sans-serif", color: meta.accent, letterSpacing: "-0.04em", lineHeight: 1 }}>
                   {bigMetric}
                 </span>
-                <span style={{
-                  fontSize: "13px",
-                  fontWeight: 400,
-                  fontFamily: "'Inter', system-ui, sans-serif",
-                  color: "rgba(255,255,255,0.35)",
-                }}>
+                <span style={{ fontSize: "12px", fontWeight: 400, fontFamily: "'Inter', system-ui, sans-serif", color: "rgba(255,255,255,0.30)" }}>
                   {metricLabel}
                 </span>
               </div>
             )}
 
-            {/* Contextual message */}
+            {/* Message contextuel */}
             <p style={{
-              ...fadeIn(160),
-              fontSize: "14px",
-              lineHeight: "1.65",
-              color: "rgba(255,255,255,0.42)",
-              maxWidth: "32ch",
+              ...fadeIn(100),
+              fontSize: "13.5px",
+              lineHeight: "1.6",
+              color: "rgba(255,255,255,0.38)",
+              maxWidth: "34ch",
               marginBottom: "32px",
             }}>
               {contextMsg}
             </p>
 
             {/* CTA */}
-            <div style={fadeIn(230)}>
+            <div style={fadeIn(180)}>
               {slide === 0 && (
                 <ActionButton
                   onClick={onNavigateToVideos}
