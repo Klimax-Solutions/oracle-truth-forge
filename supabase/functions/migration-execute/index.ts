@@ -49,6 +49,7 @@ async function copyTableForUser(
   table: string,
   uid: string,
   errors: string[],
+  cycleMap?: Map<string, string>,
 ): Promise<number> {
   let query = source.from(table).select("*");
   if (table === "custom_setups") {
@@ -63,19 +64,36 @@ async function copyTableForUser(
   }
   if (!data || data.length === 0) return 0;
 
+  // user_cycles: remap cycle_id (source UUID → target UUID) via cycle_number lookup
+  let rows = data;
+  if (table === "user_cycles" && cycleMap) {
+    const remapped: Record<string, unknown>[] = [];
+    for (const row of data as Record<string, unknown>[]) {
+      const srcCycleId = row.cycle_id as string;
+      const tgtCycleId = cycleMap.get(srcCycleId);
+      if (!tgtCycleId) {
+        errors.push(`[${uid}] WARN user_cycles: no target cycle for src=${srcCycleId} → row skipped`);
+        continue;
+      }
+      remapped.push({ ...row, cycle_id: tgtCycleId });
+    }
+    rows = remapped;
+    if (rows.length === 0) return 0;
+  }
+
   // user_roles: trigger handle_new_user_role auto-inserts a 'member' row → use upsert with ignore
   // Other tables: plain insert (assumed empty for new auth user)
   const insertOptions = table === "user_roles"
     ? { onConflict: "user_id,role", ignoreDuplicates: true }
     : undefined;
   const { error: insErr } = insertOptions
-    ? await target.from(table).upsert(data, insertOptions)
-    : await target.from(table).insert(data);
+    ? await target.from(table).upsert(rows, insertOptions)
+    : await target.from(table).insert(rows);
   if (insErr) {
-    errors.push(`[${uid}] insert ${table} (${data.length} rows): ${insErr.message}`);
+    errors.push(`[${uid}] insert ${table} (${rows.length} rows): ${insErr.message}`);
     return 0;
   }
-  return data.length;
+  return rows.length;
 }
 
 async function copyStorageForUser(
