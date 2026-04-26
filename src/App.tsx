@@ -44,6 +44,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
         <SuccessNotification />
+        <MaintenanceLock />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
