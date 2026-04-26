@@ -604,11 +604,21 @@ export default function ConfigPanel() {
                           <span className="text-sm text-white/60">{u.first_name || <span className="text-white/20">—</span>}</span>
                         </div>
 
-                        {/* Roles */}
+                        {/* Email */}
+                        <div className="w-[220px] shrink-0 truncate">
+                          <span className="text-sm text-white/60 font-mono text-xs" title={u.email}>{u.email}</span>
+                        </div>
+
+                        {/* Roles — super_admin supersedes admin, hide admin badge if SA present */}
                         <div className="flex-1 flex gap-1 flex-wrap">
-                          {u.roles.filter((r) => r !== "member").map((r) => (
-                            <span key={r} className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono border", getRoleCls(r))}>{getRoleIcon(r)}{getRoleLabel(r)}</span>
-                          ))}
+                          {(() => {
+                            const visible = u.roles.filter((r) => r !== "member");
+                            const hasSA = visible.includes("super_admin");
+                            const filtered = hasSA ? visible.filter((r) => r !== "admin") : visible;
+                            return filtered.map((r) => (
+                              <span key={r} className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono border", getRoleCls(r))}>{getRoleIcon(r)}{getRoleLabel(r)}</span>
+                            ));
+                          })()}
                           {u.roles.filter((r) => r !== "member").length === 0 && <span className="text-white/20 text-xs">Membre</span>}
                         </div>
 
