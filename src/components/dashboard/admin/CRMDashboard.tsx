@@ -735,6 +735,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 pl-5 min-w-[160px]">Lead</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[110px]">Form / EA</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[130px]">Setting</TableHead>
+                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[110px]">Mail</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[130px]">Call</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center w-16">Trial</TableHead>
                     {isSuperAdmin && <TableHead className="w-8" />}
@@ -742,7 +743,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={isSuperAdmin ? 6 : 5} className="text-center py-20 text-white/30 text-sm font-display">Aucun lead</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-20 text-white/30 text-sm font-display">Aucun lead</TableCell></TableRow>
                   ) : filtered.slice(0, 100).map((lead) => {
                     const sc = lead.setter_name ? getSetterColor(lead.setter_name) : null;
                     const trial = getTrialDay(lead);
