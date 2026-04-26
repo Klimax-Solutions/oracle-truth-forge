@@ -171,7 +171,7 @@ const PipelineStep = ({ label, done, date, isLast }: { label: string; done: bool
     </div>
     <span className={cn("text-[9px] font-mono mt-1 text-center", done ? "text-foreground font-semibold" : "text-muted-foreground")}>{label}</span>
     {done && date && (
-      <span className="text-[8px] font-mono text-amber-500">{new Date(date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })} {new Date(date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
+      <span className="text-[8px] font-mono text-amber-500">{new Date(date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", timeZone: "Europe/Paris" })} {new Date(date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}</span>
     )}
     {!isLast && (
       <div className={cn("absolute top-4 left-[calc(50%+16px)] w-[calc(100%-32px)] h-0.5", done ? "bg-amber-500/50" : "bg-border")} />
@@ -469,13 +469,13 @@ export const EarlyAccessCRM = () => {
   const fmt = (iso: string | null) => {
     if (!iso) return "—";
     const d = new Date(iso);
-    return `${d.toLocaleDateString("fr-FR")} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+    return `${d.toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}`;
   };
 
   const fmtDate = (iso: string | null) => {
     if (!iso) return "—";
     const d = new Date(iso);
-    return `${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+    return `${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit", timeZone: "Europe/Paris" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}`;
   };
 
   const filtered = useMemo(() => {

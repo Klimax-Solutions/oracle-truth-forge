@@ -49,7 +49,11 @@ interface Props {
 function fmtDate(d: string | null) {
   if (!d) return "";
   const date = new Date(d);
-  return `${date.getDate()} ${date.toLocaleString("fr-FR", { month: "long" })} à ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  // Format en heure de Paris pour rester cohérent avec l'équipe FR
+  const day = date.toLocaleDateString("fr-FR", { day: "numeric", timeZone: "Europe/Paris" });
+  const month = date.toLocaleDateString("fr-FR", { month: "long", timeZone: "Europe/Paris" });
+  const time = date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
+  return `${day} ${month} à ${time}`;
 }
 
 function fmtShort(d: string | null) {
@@ -352,7 +356,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
               {lead.call_scheduled_at && (
                 <p className="hidden md:flex text-[11px] text-white/35 font-mono mt-0.5 items-center gap-1">
                   <Clock className="w-3 h-3" />
-                  {fmtDate(lead.call_scheduled_at)} · {new Date(lead.call_scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  {fmtDate(lead.call_scheduled_at)} · {new Date(lead.call_scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })}
                 </p>
               )}
             </div>

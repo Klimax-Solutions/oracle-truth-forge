@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -10,7 +10,9 @@ import {
   Phone,
   Mail,
   Clock,
+  AlertTriangle,
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { EarlyAccessCRM } from "./EarlyAccessCRM";
 
 interface EARequest {
@@ -30,6 +32,31 @@ export const EarlyAccessRequestsTab = () => {
   const [processing, setProcessing] = useState<string | null>(null);
   const [durations, setDurations] = useState<Record<string, number>>({});
   const { toast } = useToast();
+
+  // Format en heure de Paris (équipe FR — l'heure du navigateur peut différer)
+  const fmtParis = (iso: string) => {
+    const d = new Date(iso);
+    const date = d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit", timeZone: "Europe/Paris" });
+    const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
+    return `${date} à ${time}`;
+  };
+
+  // Index des soumissions par email (case-insensitive) → détection de doublons.
+  // Important : on n'écrase JAMAIS les anciennes soumissions, on les liste pour audit.
+  const submissionsByEmail = useMemo(() => {
+    const map = new Map<string, EARequest[]>();
+    for (const r of requests) {
+      const key = (r.email || "").trim().toLowerCase();
+      if (!key) continue;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    // Trier chaque groupe par date desc
+    for (const arr of map.values()) {
+      arr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+    return map;
+  }, [requests]);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -101,6 +128,7 @@ export const EarlyAccessRequestsTab = () => {
   }
 
   return (
+    <TooltipProvider delayDuration={150}>
     <div className="flex flex-col lg:flex-row gap-6">
       {/* LEFT: CRM (2/3) */}
       <div className="lg:w-2/3 min-w-0">
@@ -122,21 +150,59 @@ export const EarlyAccessRequestsTab = () => {
             </div>
           ) : (
             <div className="grid gap-3">
-              {pendingRequests.map((req) => (
+              {pendingRequests.map((req) => {
+                const emailKey = (req.email || "").trim().toLowerCase();
+                const allForEmail = submissionsByEmail.get(emailKey) || [];
+                const otherSubmissions = allForEmail.filter((r) => r.id !== req.id);
+                const isDuplicate = otherSubmissions.length > 0;
+
+                return (
                 <div
                   key={req.id}
                   className="border border-amber-500/30 bg-amber-500/5 rounded-md p-3"
                 >
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase bg-amber-500/20 text-amber-500 border border-amber-500/30">
                         Early Access Pré-call
                       </span>
+                      {isDuplicate && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase bg-orange-500/20 text-orange-500 border border-orange-500/40 cursor-help">
+                              <AlertTriangle className="w-3 h-3" />
+                              Doublon ({otherSubmissions.length})
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" className="max-w-xs">
+                            <div className="space-y-1.5 text-[11px]">
+                              <p className="font-semibold">Autres soumissions pour cet email :</p>
+                              {otherSubmissions.map((o) => (
+                                <div key={o.id} className="border-l-2 border-orange-400 pl-2">
+                                  <div className="font-mono">
+                                    <span className="font-semibold">{o.first_name}</span>
+                                    <span className="text-muted-foreground"> · {o.status}</span>
+                                  </div>
+                                  <div className="text-muted-foreground font-mono text-[10px]">
+                                    {fmtParis(o.created_at)}
+                                  </div>
+                                </div>
+                              ))}
+                              <p className="text-[10px] text-muted-foreground italic pt-1">
+                                Aucune donnée n'est écrasée — chaque soumission est conservée.
+                              </p>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </div>
                     <div className="space-y-1 text-xs">
                       <div className="flex items-center gap-1.5 text-foreground">
                         <User className="w-3 h-3 text-muted-foreground" />
-                        {req.first_name}
+                        <span className="font-semibold">{req.first_name}</span>
+                        {isDuplicate && (
+                          <span className="text-[9px] text-orange-400 font-mono uppercase">(prénom de cette soumission)</span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 text-foreground">
                         <Mail className="w-3 h-3 text-muted-foreground" />
@@ -148,8 +214,7 @@ export const EarlyAccessRequestsTab = () => {
                       </div>
                     </div>
                     <p className="text-[10px] text-muted-foreground font-mono">
-                      Soumis le {new Date(req.created_at).toLocaleDateString("fr-FR")} à{" "}
-                      {new Date(req.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                      Soumis le {fmtParis(req.created_at)} <span className="text-muted-foreground/60">(Paris)</span>
                     </p>
                     {/* Timer duration selector */}
                     <div className="flex items-center gap-2">
@@ -198,7 +263,8 @@ export const EarlyAccessRequestsTab = () => {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -235,5 +301,6 @@ export const EarlyAccessRequestsTab = () => {
         )}
       </div>
     </div>
+    </TooltipProvider>
   );
 };
