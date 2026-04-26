@@ -50,7 +50,7 @@ import { cn } from "@/lib/utils";
 import { useCustomVariables } from "@/hooks/useCustomVariables";
 import { CustomizableMultiSelect } from "@/components/dashboard/CustomizableMultiSelect";
 import {
-  OracleCycleWindow,
+  RecommendedWindow,
   checkDateInWindow,
   formatDateShort,
 } from "@/lib/oracle-cycle-windows";
@@ -112,7 +112,7 @@ interface OracleTradeDialogProps {
   /** Numéro imposé pour un nouveau trade (séquence Oracle). */
   nextTradeNumber: number;
   /** Fenêtre de cycle Oracle recommandée pour ce nouveau trade (null = pas de contrainte). */
-  recommendedWindow?: { start: string; end: string } | null;
+  recommendedWindow?: RecommendedWindow | null;
   /** Numéro du cycle en cours (affichage badge). */
   currentCycleNum?: number | null;
   /** Date minimale autorisée (chaînage cycles précédents). */
@@ -345,7 +345,7 @@ export const OracleTradeDialog = ({
 
   const dateBeforeMin = !!minTradeDate && !!formData.trade_date && formData.trade_date < minTradeDate;
 
-  const dateBlocked = !editingTrade && (dateWindowStatus === "out_of_window" || dateBeforeMin);
+  const dateBlocked = !editingTrade && (dateWindowStatus === "outside" || dateBeforeMin);
 
   // ── File upload helpers ──
   const handleFileSelect = (
@@ -502,16 +502,18 @@ export const OracleTradeDialog = ({
           <div className={cn(
             "flex items-center gap-2 px-3 py-2 rounded-md text-xs border",
             dateWindowStatus === "in_window"
-              ? "bg-emerald-500/8 border-emerald-500/25 text-emerald-300"
-              : dateWindowStatus === "out_of_window"
-              ? "bg-red-500/8 border-red-500/30 text-red-300"
+              ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-300"
+              : dateWindowStatus === "outside"
+              ? "bg-destructive/10 border-destructive/30 text-destructive"
+              : dateWindowStatus === "warning"
+              ? "bg-amber-500/10 border-amber-500/25 text-amber-300"
               : "bg-muted/40 border-border text-muted-foreground",
           )}>
             <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
             <span className="font-mono">
               Fenêtre Oracle : {formatDateShort(recommendedWindow.start)} → {formatDateShort(recommendedWindow.end)}
             </span>
-            {dateWindowStatus === "out_of_window" && (
+            {dateWindowStatus === "outside" && (
               <span className="ml-auto flex items-center gap-1 font-semibold">
                 <AlertTriangle className="w-3 h-3" /> Date hors fenêtre
               </span>
