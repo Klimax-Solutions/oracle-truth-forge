@@ -459,6 +459,65 @@ export default function FunnelApply() {
                 </div>
               </div>
             ) : isContactStep ? (
+              confirming ? (
+                /* ─── ÉCRAN DE CONFIRMATION : l'utilisateur DOIT relire ─── */
+                <div className="space-y-6">
+                  <div className="mb-4">
+                    <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.3em] text-muted-foreground mb-3">
+                      Vérification finale
+                    </p>
+                    <h2 className="text-base md:text-lg font-bold text-foreground mb-1">
+                      Confirme tes informations
+                    </h2>
+                    <p className="text-xs md:text-sm text-muted-foreground">
+                      Vérifie que ton prénom, email et téléphone sont corrects avant l'envoi.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 rounded-md border border-border bg-background/40 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground shrink-0">Prénom</span>
+                      <span className="text-sm font-semibold text-foreground text-right break-words">{contact.first_name.trim()}</span>
+                    </div>
+                    <div className="h-px bg-border" />
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground shrink-0">Email</span>
+                      <span className="text-sm font-mono text-foreground text-right break-all">{contact.email.trim().toLowerCase()}</span>
+                    </div>
+                    <div className="h-px bg-border" />
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground shrink-0">Téléphone</span>
+                      <span className="text-sm font-mono text-foreground text-right">
+                        {contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <p className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2 font-mono">
+                      {error}
+                    </p>
+                  )}
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      onClick={() => { setConfirming(false); setError(''); }}
+                      disabled={submitting}
+                      className="h-12 px-4 rounded-md border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
+                    >
+                      <ChevronLeft className="w-4 h-4 inline mr-1" />
+                      Modifier
+                    </button>
+                    <button
+                      onClick={confirmSubmit}
+                      disabled={submitting}
+                      className="flex-1 h-12 rounded-md bg-foreground hover:bg-foreground/90 text-background font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {submitting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Confirmer et envoyer'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
               <div className="space-y-6">
                 <div className="mb-6 md:mb-8">
                   <h2 className="text-base md:text-lg font-bold text-foreground mb-1">
@@ -471,11 +530,17 @@ export default function FunnelApply() {
 
                 <div className="space-y-5">
                   <div className="space-y-2">
-                    <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                    <label htmlFor="apply-first-name" className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
                       {config.apply_form_name_label || 'Prénom'}
                     </label>
                     <input
+                      id="apply-first-name"
+                      name="given-name"
                       type="text"
+                      autoComplete="given-name"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      maxLength={60}
                       value={contact.first_name}
                       onChange={e => setContact(c => ({ ...c, first_name: e.target.value }))}
                       className="w-full h-12 px-4 bg-background border border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none rounded-md transition-colors"
@@ -485,7 +550,7 @@ export default function FunnelApply() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                    <label htmlFor="apply-phone" className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
                       {config.apply_form_phone_label || 'Numéro de téléphone'}
                     </label>
                     <div className="flex gap-2">
@@ -502,7 +567,11 @@ export default function FunnelApply() {
                         <option value="+243">🇨🇩 +243</option><option value="+352">🇱🇺 +352</option><option value="+377">🇲🇨 +377</option>
                       </select>
                       <input
+                        id="apply-phone"
+                        name="tel-national"
                         type="tel"
+                        autoComplete="tel-national"
+                        maxLength={30}
                         value={contact.phone}
                         onChange={e => { const formatted = formatPhone(e.target.value, contact.countryCode); setContact(c => ({ ...c, phone: formatted })); }}
                         className="flex-1 h-12 px-4 bg-background border border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none rounded-md transition-colors font-mono tracking-wider"
@@ -512,11 +581,17 @@ export default function FunnelApply() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                    <label htmlFor="apply-email" className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
                       {config.apply_form_email_label || 'Adresse email'}
                     </label>
                     <input
+                      id="apply-email"
+                      name="email"
                       type="email"
+                      autoComplete="email"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      maxLength={255}
                       value={contact.email}
                       onChange={e => setContact(c => ({ ...c, email: e.target.value }))}
                       className="w-full h-12 px-4 bg-background border border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none rounded-md transition-colors"
@@ -552,14 +627,15 @@ export default function FunnelApply() {
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={handleSubmit}
+                    onClick={prepareSubmit}
                     disabled={submitting || !contact.first_name.trim() || !contact.email.trim()}
                     className="flex-1 h-12 rounded-md bg-foreground hover:bg-foreground/90 text-background font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
-                    {submitting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Soumettre ma demande'}
+                    Vérifier ma candidature
                   </button>
                 </div>
               </div>
+              )
             ) : (
               <div className="space-y-6" key={step}>
                 <div className="mb-6 md:mb-8">
