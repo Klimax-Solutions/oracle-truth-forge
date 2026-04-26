@@ -315,14 +315,17 @@ export default function ConfigPanel() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: profiles }, { data: roles }] = await Promise.all([
+      const [{ data: profiles }, { data: roles }, { data: emails }] = await Promise.all([
         supabase.from("profiles").select("user_id, display_name, first_name, status, status_reason, is_client"),
         supabase.from("user_roles").select("user_id, role"),
+        supabase.rpc("get_team_emails" as any),
       ]);
+      const emailMap = new Map<string, string>();
+      (emails as any[] || []).forEach((e: any) => emailMap.set(e.user_id, e.email));
       const map = new Map<string, RoleUser>();
       (profiles || []).forEach((p: any) => {
         map.set(p.user_id, {
-          user_id: p.user_id, email: p.display_name || "?", display_name: p.display_name,
+          user_id: p.user_id, email: emailMap.get(p.user_id) || p.display_name || "?", display_name: p.display_name,
           first_name: p.first_name || null, roles: [], status: p.status || "active",
           status_reason: p.status_reason, is_client: p.is_client || false,
         });
