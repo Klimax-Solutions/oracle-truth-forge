@@ -242,20 +242,30 @@ Deno.serve(async (req: Request) => {
         return res;
       };
 
+      // Lookup par téléphone : on filtre côté DB sur le suffixe (9 derniers chiffres)
+      // pour ne pas dépendre du format (+33, 0033, 0X…) ni d'un LIMIT arbitraire.
+      // ⚠️ Ne JAMAIS limiter à .limit(100) avec order desc — Charles (lead de févr.)
+      // tombait hors fenêtre quand 169 leads plus récents existaient.
       const tryLookupByPhone = async (phoneRaw: string) => {
         const digits = phoneRaw.replace(/\D/g, '');
         if (!digits) return { data: [] as any[], error: null as any };
+        const suffix = digits.length >= 9 ? digits.slice(-9) : digits;
+        // ilike '%<suffix>%' matche tous les formats (+33781748022, 0781748022, 33-7-81…)
         const res = await supabase
           .from("early_access_requests")
           .select("id, first_name, email, phone, call_booked, status, form_submitted")
+          .ilike("phone", `%${suffix}%`)
           .order("created_at", { ascending: false })
-          .limit(100);
+          .limit(20);
+        // Re-filtrage strict côté code : on enlève les faux positifs du ilike
+        // (un suffixe peut accidentellement matcher au milieu d'un autre numéro).
         const filtered = (res.data || []).filter((l: any) => {
           if (!l.phone) return false;
           const leadDigits = l.phone.replace(/\D/g, '');
           return leadDigits === digits
             || leadDigits === digits.replace(/^0+/, '')
-            || (digits.length >= 9 && leadDigits.endsWith(digits.slice(-9)));
+            || (digits.length >= 9 && leadDigits.endsWith(digits.slice(-9)))
+            || (leadDigits.length >= 9 && digits.endsWith(leadDigits.slice(-9)));
         });
         return { data: filtered, error: res.error };
       };
