@@ -521,59 +521,8 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
 
   // Open dialog for editing
   const handleEdit = (execution: UserExecution) => {
-    setFormData({
-      trade_number: execution.trade_number.toString(),
-      trade_date: execution.trade_date,
-      exit_date: execution.exit_date || execution.trade_date,
-      direction: execution.direction,
-      entry_time: execution.entry_time || "",
-      exit_time: execution.exit_time || "",
-      entry_price: execution.entry_price?.toString() || "",
-      exit_price: execution.exit_price?.toString() || "",
-      stop_loss: execution.stop_loss?.toString() || "",
-      take_profit: execution.take_profit?.toString() || "",
-      rr: execution.rr?.toString() || "",
-      result: execution.result || "",
-      setup_type: execution.setup_type || "",
-      entry_model: execution.entry_model || "",
-      direction_structure: execution.direction_structure || "",
-      entry_timing: execution.entry_timing || "",
-      entry_timeframe: (execution as any).entry_timeframe || "",
-      notes: execution.notes || "",
-      sl_placement: (execution as any).sl_placement || "",
-      tp_placement: (execution as any).tp_placement || "",
-      context_timeframe: (execution as any).context_timeframe || "",
-      stop_loss_size: (execution as any).stop_loss_size || "",
-      news_day: (execution as any).news_day || false,
-      news_label: (execution as any).news_label || "",
-    });
     setEditingId(execution.id);
-    setContextFile(null);
-    setContextPreview(null);
-    setEntryFile(null);
-    setEntryPreview(null);
-    setScreenshotError(false);
-    // Restore link mode if the stored value is an external URL
-    const existCtx = execution.screenshot_url;
-    const existEntry = (execution as any).screenshot_entry_url || null;
-    if (existCtx?.startsWith("http")) {
-      setContextMode("link");
-      setContextLinkUrl(existCtx);
-      setExistingContextUrl(null);
-    } else {
-      setContextMode("file");
-      setContextLinkUrl("");
-      setExistingContextUrl(existCtx);
-    }
-    if (existEntry?.startsWith("http") && !existEntry?.includes("supabase")) {
-      setEntryMode("link");
-      setEntryLinkUrl(existEntry);
-      setExistingEntryUrl(null);
-    } else {
-      setEntryMode("file");
-      setEntryLinkUrl("");
-      setExistingEntryUrl(existEntry);
-    }
+    setEditingExec(execution);
     setIsDialogOpen(true);
   };
 
