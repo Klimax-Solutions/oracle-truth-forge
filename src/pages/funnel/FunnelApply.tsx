@@ -177,13 +177,15 @@ export default function FunnelApply() {
     setTimeout(() => setStep(s => Math.min(s + 1, totalSteps - 1)), 300);
   };
 
-  const handleSubmit = async () => {
-    if (!contact.first_name.trim() || !contact.email.trim()) { setError('Nom et email requis'); return; }
+  // Étape 1 : valider strictement et basculer sur l'écran de récap.
+  // Aucune écriture en DB ici — l'utilisateur DOIT relire ses infos avant.
+  const prepareSubmit = () => {
+    setError('');
 
+    // Honeypot et time-trap restent silencieux (anti-bot)
     if (honeypot.trim()) {
       console.warn('[Apply] honeypot triggered — silent reject');
       setSubmitted(true);
-      // Pas de redirect : bot reste sur fake success, humain n'arrive jamais ici
       return;
     }
     if (Date.now() - formMountedAt.current < 1500) {
@@ -192,11 +194,38 @@ export default function FunnelApply() {
       return;
     }
 
+    const parsed = contactSchema.safeParse({
+      first_name: contact.first_name,
+      email: contact.email,
+      phone: contact.phone,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message || 'Champs invalides');
+      return;
+    }
+
+    setConfirming(true);
+  };
+
+  // Étape 2 : envoi réel. Appelé uniquement depuis l'écran de récap.
+  const confirmSubmit = async () => {
     setSubmitting(true); setError('');
 
-    const email = contact.email.trim().toLowerCase();
+    const parsed = contactSchema.safeParse({
+      first_name: contact.first_name,
+      email: contact.email,
+      phone: contact.phone,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message || 'Champs invalides');
+      setSubmitting(false);
+      setConfirming(false);
+      return;
+    }
+
+    const { first_name, email } = parsed.data;
     // ⚠️ phone est NOT NULL → on envoie '' pas null
-    const phone = contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : '';
+    const phone = parsed.data.phone ? `${contact.countryCode} ${parsed.data.phone}` : '';
 
     // Compute enrichment fields from answers
     const investmentAnswer = answers['investment_amount'] || '';
@@ -209,12 +238,11 @@ export default function FunnelApply() {
     const importance = impMatch ? parseInt(impMatch[1], 10) : null;
 
     const leadPayload = {
-      first_name: contact.first_name.trim(),
+      first_name,
       email,
       phone,
       status: 'en_attente',
       form_submitted: true,
-      // Enrichment inclus dans l'INSERT (atomique, pas de UPDATE séparé qui peut échouer)
       ...(Object.keys(answers).length > 0 ? { form_answers: answers } : {}),
       ...(investmentAnswer ? { offer_amount: investmentAnswer } : {}),
       ...(budgetAmount != null ? { budget_amount: budgetAmount } : {}),
@@ -223,23 +251,18 @@ export default function FunnelApply() {
       ...(importance != null ? { importance_trading: importance } : {}),
     };
 
-    // ─── Couche antifragile ──────────────────────────────────────────────
-    // submitFunnelLead retry 3x avec backoff. Si encore KO → queue localStorage,
-    // rejoué automatiquement à la prochaine ouverture d'une page funnel.
-    // Le user voit TOUJOURS l'écran de succès. Aucune perte de lead possible.
     try {
       const result = await submitFunnelLead(leadPayload, slug);
       if (result.queued) {
         console.warn('[Apply] Lead queued for retry — backend unreachable, will sync later:', email);
       }
     } catch (err) {
-      // submitFunnelLead ne devrait jamais throw, mais belt-and-suspenders
       console.error('[Apply] Unexpected error during submit:', err);
     }
 
-    // Toujours afficher l'écran de succès — le lead est soit en DB, soit en queue
     setSubmitted(true);
     setSubmitting(false);
+    setConfirming(false);
   };
 
   const renderEmbed = () => {
