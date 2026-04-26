@@ -169,7 +169,10 @@ export default function FunnelApply() {
     setSubmitting(true); setError('');
     try {
       const email = contact.email.trim().toLowerCase();
-      const phone = contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : null;
+      // ⚠️ Le schéma de `early_access_requests.phone` est NOT NULL.
+      // Si l'utilisateur n'a pas saisi de téléphone, on envoie `''` (et pas null)
+      // pour ne pas faire échouer l'INSERT silencieusement.
+      const phone = contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : '';
 
       const oneHourAgo = new Date(Date.now() - 3600_000).toISOString();
       const { count: recentCount } = await supabase
@@ -201,19 +204,33 @@ export default function FunnelApply() {
       let isUpdate = false;
       if (existingReq?.status === 'en_attente') {
         isUpdate = true;
-        await supabase.from('early_access_requests').update({
+        const { error: updErr } = await supabase.from('early_access_requests').update({
           first_name: contact.first_name.trim(),
-          phone: phone ?? undefined,
+          phone: phone || undefined,
           form_submitted: true,
         } as any).eq('id', existingReq.id);
+        if (updErr) console.warn('[Apply] update existing lead failed:', updErr.message);
       }
 
       if (!isUpdate) {
-        const { error: dbError } = await supabase.from('early_access_requests').insert({
-          first_name: contact.first_name.trim(), email, phone,
-          status: 'en_attente', form_submitted: true,
-        } as any);
-        if (dbError) { setError(dbError.message); setSubmitting(false); return; }
+        const { data: inserted, error: dbError } = await supabase
+          .from('early_access_requests')
+          .insert({
+            first_name: contact.first_name.trim(),
+            email,
+            phone, // empty string if not provided (column is NOT NULL)
+            status: 'en_attente',
+            form_submitted: true,
+          } as any)
+          .select('id')
+          .single();
+        if (dbError) {
+          console.error('[Apply] INSERT failed:', dbError);
+          setError(dbError.message);
+          setSubmitting(false);
+          return;
+        }
+        console.log('[Apply] Lead created in pipeline:', inserted?.id);
       }
 
       const investmentAnswer = answers['investment_amount'] || '';
