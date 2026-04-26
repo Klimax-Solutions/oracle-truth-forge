@@ -544,6 +544,81 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
 
       {/* Trades list — no overflow-auto so sticky children work vs the parent scroll container */}
       <div className="flex-1 p-4">
+      {/* Data Générale : bandeau récap + toggle Oracle / Complémentaires */}
+      {isDataGenerale && !isEarlyAccess && (() => {
+        const oracleCount = filteredTrades.filter(t => t.contributor === "John").length;
+        const compCount = filteredTrades.filter(t => t.contributor !== "John").length;
+        const isOracleOn = filters.contributor.length === 0 || filters.contributor.includes("John");
+        const isCompOn = filters.contributor.length === 0 || filters.contributor.some(c => c !== "John");
+        const compContribs = filterOptions.contributor.filter(c => c !== "John");
+        const setOnly = (mode: "all" | "oracle" | "comp") => {
+          setFilters(prev => ({
+            ...prev,
+            contributor:
+              mode === "all" ? [] :
+              mode === "oracle" ? ["John"] :
+              compContribs,
+          }));
+        };
+        const activeMode: "all" | "oracle" | "comp" =
+          filters.contributor.length === 0 ? "all"
+          : filters.contributor.length === 1 && filters.contributor[0] === "John" ? "oracle"
+          : "comp";
+        return (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 rounded-lg border border-border/60 bg-muted/20">
+            <div className="flex items-center gap-3 text-[11px]">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-primary" />
+                <span className="text-muted-foreground">Oracle</span>
+                <span className="font-mono font-bold text-foreground">{oracleCount}</span>
+              </span>
+              <span className="text-muted-foreground/40">•</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="text-muted-foreground">Complémentaires</span>
+                <span className="font-mono font-bold text-foreground">{compCount}</span>
+              </span>
+              <span className="text-muted-foreground/40">•</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="text-muted-foreground">Total</span>
+                <span className="font-mono font-bold text-foreground">{oracleCount + compCount}</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-1 p-0.5 rounded-md border border-border bg-background">
+              <button
+                onClick={() => setOnly("all")}
+                className={cn(
+                  "px-2.5 py-1 text-[10px] font-medium rounded transition-colors",
+                  activeMode === "all" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Tous
+              </button>
+              <button
+                onClick={() => setOnly("oracle")}
+                className={cn(
+                  "px-2.5 py-1 text-[10px] font-medium rounded transition-colors inline-flex items-center gap-1",
+                  activeMode === "oracle" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                Oracle
+              </button>
+              <button
+                onClick={() => setOnly("comp")}
+                disabled={compContribs.length === 0}
+                className={cn(
+                  "px-2.5 py-1 text-[10px] font-medium rounded transition-colors inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed",
+                  activeMode === "comp" ? "bg-emerald-500 text-white" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                Complémentaires
+              </button>
+            </div>
+          </div>
+        );
+      })()}
       {filteredTrades.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-muted-foreground text-lg mb-4">Aucun trade correspondant aux filtres</p>
