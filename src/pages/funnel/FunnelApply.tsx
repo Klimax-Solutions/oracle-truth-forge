@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
 import { submitFunnelLead, flushPendingLeads } from '@/lib/funnelLeadQueue';
@@ -68,7 +68,12 @@ function AccentText({ html, className, as: Tag = 'h1' }: { html: string; classNa
 export default function FunnelApply() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { config, loading } = useFunnelConfig(slug);
+
+  // Pré-remplissage depuis URL params (liens Kit : ?email=...&name=...)
+  const prefillEmail = searchParams.get('email') || '';
+  const prefillName  = searchParams.get('name')  || '';
 
   const hasVSL = config?.vsl_enabled && config?.vsl_page === 'apply';
   const hasVSLEmbed = hasVSL && !!config?.vsl_embed_code;
@@ -76,7 +81,12 @@ export default function FunnelApply() {
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [contact, setContact] = useState({ first_name: '', phone: '', email: '', countryCode: '+33' });
+  const [contact, setContact] = useState({
+    first_name: prefillEmail ? prefillName : '',
+    phone: '',
+    email: prefillEmail,
+    countryCode: '+33',
+  });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [disqualified, setDisqualified] = useState(false);
