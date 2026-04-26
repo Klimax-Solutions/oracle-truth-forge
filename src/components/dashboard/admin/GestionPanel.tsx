@@ -1008,17 +1008,17 @@ export default function GestionPanel() {
       {/* ── Header — CRM-style ── */}
       <div className="shrink-0 border-b border-white/[0.10]">
         {/* Row 1: Tabs */}
-        <div className="px-6 flex items-center justify-between h-14">
-          <div className="flex items-center gap-1">
+        <div className="px-3 md:px-6 flex items-center justify-between h-14 gap-2">
+          <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap scrollbar-hide flex-1 min-w-0">
             {TABS.map((t) => (
               <button key={t.id} onClick={() => setTab(t.id)} className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium uppercase tracking-wider transition-all border",
+                "shrink-0 flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg text-xs font-medium uppercase tracking-wider transition-all border",
                 tab === t.id
                   ? "bg-primary/20 text-white border-primary/30 shadow-[0_0_12px_rgba(25,183,201,0.15)]"
                   : "border-transparent text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
               )}>
                 <t.icon className="w-4 h-4 opacity-80" />
-                {t.label}
+                <span className="hidden sm:inline">{t.label}</span>
                 {t.id === "verifications" && kpis.pendingVerif > 0 && <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[9px] font-mono">{kpis.pendingVerif}</span>}
                 {t.id === "alerts" && kpis.unresolvedAlerts > 0 && <span className="px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[9px] font-mono">{kpis.unresolvedAlerts}</span>}
               </button>
@@ -1031,9 +1031,9 @@ export default function GestionPanel() {
 
         {/* Row 2: Search + Filters + Sort + KPIs — CRM bar style */}
         {tab === "users" && (
-          <div className="px-6 pb-4 space-y-3">
+          <div className="px-3 md:px-6 pb-3 md:pb-4 space-y-3">
             {/* Search */}
-            <div className="relative max-w-lg">
+            <div className="relative md:max-w-lg">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
               <Input
                 value={search} onChange={(e) => setSearch(e.target.value)}
@@ -1044,9 +1044,9 @@ export default function GestionPanel() {
             </div>
 
             {/* Filters + KPIs bar */}
-            <div className="flex items-center justify-between rounded-xl bg-white/[0.03] border border-white/[0.08] px-4 py-2">
+            <div className="flex items-center justify-between rounded-xl bg-white/[0.03] border border-white/[0.08] px-3 md:px-4 py-2 gap-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
               {/* Left: Filters + Sort */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 {([
                   { key: "all", label: "Clients", count: filterCounts.all },
                   { key: "pending", label: "En vérif", count: filterCounts.pending, dot: "orange" },
@@ -1120,7 +1120,7 @@ export default function GestionPanel() {
               </div>
 
               {/* Right: KPIs */}
-              <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-2 shrink-0">
                 <KpiPill value={kpis.totalUsers} label="Users" color="white" />
                 <KpiPill value={kpis.online} label="Online" color="emerald" />
                 <KpiPill value={kpis.pendingVerif} label="Vérif" color="amber" />
@@ -1138,10 +1138,10 @@ export default function GestionPanel() {
         {/* TAB: UTILISATEURS                               */}
         {/* ════════════════════════════════════════════════ */}
         {tab === "users" && (
-          <div className="px-6 pb-6">
-            <div className={cn("rounded-xl border border-white/[0.10] overflow-hidden", BG)}>
+          <div className="px-3 md:px-6 pb-6">
+            <div className={cn("rounded-xl border border-white/[0.10] overflow-x-auto", BG)}>
             {/* Column headers — CRM style */}
-            <div className={cn("flex items-center gap-4 px-5 py-3 border-b border-white/[0.08] sticky top-0 z-10", BG)}>
+            <div className={cn("flex items-center gap-4 px-5 py-3 border-b border-white/[0.08] sticky top-0 z-10 min-w-max", BG)}>
               <div className="w-10 shrink-0" />
               <div className="w-[180px] shrink-0 flex items-center gap-2">
                 <IconBox color="white"><Users className="w-3 h-3 text-white/50" /></IconBox>
@@ -1183,7 +1183,7 @@ export default function GestionPanel() {
                   isExpanded && "bg-white/[0.03]"
                 )}>
                   {/* ── Row (database style) ── */}
-                  <button onClick={() => setExpandedUser(isExpanded ? null : u.id)} className="w-full flex items-center gap-4 px-5 py-3 hover:bg-white/[0.04] transition-colors">
+                  <button onClick={() => setExpandedUser(isExpanded ? null : u.id)} className="w-full min-w-max flex items-center gap-4 px-5 py-3 hover:bg-white/[0.04] transition-colors">
                     {/* Avatar */}
                     <div className="relative shrink-0 w-10">
                       <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white",
@@ -1691,7 +1691,7 @@ export default function GestionPanel() {
         {/* TAB: VÉRIFICATIONS (queue + inline + history)   */}
         {/* ════════════════════════════════════════════════ */}
         {tab === "verifications" && (
-          <div className="space-y-4 px-6 py-4">
+          <div className="space-y-4 px-3 md:px-6 py-4">
             {requests.length === 0 && processedRequests.length === 0 ? (
               <div className="text-center py-16"><CheckCircle className="w-12 h-12 mx-auto mb-3 text-emerald-400/30" /><p className="text-muted-foreground">Aucune demande</p></div>
             ) : (
@@ -2033,7 +2033,7 @@ export default function GestionPanel() {
         {/* TAB: ALERTES                                    */}
         {/* ════════════════════════════════════════════════ */}
         {tab === "alerts" && (
-          <div className="space-y-3 px-6 py-4">
+          <div className="space-y-3 px-3 md:px-6 py-4">
             {alerts.length === 0 ? (
               <div className="text-center py-16"><CheckCircle className="w-12 h-12 mx-auto mb-3 text-emerald-400/30" /><p className="text-muted-foreground">Aucune alerte</p><p className="text-xs text-muted-foreground/60 mt-1">Tout est normal</p></div>
             ) : alerts.map((a) => (
@@ -2089,7 +2089,7 @@ export default function GestionPanel() {
       {/* ── Fiche User — Drawer latéral ── */}
       {/* Ouvert depuis Vérifications ou Alertes. Contexte préservé, pas de changement de tab. */}
       <Sheet open={!!ficheUserId} onOpenChange={(o) => { if (!o) setFicheUserId(null); }}>
-        <SheetContent side="right" className="w-[420px] sm:w-[480px] bg-[#0A0B10] border-l border-white/[0.08] overflow-y-auto p-0">
+        <SheetContent side="right" className="w-full sm:w-[480px] sm:max-w-[480px] bg-[#0A0B10] border-l border-white/[0.08] overflow-y-auto p-0">
           {(() => {
             const u = users.find((x) => x.id === ficheUserId);
             if (!u) return (
@@ -2101,7 +2101,7 @@ export default function GestionPanel() {
             return (
               <div className="flex flex-col h-full">
                 {/* Header */}
-                <SheetHeader className="px-6 pt-6 pb-4 border-b border-white/[0.08] shrink-0">
+                <SheetHeader className="px-4 md:px-6 pt-4 md:pt-6 pb-4 border-b border-white/[0.08] shrink-0">
                   <div className="flex items-start gap-3">
                     <div className={cn(
                       "w-11 h-11 rounded-full flex items-center justify-center text-base font-bold shrink-0",
@@ -2135,7 +2135,7 @@ export default function GestionPanel() {
                     </div>
                   </div>
                   {/* Quick actions */}
-                  <div className="flex gap-2 mt-3">
+                  <div className="flex flex-wrap gap-2 mt-3">
                     {u.profileStatus === "active" && <>
                       <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 px-2.5" onClick={() => { setFicheUserId(null); openActionDialog(u.id, "freeze"); }}><Snowflake className="w-3 h-3" />Geler</Button>
                       <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 px-2.5 text-red-400 border-red-500/30 hover:bg-red-500/10" onClick={() => { setFicheUserId(null); openActionDialog(u.id, "ban"); }}><Ban className="w-3 h-3" />Bannir</Button>
@@ -2176,7 +2176,7 @@ export default function GestionPanel() {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto px-5 py-4">
+                <div className="flex-1 overflow-y-auto px-3 md:px-5 py-4">
                   {/* Cycles tab */}
                   {(activeSubTab[u.id] || "cycles") === "cycles" && (
                     <div className="space-y-3">

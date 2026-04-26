@@ -303,11 +303,11 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[#0c0d12] border border-white/[0.10] rounded-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden shadow-2xl shadow-black/50" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-stretch md:items-center justify-center p-0 md:p-4" onClick={onClose}>
+      <div className="bg-[#0c0d12] border border-white/[0.10] rounded-none md:rounded-2xl w-full max-w-6xl h-full md:h-[90vh] flex flex-col overflow-hidden shadow-2xl shadow-black/50" onClick={e => e.stopPropagation()}>
 
         {/* ── Header — compact with inline view switcher ── */}
-        <div className="shrink-0 px-6 py-4 border-b border-white/[0.08]">
+        <div className="shrink-0 px-3 md:px-6 py-3 md:py-4 border-b border-white/[0.08]">
           <div className="flex items-center gap-4">
             {/* Avatar — click to go back to Lead view */}
             <button
@@ -420,14 +420,14 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
         </div>
 
         {/* ── Body: Left (switches by view) + Right (Timeline always visible) ── */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
 
           {/* LEFT — Content switches by view */}
           {view === "lead" ? (
           /* ── FICHE LEAD — Level 5 spike-launch style ── */
           <div className="flex-1 overflow-auto">
             {/* Premium header with gradient glow */}
-            <div className="relative p-6 pb-5 border-b border-white/[0.08] overflow-hidden">
+            <div className="relative p-3 md:p-6 pb-4 md:pb-5 border-b border-white/[0.08] overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-violet-500/5 pointer-events-none" />
               <div className="absolute top-0 right-0 w-40 h-40 bg-primary/8 rounded-full blur-3xl pointer-events-none" />
 
@@ -517,7 +517,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
             </div>
 
             {/* Body — premium sections */}
-            <div className="p-6 space-y-4">
+            <div className="p-3 md:p-6 space-y-4">
 
               {/* Budget + Engagement cards */}
               <div className="grid grid-cols-2 gap-3">
@@ -607,7 +607,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
           </div>
         ) : view === "setting" ? (
           /* ── SETTING VIEW — spec CRM: trial tracker ── */
-          <div className="flex-1 overflow-auto p-5 space-y-3">
+          <div className="flex-1 overflow-auto p-3 md:p-5 space-y-3">
             {(() => {
               const trial = getTrialDay(lead);
               const color = getTrialColor(lead);
@@ -758,10 +758,10 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
           </div>
         ) : (
         /* ── CALL VIEW — 2 columns like spike-launch ── */
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
 
           {/* COL LEFT — Informations */}
-          <div className="w-[340px] shrink-0 overflow-auto p-5 space-y-3 border-r border-white/[0.08]">
+          <div className="w-full md:w-[340px] shrink-0 overflow-auto p-3 md:p-5 space-y-3 border-b md:border-b-0 md:border-r border-white/[0.08]">
             {/* Section label */}
             <p className="text-[10px] font-display uppercase tracking-widest text-white/30 flex items-center gap-1.5"><Users className="w-3 h-3" /> Informations</p>
 
@@ -900,7 +900,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
           </div>
 
           {/* COL RIGHT — Gestion du Call */}
-          <div className="flex-1 overflow-auto p-5 space-y-3">
+          <div className="flex-1 overflow-auto p-3 md:p-5 space-y-3">
             <p className="text-[10px] font-display uppercase tracking-widest text-white/30 flex items-center gap-1.5"><Headphones className="w-3 h-3" /> Gestion du call</p>
 
             {/* Closer assigné */}
@@ -1039,8 +1039,8 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
         </div>
         )}
 
-          {/* TIMELINE — Always visible on the right, all views */}
-          <div className="w-[360px] shrink-0 overflow-hidden bg-[#0a0b10] border-l border-white/[0.08]">
+          {/* TIMELINE — Always visible on the right (desktop only) */}
+          <div className="hidden md:block w-[360px] shrink-0 overflow-hidden bg-[#0a0b10] border-l border-white/[0.08]">
             <LeadThreadPanel lead={lead} />
           </div>
         </div>
