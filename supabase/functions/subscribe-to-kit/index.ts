@@ -1,0 +1,126 @@
+// Edge function: subscribe-to-kit
+// Inscrit un lead à une séquence Kit (ex-ConvertKit) dès le submit du form /apply.
+// Non-bloquant côté funnel : si Kit échoue, on log dans lead_events et on retourne 200.
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { z } from "https://esm.sh/zod@3.23.8";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const BodySchema = z.object({
+  email: z.string().email().max(255),
+  first_name: z.string().min(1).max(120),
+  request_id: z.string().uuid().optional(),
+});
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  const KIT_API_SECRET = Deno.env.get("KIT_API_SECRET");
+  const KIT_SEQUENCE_ID = Deno.env.get("KIT_SEQUENCE_ID");
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!KIT_API_SECRET || !KIT_SEQUENCE_ID) {
+    return new Response(
+      JSON.stringify({ ok: false, error: "Kit secrets not configured" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(
+      JSON.stringify({ ok: false, error: "Invalid JSON" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return new Response(
+      JSON.stringify({ ok: false, error: parsed.error.flatten().fieldErrors }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  const { email, first_name, request_id } = parsed.data;
+  const admin = SUPABASE_URL && SERVICE_ROLE
+    ? createClient(SUPABASE_URL, SERVICE_ROLE)
+    : null;
+
+  const logEvent = async (
+    event_type: string,
+    metadata: Record<string, unknown>,
+  ) => {
+    if (!admin || !request_id) return;
+    try {
+      await admin.from("lead_events").insert({
+        request_id,
+        event_type,
+        source: "kit",
+        metadata,
+      });
+    } catch (err) {
+      console.error("[subscribe-to-kit] lead_events insert failed:", err);
+    }
+  };
+
+  // Kit API v3 : POST /v3/sequences/{id}/subscribe
+  // https://developers.kit.com/v3#add-subscriber-to-a-sequence
+  const kitUrl = `https://api.convertkit.com/v3/sequences/${encodeURIComponent(KIT_SEQUENCE_ID)}/subscribe`;
+
+  try {
+    const resp = await fetch(kitUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_secret: KIT_API_SECRET,
+        email,
+        first_name,
+      }),
+    });
+
+    const data = await resp.json().catch(() => ({}));
+
+    if (!resp.ok) {
+      console.error("[subscribe-to-kit] Kit API error", resp.status, data);
+      await logEvent("kit_subscribe_failed", {
+        status: resp.status,
+        response: data,
+        sequence_id: KIT_SEQUENCE_ID,
+      });
+      return new Response(
+        JSON.stringify({ ok: false, status: resp.status, kit: data }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    await logEvent("kit_sequence_subscribed", {
+      sequence_id: KIT_SEQUENCE_ID,
+      subscription_id: data?.subscription?.id ?? null,
+    });
+
+    return new Response(
+      JSON.stringify({ ok: true, subscription: data?.subscription ?? null }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[subscribe-to-kit] Network/unknown error:", msg);
+    await logEvent("kit_subscribe_failed", { error: msg });
+    return new Response(
+      JSON.stringify({ ok: false, error: msg }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+});
