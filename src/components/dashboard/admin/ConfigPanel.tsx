@@ -567,6 +567,10 @@ export default function ConfigPanel() {
                     <span className="text-white/70 text-xs font-medium uppercase tracking-wider">Nom</span>
                   </div>
                   <div className="w-[120px] shrink-0 text-white/70 text-xs font-medium uppercase tracking-wider">Prénom</div>
+                  <div className="w-[220px] shrink-0 flex items-center gap-2">
+                    <IconBox color="cyan"><Mail className="w-3 h-3 text-cyan-400/80" /></IconBox>
+                    <span className="text-white/70 text-xs font-medium uppercase tracking-wider">Email</span>
+                  </div>
                   <div className="flex-1 flex items-center gap-2">
                     <IconBox color="violet"><Crown className="w-3 h-3 text-violet-400/80" /></IconBox>
                     <span className="text-white/70 text-xs font-medium uppercase tracking-wider">Rôles</span>
