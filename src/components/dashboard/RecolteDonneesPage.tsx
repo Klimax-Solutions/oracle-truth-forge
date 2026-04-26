@@ -331,6 +331,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
                     />
                   )}
                 </div>
+              </div>
             </div>
           )}
         </section>
