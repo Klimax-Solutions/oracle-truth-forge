@@ -493,7 +493,7 @@ export const PersonalTradeDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl w-[calc(100vw-1rem)] max-h-[95vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>
             {editingTrade ? `Modifier Trade #${editingTrade.trade_number}` : "Nouveau Trade"}
@@ -502,7 +502,7 @@ export const PersonalTradeDialog = ({
 
         <div className="grid gap-4 py-4">
           {/* Row 1: Trade Number & Date d'entrée */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="trade_number">Numéro du Trade *</Label>
               <Input
@@ -534,7 +534,7 @@ export const PersonalTradeDialog = ({
 
 
           {/* Row 2: Direction & Result */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Direction *</Label>
               <Select
@@ -569,7 +569,7 @@ export const PersonalTradeDialog = ({
           </div>
 
           {/* Row 3: Entry & Exit Time */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Heure d'entrée</Label>
               <TimePicker
@@ -587,7 +587,7 @@ export const PersonalTradeDialog = ({
           </div>
 
           {/* Row 3b: Exit Date & Duration */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Date de sortie</Label>
               <DatePicker
@@ -610,7 +610,7 @@ export const PersonalTradeDialog = ({
           </div>
 
           {/* Row 4: Structure & Type de Setup (multi-select) */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Structure</Label>
               <CustomizableMultiSelect
@@ -637,7 +637,7 @@ export const PersonalTradeDialog = ({
           </div>
 
           {/* Row 5: Entry Model & Timing (multi-select) */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Entry Model</Label>
               <CustomizableMultiSelect
@@ -677,7 +677,7 @@ export const PersonalTradeDialog = ({
           </div>
 
           {/* Placement SL / TP */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Placement du SL</Label>
               <CustomizableMultiSelect
@@ -703,7 +703,7 @@ export const PersonalTradeDialog = ({
            </div>
 
           {/* Taille du SL */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Taille du SL</Label>
               <Input
@@ -744,7 +744,7 @@ export const PersonalTradeDialog = ({
           <p className="text-xs text-muted-foreground font-mono uppercase">Données Financières</p>
 
           {/* Row 6: Prices */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Prix d'entrée</Label>
               <Input
@@ -768,7 +768,7 @@ export const PersonalTradeDialog = ({
           </div>
 
           {/* Row 7: SL & TP */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Stop Loss</Label>
               <Input
@@ -792,7 +792,7 @@ export const PersonalTradeDialog = ({
           </div>
 
           {/* Row 8: RR */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>RR (Risk/Reward)</Label>
               <Input
@@ -809,7 +809,7 @@ export const PersonalTradeDialog = ({
           <div className="border-t border-border my-2" />
           <p className="text-xs text-muted-foreground font-mono uppercase">Screenshots & Graphique</p>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <ScreenshotUploadField
                 label="Screenshot Contexte"

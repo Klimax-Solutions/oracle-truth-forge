@@ -230,7 +230,7 @@ export const OracleTradeEditDialog = ({ isOpen, onClose, onSaved, trade }: Oracl
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl w-[calc(100vw-1rem)] max-h-[95vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>Modifier — {new Date(trade.trade_date).toLocaleDateString("fr-FR")} • {trade.direction}</DialogTitle>
         </DialogHeader>
@@ -238,7 +238,7 @@ export const OracleTradeEditDialog = ({ isOpen, onClose, onSaved, trade }: Oracl
         <div className="grid gap-4 py-4">
           {/* INFORMATIONS */}
           <p className="text-xs text-muted-foreground font-mono uppercase border-b border-border pb-1">Informations</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Date *</Label>
               <DatePicker value={formData.trade_date} onChange={(v) => setFormData({ ...formData, trade_date: v })} />
@@ -257,7 +257,7 @@ export const OracleTradeEditDialog = ({ isOpen, onClose, onSaved, trade }: Oracl
 
           {/* PARAMÈTRES DU SETUP */}
           <p className="text-xs text-muted-foreground font-mono uppercase border-b border-border pb-1 mt-2">Paramètres du Setup</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Structure</Label>
               <CustomizableMultiSelect value={formData.direction_structure} onChange={(v) => setFormData({ ...formData, direction_structure: v })} customOptions={variables.direction_structure} variableType="direction_structure" placeholder="Sélectionner..." onOptionsChanged={refetchVariables} />
@@ -267,7 +267,7 @@ export const OracleTradeEditDialog = ({ isOpen, onClose, onSaved, trade }: Oracl
               <CustomizableMultiSelect value={formData.setup_type} onChange={(v) => setFormData({ ...formData, setup_type: v })} fixedOptions={SETUP_TYPE_FIXED_OPTIONS} customOptions={variables.setup_type} variableType="setup_type" placeholder="Sélectionner..." onOptionsChanged={refetchVariables} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Entry Model</Label>
               <CustomizableMultiSelect value={formData.entry_model} onChange={(v) => setFormData({ ...formData, entry_model: v })} fixedOptions={ENTRY_MODEL_FIXED_OPTIONS} customOptions={variables.entry_model} variableType="entry_model" placeholder="Sélectionner..." onOptionsChanged={refetchVariables} />
@@ -279,7 +279,7 @@ export const OracleTradeEditDialog = ({ isOpen, onClose, onSaved, trade }: Oracl
           </div>
 
           {/* PLACEMENT SL / TP */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Placement du SL</Label>
               <CustomizableMultiSelect value={formData.sl_placement} onChange={(v) => setFormData({ ...formData, sl_placement: v })} customOptions={variables.sl_placement || []} variableType="sl_placement" placeholder="Sélectionner..." onOptionsChanged={refetchVariables} />
@@ -292,7 +292,7 @@ export const OracleTradeEditDialog = ({ isOpen, onClose, onSaved, trade }: Oracl
 
           {/* EXÉCUTION */}
           <p className="text-xs text-muted-foreground font-mono uppercase border-b border-border pb-1 mt-2">Exécution</p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Heure d'entrée</Label>
               <TimePicker value={formData.entry_time} onChange={(v) => setFormData({ ...formData, entry_time: v })} />
@@ -306,7 +306,7 @@ export const OracleTradeEditDialog = ({ isOpen, onClose, onSaved, trade }: Oracl
               <Input type="number" step="0.01" value={formData.rr} onChange={(e) => setFormData({ ...formData, rr: e.target.value })} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Taille du SL</Label>
               <Input value={formData.stop_loss_size} onChange={(e) => setFormData({ ...formData, stop_loss_size: e.target.value })} placeholder="Taille du stop loss en points/pips" />
@@ -328,7 +328,7 @@ export const OracleTradeEditDialog = ({ isOpen, onClose, onSaved, trade }: Oracl
 
           {/* SCREENSHOTS */}
           <p className="text-xs text-muted-foreground font-mono uppercase border-b border-border pb-1 mt-2">Screenshots</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <ScreenshotUploadField
                 label="Screenshot Contexte"
