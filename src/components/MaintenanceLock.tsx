@@ -44,9 +44,9 @@ export const MaintenanceLock = () => {
           .from("user_roles")
           .select("role")
           .eq("user_id", session.user.id);
-        const adminRoles = ["super_admin", "admin"];
+        const bypassRoles = ["super_admin", "admin", "setter"];
         const hasAdmin =
-          roles?.some((r) => adminRoles.includes(r.role)) ?? false;
+          roles?.some((r) => bypassRoles.includes(r.role)) ?? false;
         if (mounted) {
           setIsAdmin(hasAdmin);
           setChecking(false);
