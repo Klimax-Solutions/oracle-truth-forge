@@ -7,68 +7,81 @@ export default function FunnelLanding() {
   const navigate = useNavigate();
   const { config, loading } = useFunnelConfig(slug);
 
-  if (loading) return <div className="min-h-screen bg-[#0A0B10] flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#19B7C9]" /></div>;
-  if (!config) return <div className="min-h-screen bg-[#0A0B10] flex items-center justify-center text-white/30 text-sm">Funnel non trouvé</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-foreground" />
+      </div>
+    );
+  }
+  if (!config) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground text-sm">
+        Funnel non trouvé
+      </div>
+    );
+  }
+
+  const footerText = config.brand_footer_text?.replace('{year}', new Date().getFullYear().toString())
+    || `Oracle © ${new Date().getFullYear()} — Accès confidentiel`;
 
   return (
-    <div className="min-h-screen bg-[#0A0B10] text-white flex flex-col">
+    <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 md:px-6 py-12 md:py-16">
 
-      {/* Center content */}
-      <div className="flex-1 flex items-center justify-center px-4 md:px-6">
-        <div className="max-w-2xl w-full text-center space-y-10">
+        {/* Header — Auth.tsx pattern */}
+        <div className="text-center mb-8 md:mb-16 animate-fade-in">
+          <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.3em] md:tracking-[0.4em] text-muted-foreground mb-4 md:mb-6">
+            Accès anticipé
+          </p>
+          <h1 className="text-4xl md:text-5xl lg:text-7xl font-semibold tracking-tight text-foreground">
+            Oracle<sup className="text-lg md:text-xl lg:text-2xl font-normal align-super ml-0.5 md:ml-1">™</sup>
+          </h1>
+        </div>
 
-          {/* Brand */}
-          <h2 className="text-3xl md:text-4xl font-display font-semibold tracking-tight text-white">
-            Oracle<sup className="text-[0.45em] font-normal align-super ml-0.5 text-white/70">™</sup>
-          </h2>
+        <div className="w-full max-w-md h-px bg-border mb-8 md:mb-12" />
+
+        <div className="w-full max-w-2xl text-center space-y-8 md:space-y-10">
 
           {/* Headline */}
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-display font-bold leading-[1.15] tracking-tight">
+          <h2 className="text-2xl md:text-4xl lg:text-5xl font-semibold leading-[1.15] tracking-tight text-foreground">
             {config.landing_headline || 'Titre principal'}
             {config.landing_headline_accent && (
               <>
                 {' '}
-                <span className="text-[#19B7C9]">{config.landing_headline_accent}</span>
+                <span className="text-muted-foreground">{config.landing_headline_accent}</span>
               </>
             )}
-          </h1>
+          </h2>
 
           {/* Subtitle */}
           {config.landing_subtitle && (
-            <p className="text-base md:text-lg text-white/40 leading-relaxed max-w-lg mx-auto">
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-lg mx-auto">
               {config.landing_subtitle}
             </p>
           )}
 
-          {/* Divider */}
-          <div className="flex items-center justify-center gap-4">
-            <div className="w-16 h-px bg-gradient-to-r from-transparent to-white/10" />
-            <div className="w-1.5 h-1.5 rounded-full bg-[#19B7C9]/40" />
-            <div className="w-16 h-px bg-gradient-to-l from-transparent to-white/10" />
-          </div>
-
           {/* CTA */}
-          <div>
+          <div className="pt-4">
             <button
               onClick={() => navigate(`/${slug}/apply`)}
-              className="inline-flex items-center gap-3 px-10 py-4 bg-[#19B7C9] text-[#0A0B10] font-display text-sm font-bold uppercase tracking-widest rounded-xl transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_40px_rgba(25,183,201,0.25)]"
+              className="inline-flex items-center gap-3 h-12 px-10 bg-foreground text-background font-bold text-sm rounded-md hover:bg-foreground/90 transition-colors"
             >
               {config.landing_cta_text || 'Commencer'}
               <ArrowRight className="w-4 h-4" />
             </button>
             {config.landing_cta_subtext && (
-              <p className="text-[11px] text-white/20 mt-4">{config.landing_cta_subtext}</p>
+              <p className="mt-4 text-[10px] md:text-xs text-muted-foreground font-mono uppercase tracking-widest">
+                {config.landing_cta_subtext}
+              </p>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Footer */}
-      <footer className="py-5 text-center">
-        <p className="text-[9px] text-white/10 tracking-[0.3em] uppercase font-display">
-          {config.brand_footer_text?.replace('{year}', new Date().getFullYear().toString()) || `© ${new Date().getFullYear()}`}
+        <p className="mt-12 md:mt-16 text-[10px] md:text-xs text-muted-foreground font-mono uppercase tracking-[0.2em] md:tracking-[0.3em] text-center">
+          {footerText}
         </p>
-      </footer>
+      </div>
     </div>
   );
 }

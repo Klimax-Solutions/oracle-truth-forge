@@ -5,12 +5,9 @@ import { useFunnelConfig } from '@/hooks/useFunnelConfig';
 import { Loader2, ChevronLeft, Check, ArrowRight } from 'lucide-react';
 
 /**
- * Renders text with <u>...</u> tags as spike-launch style accent underlines.
- * "hello <u>world</u> foo" → ["hello ", <AccentSpan>world</AccentSpan>, " foo"]
- */
-/**
- * Renders text with <u>...</u> as spike-launch accent underlines.
- * Uses absolute-positioned bar (not CSS text-decoration) for the accent effect.
+ * Renders text with <u>...</u> as accent underlines.
+ * In the institutional B&W palette, accents are rendered as a discreet underline
+ * on `text-foreground`, no color — sobriety over flash.
  */
 function AccentText({ html, className, as: Tag = 'h1' }: { html: string; className?: string; as?: 'h1' | 'p' | 'span' }) {
   const parts = useMemo(() => {
@@ -33,8 +30,8 @@ function AccentText({ html, className, as: Tag = 'h1' }: { html: string; classNa
       {parts.map((p, i) =>
         p.accent ? (
           <span key={i} className="relative inline-block">
-            <span className="relative z-10 text-[#19B7C9] font-semibold">{p.text}</span>
-            <span className="absolute bottom-0 left-0 w-full h-[4px] md:h-[6px] bg-[#19B7C9]/30 -z-0" />
+            <span className="relative z-10 text-foreground font-semibold">{p.text}</span>
+            <span className="absolute bottom-0 left-0 w-full h-[2px] bg-foreground/30 -z-0" />
           </span>
         ) : (
           <span key={i}>{p.text}</span>
@@ -45,8 +42,8 @@ function AccentText({ html, className, as: Tag = 'h1' }: { html: string; classNa
 }
 
 // ============================================
-// Funnel Apply Page — VSL + Multi-step form
-// Style: spike-launch exact (wide headline, glowing VSL, premium CTA)
+// Funnel Apply Page — Institutional B&W
+// Reference: /auth — semantic tokens, font-mono labels, rounded-md cards.
 // ============================================
 
 export default function FunnelApply() {
@@ -69,13 +66,9 @@ export default function FunnelApply() {
   const [ctaVisible, setCtaVisible] = useState(false);
 
   // ── Anti-spam : 3 couches défensives ────────────────────────────────────
-  // 1. Honeypot — champ invisible. Bot le remplit → silently fake success.
-  // 2. Time-trap — submit < 2s après mount = bot. Silently fake success.
-  // 3. Rate-limit DB — > 3 'en_attente' du même email en 1h → reject explicite.
   const [honeypot, setHoneypot] = useState('');
   const formMountedAt = useRef<number>(Date.now());
 
-  // Phone formatting patterns per country code (groups of digits)
   const phoneFormats: Record<string, { groups: number[]; placeholder: string }> = {
     '+33':  { groups: [1, 2, 2, 2, 2], placeholder: '6 12 34 56 78' },
     '+32':  { groups: [3, 2, 2, 2],    placeholder: '412 34 56 78' },
@@ -118,17 +111,13 @@ export default function FunnelApply() {
   const isContactStep = step >= questions.length;
   const currentQuestion = !isContactStep ? questions[step] : null;
   const progress = ((step + 1) / totalSteps) * 100;
-  const hasAnswer = currentQuestion ? !!answers[currentQuestion.id] : (contact.first_name && contact.email);
 
-  // Show form directly if no VSL. Reset to VSL phase if VSL gets enabled.
   useEffect(() => {
     if (config && !loading) {
       setShowForm(!hasVSL);
     }
   }, [hasVSL, config, loading]);
 
-  // CTA delay timer — show CTA after X seconds of video page being visible
-  // Antifragile: coerce to number, cap at 30min, fallback to visible on any weird value
   useEffect(() => {
     const raw = Number(config?.vsl_cta_delay_seconds);
     const delay = Number.isFinite(raw) && raw > 0 ? Math.min(raw, 1800) : 0;
@@ -138,12 +127,10 @@ export default function FunnelApply() {
     }
     setCtaVisible(false);
     const timer = setTimeout(() => setCtaVisible(true), delay * 1000);
-    // Safety net: if setTimeout somehow doesn't fire (tab throttle, etc.), force show after delay + 5s
     const safety = setTimeout(() => setCtaVisible(true), (delay + 5) * 1000);
     return () => { clearTimeout(timer); clearTimeout(safety); };
   }, [hasVSL, showForm, config?.vsl_cta_delay_seconds]);
 
-  // Execute Vidalytics scripts
   useEffect(() => {
     if (!hasVSL || showForm || !vslRef.current || !config?.vsl_embed_code) return;
     if (config.vsl_provider === 'vidalytics') {
@@ -167,14 +154,12 @@ export default function FunnelApply() {
   const handleSubmit = async () => {
     if (!contact.first_name.trim() || !contact.email.trim()) { setError('Nom et email requis'); return; }
 
-    // ── ANTI-SPAM Couche 1 : honeypot (champ invisible rempli = bot)
     if (honeypot.trim()) {
       console.warn('[Apply] honeypot triggered — silent reject');
-      setSubmitted(true); // fake success pour ne pas alerter le bot
+      setSubmitted(true);
       setTimeout(() => navigate('/'), 1500);
       return;
     }
-    // ── ANTI-SPAM Couche 2 : time-trap (submit < 2s = bot, humain n'a pas le temps)
     if (Date.now() - formMountedAt.current < 2000) {
       console.warn('[Apply] time-trap triggered — silent reject');
       setSubmitted(true);
@@ -187,7 +172,6 @@ export default function FunnelApply() {
       const email = contact.email.trim().toLowerCase();
       const phone = contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : null;
 
-      // ── ANTI-SPAM Couche 3 : rate-limit DB (>3 demandes du même email en 1h)
       const oneHourAgo = new Date(Date.now() - 3600_000).toISOString();
       const { count: recentCount } = await supabase
         .from('early_access_requests')
@@ -200,12 +184,6 @@ export default function FunnelApply() {
         return;
       }
 
-      // ── PRE-CHECK: état de l'email dans le pipeline ───────────────────────
-      // POLITIQUE (dans le marbre) :
-      //   - 'approuvée' → lead déjà membre, ne pas créer de doublon, rediriger vers login
-      //   - 'en_attente' → lead a déjà soumis, on met à jour sa demande existante (pas de nouvelle row)
-      //   - absent ou autre → nouveau lead, INSERT normal
-      // Cette logique garantit que chaque email n'a qu'une seule demande active.
       const { data: existingReq } = await supabase
         .from('early_access_requests')
         .select('id, status')
@@ -216,7 +194,6 @@ export default function FunnelApply() {
         .maybeSingle();
 
       if (existingReq?.status === 'approuvée') {
-        // Membre actif → ne pas créer de doublon. Orienter vers login.
         setSubmitting(false);
         setError('Vous avez déjà un accès Oracle. Connectez-vous directement.');
         return;
@@ -224,7 +201,6 @@ export default function FunnelApply() {
 
       let isUpdate = false;
       if (existingReq?.status === 'en_attente') {
-        // Soumission multiple → mettre à jour la demande existante, pas d'INSERT
         isUpdate = true;
         await supabase.from('early_access_requests').update({
           first_name: contact.first_name.trim(),
@@ -233,8 +209,6 @@ export default function FunnelApply() {
         } as any).eq('id', existingReq.id);
       }
 
-      // ── SLICE A: Core submit — colonnes garanties, jamais en échec ────────
-      // Seules les colonnes du schéma Lovable de base. Antifragile par design.
       if (!isUpdate) {
         const { error: dbError } = await supabase.from('early_access_requests').insert({
           first_name: contact.first_name.trim(), email, phone,
@@ -243,8 +217,6 @@ export default function FunnelApply() {
         if (dbError) { setError(dbError.message); setSubmitting(false); return; }
       }
 
-      // ── SLICE B: CRM enrichment — best-effort, jamais bloquant ───────────
-      // Colonnes ajoutées par migrations CRM. Si absentes → warn + continue.
       const investmentAnswer = answers['investment_amount'] || '';
       const budgetMatch = investmentAnswer.match(/(\d[\d\s]*)\s*€/);
       const budgetAmount = budgetMatch ? parseInt(budgetMatch[1].replace(/\s/g, ''), 10) : null;
@@ -270,14 +242,10 @@ export default function FunnelApply() {
         if (enrichErr) console.warn('[Apply] CRM enrichment skipped (non-blocking):', enrichErr.message);
       }
 
-      // ── Proceed ──────────────────────────────────────────────────────────
       setSubmitted(true);
-      // Pas de redirect auto : l'utilisateur clique le CTA "sécuriser ton accès"
-      // pour aller à /discovery. Les params sont stockés dans le state pour le bouton.
     } catch { setError('Erreur de connexion.'); setSubmitting(false); }
   };
 
-  // ── Video embed renderer ──
   const renderEmbed = () => {
     if (!config?.vsl_embed_code) return null;
     if (config.vsl_provider === 'vidalytics') {
@@ -298,67 +266,77 @@ export default function FunnelApply() {
     return <div ref={vslRef} className="w-full" dangerouslySetInnerHTML={{ __html: config.vsl_embed_code }} />;
   };
 
-  if (loading) return <div className="min-h-screen bg-[#0A0B10] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-  if (!config) return <div className="min-h-screen bg-[#0A0B10] flex items-center justify-center text-white/40">Funnel non trouvé</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-foreground" />
+      </div>
+    );
+  }
+  if (!config) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground text-sm">
+        Funnel non trouvé
+      </div>
+    );
+  }
+
+  const footerText = config.brand_footer_text?.replace('{year}', new Date().getFullYear().toString())
+    || `Oracle © ${new Date().getFullYear()} — Accès confidentiel`;
 
   return (
-    <div className="min-h-screen bg-[#0A0B10] text-white">
+    <div className="min-h-screen bg-background text-foreground">
 
       {/* ═══════════════════════════════════════════════ */}
-      {/* PHASE 1: VSL — spike-launch exact style         */}
+      {/* PHASE 1: VSL                                    */}
       {/* ═══════════════════════════════════════════════ */}
       {hasVSL && !showForm && !disqualified && !submitted ? (
-        /* ── Phase VSL : tient en 100vh, pas de scroll ── */
         <div className="h-screen flex flex-col overflow-hidden">
 
-          {/* Headline — plus bas, plus grand, forcé sur 2 lignes via max-w */}
           <div className="shrink-0 text-center px-4 pt-12 md:pt-16 pb-3">
+            <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.3em] md:tracking-[0.4em] text-muted-foreground mb-4 md:mb-6">
+              Présentation
+            </p>
             <AccentText
               html={config.apply_headline || 'Découvre la méthode'}
-              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display text-white leading-tight max-w-3xl mx-auto"
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-foreground leading-tight max-w-3xl mx-auto"
             />
             {(config.apply_subtitle || config.landing_subtitle) && (
               <AccentText
                 html={config.apply_subtitle || config.landing_subtitle}
                 as="p"
-                className="text-base md:text-lg font-display text-white/55 max-w-2xl mx-auto mt-3 leading-snug"
+                className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto mt-3 leading-snug"
               />
             )}
           </div>
 
-          {/* VSL — prend tout l'espace restant, 16:9 contraint */}
           <div className="flex-1 flex items-center justify-center px-3 md:px-6 py-2 min-h-0">
             <div className="w-full max-w-5xl">
-              <div className="relative rounded-lg md:rounded-xl overflow-hidden border border-primary/30 md:border-2 md:border-primary/40
-                shadow-[0_0_12px_0px_rgba(25,183,201,0.35),0_0_30px_8px_rgba(25,183,201,0.18),0_0_60px_16px_rgba(25,183,201,0.09)]">
+              <div className="relative rounded-md overflow-hidden border border-border">
                 {hasVSLEmbed ? renderEmbed() : (
-                  <div className="w-full aspect-video bg-white/[0.02] flex items-center justify-center">
-                    <p className="text-sm text-white/20 font-display">VSL — coller le code Vidalytics dans la config</p>
+                  <div className="w-full aspect-video bg-card flex items-center justify-center">
+                    <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest">VSL — coller le code Vidalytics dans la config</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* CTA + footer — remonté pour ne pas coller au bas */}
-          <div className="shrink-0 pb-10 md:pb-14 pt-3 text-center space-y-2">
+          <div className="shrink-0 pb-10 md:pb-14 pt-3 text-center space-y-3">
             <div className={`transition-all duration-700 ${ctaVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3 pointer-events-none'}`}>
               <button
                 onClick={() => setShowForm(true)}
-                className="group relative inline-flex items-center gap-3 px-10 py-3.5 bg-[#19B7C9] text-[#0A0B10] font-display text-sm font-bold uppercase tracking-wider rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(25,183,201,0.35)]"
+                className="inline-flex items-center gap-3 h-12 px-10 bg-foreground text-background font-bold text-sm rounded-md hover:bg-foreground/90 transition-colors"
               >
-                <span className="absolute inset-0 rounded-xl bg-primary/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="relative flex items-center gap-2.5">
-                  {config.landing_cta_text || 'Candidater'}
-                  <ArrowRight className="w-4 h-4" />
-                </span>
+                {config.landing_cta_text || 'Candidater'}
+                <ArrowRight className="w-4 h-4" />
               </button>
               {config.landing_cta_subtext && (
-                <p className="text-[11px] text-white/20 mt-2">{config.landing_cta_subtext}</p>
+                <p className="text-[11px] text-muted-foreground/70 mt-3 font-mono uppercase tracking-widest">{config.landing_cta_subtext}</p>
               )}
             </div>
-            <p className="text-[9px] text-white/10 tracking-[0.3em] uppercase font-display">
-              {config.brand_footer_text?.replace('{year}', new Date().getFullYear().toString()) || `© ${new Date().getFullYear()} Oracle`}
+            <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase tracking-[0.2em] md:tracking-[0.3em]">
+              {footerText}
             </p>
           </div>
         </div>
@@ -367,55 +345,61 @@ export default function FunnelApply() {
       /* ═══════════════════════════════════════════════ */
       /* PHASE 2: Form                                   */
       /* ═══════════════════════════════════════════════ */
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen relative overflow-hidden">
         {/* Progress bar */}
         {!disqualified && !submitted && (
-          <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-white/[0.06]">
-            <div className="h-full bg-primary transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
+          <div className="fixed top-0 left-0 right-0 z-50 h-px bg-border">
+            <div className="h-full bg-foreground transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
           </div>
         )}
 
-        <div className="flex-1 flex items-center justify-center px-4 py-16 md:py-24">
-          <div className="w-full max-w-lg">
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 md:px-6 py-12 md:py-16">
 
-            {/* Header au-dessus du form (caché en cas de submit / disqualification) */}
-            {!disqualified && !submitted && (
-              <div className="text-center mb-12 space-y-4">
-                <h1 className="text-3xl md:text-5xl font-display font-bold tracking-tight leading-tight">
-                  Oracle<sup className="text-[0.45em] font-normal align-super ml-0.5 text-white/70">™</sup>
-                  {' '}<span className="text-primary">Free Trial</span>
-                  <span className="block text-white/90 mt-1">7 jours</span>
-                </h1>
-                <p className="text-sm md:text-base text-white/50 font-display tracking-wide">
-                  Faire ma demande pour rejoindre
+          {/* Header — Auth.tsx pattern */}
+          {!disqualified && !submitted && (
+            <div className="text-center mb-8 md:mb-16 animate-fade-in">
+              <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.3em] md:tracking-[0.4em] text-muted-foreground mb-4 md:mb-6">
+                Free Trial · 7 jours
+              </p>
+              <h1 className="text-4xl md:text-5xl lg:text-7xl font-semibold tracking-tight text-foreground">
+                Oracle<sup className="text-lg md:text-xl lg:text-2xl font-normal align-super ml-0.5 md:ml-1">™</sup>
+              </h1>
+            </div>
+          )}
+
+          {!disqualified && !submitted && (
+            <div className="w-full max-w-md h-px bg-border mb-8 md:mb-12" />
+          )}
+
+          <div className="w-full max-w-md">
+            <div className={!disqualified && !submitted ? "border border-border bg-card p-6 md:p-8 rounded-md" : ""}>
+            {disqualified ? (
+              <div className="text-center space-y-5 py-4">
+                <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.3em] text-muted-foreground">
+                  Candidature étudiée
+                </p>
+                <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
+                  Merci pour ton honnêteté
+                </h2>
+                <div className="h-px w-12 bg-border mx-auto" />
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
+                  Ton profil ne correspond pas aux critères requis pour le moment.
                 </p>
               </div>
-            )}
-
-            <div className={!disqualified && !submitted ? "rounded-2xl border border-white/80 bg-white/[0.02] backdrop-blur-sm p-6 md:p-10 shadow-[0_0_40px_rgba(255,255,255,0.04)]" : ""}>
-            {disqualified ? (
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mx-auto"><span className="text-3xl">🙏</span></div>
-                <h2 className="text-2xl font-display font-bold">Merci pour ton honnêteté</h2>
-                <p className="text-white/50 text-sm leading-relaxed max-w-sm mx-auto">Malheureusement, ton profil ne correspond pas aux critères requis pour le moment.</p>
-              </div>
             ) : submitted ? (
-              <div className="text-center space-y-10 py-4">
-                <div className="space-y-6">
-                  <div className="w-14 h-14 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto">
-                    <Check className="w-6 h-6 text-emerald-400" />
-                  </div>
-                  <div className="space-y-3">
-                    <h2 className="text-2xl md:text-3xl font-display font-bold tracking-tight">
-                      Demande de Free Trial étudiée
-                    </h2>
-                    <p className="text-sm md:text-base text-white/55 font-display leading-relaxed max-w-sm mx-auto">
-                      Un membre de notre équipe reviendra vers toi pour valider ta candidature.
-                    </p>
-                  </div>
+              <div className="text-center space-y-8 py-4">
+                <div className="space-y-5">
+                  <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.3em] text-muted-foreground">
+                    Étape suivante
+                  </p>
+                  <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
+                    Demande de Free Trial étudiée
+                  </h2>
+                  <div className="h-px w-12 bg-border mx-auto" />
+                  <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
+                    Un membre de notre équipe reviendra vers toi pour valider ta candidature.
+                  </p>
                 </div>
-
-                <div className="h-px w-16 bg-white/15 mx-auto" />
 
                 <button
                   onClick={() => {
@@ -426,28 +410,47 @@ export default function FunnelApply() {
                     if (phone) params.set('phone', phone);
                     navigate(`/${slug}/discovery?${params}`);
                   }}
-                  className="w-full h-14 rounded-xl bg-[#19B7C9] hover:bg-[#19B7C9]/90 text-[#0A0B10] font-display text-sm md:text-base font-semibold tracking-wide transition-all shadow-[0_0_30px_rgba(25,183,201,0.25)] hover:shadow-[0_0_40px_rgba(25,183,201,0.35)]"
+                  className="w-full h-12 rounded-md bg-foreground hover:bg-foreground/90 text-background font-bold text-sm transition-colors"
                 >
-                  Clique ici pour sécuriser ton accès à vie à Oracle<sup className="text-[0.55em] font-normal align-super ml-0.5">™</sup>
+                  Sécuriser mon accès à vie à Oracle<sup className="text-[0.6em] font-normal align-super ml-0.5">™</sup>
                 </button>
               </div>
             ) : isContactStep ? (
               <div className="space-y-6">
-                <div>
-                  <p className="text-xs text-primary/60 font-display uppercase tracking-widest mb-2">Dernière étape</p>
-                  <h2 className="text-2xl font-display font-bold">Tes coordonnées</h2>
+                <div className="mb-6 md:mb-8">
+                  <h2 className="text-base md:text-lg font-bold text-foreground mb-1">
+                    Tes coordonnées
+                  </h2>
+                  <p className="text-xs md:text-sm text-muted-foreground">
+                    Dernière étape avant validation
+                  </p>
                 </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs text-white/40 font-display uppercase tracking-wider mb-1.5 block">{config.apply_form_name_label || 'Prénom'}</label>
-                    <input type="text" value={contact.first_name} onChange={e => setContact(c => ({ ...c, first_name: e.target.value }))}
-                      className="w-full h-12 px-4 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white placeholder:text-white/25 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all" placeholder="Ton prénom" autoFocus />
+
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                      {config.apply_form_name_label || 'Prénom'}
+                    </label>
+                    <input
+                      type="text"
+                      value={contact.first_name}
+                      onChange={e => setContact(c => ({ ...c, first_name: e.target.value }))}
+                      className="w-full h-12 px-4 bg-background border border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none rounded-md transition-colors"
+                      placeholder="Votre prénom"
+                      autoFocus
+                    />
                   </div>
-                  <div>
-                    <label className="text-xs text-white/40 font-display uppercase tracking-wider mb-1.5 block">{config.apply_form_phone_label || 'Téléphone'}</label>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                      {config.apply_form_phone_label || 'Numéro de téléphone'}
+                    </label>
                     <div className="flex gap-2">
-                      <select value={contact.countryCode} onChange={e => { const code = e.target.value; setContact(c => ({ ...c, countryCode: code, phone: formatPhone(c.phone, code) })); }}
-                        className="h-12 px-3 rounded-xl bg-[#111318] border border-white/[0.10] text-white text-sm focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all appearance-none cursor-pointer [&>option]:bg-[#111318] [&>option]:text-white">
+                      <select
+                        value={contact.countryCode}
+                        onChange={e => { const code = e.target.value; setContact(c => ({ ...c, countryCode: code, phone: formatPhone(c.phone, code) })); }}
+                        className="h-12 px-3 bg-background border border-border text-foreground text-sm focus:border-ring focus:outline-none rounded-md transition-colors appearance-none cursor-pointer"
+                      >
                         <option value="+33">🇫🇷 +33</option><option value="+32">🇧🇪 +32</option><option value="+41">🇨🇭 +41</option>
                         <option value="+44">🇬🇧 +44</option><option value="+1">🇺🇸 +1</option><option value="+49">🇩🇪 +49</option>
                         <option value="+34">🇪🇸 +34</option><option value="+39">🇮🇹 +39</option><option value="+351">🇵🇹 +351</option>
@@ -455,17 +458,31 @@ export default function FunnelApply() {
                         <option value="+225">🇨🇮 +225</option><option value="+221">🇸🇳 +221</option><option value="+237">🇨🇲 +237</option>
                         <option value="+243">🇨🇩 +243</option><option value="+352">🇱🇺 +352</option><option value="+377">🇲🇨 +377</option>
                       </select>
-                      <input type="tel" value={contact.phone} onChange={e => { const formatted = formatPhone(e.target.value, contact.countryCode); setContact(c => ({ ...c, phone: formatted })); }}
-                        className="flex-1 h-12 px-4 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white placeholder:text-white/25 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all font-mono tracking-wider" placeholder={currentPhoneFmt.placeholder} />
+                      <input
+                        type="tel"
+                        value={contact.phone}
+                        onChange={e => { const formatted = formatPhone(e.target.value, contact.countryCode); setContact(c => ({ ...c, phone: formatted })); }}
+                        className="flex-1 h-12 px-4 bg-background border border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none rounded-md transition-colors font-mono tracking-wider"
+                        placeholder={currentPhoneFmt.placeholder}
+                      />
                     </div>
                   </div>
-                  <div>
-                    <label className="text-xs text-white/40 font-display uppercase tracking-wider mb-1.5 block">{config.apply_form_email_label || 'Email'}</label>
-                    <input type="email" value={contact.email} onChange={e => setContact(c => ({ ...c, email: e.target.value }))}
-                      className="w-full h-12 px-4 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white placeholder:text-white/25 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all" placeholder="ton@email.com" />
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                      {config.apply_form_email_label || 'Adresse email'}
+                    </label>
+                    <input
+                      type="email"
+                      value={contact.email}
+                      onChange={e => setContact(c => ({ ...c, email: e.target.value }))}
+                      className="w-full h-12 px-4 bg-background border border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none rounded-md transition-colors"
+                      placeholder="vous@exemple.com"
+                    />
                   </div>
                 </div>
-                {/* Honeypot — invisible aux humains, rempli par les bots */}
+
+                {/* Honeypot */}
                 <input
                   type="text"
                   name="website"
@@ -476,49 +493,84 @@ export default function FunnelApply() {
                   aria-hidden="true"
                   style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }}
                 />
-                {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">{error}</p>}
+
+                {error && (
+                  <p className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2 font-mono">
+                    {error}
+                  </p>
+                )}
+
                 <div className="flex items-center gap-3 pt-2">
-                  <button onClick={() => setStep(s => s - 1)} className="h-12 px-5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-white/60 hover:text-white hover:bg-white/[0.08] transition-all"><ChevronLeft className="w-4 h-4" /></button>
-                  <button onClick={handleSubmit} disabled={submitting || !contact.first_name.trim() || !contact.email.trim()}
-                    className="flex-1 h-12 rounded-xl bg-[#19B7C9] hover:bg-[#19B7C9]/90 text-[#0A0B10] font-display text-sm font-semibold tracking-wide disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(25,183,201,0.2)]">
-                    {submitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Envoyer ma candidature'}
+                  <button
+                    onClick={() => setStep(s => s - 1)}
+                    className="h-12 px-4 rounded-md border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    aria-label="Retour"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={submitting || !contact.first_name.trim() || !contact.email.trim()}
+                    className="flex-1 h-12 rounded-md bg-foreground hover:bg-foreground/90 text-background font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Soumettre ma demande'}
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="space-y-7" key={step}>
-                <div>
-                  <p className="text-xs text-primary/60 font-display uppercase tracking-widest mb-2">Question {step + 1} / {questions.length}</p>
-                  <h2 className="text-xl font-display font-bold leading-relaxed">{currentQuestion?.title}</h2>
+              <div className="space-y-6" key={step}>
+                <div className="mb-6 md:mb-8">
+                  <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.3em] text-muted-foreground mb-3">
+                    Question {step + 1} / {questions.length}
+                  </p>
+                  <h2 className="text-base md:text-lg font-bold text-foreground leading-snug">
+                    {currentQuestion?.title}
+                  </h2>
                 </div>
-                <div className="space-y-2.5">
+
+                <div className="space-y-2">
                   {(currentQuestion?.options || []).map((opt: any, i: number) => {
                     const selected = answers[currentQuestion!.id] === opt.label;
                     return (
-                      <button key={i} onClick={() => handleAnswer(currentQuestion!.id, opt.label, opt.disqualifying)}
-                        className={`w-full text-left px-5 py-4 rounded-xl border transition-all duration-200 ${selected ? 'bg-primary/15 border-primary/40 text-white shadow-[0_0_15px_rgba(25,183,201,0.1)]' : 'bg-white/[0.03] border-white/[0.08] text-white/80 hover:bg-white/[0.06] hover:border-white/[0.15]'}`}>
+                      <button
+                        key={i}
+                        onClick={() => handleAnswer(currentQuestion!.id, opt.label, opt.disqualifying)}
+                        className={`w-full text-left px-4 py-3.5 rounded-md border transition-colors ${
+                          selected
+                            ? 'bg-foreground text-background border-foreground'
+                            : 'bg-background border-border text-foreground hover:border-foreground/40 hover:bg-muted'
+                        }`}
+                      >
                         <div className="flex items-center gap-3">
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${selected ? 'border-primary bg-primary' : 'border-white/20'}`}>
-                            {selected && <Check className="w-3 h-3 text-white" />}
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                            selected ? 'border-background bg-background' : 'border-border'
+                          }`}>
+                            {selected && <Check className="w-2.5 h-2.5 text-foreground" />}
                           </div>
-                          <span className="text-sm font-display">{opt.label}</span>
+                          <span className="text-sm">{opt.label}</span>
                         </div>
                       </button>
                     );
                   })}
                 </div>
-                {step > 0 && <button onClick={() => setStep(s => s - 1)} className="text-xs text-white/30 hover:text-white/60 font-display uppercase tracking-wider transition-colors"><ChevronLeft className="w-3 h-3 inline mr-1" />Retour</button>}
+
+                {step > 0 && (
+                  <button
+                    onClick={() => setStep(s => s - 1)}
+                    className="text-[10px] md:text-xs text-muted-foreground hover:text-foreground font-mono uppercase tracking-widest transition-colors"
+                  >
+                    <ChevronLeft className="w-3 h-3 inline mr-1" />Retour
+                  </button>
+                )}
               </div>
             )}
             </div>
           </div>
-        </div>
 
-        <footer className="py-4 text-center">
-          <p className="text-[10px] text-white/15 font-display">
-            {config.brand_footer_text?.replace('{year}', new Date().getFullYear().toString()) || `© ${new Date().getFullYear()} Oracle`}
+          <p className="mt-8 md:mt-16 text-[10px] md:text-xs text-muted-foreground font-mono uppercase tracking-[0.2em] md:tracking-[0.3em] text-center">
+            {footerText}
           </p>
-        </footer>
+        </div>
       </div>
       )}
     </div>
