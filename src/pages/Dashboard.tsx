@@ -181,6 +181,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     let authChecked = false;
+    let mounted = true;
     
     const checkUserAccess = async (uid: string, session?: any) => {
       if (authChecked) return true;
@@ -230,10 +231,10 @@ const Dashboard = () => {
 
         const tokenExists = (sessions || []).some(s => s.session_token === localToken);
         if (!tokenExists) {
-          await supabase.auth.signOut();
           localStorage.removeItem("oracle_session_token");
-          navigate("/auth");
-          return false;
+          // Legacy/stale local token: allow the current valid auth session to rebuild it
+          // instead of bouncing the user back to auth after a successful login.
+          return true;
         }
       }
       return true;
@@ -241,6 +242,7 @@ const Dashboard = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
         if (!session) {
           navigate("/auth");
           setLoading(false);
@@ -254,21 +256,36 @@ const Dashboard = () => {
           await checkUserAccess(session.user.id, session);
         }
 
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     );
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
       if (!session) {
         navigate("/auth");
       } else {
         setUser(session.user);
         await checkUserAccess(session.user.id, session);
       }
-      setLoading(false);
+      if (mounted) setLoading(false);
+    }).catch((error) => {
+      console.warn("Unable to restore dashboard session", error);
+      if (mounted) {
+        navigate("/auth");
+        setLoading(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    const loadingFallback = window.setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 6000);
+
+    return () => {
+      mounted = false;
+      window.clearTimeout(loadingFallback);
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const userId = user?.id;

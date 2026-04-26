@@ -220,27 +220,36 @@ export const useSidebarRoles = () => {
     setIsSetter(false);
   };
 
-  const checkRoles = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      resetRoles();
-      setLoadingRoles(false);
-      return;
-    }
-
-    const [adminRes, superAdminRes, setterRes] = await Promise.all([
-      supabase.rpc('is_admin'),
-      supabase.rpc('is_super_admin'),
-      supabase.rpc('is_setter' as any),
-    ]);
-
-    setIsAdmin(!!adminRes.data);
-    setIsSuperAdmin(!!superAdminRes.data);
-    setIsSetter(!!setterRes.data);
-    setLoadingRoles(false);
-  };
-
   useEffect(() => {
+    let mounted = true;
+    const checkRoles = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        if (!session) {
+          resetRoles();
+          setLoadingRoles(false);
+          return;
+        }
+
+        const [adminRes, superAdminRes, setterRes] = await Promise.all([
+          supabase.rpc('is_admin'),
+          supabase.rpc('is_super_admin'),
+          supabase.rpc('is_setter' as any),
+        ]);
+
+        if (!mounted) return;
+        setIsAdmin(!!adminRes.data);
+        setIsSuperAdmin(!!superAdminRes.data);
+        setIsSetter(!!setterRes.data);
+      } catch (error) {
+        console.warn("Unable to load sidebar roles", error);
+        if (mounted) resetRoles();
+      } finally {
+        if (mounted) setLoadingRoles(false);
+      }
+    };
+
     checkRoles();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -265,6 +274,7 @@ export const useSidebarRoles = () => {
       .subscribe();
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
       supabase.removeChannel(channel);
     };
