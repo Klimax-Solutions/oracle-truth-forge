@@ -230,7 +230,7 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
           {/* Dataset actif — badge coloré */}
           <span className="text-[11px] font-semibold" style={{
             color: selectedSessionId
-              ? (sessions.find(s => s.id === selectedSessionId)?.type === "backtesting" ? "#3B82F6" : "#F97316")
+              ? (sessions.find(s => s.id === selectedSessionId)?.type === "backtesting" ? "#10B981" : "#F97316")
               : dataSource === "data-generale" ? AMBER : TEAL,
           }}>
             {selectedSessionId

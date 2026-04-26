@@ -43,7 +43,7 @@ interface SessionStats {
   avgRR: number;
 }
 
-const BLUE = "#3B82F6";
+const BLUE = "#10B981"; // vert thème (ex-bleu backtesting → cohérence visuelle)
 
 interface RecolteDonneesPageProps {
   onNavigateToSetupOracle?: () => void;

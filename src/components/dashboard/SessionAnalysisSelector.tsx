@@ -31,7 +31,7 @@ interface SessionAnalysisSelectorProps {
   onChange: (id: string | null) => void;
 }
 
-const BLUE = "#3B82F6";
+const BLUE = "#10B981"; // vert thème (ex-bleu backtesting → cohérence visuelle)
 const ORANGE = "#F97316";
 
 const Dropdown = ({
