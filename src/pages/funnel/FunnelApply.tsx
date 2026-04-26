@@ -4,6 +4,24 @@ import { supabase } from '@/integrations/supabase/client';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
 import { submitFunnelLead, flushPendingLeads } from '@/lib/funnelLeadQueue';
 import { Loader2, ChevronLeft, Check, ArrowRight } from 'lucide-react';
+import { z } from 'zod';
+
+// Schéma strict appliqué AVANT envoi en base : durcit l'intégrité du lead.
+const contactSchema = z.object({
+  first_name: z
+    .string()
+    .trim()
+    .min(2, 'Prénom trop court (2 caractères minimum)')
+    .max(60, 'Prénom trop long (60 caractères maximum)')
+    .regex(/^[\p{L}\p{M}'’\-\s]+$/u, 'Prénom invalide (lettres, tirets et apostrophes uniquement)'),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email('Email invalide')
+    .max(255, 'Email trop long'),
+  phone: z.string().trim().max(40, 'Téléphone trop long'),
+});
 
 /**
  * Renders text with <u>...</u> as accent underlines.
