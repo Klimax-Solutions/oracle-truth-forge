@@ -301,5 +301,6 @@ export const EarlyAccessRequestsTab = () => {
         )}
       </div>
     </div>
+    </TooltipProvider>
   );
 };
