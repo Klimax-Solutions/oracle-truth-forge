@@ -130,7 +130,7 @@ const PERMISSION_MATRIX: PermissionRow[] = [
   // ── Gestion produit ──
   { section: "Gestion produit", label: "", access: {} },
   { label: "Voir les membres",        desc: "Liste users, statuts, activité",                          access: { super_admin: true, admin: true } },
-  { label: "Modifier les rôles",      desc: "Attribuer / révoquer setter, closer, admin, EA…",         access: { super_admin: true } },
+  { label: "Modifier les rôles",      desc: "Attribuer / révoquer setter, closer, admin, EA…",         access: { super_admin: true, admin: true } },
   { label: "Geler / bannir un user",  desc: "Actions disciplinaires sur un compte",                    access: { super_admin: true, admin: true } },
   { label: "Voir les vérifications",  desc: "Onglet Vérif. Admin — trades, screenshots",               access: { super_admin: true, admin: true } },
   { label: "Valider / rejeter trade", desc: "Approuver ou refuser une vérification",                   access: { super_admin: true, admin: true } },
@@ -145,8 +145,8 @@ const PERMISSION_MATRIX: PermissionRow[] = [
   // ── Configuration ──
   { section: "Configuration", label: "", access: {} },
   { label: "Onglet Config",           desc: "Rôles, Funnel, Quêtes, Permissions",                      access: { super_admin: true, admin: true } },
-  { label: "Modifier le funnel",      desc: "Landing, Apply, VSL, emails, boutons",                    access: { super_admin: true } },
-  { label: "Modifier les quêtes",     desc: "Steps, labels, logique de progression",                   access: { super_admin: true } },
+  { label: "Modifier le funnel",      desc: "Landing, Apply, VSL, emails, boutons",                    access: { super_admin: true, admin: true } },
+  { label: "Modifier les quêtes",     desc: "Steps, labels, logique de progression",                   access: { super_admin: true, admin: true } },
   { label: "Simuler un rôle",         desc: "Barre Vue en haut — tester la vue d'un rôle",             access: { super_admin: true } },
 ];
 
@@ -270,6 +270,7 @@ export default function ConfigPanel() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("roles");
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Roles data
   const [users, setUsers] = useState<RoleUser[]>([]);
@@ -301,8 +302,14 @@ export default function ConfigPanel() {
   const [dataViewerUserId, setDataViewerUserId] = useState<string | null>(null);
   const [dataViewerUserName, setDataViewerUserName] = useState("");
 
-  // ── Check super admin ──
-  useEffect(() => { supabase.rpc("is_super_admin").then(({ data }) => { if (data) setIsSuperAdmin(true); }); }, []);
+  // ── Check admin / super admin ──
+  // Le pannel Config est accessible aux admins ET super_admins (pas seulement super).
+  useEffect(() => {
+    supabase.rpc("is_super_admin").then(({ data }) => { if (data) setIsSuperAdmin(true); });
+    supabase.rpc("is_admin").then(({ data }) => { if (data) setIsAdmin(true); });
+  }, []);
+
+  const canAccessConfig = isAdmin || isSuperAdmin;
 
   // ── Fetch users ──
   const fetchUsers = useCallback(async () => {
@@ -467,7 +474,7 @@ export default function ConfigPanel() {
     return m[actionType || "freeze"];
   }, [actionType, actionUserId, users]);
 
-  if (!isSuperAdmin && activeTab === "roles") {
+  if (!canAccessConfig && activeTab === "roles") {
     // Show tabs but block roles content
   }
 
@@ -501,10 +508,10 @@ export default function ConfigPanel() {
 
         {/* ═══ RÔLES ═══ */}
         {activeTab === "roles" && (
-          !isSuperAdmin ? (
+          !canAccessConfig ? (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <Shield className="w-12 h-12 text-white/10 mb-4" />
-              <p className="text-white/40">Accès réservé aux super administrateurs</p>
+              <p className="text-white/40">Accès réservé aux administrateurs</p>
             </div>
           ) : (
             <div className="px-6 py-4 space-y-3">
