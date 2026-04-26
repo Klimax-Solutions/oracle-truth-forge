@@ -561,7 +561,16 @@ export default function GestionPanel() {
         const userExecs = allExecutions.filter((e) => e.user_id === userId) as UserExecution[];
         const profile = profileMap[userId];
         const activeCycle = ucs.find((uc) => uc.status === "in_progress" || uc.status === "pending_review");
-        const currentCycleData = activeCycle ? cyclesData.find((c) => c.id === activeCycle.cycle_id) : null;
+        // Fallback: if no active cycle (all validated/rejected), show the highest-numbered validated cycle
+        let currentCycleData = activeCycle ? cyclesData.find((c) => c.id === activeCycle.cycle_id) : null;
+        if (!currentCycleData && ucs.length > 0) {
+          const validatedCycles = ucs
+            .filter((uc) => uc.status === "validated")
+            .map((uc) => cyclesData.find((c) => c.id === uc.cycle_id))
+            .filter((c): c is Cycle => !!c)
+            .sort((a, b) => b.cycle_number - a.cycle_number);
+          currentCycleData = validatedCycles[0] || null;
+        }
         const totalRR = userExecs.reduce((sum, e) => sum + (e.rr || 0), 0);
         const hasPending = ucs.some((uc) => uc.status === "pending_review");
         // Guard: [].every() returns true — new users with no cycles must NOT show as "completed"
