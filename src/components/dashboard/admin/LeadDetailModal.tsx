@@ -356,7 +356,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
               {lead.call_scheduled_at && (
                 <p className="hidden md:flex text-[11px] text-white/35 font-mono mt-0.5 items-center gap-1">
                   <Clock className="w-3 h-3" />
-                  {fmtDate(lead.call_scheduled_at)} · {new Date(lead.call_scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  {fmtDate(lead.call_scheduled_at)} · {new Date(lead.call_scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })}
                 </p>
               )}
             </div>
