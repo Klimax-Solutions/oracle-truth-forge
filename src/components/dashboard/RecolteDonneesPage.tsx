@@ -49,9 +49,12 @@ interface RecolteDonneesPageProps {
   onNavigateToSetupOracle?: () => void;
   /** SA role simulation — si défini, override le hook useEarlyAccess */
   overrideIsEarlyAccess?: boolean;
+  /** Admin-only : action de consultation Oracle Max (Data Analysis) */
+  isAdmin?: boolean;
+  onConsultOracleMax?: () => void;
 }
 
-export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIsEarlyAccess }: RecolteDonneesPageProps = {}) {
+export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIsEarlyAccess, isAdmin, onConsultOracleMax }: RecolteDonneesPageProps = {}) {
   const { isEarlyAccess: isEarlyAccessFromDB } = useEarlyAccess();
   const isEarlyAccess = overrideIsEarlyAccess !== undefined ? overrideIsEarlyAccess : isEarlyAccessFromDB;
   const [sessions, setSessions] = useState<TradingSession[]>([]);
@@ -309,12 +312,25 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
                     Base de données de <strong style={{ color: "#fff" }}>314 trades de référence</strong> + méthodologie complète
                   </p>
                 </div>
-                <ActionButton
-                  label="Ouvrir"
-                  icon={<ChevronRight className="w-4 h-4" />}
-                  bg="#158A7E"
-                  shadow="rgba(21,138,126,0.50)"
-                />
+                <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <ActionButton
+                    label="Ouvrir"
+                    icon={<ChevronRight className="w-4 h-4" />}
+                    bg="#158A7E"
+                    shadow="rgba(21,138,126,0.50)"
+                    onClick={() => onNavigateToSetupOracle?.()}
+                  />
+                  {isAdmin && onConsultOracleMax && (
+                    <ActionButton
+                      label="Oracle Max"
+                      icon={<Database className="w-3.5 h-3.5" />}
+                      bg="#4B5563"
+                      shadow="rgba(75,85,99,0.40)"
+                      size="sm"
+                      onClick={onConsultOracleMax}
+                    />
+                  )}
+                </div>
               </div>
             </div>
           )}
