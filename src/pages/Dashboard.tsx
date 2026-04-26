@@ -27,6 +27,7 @@ import RecolteDonneesPage from "@/components/dashboard/RecolteDonneesPage";
 import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { OracleHomePage } from "@/components/dashboard/OracleHomePage";
 import { OraclePage } from "@/components/dashboard/OraclePage";
+import { OracleMaxPage } from "@/components/dashboard/OracleMaxPage";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
 import { SuccessPage } from "@/components/dashboard/SuccessPage";
 import { ResultsPage } from "@/components/dashboard/ResultsPage";
@@ -180,7 +181,7 @@ const Dashboard = () => {
   const [simulatedRole, setSimulatedRole] = useState<SimulatedRole>("none");
 
   // Sub-navigation pour "recolte-donnees" : landing (RecolteDonneesPage) ou oracle (OraclePage)
-  const [recolteView, setRecolteView] = useState<"landing" | "oracle">("landing");
+  const [recolteView, setRecolteView] = useState<"landing" | "oracle" | "oracle-max">("landing");
   const { effectiveIsAdmin, effectiveIsSuperAdmin, effectiveIsEarlyAccess, effectiveIsSetter, effectiveIsCloser } =
     getEffectiveRoles(realIsSuperAdmin, simulatedRole, realIsSetter, realIsCloser, realIsAdmin);
   
@@ -543,14 +544,14 @@ const Dashboard = () => {
         if (recolteView === "oracle") {
           return <OraclePage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} isAdmin={isAdmin || isSuperAdmin} onBack={() => setRecolteView("landing")} />;
         }
+        if (recolteView === "oracle-max") {
+          return <OracleMaxPage trades={dataGenerale} isAdmin={isAdmin || isSuperAdmin} onBack={() => setRecolteView("landing")} />;
+        }
         return <RecolteDonneesPage
           onNavigateToSetupOracle={() => setRecolteView("oracle")}
           overrideIsEarlyAccess={simulatedRole !== "none" ? isEarlyAccess : undefined}
           isAdmin={isAdmin || isSuperAdmin}
-          onConsultOracleMax={() => {
-            setDataSource("data-generale");
-            setActiveTab("data-analysis");
-          }}
+          onConsultOracleMax={() => setRecolteView("oracle-max")}
         />;
       case "setup":
         return <SetupOracleLanding trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} onBack={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => setActiveTab("data-analysis")} />;
