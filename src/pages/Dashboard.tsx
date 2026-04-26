@@ -546,6 +546,11 @@ const Dashboard = () => {
         return <RecolteDonneesPage
           onNavigateToSetupOracle={() => setRecolteView("oracle")}
           overrideIsEarlyAccess={simulatedRole !== "none" ? isEarlyAccess : undefined}
+          isAdmin={isAdmin || isSuperAdmin}
+          onConsultOracleMax={() => {
+            setDataSource("data-generale");
+            setActiveTab("data-analysis");
+          }}
         />;
       case "setup":
         return <SetupOracleLanding trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} onBack={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => setActiveTab("data-analysis")} />;
