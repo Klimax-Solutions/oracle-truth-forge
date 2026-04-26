@@ -12,9 +12,10 @@ import {
   Users, Search, ChevronDown, CheckCircle, XCircle,
   ShieldCheck, Shield, Award, UserPlus, User, Tag,
   Snowflake, Ban, UserX, RefreshCw, Check, X,
-  MoreHorizontal, Clock, Lock, Mail,
+  MoreHorizontal, Clock, Lock, Mail, Activity,
 } from "lucide-react";
 import { AccessRulesPanel } from "./AccessRulesPanel";
+import { FunnelHealth } from "./FunnelHealth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -90,6 +91,7 @@ function getRoleIcon(r: string) {
 // ── Tabs ──
 const TABS = [
   { id: "roles" as const, label: "Rôles", icon: Crown },
+  { id: "health" as const, label: "Santé Funnel", icon: Activity },
   { id: "funnel" as const, label: "Funnel", icon: Layers },
   { id: "quests" as const, label: "Quêtes", icon: Sparkles },
   { id: "permissions" as const, label: "Permissions", icon: Lock },
@@ -710,6 +712,9 @@ export default function ConfigPanel() {
 
         {/* ═══ RÈGLES D'ACCÈS ═══ */}
         {activeTab === "access-rules" && <AccessRulesPanel />}
+
+        {/* ═══ SANTÉ FUNNEL ═══ */}
+        {activeTab === "health" && <FunnelHealth />}
       </div>
 
       {/* ── Dialogs ── */}
