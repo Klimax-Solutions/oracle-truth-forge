@@ -441,15 +441,16 @@ export default function GestionPanel() {
         return out;
       };
 
+      // ── Phase A : metadata légère (parallèle, payloads petits) ──
+      // On a besoin de profiles + VRs avant de pouvoir scoper user_executions/user_cycles
+      // aux seuls users pertinents (clients + soumetteurs de vérif).
       const [
-        profilesRes, cyclesRes, userCyclesData, executionsData, sessionsRes, activityRes,
+        profilesRes, cyclesRes, sessionsRes, activityRes,
         rolesRes, vrsRes, allVrsData, processedVrsRes, alertsRes, oracleRes, adminRolesRes,
         crmLeadsRes,
       ] = await withTimeout(Promise.all([
         supabase.from("profiles").select("*"),
         supabase.from("cycles").select("*").order("cycle_number"),
-        fetchAll(() => supabase.from("user_cycles").select("*").order("created_at")),
-        fetchAll(() => supabase.from("user_executions").select("*").order("trade_number")),
         supabase.from("user_sessions").select("user_id"),
         supabase.from("ea_activity_tracking").select("user_id, last_heartbeat"),
         supabase.from("user_roles").select("user_id, role, expires_at, early_access_type"),
@@ -466,14 +467,29 @@ export default function GestionPanel() {
 
       const profiles = (profilesRes.data || []) as any[];
       const cyclesData = (cyclesRes.data || []) as Cycle[];
+      const pendingVrs = vrsRes.data || [];
+      const processedVrs = processedVrsRes.data || [];
+
+      // ── Phase B : user_executions + user_cycles scopés ──
+      // Avant : on fetchait toutes les rows de la plateforme (~MBs avec imports prod)
+      // alors qu'on n'affiche que les is_client + soumetteurs de vérif (~10% du volume).
+      // Maintenant : .in("user_id", relevantIds) → divise le payload par ~10.
+      const clientIds = profiles.filter((p: any) => p.is_client === true).map((p: any) => p.user_id);
+      const vrUserIds = [...pendingVrs, ...processedVrs].map((v: any) => v.user_id).filter(Boolean);
+      const relevantIds = Array.from(new Set([...clientIds, ...vrUserIds]));
+
+      const [userCyclesData, executionsData] = relevantIds.length > 0
+        ? await withTimeout(Promise.all([
+            fetchAll(() => supabase.from("user_cycles").select("*").in("user_id", relevantIds).order("created_at")),
+            fetchAll(() => supabase.from("user_executions").select("*").in("user_id", relevantIds).order("trade_number")),
+          ]), 12000)
+        : [[], []];
       const userCycles = (userCyclesData || []) as UserCycleData[];
       const allExecutions = (executionsData || []) as UserExecution[];
       const sessions = sessionsRes.data || [];
       const activity = activityRes.data || [];
       const allRoles = rolesRes.data || [];
-      const pendingVrs = vrsRes.data || [];
       const allVrs = allVrsData || [];
-      const processedVrs = processedVrsRes.data || [];
       const alertsData = alertsRes.data || [];
       const oracleData = (oracleRes.data || []) as OracleTrade[];
       const adminRoles = adminRolesRes.data || [];
