@@ -469,13 +469,13 @@ export const EarlyAccessCRM = () => {
   const fmt = (iso: string | null) => {
     if (!iso) return "—";
     const d = new Date(iso);
-    return `${d.toLocaleDateString("fr-FR")} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+    return `${d.toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}`;
   };
 
   const fmtDate = (iso: string | null) => {
     if (!iso) return "—";
     const d = new Date(iso);
-    return `${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+    return `${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit", timeZone: "Europe/Paris" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}`;
   };
 
   const filtered = useMemo(() => {
