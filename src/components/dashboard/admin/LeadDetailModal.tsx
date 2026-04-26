@@ -49,7 +49,11 @@ interface Props {
 function fmtDate(d: string | null) {
   if (!d) return "";
   const date = new Date(d);
-  return `${date.getDate()} ${date.toLocaleString("fr-FR", { month: "long" })} à ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  // Format en heure de Paris pour rester cohérent avec l'équipe FR
+  const day = date.toLocaleDateString("fr-FR", { day: "numeric", timeZone: "Europe/Paris" });
+  const month = date.toLocaleDateString("fr-FR", { month: "long", timeZone: "Europe/Paris" });
+  const time = date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
+  return `${day} ${month} à ${time}`;
 }
 
 function fmtShort(d: string | null) {
