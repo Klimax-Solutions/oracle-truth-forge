@@ -61,6 +61,7 @@ export interface FunnelConfig {
 }
 
 const DEFAULT_CONFIG: Omit<FunnelConfig, 'id' | 'tenant_id'> = {
+  vsl_cta_delay_seconds: 0,
   landing_headline: 'Titre principal',
   landing_headline_accent: 'Accroche',
   landing_subtitle: 'Sous-titre descriptif de votre offre',
@@ -315,8 +316,8 @@ export function useAdminFunnelConfig(tenantId: string | null, funnelId?: string)
     try {
       if (hasConfig) {
         let query = supabase.from('funnel_config').update({ ...updates, updated_at: new Date().toISOString() });
-        if (funnelId) query = query.eq('funnel_id', funnelId);
-        else query = query.eq('tenant_id', tenantId);
+        if (funnelId) query = (query as any).eq('funnel_id', funnelId);
+        else query = (query as any).eq('tenant_id' as any, tenantId);
         const { error } = await query;
         if (error) throw error;
       } else {

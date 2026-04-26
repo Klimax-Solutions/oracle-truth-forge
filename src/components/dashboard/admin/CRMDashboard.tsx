@@ -161,7 +161,7 @@ function LeadDetail({ lead, onClose }: { lead: PipelineLead; onClose: () => void
       <div className="shrink-0 p-4 border-b border-border">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white", avatarColor(lead))}>
+            <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white", getSetterColor(lead.setter_name || ""))}>
               {lead.first_name?.[0]?.toUpperCase() || "?"}
             </div>
             <div>
@@ -405,11 +405,11 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
         .eq("id", lead.id);
 
       // 5) Event log (best-effort, ne bloque pas la conversion si fail)
-      const eventLog = supabase.from("lead_events").insert({
+      const eventLog = Promise.resolve(supabase.from("lead_events").insert({
         request_id: lead.id,
         event_type: "activated_as_member" as any,
         metadata: { paid_amount: lead.paid_amount, paid_at: lead.paid_at || now },
-      } as any).then(() => {}).catch(() => {});
+      } as any)).then(() => {}).catch(() => {});
 
       const [pRes, mRes, eaRes, cRes] = await Promise.all([profileUpdate, memberRoleInsert, earlyAccessDelete, crmUpdate]);
       await eventLog;

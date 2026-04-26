@@ -398,7 +398,7 @@ export default function ConfigPanel() {
       else if (actionType === "ban") await supabase.from("profiles").update({ status: "banned" as any, banned_at: new Date().toISOString(), banned_by: me?.id, status_reason: actionReason || null }).eq("user_id", actionUserId);
       else if (actionType === "unfreeze" || actionType === "unban") await supabase.from("profiles").update({ status: "active" as any, frozen_at: null, banned_at: null, frozen_by: null, banned_by: null, status_reason: null }).eq("user_id", actionUserId);
       else if (actionType === "remove") {
-        for (const t of ["verification_requests", "user_followups", "user_executions", "user_personal_trades", "user_custom_variables", "user_variable_types", "user_cycles", "user_roles"]) await supabase.from(t).delete().eq("user_id", actionUserId);
+        for (const t of ["verification_requests", "user_followups", "user_executions", "user_personal_trades", "user_custom_variables", "user_variable_types", "user_cycles", "user_roles"]) await (supabase.from(t as any) as any).delete().eq("user_id", actionUserId);
         await supabase.from("profiles").delete().eq("user_id", actionUserId);
       }
       toast({ title: actionType === "remove" ? "Utilisateur supprimé" : "Statut modifié" });

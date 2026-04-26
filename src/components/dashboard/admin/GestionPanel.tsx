@@ -807,21 +807,21 @@ export default function GestionPanel() {
     setReopeningId(pr.id);
     try {
       const ops: Promise<any>[] = [
-        supabase.from("verification_requests").update({
+        Promise.resolve(supabase.from("verification_requests").update({
           status: "pending",
           reviewed_at: null,
           reviewed_by: null,
           admin_comments: null,
-        }).eq("id", pr.id),
+        }).eq("id", pr.id)),
       ];
       if (pr.user_cycle_id) {
         ops.push(
-          supabase.from("user_cycles").update({
-            status: "pending_review",
+          Promise.resolve(supabase.from("user_cycles").update({
+            status: "pending_review" as any,
             verified_at: null,
             completed_at: null,
             admin_feedback: null,
-          }).eq("id", pr.user_cycle_id)
+          }).eq("id", pr.user_cycle_id))
         );
       }
       await Promise.all(ops);
@@ -844,11 +844,11 @@ export default function GestionPanel() {
     setSavingComment(true);
     try {
       const ops: Promise<any>[] = [
-        supabase.from("verification_requests").update({ admin_comments: editingComment.value }).eq("id", editingComment.vrId),
+        Promise.resolve(supabase.from("verification_requests").update({ admin_comments: editingComment.value }).eq("id", editingComment.vrId)),
       ];
       if (editingComment.userCycleId) {
         ops.push(
-          supabase.from("user_cycles").update({ admin_feedback: editingComment.value }).eq("id", editingComment.userCycleId)
+          Promise.resolve(supabase.from("user_cycles").update({ admin_feedback: editingComment.value }).eq("id", editingComment.userCycleId))
         );
       }
       await Promise.all(ops);
@@ -899,7 +899,7 @@ export default function GestionPanel() {
         toast({ title: "Utilisateur réactivé" });
       } else if (actionType === "remove") {
         for (const t of ["verification_requests", "user_followups", "user_executions", "user_personal_trades", "user_custom_variables", "user_variable_types", "user_cycles", "user_roles"]) {
-          await supabase.from(t).delete().eq("user_id", actionUserId);
+          await (supabase.from(t as any) as any).delete().eq("user_id", actionUserId);
         }
         await supabase.from("profiles").delete().eq("user_id", actionUserId);
         toast({ title: "Utilisateur supprimé" });
