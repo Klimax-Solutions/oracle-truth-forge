@@ -69,15 +69,28 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existing?.id) {
-      // Idempotent : on retourne l'id existant + on log
+      // Lead déjà présent : on ne touche PAS l'enregistrement existant,
+      // mais on log un event 'funnel_resubmitted' avec TOUTES les nouvelles
+      // données du form en metadata pour garder la trace dans la timeline.
       await admin.from("lead_events").insert({
         request_id: existing.id,
-        event_type: "funnel_lead_fallback_dedup",
+        event_type: "funnel_resubmitted",
         source: "edge",
-        metadata: { reason: "email already exists", slug: _slug ?? null },
+        metadata: {
+          slug: _slug ?? null,
+          submitted_first_name: payload.first_name,
+          submitted_email: payload.email,
+          submitted_phone: payload.phone ?? null,
+          submitted_form_answers: payload.form_answers ?? null,
+          submitted_offer_amount: payload.offer_amount ?? null,
+          submitted_budget_amount: payload.budget_amount ?? null,
+          submitted_priorite: payload.priorite ?? null,
+          submitted_difficulte_principale: payload.difficulte_principale ?? null,
+          submitted_importance_trading: payload.importance_trading ?? null,
+        },
       }).then(() => {}, () => {});
       return new Response(
-        JSON.stringify({ ok: true, id: existing.id, deduped: true }),
+        JSON.stringify({ ok: true, id: existing.id, deduped: true, resubmitted: true }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }

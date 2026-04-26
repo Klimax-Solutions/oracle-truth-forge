@@ -73,6 +73,7 @@ function dateSeparatorLabel(d: Date) {
 
 const EVENT_CONFIG: Record<string, { label: string; icon: any; style: "card" | "chip" | "debrief"; color: string }> = {
   form_submitted:              { label: "Formulaire soumis",    icon: FileText,      style: "card",  color: "amber" },
+  funnel_resubmitted:          { label: "Form re-soumis",       icon: RotateCcw,     style: "card",  color: "amber" },
   ea_approved:                 { label: "EA approuvé",          icon: Shield,        style: "card",  color: "cyan" },
   ea_timer_extended:           { label: "Timer prolongé",       icon: Clock,         style: "chip",  color: "cyan" },
   setting_contacted_whatsapp:  { label: "Contacté sur WhatsApp",icon: MessageCircle, style: "chip",  color: "cyan" },
