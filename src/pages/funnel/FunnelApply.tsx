@@ -387,33 +387,54 @@ export default function FunnelApply() {
                 </p>
               </div>
             ) : submitted ? (
-              <div className="text-center space-y-8 py-4">
-                <div className="space-y-5">
-                  <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.3em] text-muted-foreground">
-                    Étape suivante
-                  </p>
+              <div className="text-center space-y-8 py-2">
+                {/* Green check icon */}
+                <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto">
+                  <Check className="w-7 h-7 text-emerald-500" strokeWidth={2.5} />
+                </div>
+
+                <div className="space-y-3">
                   <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
-                    Demande de Free Trial étudiée
+                    Demande envoyée
                   </h2>
-                  <div className="h-px w-12 bg-border mx-auto" />
                   <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-                    Un membre de notre équipe reviendra vers toi pour valider ta candidature.
+                    Votre demande a bien été reçue. Un membre de notre équipe reviendra vers vous pour valider votre candidature.
                   </p>
                 </div>
 
-                <button
-                  onClick={() => {
-                    const params = new URLSearchParams();
-                    params.set('name', contact.first_name.trim());
-                    params.set('email', contact.email.trim().toLowerCase());
-                    const phone = contact.phone ? `${contact.countryCode}${contact.phone.replace(/\s/g, '')}` : '';
-                    if (phone) params.set('phone', phone);
-                    navigate(`/${slug}/discovery?${params}`);
-                  }}
-                  className="w-full h-12 rounded-md bg-foreground hover:bg-foreground/90 text-background font-bold text-sm transition-colors"
-                >
-                  Sécuriser mon accès à vie à Oracle<sup className="text-[0.6em] font-normal align-super ml-0.5">™</sup>
-                </button>
+                {/* Sub-card: prochaine étape */}
+                <div className="text-left border border-border bg-background/50 rounded-md p-5 space-y-3">
+                  <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.25em] text-muted-foreground">
+                    Prochaine étape
+                  </p>
+                  <p className="text-sm text-foreground leading-relaxed">
+                    Sécurise dès maintenant ton <span className="font-semibold">accès à vie</span> à Oracle<sup className="text-[0.6em] font-normal align-super ml-0.5">™</sup> en réservant un échange avec notre équipe.
+                  </p>
+                </div>
+
+                {/* CTA principal — book a call, mis en évidence */}
+                <div className="relative pt-2">
+                  <div className="absolute inset-0 rounded-md bg-foreground/20 blur-xl opacity-60" aria-hidden="true" />
+                  <button
+                    onClick={() => {
+                      const params = new URLSearchParams();
+                      params.set('name', contact.first_name.trim());
+                      params.set('email', contact.email.trim().toLowerCase());
+                      const phone = contact.phone ? `${contact.countryCode}${contact.phone.replace(/\s/g, '')}` : '';
+                      if (phone) params.set('phone', phone);
+                      navigate(`/${slug}/discovery?${params}`);
+                    }}
+                    className="relative w-full min-h-[64px] py-4 px-5 rounded-md bg-foreground hover:bg-foreground/90 text-background font-bold text-sm md:text-base transition-all hover:scale-[1.02] inline-flex items-center justify-center gap-3 ring-2 ring-foreground/20 ring-offset-2 ring-offset-card shadow-lg"
+                  >
+                    <span className="text-center leading-snug">
+                      Clique ici pour sécuriser ton accès à vie à Oracle<sup className="text-[0.6em] font-normal align-super ml-0.5">™</sup>
+                    </span>
+                    <ArrowRight className="w-5 h-5 shrink-0" />
+                  </button>
+                  <p className="mt-3 text-[10px] md:text-xs font-mono uppercase tracking-[0.25em] text-muted-foreground text-center">
+                    Réserve un échange avec l'équipe
+                  </p>
+                </div>
               </div>
             ) : isContactStep ? (
               <div className="space-y-6">
