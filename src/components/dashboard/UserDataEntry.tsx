@@ -65,6 +65,8 @@ import { Progress } from "@/components/ui/progress";
 import { ScreenshotLink } from "./ScreenshotLink";
 import { SignedImageCard } from "./SignedImageCard";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
+import { OracleTradeDialog, OracleExecution } from "./OracleTradeDialog";
+import { getRecommendedWindow } from "@/lib/oracle-cycle-windows";
 
 interface UserExecution {
   id: string;
@@ -272,6 +274,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
   const [uploading, setUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingExec, setEditingExec] = useState<UserExecution | null>(null);
   const [formData, setFormData] = useState<FormData>(initialFormData);
   // Dual screenshot state (context M15 + entry M5)
   const [contextFile, setContextFile] = useState<File | null>(null);
