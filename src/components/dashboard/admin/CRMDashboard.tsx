@@ -40,6 +40,12 @@ import type { LeadModalView } from "./LeadDetailModal";
 // ── Types — CRMLead imported from @/lib/admin/types (source de verite unique) ──
 type PipelineLead = CRMLead; // Alias local pour compatibilite
 
+// Map des séquences Kit (sequence_id → nom lisible)
+export const KIT_SEQUENCE_NAMES: Record<string, string> = {
+  '2624505': 'Book-a-call',
+  '2626026': 'Nurturing',
+};
+
 function fmtDate(d: string | null): string {
   if (!d) return "";
   const date = new Date(d);
