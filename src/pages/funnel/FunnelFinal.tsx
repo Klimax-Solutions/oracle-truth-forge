@@ -2,7 +2,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { flushPendingLeads } from '@/lib/funnelLeadQueue';
+import { flushPendingLeads, getFunnelSession } from '@/lib/funnelLeadQueue';
 import { Loader2, CheckCircle2, AlertTriangle, Calendar, Send, Mail, Clock } from 'lucide-react';
 
 export default function FunnelFinal() {
@@ -11,8 +11,11 @@ export default function FunnelFinal() {
   const { config, loading } = useFunnelConfig(slug);
 
   const bookingDate = searchParams.get('date') || null;
-  const leadEmail = searchParams.get('email') || null;
-  const leadName = searchParams.get('name') || null;
+  const leadEmail   = searchParams.get('email') || null;
+  const leadName    = searchParams.get('name')  || null;
+
+  // Session locale — source de vérité pour le request_id (évite UPDATE par email ambigu)
+  const session = getFunnelSession();
 
   const [question, setQuestion] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -22,13 +25,24 @@ export default function FunnelFinal() {
   useEffect(() => { flushPendingLeads().catch(() => {}); }, []);
 
   const handleSubmitQuestion = async () => {
-    if (!question.trim() || !leadEmail) return;
+    const email = leadEmail || session?.email || '';
+    if (!question.trim() || !email) return;
     setSubmitting(true);
     try {
-      await supabase
-        .from('early_access_requests')
-        .update({ precall_question: question.trim() } as any)
-        .eq('email', leadEmail.toLowerCase().trim());
+      const requestId = session?.request_id;
+      if (requestId) {
+        // UPDATE par ID → précis, pas de risque de toucher le mauvais lead
+        await supabase
+          .from('early_access_requests')
+          .update({ precall_question: question.trim() } as any)
+          .eq('id', requestId);
+      } else {
+        // Fallback : UPDATE par email (legacy — OK si un seul lead avec cet email)
+        await supabase
+          .from('early_access_requests')
+          .update({ precall_question: question.trim() } as any)
+          .eq('email', email.toLowerCase().trim());
+      }
       setSubmitted(true);
     } catch {
       // Silent fail — not critical
@@ -168,7 +182,7 @@ export default function FunnelFinal() {
                 />
                 <button
                   onClick={handleSubmitQuestion}
-                  disabled={!question.trim() || !leadEmail || submitting}
+                  disabled={!question.trim() || (!leadEmail && !session?.email) || submitting}
                   className="w-full h-12 rounded-md bg-foreground hover:bg-foreground/90 text-background font-bold text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

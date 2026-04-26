@@ -79,39 +79,48 @@ Deno.serve(async (req) => {
   // https://developers.kit.com/v3#add-subscriber-to-a-sequence
   const kitUrl = `https://api.convertkit.com/v3/sequences/${encodeURIComponent(KIT_SEQUENCE_ID)}/subscribe`;
 
+  // 3 tentatives avec backoff exponentiel : 0ms / 200ms / 600ms
+  const BACKOFF_MS = [0, 200, 600];
+  let lastResp: Response | null = null;
+  let lastData: Record<string, unknown> = {};
+
   try {
-    const resp = await fetch(kitUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_secret: KIT_API_SECRET,
-        email,
-        first_name,
-      }),
-    });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt]));
+        console.log(`[subscribe-to-kit] Retry ${attempt}/2 for ${email}`);
+      }
+      lastResp = await fetch(kitUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ api_secret: KIT_API_SECRET, email, first_name }),
+      });
+      lastData = await lastResp.json().catch(() => ({}));
+      if (lastResp.ok) break; // succès → sortie immédiate
+    }
 
-    const data = await resp.json().catch(() => ({}));
+    if (!lastResp) throw new Error("Kit API unavailable — no response");
 
-    if (!resp.ok) {
-      console.error("[subscribe-to-kit] Kit API error", resp.status, data);
+    if (!lastResp.ok) {
+      console.error("[subscribe-to-kit] Kit API error after retries", lastResp.status, lastData);
       await logEvent("kit_subscribe_failed", {
-        status: resp.status,
-        response: data,
+        status: lastResp.status,
+        response: lastData,
         sequence_id: KIT_SEQUENCE_ID,
       });
       return new Response(
-        JSON.stringify({ ok: false, status: resp.status, kit: data }),
+        JSON.stringify({ ok: false, status: lastResp.status, kit: lastData }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     await logEvent("kit_sequence_subscribed", {
       sequence_id: KIT_SEQUENCE_ID,
-      subscription_id: data?.subscription?.id ?? null,
+      subscription_id: (lastData as any)?.subscription?.id ?? null,
     });
 
     return new Response(
-      JSON.stringify({ ok: true, subscription: data?.subscription ?? null }),
+      JSON.stringify({ ok: true, subscription: (lastData as any)?.subscription ?? null }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {

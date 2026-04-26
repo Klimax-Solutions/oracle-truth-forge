@@ -1,28 +1,38 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Loader2, Calendar, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { flushPendingLeads } from '@/lib/funnelLeadQueue';
+import { flushPendingLeads, getFunnelSession } from '@/lib/funnelLeadQueue';
 
 // ── SLICE: syncBookingToDB ────────────────────────────────────────────────────
 // Self-contained, antifragile. Never throws — failure is logged but never blocks
 // the redirect flow.
+// Priorité : request_id (sessionStorage) > lookup par email (fallback).
 // ─────────────────────────────────────────────────────────────────────────────
 async function syncBookingToDB(opts: {
+  requestId?: string | null;
   email: string;
   scheduledAt: string | null;
   meetingUrl: string | null;
 }) {
   try {
-    const { data: rows, error: findErr } = await supabase
-      .from('early_access_requests')
-      .select('id')
-      .ilike('email', opts.email.trim())
-      .limit(1);
-    if (findErr || !rows?.length) return;
+    let requestId = opts.requestId || null;
 
-    const requestId = rows[0].id;
+    // Si pas de request_id direct, lookup par email
+    if (!requestId) {
+      if (!opts.email.trim()) return;
+      const { data: rows, error: findErr } = await supabase
+        .from('early_access_requests')
+        .select('id')
+        .ilike('email', opts.email.trim())
+        .limit(1);
+      if (findErr || !rows?.length) {
+        console.warn('[Discovery] syncBookingToDB: lead not found for', opts.email);
+        return;
+      }
+      requestId = rows[0].id;
+    }
 
     await supabase.from('early_access_requests').update({
       call_booked: true,
@@ -87,9 +97,12 @@ export default function FunnelDiscovery() {
   const [searchParams] = useSearchParams();
   const { config, loading } = useFunnelConfig(slug);
 
-  const prefillName = searchParams.get('name') || undefined;
-  const prefillEmail = searchParams.get('email') || undefined;
-  const prefillPhone = searchParams.get('phone') || undefined;
+  // Session locale (stockée par funnelLeadQueue après submit du form)
+  // Fallback si les URL params sont perdus (ex: refresh de page)
+  const session = useMemo(() => getFunnelSession(), []);
+  const prefillName  = searchParams.get('name')  || session?.first_name || undefined;
+  const prefillEmail = searchParams.get('email') || session?.email      || undefined;
+  const prefillPhone = searchParams.get('phone') || session?.phone      || undefined;
   const calBase = config?.discovery_cal_link ? buildCalEmbedUrl(config.discovery_cal_link) : null;
   const embedUrl = calBase ? appendCalPrefill(calBase, prefillName, prefillEmail, prefillPhone) : null;
 
@@ -134,8 +147,14 @@ export default function FunnelDiscovery() {
           } catch { dateLabel = rawDate; }
         }
 
-        if (email) {
-          syncBookingToDB({ email, scheduledAt, meetingUrl });
+        const syncEmail = email || session?.email || '';
+        if (syncEmail) {
+          syncBookingToDB({
+            requestId: session?.request_id,
+            email: syncEmail,
+            scheduledAt,
+            meetingUrl,
+          });
         }
 
         const params = new URLSearchParams();
@@ -149,7 +168,7 @@ export default function FunnelDiscovery() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [slug, navigate, prefillName, prefillEmail, booked]);
+  }, [slug, navigate, prefillName, prefillEmail, session, booked]);
 
   if (loading) {
     return (

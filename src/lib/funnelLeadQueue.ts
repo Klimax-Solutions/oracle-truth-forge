@@ -18,6 +18,41 @@ import { supabase } from '@/integrations/supabase/client';
 const STORAGE_KEY = 'oracle_funnel_pending_leads';
 const MAX_QUEUE = 50; // garde-fou storage
 
+// ─── Session courante du funnel ───────────────────────────────────────────────
+// Stocke le request_id du lead créé dans la session tab courante.
+// Utilisé par FunnelDiscovery et FunnelFinal pour retrouver le bon lead
+// sans passer par une recherche par email (qui peut matcher le mauvais record).
+const SESSION_KEY = 'oracle_funnel_session';
+
+export interface FunnelSession {
+  request_id: string | null;
+  email: string;
+  first_name: string;
+  phone?: string;
+  stored_at: string;
+}
+
+export function storeFunnelSession(session: Omit<FunnelSession, 'stored_at'>): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      ...session,
+      stored_at: new Date().toISOString(),
+    }));
+  } catch {}
+}
+
+export function getFunnelSession(): FunnelSession | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as FunnelSession;
+  } catch {
+    return null;
+  }
+}
+
 export interface FunnelLeadPayload {
   first_name: string;
   email: string;
@@ -102,6 +137,13 @@ async function attemptInsert(lead: FunnelLeadPayload): Promise<boolean> {
         .select('id')
         .maybeSingle();
       if (!error) {
+        // Persiste l'identité du lead dans la session tab — utilisé par Discovery/Final
+        storeFunnelSession({
+          request_id: (data as any)?.id ?? null,
+          email: lead.email,
+          first_name: lead.first_name,
+          phone: lead.phone,
+        });
         triggerKitSequence(lead, (data as any)?.id);
         return true;
       }
@@ -141,6 +183,13 @@ async function attemptEdgeFallback(lead: FunnelLeadPayload, slug?: string): Prom
     }
     if ((data as any)?.ok) {
       console.log('[FunnelQueue] Lead recovered via edge fallback:', lead.email, data);
+      // Persiste l'identité du lead dans la session tab
+      storeFunnelSession({
+        request_id: (data as any)?.id ?? null,
+        email: lead.email,
+        first_name: lead.first_name,
+        phone: lead.phone,
+      });
       // Déclenche Kit (idempotent côté Kit, pas de double inscription)
       triggerKitSequence(lead, (data as any)?.id);
       return true;
