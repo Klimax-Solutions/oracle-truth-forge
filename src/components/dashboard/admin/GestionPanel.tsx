@@ -423,6 +423,8 @@ export default function GestionPanel() {
   // ── Data fetching ──
   const loadData = useCallback(async () => {
     setLoading(true);
+    const t0 = performance.now();
+    const tlog = (label: string) => console.log(`[Gestion] ${label}: ${Math.round(performance.now() - t0)}ms`);
     try {
       // Helper : Supabase plafonne à 1000 rows par requête. Pour les tables
       // qui dépassent ce seuil avec les imports prod, on pagine.
@@ -464,6 +466,7 @@ export default function GestionPanel() {
           .select("id, user_id, created_at, paid_at, paid_amount, offer_amount, call_done_at, setter_name, closer_name")
           .not("user_id", "is", null),
       ]), 12000);
+      tlog("Phase A done");
 
       const profiles = (profilesRes.data || []) as any[];
       const cyclesData = (cyclesRes.data || []) as Cycle[];
@@ -477,6 +480,7 @@ export default function GestionPanel() {
       const clientIds = profiles.filter((p: any) => p.is_client === true).map((p: any) => p.user_id);
       const vrUserIds = [...pendingVrs, ...processedVrs].map((v: any) => v.user_id).filter(Boolean);
       const relevantIds = Array.from(new Set([...clientIds, ...vrUserIds]));
+      console.log(`[Gestion] relevantIds count: ${relevantIds.length} (clients: ${clientIds.length}, VR-only: ${vrUserIds.filter(u => !clientIds.includes(u)).length})`);
 
       const [userCyclesData, executionsData] = relevantIds.length > 0
         ? await withTimeout(Promise.all([
@@ -486,6 +490,7 @@ export default function GestionPanel() {
         : [[], []];
       const userCycles = (userCyclesData || []) as UserCycleData[];
       const allExecutions = (executionsData || []) as UserExecution[];
+      tlog(`Phase B done (cycles: ${userCycles.length}, execs: ${allExecutions.length})`);
       const sessions = sessionsRes.data || [];
       const activity = activityRes.data || [];
       const allRoles = rolesRes.data || [];
@@ -660,6 +665,7 @@ export default function GestionPanel() {
         const { data } = await supabase.from("profiles").select("*").in("user_id", adminIds);
         if (data) setAdminProfiles(data as Profile[]);
       }
+      tlog("Total");
     } catch (err) {
       console.error("[Gestion] Load error:", err);
       // Auto-cleanup si la session est morte → évite le "vider cache + reco" manuel

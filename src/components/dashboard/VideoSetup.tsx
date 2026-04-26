@@ -93,7 +93,6 @@ export const VideoSetup = ({ overrideIsEarlyAccess }: VideoSetupProps = {}) => {
         if (rolesRes.data) {
           const roles = rolesRes.data.map((r: any) => r.role);
           setUserRoles(roles);
-          setIsAdminFromDB(roles.includes("admin") || roles.includes("super_admin"));
         }
       } catch (err) {
         console.warn("[VideoSetup]", err);
