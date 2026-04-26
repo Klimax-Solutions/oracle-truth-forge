@@ -58,7 +58,7 @@ export const MaintenanceLock = () => {
   }, []);
 
   if (!shouldBlock) return null;
-  if (ALLOWED_ROUTES.includes(location.pathname)) return null;
+  if (isAllowedRoute(location.pathname)) return null;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
