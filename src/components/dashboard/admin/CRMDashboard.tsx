@@ -301,6 +301,8 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
   const [currentSetterName, setCurrentSetterName] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [closingId, setClosingId] = useState<string | null>(null);
+  // Map request_id → état Kit (subscribed | failed | unsubscribed) + dernier event
+  const [kitEventsMap, setKitEventsMap] = useState<Record<string, { status: 'subscribed' | 'failed' | 'unsubscribed'; at: string; tag_added?: boolean }>>({});
   const { toast } = useToast();
 
   // Effective roles: overrideRoles (from RoleSwitcher) prend le dessus sur les valeurs DB
