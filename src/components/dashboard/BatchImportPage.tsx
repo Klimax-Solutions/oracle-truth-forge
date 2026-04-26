@@ -1219,7 +1219,7 @@ export const BatchImportPage = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-border flex items-center justify-between">
+      <div className="p-3 md:p-6 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h2 className="text-xl font-semibold text-foreground mb-1">
             Import Batch (Admin)

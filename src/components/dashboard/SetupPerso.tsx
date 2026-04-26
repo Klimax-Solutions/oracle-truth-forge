@@ -756,7 +756,7 @@ export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupP
 
       {/* Import result */}
       {importResult && (
-        <div className="px-6 py-3 bg-muted/50 border-b border-border flex items-center gap-4">
+        <div className="px-3 md:px-6 py-3 bg-muted/50 border-b border-border flex flex-wrap items-center gap-3 md:gap-4">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             <span className="text-sm text-foreground">{importResult.success} trades importés</span>
