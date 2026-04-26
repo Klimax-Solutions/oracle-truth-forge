@@ -876,43 +876,36 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                           )}
                         </div>
                       </TableCell>
-                      {/* MAIL — statut séquence Kit (subscribed / failed / unsubscribed) */}
+                      {/* KIT — séquence email (orange Book-a-call / bleu Nurturing / gris stoppée) */}
                       <TableCell className="text-center py-3">
                         {(() => {
                           const kit = kitEventsMap[lead.id];
-                          if (!kit) return <span className="text-white/15 text-[11px]">—</span>;
-                          if (kit.status === 'subscribed') {
-                            return (
-                              <div className="flex flex-col items-center gap-1">
-                                <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/25" title="Inscrit à la séquence Kit">
-                                  <Send className="w-3 h-3 shrink-0" />
-                                  <span className="font-bold">{fmtDate(kit.at)}</span>
-                                  <span className="opacity-50">{fmtTime(kit.at)}</span>
-                                </span>
-                                <span className="text-[9px] font-display text-emerald-400/60 uppercase tracking-wider">séquence active</span>
-                              </div>
-                            );
+                          if (!kit) return null;
+                          const seqId = kit.sequence_id ?? "";
+                          const seqName = KIT_SEQUENCE_NAMES[seqId] ?? "Séquence Kit";
+                          const isActive = kit.status === 'subscribed';
+                          const isStopped = kit.status === 'unsubscribed';
+                          const isFailed = kit.status === 'failed';
+                          // Couleur selon séquence + état
+                          let colorClass = "text-muted-foreground/50";
+                          let pulseClass = "";
+                          if (isActive) {
+                            if (seqId === '2624505') colorClass = "text-orange-400";
+                            else if (seqId === '2626026') colorClass = "text-sky-400";
+                            else colorClass = "text-emerald-400";
+                            pulseClass = "animate-pulse";
+                          } else if (isFailed) {
+                            colorClass = "text-red-400/70";
                           }
-                          if (kit.status === 'unsubscribed') {
-                            return (
-                              <div className="flex flex-col items-center gap-1">
-                                <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-violet-300 bg-violet-500/10 px-2.5 py-1 rounded-lg border border-violet-500/25" title="Désinscrit (call booké)">
-                                  <CheckCircle2 className="w-3 h-3 shrink-0" />
-                                  <span className="font-bold">{fmtDate(kit.at)}</span>
-                                </span>
-                                <span className="text-[9px] font-display text-violet-400/60 uppercase tracking-wider">stop · call booké</span>
-                              </div>
-                            );
-                          }
-                          // failed
+                          const tooltip = isFailed
+                            ? `${seqName} — Échec`
+                            : isStopped
+                              ? `${seqName} — Terminée${kit.stopped_at ? ` (${fmtDate(kit.stopped_at)})` : ''}`
+                              : `${seqName} — Active${kit.started_at ? ` depuis ${fmtDate(kit.started_at)}` : ''}`;
                           return (
-                            <div className="flex flex-col items-center gap-1">
-                              <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-red-300 bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/30" title="Échec de l'inscription Kit">
-                                <X className="w-3 h-3 shrink-0" />
-                                <span className="font-bold">{fmtDate(kit.at)}</span>
-                              </span>
-                              <span className="text-[9px] font-display text-red-400/60 uppercase tracking-wider">échec</span>
-                            </div>
+                            <span className="inline-flex items-center justify-center" title={tooltip}>
+                              <Mail className={cn("w-4 h-4", colorClass, pulseClass)} />
+                            </span>
                           );
                         })()}
                       </TableCell>
