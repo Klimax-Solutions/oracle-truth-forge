@@ -263,7 +263,8 @@ export const EarlyAccessRequestsTab = () => {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
