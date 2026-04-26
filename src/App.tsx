@@ -42,7 +42,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/setup/:setupId" element={<SetupDetail />} />
           <Route path="/oracle-m" element={<OracleM />} />
-          <Route path="/early-access" element={<EarlyAccess />} />
+          
           <Route path="/setup-password" element={<SetupPasswordPage />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/:slug/landing" element={<FunnelLanding />} />
