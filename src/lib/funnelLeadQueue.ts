@@ -18,6 +18,41 @@ import { supabase } from '@/integrations/supabase/client';
 const STORAGE_KEY = 'oracle_funnel_pending_leads';
 const MAX_QUEUE = 50; // garde-fou storage
 
+// ─── Session courante du funnel ───────────────────────────────────────────────
+// Stocke le request_id du lead créé dans la session tab courante.
+// Utilisé par FunnelDiscovery et FunnelFinal pour retrouver le bon lead
+// sans passer par une recherche par email (qui peut matcher le mauvais record).
+const SESSION_KEY = 'oracle_funnel_session';
+
+export interface FunnelSession {
+  request_id: string | null;
+  email: string;
+  first_name: string;
+  phone?: string;
+  stored_at: string;
+}
+
+export function storeFunnelSession(session: Omit<FunnelSession, 'stored_at'>): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      ...session,
+      stored_at: new Date().toISOString(),
+    }));
+  } catch {}
+}
+
+export function getFunnelSession(): FunnelSession | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as FunnelSession;
+  } catch {
+    return null;
+  }
+}
+
 export interface FunnelLeadPayload {
   first_name: string;
   email: string;
@@ -88,6 +123,10 @@ function triggerKitSequence(lead: { email: string; first_name: string }, request
   }
 }
 
+// Colonnes garanties présentes sur PROD (appliquées via Lovable dès le départ).
+// Utilisées comme fallback si le schéma complet n'est pas encore migré.
+const CORE_COLUMNS = ['first_name', 'email', 'phone', 'status', 'form_submitted'] as const;
+
 async function attemptInsert(lead: FunnelLeadPayload): Promise<boolean> {
   // Sépare métadonnées internes des colonnes DB
   const { _attempted_at, _attempts, _slug, ...dbPayload } = lead;
@@ -102,17 +141,53 @@ async function attemptInsert(lead: FunnelLeadPayload): Promise<boolean> {
         .select('id')
         .maybeSingle();
       if (!error) {
+        // Persiste l'identité du lead dans la session tab — utilisé par Discovery/Final
+        storeFunnelSession({
+          request_id: (data as any)?.id ?? null,
+          email: lead.email,
+          first_name: lead.first_name,
+          phone: lead.phone,
+        });
         triggerKitSequence(lead, (data as any)?.id);
         return true;
       }
       // 23505 = unique violation → lead déjà existant.
       // On RETOURNE FALSE pour forcer le passage par attemptEdgeFallback,
       // qui logge un event 'funnel_resubmitted' visible dans la timeline.
+      // NOTE : on NE déclenche PAS Kit ici — attemptEdgeFallback va récupérer
+      // le request_id existant et déclencher Kit avec le bon lead_id.
+      // Déclencher Kit ici + dans attemptEdgeFallback = double subscribe, à éviter.
       if ((error as any).code === '23505') {
         console.log('[FunnelQueue] Lead already exists, routing to edge for resubmit logging:', lead.email);
-        // Kit reste idempotent côté Kit — on déclenche quand même
-        triggerKitSequence(lead);
         return false;
+      }
+      // 42703 = undefined_column — migrations DB en retard côté prod.
+      // Dégradation gracieuse : retenter avec uniquement les colonnes core garanties.
+      // Les données d'enrichissement (form_answers, budget, etc.) seront perdues MAIS
+      // le lead est au moins capturé. À régler en appliquant les migrations manquantes.
+      if ((error as any).code === '42703' || error.message?.includes('column')) {
+        console.warn('[FunnelQueue] Schema lag detected — retrying with core columns only');
+        const corePayload = Object.fromEntries(
+          CORE_COLUMNS.map(k => [k, (lead as any)[k]])
+        );
+        const { data: d2, error: e2 } = await supabase
+          .from('early_access_requests')
+          .insert(corePayload as any)
+          .select('id')
+          .maybeSingle();
+        if (!e2) {
+          storeFunnelSession({
+            request_id: (d2 as any)?.id ?? null,
+            email: lead.email,
+            first_name: lead.first_name,
+            phone: lead.phone,
+          });
+          triggerKitSequence(lead, (d2 as any)?.id);
+          return true;
+        }
+        if ((e2 as any).code === '23505') return false; // dupe même sur core
+        console.warn('[FunnelQueue] Core-only INSERT also failed:', e2.message);
+        return false; // passe à la edge
       }
       console.warn(`[FunnelQueue] INSERT attempt ${i + 1}/3 failed:`, error.message);
     } catch (err) {
@@ -141,6 +216,13 @@ async function attemptEdgeFallback(lead: FunnelLeadPayload, slug?: string): Prom
     }
     if ((data as any)?.ok) {
       console.log('[FunnelQueue] Lead recovered via edge fallback:', lead.email, data);
+      // Persiste l'identité du lead dans la session tab
+      storeFunnelSession({
+        request_id: (data as any)?.id ?? null,
+        email: lead.email,
+        first_name: lead.first_name,
+        phone: lead.phone,
+      });
       // Déclenche Kit (idempotent côté Kit, pas de double inscription)
       triggerKitSequence(lead, (data as any)?.id);
       return true;

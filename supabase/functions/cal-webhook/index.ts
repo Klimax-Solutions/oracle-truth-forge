@@ -69,6 +69,115 @@ async function verifySignature(bodyText: string, signature: string, secret: stri
   return signature === expected;
 }
 
+// ── Kit sequence management (non-blocking) ─────────────────────────────────────
+// Sur BOOKING_CREATED : arrête la séquence "book-a-call" (2624505) et démarre
+// la séquence "pre-call nurture" (2626026).
+// Utilise l'API Kit v3 pour trouver l'abonné et s'inscrire, et v4 pour la suppression
+// granulaire (ne jamais global-unsubscribe).
+const KIT_SEQ_BOOK_A_CALL   = 2624505; // séquence active avant réservation
+const KIT_SEQ_PRE_CALL      = 2626026; // séquence déclenchée après réservation
+
+async function kitFindSubscriberId(email: string, apiSecret: string): Promise<number | null> {
+  try {
+    const url = `https://api.convertkit.com/v3/subscribers?email_address=${encodeURIComponent(email)}&api_secret=${encodeURIComponent(apiSecret)}`;
+    const resp = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!resp.ok) return null;
+    const data = await resp.json().catch(() => ({}));
+    return data?.subscriber?.id || data?.subscribers?.[0]?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+async function kitStopSequence(subscriberId: number, sequenceId: number, apiSecret: string): Promise<boolean> {
+  try {
+    // Kit API v4 : suppression granulaire — ne retire que de cette séquence
+    const resp = await fetch(
+      `https://api.kit.com/v4/sequences/${sequenceId}/subscribers/${subscriberId}`,
+      { method: "DELETE", headers: { "X-Kit-Api-Key": apiSecret } }
+    );
+    // 204 = supprimé, 404 = déjà absent → les deux sont OK
+    return resp.status === 204 || resp.status === 404 || resp.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function kitStartSequence(email: string, firstName: string, sequenceId: number, apiSecret: string): Promise<number | null> {
+  try {
+    const resp = await fetch(
+      `https://api.convertkit.com/v3/sequences/${sequenceId}/subscribe`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ api_secret: apiSecret, email, first_name: firstName }),
+      }
+    );
+    if (!resp.ok) return null;
+    const data = await resp.json().catch(() => ({}));
+    return data?.subscription?.subscriber?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Gestion des séquences Kit sur BOOKING_CREATED.
+ * Non-bloquant : ne throw jamais. Logge dans lead_events pour traçabilité.
+ */
+// deno-lint-ignore no-explicit-any
+async function manageKitOnBooking(opts: {
+  email: string;
+  firstName: string;
+  requestId: string | null;
+  // deno-lint-ignore no-explicit-any
+  supabase: any;
+}): Promise<void> {
+  const apiSecret = Deno.env.get("KIT_API_SECRET");
+  if (!apiSecret) {
+    log.warn("KIT", "KIT_API_SECRET absent — séquences non gérées");
+    return;
+  }
+
+  log.info("KIT", `Gestion séquences pour ${opts.email} (requestId=${opts.requestId})`);
+
+  // Étape 1 : trouver l'abonné Kit
+  const subscriberId = await kitFindSubscriberId(opts.email, apiSecret);
+  log.info("KIT", `subscriberId=${subscriberId ?? "non trouvé"}`);
+
+  // Étape 2 : arrêter la séquence book-a-call (si abonné trouvé)
+  let stopped = false;
+  if (subscriberId) {
+    stopped = await kitStopSequence(subscriberId, KIT_SEQ_BOOK_A_CALL, apiSecret);
+    log.info("KIT", `Stop seq ${KIT_SEQ_BOOK_A_CALL}: ${stopped ? "OK" : "SKIP/FAIL"}`);
+  } else {
+    log.warn("KIT", `Abonné non trouvé pour ${opts.email} — stop séquence skippé (pas de global-unsubscribe)`);
+  }
+
+  // Étape 3 : démarrer la séquence pre-call (idempotent, crée l'abonné si inexistant)
+  const newSubId = await kitStartSequence(opts.email, opts.firstName, KIT_SEQ_PRE_CALL, apiSecret);
+  log.info("KIT", `Start seq ${KIT_SEQ_PRE_CALL}: subscriberId=${newSubId ?? "FAIL"}`);
+
+  // Étape 4 : log dans lead_events pour traçabilité CRM
+  if (opts.requestId) {
+    try {
+      await opts.supabase.from("lead_events").insert({
+        request_id: opts.requestId,
+        event_type: "kit_booking_sequences_managed",
+        source: "cal",
+        metadata: {
+          subscriber_id: subscriberId,
+          stopped_sequence: KIT_SEQ_BOOK_A_CALL,
+          stopped_ok: stopped,
+          started_sequence: KIT_SEQ_PRE_CALL,
+          started_subscriber_id: newSubId,
+          kit_email: opts.email,
+        },
+      });
+    } catch {}
+  }
+}
+
 // ── Main Handler ──
 Deno.serve(async (req: Request) => {
   // Log chaque requête entrante — méthode + headers utiles
@@ -322,6 +431,11 @@ Deno.serve(async (req: Request) => {
         booking_event_id: booking.uid,
       });
 
+      // Variables pour la gestion Kit (alimentées dans chaque branche)
+      let kitLeadEmail: string = formEmail || attendeeEmail;
+      let kitLeadFirstName: string = attendeeName.split(" ")[0] || "";
+      let kitRequestId: string | null = null;
+
       if (leads && leads.length > 0) {
         // Préférer le lead avec form_submitted=true, fallback sur le plus récent
         const lead = leads.find((l: any) => l.form_submitted) || leads[0];
@@ -347,6 +461,11 @@ Deno.serve(async (req: Request) => {
         }
 
         log.ok("BOOKING_CREATED", `Lead ${lead.id} mis à jour — call_booked=true, scheduled=${callScheduledAt}`);
+
+        // Données pour Kit
+        kitLeadEmail     = lead.email;
+        kitLeadFirstName = lead.first_name || kitLeadFirstName;
+        kitRequestId     = lead.id;
       } else {
         // Aucun lead trouvé → création automatique depuis le booking.
         // Priorité aux données form_email / form_phone (metadata Cal) si présentes.
@@ -362,10 +481,17 @@ Deno.serve(async (req: Request) => {
         }
         log.info("BOOKING_CREATED", `Téléphone retenu: ${phone}`);
 
-        // Email : priorité metadata.form_email (vérité) → attendee.email réel (si pas SMS)
-        // Pour les bookings SMS sans form_email, on garde le placeholder @sms.cal.com
-        // mais on flag pour que le CRM puisse demander manuellement le vrai email.
-        const email: string = formEmail || (isSmsBooking ? attendeeEmail : attendeeEmail);
+        // Email : priorité metadata.form_email (source de vérité injectée par le funnel).
+        // Pour les bookings SMS sans form_email : on NE STOCKE PAS @sms.cal.com —
+        // cette adresse fantôme déclencherait un magic link bouncé si un admin approuve le lead.
+        // On génère un placeholder non-livrable (RFC 2606 : .invalid = réservé, jamais livré).
+        // Le CRM affichera "email manquant" et l'admin devra le compléter manuellement.
+        const rawEmail: string = formEmail || (isSmsBooking ? "" : attendeeEmail);
+        // Utiliser les digits COMPLETS (pas slice(-10)) pour garantir l'unicité du placeholder.
+        // Ex: +33781748022 → "33781748022" — un .slice(-10) sur deux numéros différents
+        // commençant par le même suffixe produirait le même email fantôme.
+        const digits = (smsPhone || phone || "").replace(/\D/g, "");
+        const email: string = rawEmail || `sms_${digits || booking.uid?.slice(0, 8) || "unknown"}@sms.invalid`;
 
         const insertData = {
           first_name: firstName,
@@ -393,6 +519,11 @@ Deno.serve(async (req: Request) => {
 
         log.ok("BOOKING_CREATED", `Nouveau lead créé pour ${email} (id=${created?.id})`);
 
+        // Données pour Kit
+        kitLeadEmail     = email;
+        kitLeadFirstName = firstName;
+        kitRequestId     = created?.id || null;
+
         // Audit : log d'événement spécifique pour les leads créés via webhook (utile pour debug)
         if (created?.id) {
           try {
@@ -413,6 +544,16 @@ Deno.serve(async (req: Request) => {
           }
         }
       }
+
+      // ── Kit : stop séquence book-a-call → start séquence pre-call ──────────────
+      // await pour garantir que les appels Kit se terminent avant la réponse au webhook.
+      // manageKitOnBooking ne throw jamais — elle avale toutes les erreurs en interne.
+      await manageKitOnBooking({
+        email:     kitLeadEmail,
+        firstName: kitLeadFirstName,
+        requestId: kitRequestId,
+        supabase,
+      });
 
       return new Response(JSON.stringify({ success: true, event: "booking_created", email: attendeeEmail }), {
         status: 200,

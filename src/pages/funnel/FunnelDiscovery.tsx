@@ -1,28 +1,43 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Loader2, Calendar, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { flushPendingLeads } from '@/lib/funnelLeadQueue';
+import { flushPendingLeads, getFunnelSession, storeFunnelSession } from '@/lib/funnelLeadQueue';
 
 // ── SLICE: syncBookingToDB ────────────────────────────────────────────────────
-// Self-contained, antifragile. Never throws — failure is logged but never blocks
-// the redirect flow.
+// Best-effort côté client — purement de la redondance.
+// ⚠️  RLS NOTE : les utilisateurs anon du funnel ne peuvent pas UPDATE ni SELECT
+// sur early_access_requests (policy : is_super_admin() / is_setter() uniquement).
+// Cette fonction sera donc silencieusement no-op pour les visiteurs non-auth.
+// C'est INTENTIONNEL : le cal-webhook (edge function service_role) est la source
+// de vérité canonique pour call_booked / call_scheduled_at / call_meeting_url.
+// syncBookingToDB ne sert que si le webhook Cal.com est en retard ou absent.
+// Never throws — failure is logged but never blocks the redirect flow.
 // ─────────────────────────────────────────────────────────────────────────────
 async function syncBookingToDB(opts: {
+  requestId?: string | null;
   email: string;
   scheduledAt: string | null;
   meetingUrl: string | null;
 }) {
   try {
-    const { data: rows, error: findErr } = await supabase
-      .from('early_access_requests')
-      .select('id')
-      .ilike('email', opts.email.trim())
-      .limit(1);
-    if (findErr || !rows?.length) return;
+    let requestId = opts.requestId || null;
 
-    const requestId = rows[0].id;
+    // Si pas de request_id direct, lookup par email
+    if (!requestId) {
+      if (!opts.email.trim()) return;
+      const { data: rows, error: findErr } = await supabase
+        .from('early_access_requests')
+        .select('id')
+        .ilike('email', opts.email.trim())
+        .limit(1);
+      if (findErr || !rows?.length) {
+        console.warn('[Discovery] syncBookingToDB: lead not found for', opts.email);
+        return;
+      }
+      requestId = rows[0].id;
+    }
 
     await supabase.from('early_access_requests').update({
       call_booked: true,
@@ -87,9 +102,33 @@ export default function FunnelDiscovery() {
   const [searchParams] = useSearchParams();
   const { config, loading } = useFunnelConfig(slug);
 
-  const prefillName = searchParams.get('name') || undefined;
-  const prefillEmail = searchParams.get('email') || undefined;
-  const prefillPhone = searchParams.get('phone') || undefined;
+  // ── lead_id URL param (depuis emails Kit) ──────────────────────────────────
+  // Format email Kit : /discovery?lead_id={{ subscriber.lead_id }}&email=...&name=...
+  // Le lead_id est l'UUID de early_access_requests — on le stocke en session
+  // pour que FunnelFinal puisse faire UPDATE par ID (pas par email).
+  const leadIdParam = searchParams.get('lead_id') || null;
+  useEffect(() => {
+    if (!leadIdParam) return;
+    // Si on arrive via un email Kit (lead_id présent), on hydrate la session
+    // avec l'UUID du lead — même si le submit du form est dans un autre browser/session.
+    const existingSession = getFunnelSession();
+    if (!existingSession?.request_id) {
+      storeFunnelSession({
+        request_id: leadIdParam,
+        email:      searchParams.get('email') || existingSession?.email || '',
+        first_name: searchParams.get('name')  || existingSession?.first_name || '',
+        phone:      searchParams.get('phone') || existingSession?.phone || undefined,
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadIdParam]);
+
+  // Session locale (stockée par funnelLeadQueue après submit du form)
+  // Fallback si les URL params sont perdus (ex: refresh de page)
+  const session = useMemo(() => getFunnelSession(), []);
+  const prefillName  = searchParams.get('name')  || session?.first_name || undefined;
+  const prefillEmail = searchParams.get('email') || session?.email      || undefined;
+  const prefillPhone = searchParams.get('phone') || session?.phone      || undefined;
   const calBase = config?.discovery_cal_link ? buildCalEmbedUrl(config.discovery_cal_link) : null;
   const embedUrl = calBase ? appendCalPrefill(calBase, prefillName, prefillEmail, prefillPhone) : null;
 
@@ -134,8 +173,18 @@ export default function FunnelDiscovery() {
           } catch { dateLabel = rawDate; }
         }
 
-        if (email) {
-          syncBookingToDB({ email, scheduledAt, meetingUrl });
+        // Relire la session directement (pas via le memo stale) pour avoir
+        // le request_id même si storeFunnelSession() a été appelé après le mount
+        // (ex: lead_id URL param arrivé et hydraté par le useEffect).
+        const liveSession = getFunnelSession();
+        const syncEmail = email || liveSession?.email || '';
+        if (syncEmail) {
+          syncBookingToDB({
+            requestId: liveSession?.request_id,
+            email: syncEmail,
+            scheduledAt,
+            meetingUrl,
+          });
         }
 
         const params = new URLSearchParams();
@@ -149,7 +198,7 @@ export default function FunnelDiscovery() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [slug, navigate, prefillName, prefillEmail, booked]);
+  }, [slug, navigate, prefillName, prefillEmail, session, booked]);
 
   if (loading) {
     return (
