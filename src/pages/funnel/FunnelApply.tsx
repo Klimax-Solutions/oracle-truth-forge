@@ -340,6 +340,9 @@ export default function FunnelApply() {
               <h1 className="text-4xl md:text-5xl lg:text-7xl font-semibold tracking-tight text-foreground">
                 Oracle<sup className="text-lg md:text-xl lg:text-2xl font-normal align-super ml-0.5 md:ml-1">™</sup>
               </h1>
+              <p className="mt-4 md:mt-6 text-sm md:text-base font-medium tracking-tight text-foreground/80">
+                Vérifier mon éligibilité
+              </p>
             </div>
           )}
 
