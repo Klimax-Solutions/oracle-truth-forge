@@ -582,8 +582,8 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
       <Tabs defaultValue="pipeline" className="h-full flex flex-col">
         {/* ── Tabs ── spike-launch style */}
         <div className="shrink-0 border-b border-white/[0.10]">
-          <div className="px-6 flex items-center justify-between h-14">
-            <TabsList className="bg-transparent border-none gap-1 p-0 h-auto">
+          <div className="px-3 md:px-6 flex items-center justify-between h-14 gap-2">
+            <TabsList className="bg-transparent border-none gap-1 p-0 h-auto overflow-x-auto whitespace-nowrap scrollbar-hide">
               {[
                 { v: "cockpit", label: "Cockpit", icon: BarChart3 },
                 { v: "pipeline", label: "Pipeline", icon: Users },
@@ -591,8 +591,8 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                 { v: "objections", label: "Objections", icon: MessageCircle },
                 { v: "agenda", label: "Agenda", icon: Calendar },
               ].map(t => (
-                <TabsTrigger key={t.v} value={t.v} className="data-[state=active]:bg-blue-500/20 data-[state=active]:text-white data-[state=active]:border-blue-500/30 data-[state=active]:shadow-[0_0_12px_rgba(59,130,246,0.15)] border border-transparent rounded-lg px-4 py-2 text-xs font-display uppercase tracking-wider text-white/40 hover:text-white/60 hover:bg-white/[0.04] transition-all">
-                  <t.icon className="w-4 h-4 mr-2 opacity-80" />{t.label}
+                <TabsTrigger key={t.v} value={t.v} className="data-[state=active]:bg-blue-500/20 data-[state=active]:text-white data-[state=active]:border-blue-500/30 data-[state=active]:shadow-[0_0_12px_rgba(59,130,246,0.15)] border border-transparent rounded-lg px-3 md:px-4 py-2 text-xs font-display uppercase tracking-wider text-white/40 hover:text-white/60 hover:bg-white/[0.04] transition-all shrink-0">
+                  <t.icon className="w-4 h-4 mr-1.5 md:mr-2 opacity-80" /><span className="hidden sm:inline">{t.label}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -613,8 +613,8 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
         {/* ── Pipeline ── */}
         <TabsContent value="pipeline" className="mt-0 flex-1">
           {/* Search */}
-          <div className="px-6 pt-5 pb-3">
-            <div className="relative max-w-lg">
+          <div className="px-3 md:px-6 pt-3 md:pt-5 pb-3">
+            <div className="relative md:max-w-lg">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
               <Input
                 value={search}
@@ -631,9 +631,9 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
           </div>
 
           {/* Vues + Filters bar */}
-          <div className="px-6 pb-3 flex items-center justify-between h-12 rounded-xl bg-white/[0.03] border border-white/[0.08] mx-6 mb-4 px-4">
+          <div className="pb-3 flex items-center justify-between h-12 rounded-xl bg-white/[0.03] border border-white/[0.08] mx-3 md:mx-6 mb-4 px-3 md:px-4 gap-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
             {/* Left: Vues + Filters */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {/* Vues pré-configurées — funnel complet */}
               {[
                 { v: "pending",     label: "Demandes",    color: "amber" },
@@ -690,15 +690,16 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
             </div>
 
             {/* Right: Count */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <span className="text-lg font-display text-white font-bold tabular-nums">{filtered.length}</span>
               <span className="text-white/30 text-[10px] uppercase tracking-wider">leads</span>
             </div>
           </div>
 
           {/* Table — spike-launch exact pattern */}
-          <div className="px-6 pb-6">
-            <div className={`rounded-xl border border-white/[0.10] overflow-hidden ${BG}`}>
+          {/* Mobile: scroll horizontal pour preserver toutes les colonnes du pipeline */}
+          <div className="px-3 md:px-6 pb-6">
+            <div className={`rounded-xl border border-white/[0.10] overflow-x-auto ${BG}`}>
               <Table>
                 <TableHeader className={`sticky top-0 z-20 ${BG} shadow-[0_1px_0_0_rgba(255,255,255,0.08)]`}>
                   <TableRow className={`border-white/[0.08] hover:bg-transparent ${BG}`}>

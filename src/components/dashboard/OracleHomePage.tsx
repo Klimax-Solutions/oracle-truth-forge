@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FONT : Inter via Google Fonts
@@ -130,6 +131,7 @@ function getContextualMessage(
 
 export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: OracleHomePageProps) => {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   // ── Animation d'entrée : déclenche au mount, JAMAIS après
   const [entered, setEntered] = useState(false);
@@ -328,7 +330,7 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
 
   return (
     <div
-      className="relative flex flex-col h-full overflow-hidden"
+      className="relative flex flex-col h-full overflow-y-auto md:overflow-hidden"
       style={{ background: "#07070A", fontFamily: "'Inter', system-ui, sans-serif" }}
     >
       {/* ── CSS Keyframes ── */}
@@ -365,9 +367,9 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
           right: "4%",
           top: "50%",
           transform: "translateY(-52%)",
-          fontSize: "clamp(14rem, 38vw, 46rem)",
+          fontSize: isMobile ? "clamp(8rem, 50vw, 14rem)" : "clamp(14rem, 38vw, 46rem)",
           color: meta.accent,
-          opacity: 0.055,
+          opacity: isMobile ? 0.04 : 0.055,
           letterSpacing: "-0.06em",
           lineHeight: 0.85,
           fontWeight: 900,
@@ -379,17 +381,17 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
       </div>
 
       {/* ── Main content area ── */}
-      <div className="flex-1 flex min-h-0 relative z-10">
+      <div className="flex-1 flex flex-col md:flex-row min-h-0 relative z-10">
 
         {/* ── Left column ── */}
         <div
-          className="shrink-0 flex flex-col"
+          className="shrink-0 flex flex-col w-full md:w-auto"
           style={{
-            width: "42%",
-            paddingLeft: "clamp(2.5rem, 5vw, 5rem)",
-            paddingRight: "2rem",
-            paddingTop: "clamp(2rem, 4vh, 3rem)",
-            paddingBottom: "clamp(1.5rem, 3vh, 2.5rem)",
+            width: isMobile ? "100%" : "42%",
+            paddingLeft: isMobile ? "1.25rem" : "clamp(2.5rem, 5vw, 5rem)",
+            paddingRight: isMobile ? "1.25rem" : "2rem",
+            paddingTop: isMobile ? "1.5rem" : "clamp(2rem, 4vh, 3rem)",
+            paddingBottom: isMobile ? "1.5rem" : "clamp(1.5rem, 3vh, 2.5rem)",
           }}
         >
 
@@ -415,7 +417,7 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
             {/* Heading — héro absolu */}
             <h2 style={{
               ...fadeIn(20),
-              fontSize: "clamp(3rem, 6.2vw, 5rem)",
+              fontSize: isMobile ? "clamp(2rem, 9vw, 3rem)" : "clamp(3rem, 6.2vw, 5rem)",
               fontWeight: 900,
               letterSpacing: "-0.045em",
               lineHeight: "0.95",
@@ -616,8 +618,9 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
         </div>
 
         {/* ── Right panel : floating screen in 3D space ── */}
+        {/* Hidden on mobile — l'écran 3D ne survit pas en portrait, on prefère la lisibilité */}
         <div
-          className="flex-1 relative flex items-center justify-center"
+          className="hidden md:flex flex-1 relative items-center justify-center"
           style={{ padding: "28px 32px 28px 24px" }}
           onMouseEnter={() => setHoverPreview(true)}
           onMouseLeave={() => setHoverPreview(false)}
@@ -722,10 +725,10 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
 
       {/* ── Bottom nav ── */}
       <div
-        className="relative z-10 shrink-0 px-8 md:px-12 lg:px-16 pb-6 pt-4"
+        className="relative z-10 shrink-0 px-4 md:px-12 lg:px-16 pb-4 md:pb-6 pt-3 md:pt-4"
         style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
       >
-        <div className="flex gap-6">
+        <div className="flex gap-3 md:gap-6">
           {SLIDES.map((s, i) => {
             const isActive = i === slide;
             const isDone = i < slide;

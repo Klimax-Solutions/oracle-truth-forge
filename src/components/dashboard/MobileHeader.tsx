@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { Database, BarChart3, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy, Film, Award } from "lucide-react";
+import { Database, BarChart3, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy, Film, Award, Users, Settings, Layers } from "lucide-react";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
 
@@ -29,13 +29,17 @@ const tabs = [
   { id: "results", label: "Résultats", icon: Award },
 ];
 
+// Admin tabs V2 — synchronisés avec DashboardSidebar (CRM, Gestion, Config + legacy)
 const adminTabs = [
-  { id: "admin", label: "Vérifications Admin", icon: ShieldCheck },
+  { id: "crm", label: "CRM", icon: Users, section: "admin" },
+  { id: "gestion", label: "Gestion", icon: Crown, section: "admin" },
+  { id: "config", label: "Configuration", icon: Settings, section: "admin" },
+  { id: "video-admin", label: "Vidéos (Admin)", icon: Film, section: "admin" },
+  { id: "admin", label: "Vérifications Admin", icon: ShieldCheck, section: "admin" },
+  { id: "early-access-mgmt", label: "Early Access (legacy)", icon: Users, section: "admin" },
 ];
 
-const superAdminTabs: { id: string; label: string; icon: any }[] = [];
-import { Users as UsersIcon } from "lucide-react";
-const setterOnlyTabs = [{ id: "early-access-mgmt", label: "Early Access", icon: UsersIcon }];
+const setterOnlyTabs = [{ id: "crm", label: "CRM", icon: Users }];
 
 export const MobileHeader = ({
   userEmail,
@@ -79,13 +83,11 @@ export const MobileHeader = ({
     );
   }
 
-  let allTabs = [...tabs];
+  let allTabs: Array<{ id: string; label: string; icon: any; section?: string }> = [...tabs];
 
-  if (isAdmin) {
+  // Admin V2: tous les onglets admin pour admin OU super_admin (Sidebar fait pareil)
+  if (isAdmin || isSuperAdmin) {
     allTabs = [...allTabs, ...adminTabs];
-  }
-  if (isSuperAdmin) {
-    allTabs = [...allTabs, { id: "early-access-mgmt", label: "Early Access", icon: UsersIcon }];
   }
 
   const currentTab = allTabs.find((t) => t.id === activeTab);
@@ -106,25 +108,40 @@ export const MobileHeader = ({
                   Oracle<sup className="text-sm font-normal align-super ml-0.5">™</sup>
                 </h1>
               </div>
-              <nav className="p-2 space-y-1">
-                {allTabs.map((tab) => (
-                  <SheetTrigger key={tab.id} asChild>
-                    <button
-                      onClick={() => onTabChange(tab.id)}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-4 py-3 transition-all",
-                        "text-sm font-medium",
-                        activeTab === tab.id
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-accent",
-                        tab.id === "batch-import" && "border-t border-border/40 mt-2 pt-4"
-                      )}
-                    >
-                      <tab.icon className="w-4 h-4 flex-shrink-0" />
-                      <span>{tab.label}</span>
-                    </button>
-                  </SheetTrigger>
-                ))}
+              <nav className="p-2 space-y-1 overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>
+                {(() => {
+                  let adminSectionShown = false;
+                  return allTabs.map((tab) => {
+                    const showAdminHeader = tab.section === "admin" && !adminSectionShown;
+                    if (showAdminHeader) adminSectionShown = true;
+                    return (
+                      <div key={tab.id}>
+                        {showAdminHeader && (
+                          <div className="border-t border-border/40 mt-3 pt-3 px-4 pb-1">
+                            <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/50">
+                              Admin
+                            </span>
+                          </div>
+                        )}
+                        <SheetTrigger asChild>
+                          <button
+                            onClick={() => onTabChange(tab.id)}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-4 py-3 transition-all",
+                              "text-sm font-medium",
+                              activeTab === tab.id
+                                ? "bg-primary text-primary-foreground"
+                                : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                            )}
+                          >
+                            <tab.icon className="w-4 h-4 flex-shrink-0" />
+                            <span>{tab.label}</span>
+                          </button>
+                        </SheetTrigger>
+                      </div>
+                    );
+                  });
+                })()}
               </nav>
               <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
                 <p className="text-xs text-muted-foreground truncate mb-3">{userEmail}</p>
