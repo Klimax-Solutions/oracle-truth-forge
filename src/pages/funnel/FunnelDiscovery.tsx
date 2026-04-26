@@ -194,13 +194,18 @@ export default function FunnelDiscovery() {
 
       {/* Cal.com embed */}
       {embedUrl ? (
-        <div className="flex-1 w-full max-w-3xl mx-auto px-4 md:px-6 pb-10">
+        <div className="flex-1 w-full max-w-6xl mx-auto px-4 md:px-6 pb-10">
           <div className="border border-border bg-card rounded-md overflow-hidden">
             <iframe
               src={embedUrl}
               title="Réserver un appel"
-              className="w-full"
-              style={{ minHeight: 650, border: 'none', colorScheme: 'dark' }}
+              className="w-full block"
+              style={{
+                height: 'min(calc((100vw - 3rem) * 9 / 16), 78vh)',
+                minHeight: 560,
+                border: 'none',
+                colorScheme: 'dark',
+              }}
               loading="lazy"
               allow="payment"
             />
