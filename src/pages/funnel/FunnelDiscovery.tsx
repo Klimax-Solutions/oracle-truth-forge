@@ -72,6 +72,11 @@ function appendCalPrefill(url: string, name?: string, email?: string, phone?: st
   if (name) parts.push(`name=${encodeURIComponent(name)}`);
   if (email) parts.push(`email=${encodeURIComponent(email)}`);
   if (phone) parts.push(`phone=${encodeURIComponent(phone)}`);
+  // Filet de sécurité : on passe l'email du form en metadata Cal.com.
+  // Si l'utilisateur change l'email dans Cal OU book par SMS, le webhook
+  // pourra retrouver le lead d'origine via metadata.form_email (cf. cal-webhook).
+  if (email) parts.push(`metadata[form_email]=${encodeURIComponent(email)}`);
+  if (phone) parts.push(`metadata[form_phone]=${encodeURIComponent(phone)}`);
   if (!parts.length) return url;
   return `${url}&${parts.join('&')}`;
 }

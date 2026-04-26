@@ -199,6 +199,21 @@ Deno.serve(async (req: Request) => {
       log.info("SMS", `Booking SMS détecté — téléphone extrait: ${smsPhone}`);
     }
 
+    // ── Filet de sécurité : metadata Cal.com (form_email / form_phone) ──
+    // On a injecté ces métadonnées au prefill Cal côté FunnelDiscovery pour
+    // garantir qu'on retrouve le lead d'origine MÊME si l'utilisateur
+    // change l'email dans Cal ou book par SMS. C'est notre source de vérité.
+    const bookingMeta = (booking as any).metadata || {};
+    const formEmail: string | null = typeof bookingMeta.form_email === "string"
+      ? bookingMeta.form_email.toLowerCase().trim()
+      : null;
+    const formPhone: string | null = typeof bookingMeta.form_phone === "string"
+      ? bookingMeta.form_phone.trim()
+      : null;
+    if (formEmail || formPhone) {
+      log.info("METADATA", `form_email=${formEmail || "∅"}, form_phone=${formPhone || "∅"}`);
+    }
+
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // BOOKING_CREATED
     // Quand un lead réserve un call via Cal.com :
@@ -212,34 +227,72 @@ Deno.serve(async (req: Request) => {
       let leads: any[] | null = null;
       let lookupError: any = null;
 
-      if (!isSmsBooking) {
-        // Lookup par email
-        log.info("BOOKING_CREATED", `Lookup DB par email: ${attendeeEmail}`);
+      // Stratégie de réconciliation (par ordre de priorité) :
+      // 1. metadata.form_email (notre source de vérité injectée au prefill)
+      // 2. metadata.form_phone (idem)
+      // 3. attendee.email si pas SMS
+      // 4. téléphone extrait du @sms.cal.com OU de attendee.phoneNumber
+      const tryLookupByEmail = async (email: string) => {
         const res = await supabase
           .from("early_access_requests")
-          .select("id, first_name, email, phone, call_booked, status")
-          .eq("email", attendeeEmail)
+          .select("id, first_name, email, phone, call_booked, status, form_submitted")
+          .ilike("email", email)
           .order("created_at", { ascending: false })
           .limit(5);
-        leads = res.data;
-        lookupError = res.error;
-        log.info("BOOKING_CREATED", `Résultat lookup email`, { count: leads?.length, error: lookupError?.message });
-      } else if (smsPhone) {
-        // Lookup par téléphone (normalisation des digits)
-        const digits = smsPhone.replace(/\D/g, '');
-        log.info("BOOKING_CREATED", `Lookup DB par téléphone, digits: ${digits}`);
+        return res;
+      };
+
+      const tryLookupByPhone = async (phoneRaw: string) => {
+        const digits = phoneRaw.replace(/\D/g, '');
+        if (!digits) return { data: [] as any[], error: null as any };
         const res = await supabase
           .from("early_access_requests")
-          .select("id, first_name, email, phone, call_booked, status")
+          .select("id, first_name, email, phone, call_booked, status, form_submitted")
           .order("created_at", { ascending: false })
-          .limit(50);
-        leads = (res.data || []).filter((l: any) => {
+          .limit(100);
+        const filtered = (res.data || []).filter((l: any) => {
           if (!l.phone) return false;
           const leadDigits = l.phone.replace(/\D/g, '');
-          return leadDigits === digits || leadDigits === digits.replace(/^0+/, '');
+          return leadDigits === digits
+            || leadDigits === digits.replace(/^0+/, '')
+            || (digits.length >= 9 && leadDigits.endsWith(digits.slice(-9)));
         });
-        lookupError = res.error;
-        log.info("BOOKING_CREATED", `Résultat lookup téléphone`, { matched: leads?.length });
+        return { data: filtered, error: res.error };
+      };
+
+      // Étape 1 : metadata.form_email
+      if (formEmail) {
+        log.info("BOOKING_CREATED", `Lookup #1 (metadata.form_email): ${formEmail}`);
+        const res = await tryLookupByEmail(formEmail);
+        leads = res.data; lookupError = res.error;
+        log.info("BOOKING_CREATED", `Résultat lookup form_email`, { count: leads?.length });
+      }
+
+      // Étape 2 : metadata.form_phone
+      if ((!leads || leads.length === 0) && formPhone) {
+        log.info("BOOKING_CREATED", `Lookup #2 (metadata.form_phone): ${formPhone}`);
+        const res = await tryLookupByPhone(formPhone);
+        leads = res.data; lookupError = res.error;
+        log.info("BOOKING_CREATED", `Résultat lookup form_phone`, { count: leads?.length });
+      }
+
+      // Étape 3 : attendee.email (si pas SMS)
+      if ((!leads || leads.length === 0) && !isSmsBooking) {
+        log.info("BOOKING_CREATED", `Lookup #3 (attendee.email): ${attendeeEmail}`);
+        const res = await tryLookupByEmail(attendeeEmail);
+        leads = res.data; lookupError = res.error;
+        log.info("BOOKING_CREATED", `Résultat lookup attendee.email`, { count: leads?.length });
+      }
+
+      // Étape 4 : téléphone (SMS booking ou attendee.phoneNumber)
+      if (!leads || leads.length === 0) {
+        const phoneCandidate = smsPhone || (attendee as any)?.phoneNumber || null;
+        if (phoneCandidate) {
+          log.info("BOOKING_CREATED", `Lookup #4 (phone fallback): ${phoneCandidate}`);
+          const res = await tryLookupByPhone(phoneCandidate);
+          leads = res.data; lookupError = res.error;
+          log.info("BOOKING_CREATED", `Résultat lookup phone`, { count: leads?.length });
+        }
       }
 
       if (lookupError) {
@@ -285,20 +338,28 @@ Deno.serve(async (req: Request) => {
 
         log.ok("BOOKING_CREATED", `Lead ${lead.id} mis à jour — call_booked=true, scheduled=${callScheduledAt}`);
       } else {
-        // Aucun lead trouvé → création automatique depuis le booking
+        // Aucun lead trouvé → création automatique depuis le booking.
+        // Priorité aux données form_email / form_phone (metadata Cal) si présentes.
         log.warn("BOOKING_CREATED", `Aucun lead trouvé pour ${attendeeEmail} — création d'un nouveau lead`);
 
         const firstName = attendeeName.split(" ")[0] || attendeeEmail.split("@")[0];
-        let phone = null;
-        if (booking.responses) {
+
+        // Téléphone : priorité metadata.form_phone → attendee.phoneNumber → smsPhone → responses
+        let phone: string | null = formPhone || (attendee as any)?.phoneNumber || smsPhone || null;
+        if (!phone && booking.responses) {
           const r = booking.responses as Record<string, any>;
-          phone = r.phone?.value || r.phone || r.smsReminderNumber?.value || null;
-          log.info("BOOKING_CREATED", `Téléphone extrait des responses: ${phone}`);
+          phone = r.attendeePhoneNumber?.value || r.phone?.value || r.phone || r.smsReminderNumber?.value || null;
         }
+        log.info("BOOKING_CREATED", `Téléphone retenu: ${phone}`);
+
+        // Email : priorité metadata.form_email (vérité) → attendee.email réel (si pas SMS)
+        // Pour les bookings SMS sans form_email, on garde le placeholder @sms.cal.com
+        // mais on flag pour que le CRM puisse demander manuellement le vrai email.
+        const email: string = formEmail || (isSmsBooking ? attendeeEmail : attendeeEmail);
 
         const insertData = {
           first_name: firstName,
-          email: attendeeEmail,
+          email,
           phone: phone || "",
           status: "en_attente",
           form_submitted: false,
@@ -309,16 +370,38 @@ Deno.serve(async (req: Request) => {
         };
 
         log.info("BOOKING_CREATED", `INSERT early_access_requests`, insertData);
-        const { error: insertError } = await supabase
+        const { data: created, error: insertError } = await supabase
           .from("early_access_requests")
-          .insert(insertData);
+          .insert(insertData)
+          .select("id")
+          .maybeSingle();
 
         if (insertError) {
           log.error("BOOKING_CREATED", "Erreur INSERT", insertError);
           throw new Error(`Insert error: ${insertError.message}`);
         }
 
-        log.ok("BOOKING_CREATED", `Nouveau lead créé pour ${attendeeEmail}`);
+        log.ok("BOOKING_CREATED", `Nouveau lead créé pour ${email} (id=${created?.id})`);
+
+        // Audit : log d'événement spécifique pour les leads créés via webhook (utile pour debug)
+        if (created?.id) {
+          try {
+            await supabase.from("lead_events").insert({
+              request_id: created.id,
+              event_type: "lead_created_from_webhook",
+              source: "cal",
+              metadata: {
+                attendee_email: attendeeEmail,
+                form_email: formEmail,
+                phone,
+                is_sms_booking: isSmsBooking,
+                booking_uid: booking.uid,
+              },
+            });
+          } catch (e) {
+            log.warn("BOOKING_CREATED", `lead_events insert failed (non-blocking): ${(e as Error).message}`);
+          }
+        }
       }
 
       return new Response(JSON.stringify({ success: true, event: "booking_created", email: attendeeEmail }), {
