@@ -28,16 +28,30 @@ import { OracleExecution } from "@/components/dashboard/OracleExecution";
 import { OracleHomePage } from "@/components/dashboard/OracleHomePage";
 import { OraclePage } from "@/components/dashboard/OraclePage";
 import { VideoSetup } from "@/components/dashboard/VideoSetup";
-import { VideoManager } from "@/components/dashboard/VideoManager";
-import { AdminVerification } from "@/components/dashboard/AdminVerification";
-// RoleManagement is now embedded in AdminVerification
-import { BatchImportPage } from "@/components/dashboard/BatchImportPage";
 import { SuccessPage } from "@/components/dashboard/SuccessPage";
 import { ResultsPage } from "@/components/dashboard/ResultsPage";
 import { AdminVerificationPopup } from "@/components/dashboard/AdminVerificationPopup";
-import { EarlyAccessManagement } from "@/components/dashboard/EarlyAccessManagement";
 import CRMDashboard from "@/components/dashboard/admin/CRMDashboard";
-import FunnelEditorPage from "@/components/dashboard/admin/FunnelEditorPage";
+
+// ── Lazy-loaded admin/heavy panels ──
+// Hoistés au scope du module : React.lazy doit être appelé UNE SEULE FOIS, pas
+// dans le switch (sinon un nouveau composant est créé à chaque render → re-mount
+// permanent → Suspense ne fonctionne pas).
+// Bénéfice : ces ~600kB ne sont chargés que quand le user clique sur le tab.
+// Un membre normal ne paiera jamais le coût de ce code.
+const VideoManager           = React.lazy(() => import("@/components/dashboard/VideoManager").then(m => ({ default: m.VideoManager })));
+const AdminVerification      = React.lazy(() => import("@/components/dashboard/AdminVerification").then(m => ({ default: m.AdminVerification })));
+const BatchImportPage        = React.lazy(() => import("@/components/dashboard/BatchImportPage").then(m => ({ default: m.BatchImportPage })));
+const EarlyAccessManagement  = React.lazy(() => import("@/components/dashboard/EarlyAccessManagement").then(m => ({ default: m.EarlyAccessManagement })));
+const FunnelEditorPage       = React.lazy(() => import("@/components/dashboard/admin/FunnelEditorPage"));
+const GestionPanel           = React.lazy(() => import("@/components/dashboard/admin/GestionPanel"));
+const ConfigPanel            = React.lazy(() => import("@/components/dashboard/admin/ConfigPanel"));
+
+const AdminLazyFallback = () => (
+  <div className="flex items-center justify-center h-64">
+    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 import { CycleReportPopup } from "@/components/dashboard/CycleReportPopup";
 import { EarlyAccessLoginPopup } from "@/components/dashboard/EarlyAccessLoginPopup";
 import { EAPendingPopup } from "@/components/dashboard/EAPendingPopup";
@@ -557,27 +571,23 @@ const Dashboard = () => {
       case "results":
         return <ResultsPage isAdmin={isAdmin || isSuperAdmin} />;
       case "batch-import":
-        return <BatchImportPage />;
+        return <React.Suspense fallback={<AdminLazyFallback />}><BatchImportPage /></React.Suspense>;
       case "admin":
-        return <AdminVerification />;
+        return <React.Suspense fallback={<AdminLazyFallback />}><AdminVerification /></React.Suspense>;
       case "roles":
-        return <AdminVerification />;
+        return <React.Suspense fallback={<AdminLazyFallback />}><AdminVerification /></React.Suspense>;
       case "crm":
         return <CRMDashboard overrideRoles={simulatedRole !== "none" ? { isAdmin: effectiveIsAdmin, isSuperAdmin: effectiveIsSuperAdmin, isSetter: effectiveIsSetter, isCloser: effectiveIsCloser } : undefined} />;
       case "video-admin":
-        return <VideoManager />;
+        return <React.Suspense fallback={<AdminLazyFallback />}><VideoManager /></React.Suspense>;
       case "funnel-editor":
-        return <FunnelEditorPage />;
+        return <React.Suspense fallback={<AdminLazyFallback />}><FunnelEditorPage /></React.Suspense>;
       case "early-access-mgmt":
-        return <EarlyAccessManagement />;
-      case "gestion": {
-        const GestionPanel = React.lazy(() => import("@/components/dashboard/admin/GestionPanel"));
-        return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><GestionPanel /></React.Suspense>;
-      }
-      case "config": {
-        const ConfigPanel = React.lazy(() => import("@/components/dashboard/admin/ConfigPanel"));
-        return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><ConfigPanel /></React.Suspense>;
-      }
+        return <React.Suspense fallback={<AdminLazyFallback />}><EarlyAccessManagement /></React.Suspense>;
+      case "gestion":
+        return <React.Suspense fallback={<AdminLazyFallback />}><GestionPanel /></React.Suspense>;
+      case "config":
+        return <React.Suspense fallback={<AdminLazyFallback />}><ConfigPanel /></React.Suspense>;
       default:
         return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} />;
     }

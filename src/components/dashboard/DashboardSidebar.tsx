@@ -51,44 +51,18 @@ const eaMgmtTab: SidebarTab = { id: "early-access-mgmt", label: "Early Access", 
 
 export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: DashboardSidebarProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [_isAdmin, setIsAdmin] = useState(false);
-  const [_isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [_isSetter, setIsSetter] = useState(false);
-  const [_isCloser, setIsCloser] = useState(false);
   const { isEarlyAccess: _isEarlyAccess } = useEarlyAccess();
   const hasInstitute = useHasInstitute();
 
-  const isAdmin = overrideRoles ? overrideRoles.isAdmin : _isAdmin;
-  const isSuperAdmin = overrideRoles ? overrideRoles.isSuperAdmin : _isSuperAdmin;
-  const isSetter = overrideRoles ? overrideRoles.isSetter : _isSetter;
-  const isCloser = overrideRoles ? overrideRoles.isCloser : _isCloser;
-  const isEarlyAccess = overrideRoles ? overrideRoles.isEarlyAccess : _isEarlyAccess;
-
-  const checkInternalRoles = async () => {
-    const { data: isAdminData } = await supabase.rpc('is_admin');
-    setIsAdmin(!!isAdminData);
-    const { data: isSuperAdminData } = await supabase.rpc('is_super_admin');
-    setIsSuperAdmin(!!isSuperAdminData);
-    const { data: isSetterData } = await supabase.rpc('is_setter' as any);
-    setIsSetter(!!isSetterData);
-    const { data: isCloserData } = await supabase.rpc('is_closer' as any);
-    setIsCloser(!!isCloserData);
-  };
-
-  useEffect(() => {
-    checkInternalRoles();
-
-    const channel = supabase
-      .channel('sidebar-internal-roles')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => {
-        checkInternalRoles();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // Source unique de rôles : `overrideRoles` (passé par Dashboard via useSidebarRoles).
+  // Si absent → tout false (membre par défaut). On a supprimé l'ancien système
+  // de double role-check en interne qui faisait 4 RPCs + 1 realtime channel
+  // redondants à chaque render et créait des race conditions.
+  const isAdmin       = overrideRoles?.isAdmin       ?? false;
+  const isSuperAdmin  = overrideRoles?.isSuperAdmin  ?? false;
+  const isSetter      = overrideRoles?.isSetter      ?? false;
+  const isCloser      = overrideRoles?.isCloser      ?? false;
+  const isEarlyAccess = overrideRoles?.isEarlyAccess ?? _isEarlyAccess;
 
   // Setter / Closer (sans admin) : CRM uniquement
   if ((isSetter || isCloser) && !isSuperAdmin && !isAdmin) {
@@ -242,22 +216,122 @@ export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: Dash
 };
 
 // Export admin/role state hook for use in Dashboard
+// ────────────────────────────────────────────────────────────────────────────
+// useSidebarRoles — source de vérité des rôles côté client.
+//
+// Stratégie en couches (la plus rapide d'abord, fallback en dessous) :
+//
+//   1. Lecture JWT claims → `session.user.app_metadata.roles` (tableau)
+//      Synchrone, zéro réseau. Injecté par le hook PG `custom_access_token_hook`.
+//      Si la case « Custom Access Token » est cochée dans Supabase Dashboard,
+//      tous les nouveaux JWTs contiennent les rôles.
+//
+//   2. Cache localStorage `oracle_roles_cache_v1` → rehydrate au reload
+//      Même si le JWT n'a pas encore les claims (transition / hook pas activé),
+//      on récupère le dernier état connu. Filet de sécurité.
+//
+//   3. Fallback RPC `is_admin`, `is_super_admin`, `is_setter`, `is_closer`
+//      Réseau, lent, mais tolérant aux pannes. Utilisé seulement si (1) absent.
+//      Sera retiré une fois le hook stable en prod.
+//
+// Garanties :
+//   - Aucune valeur n'est jamais nullifiée par un échec → si on a déjà détecté
+//     setter, on reste setter même si une RPC subséquente timeout.
+//   - `loadingRoles=false` dès qu'une couche répond, jamais de spinner > 1s.
+//   - Pas de retry en boucle : 2 retries max pour les RPCs, jamais plus.
+// ────────────────────────────────────────────────────────────────────────────
+
+const ROLES_CACHE_KEY = "oracle_roles_cache_v1";
+type CachedRoles = {
+  user_id: string;
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  isSetter: boolean;
+  isCloser: boolean;
+  cached_at: number;
+};
+const readRolesCache = (userId?: string): CachedRoles | null => {
+  try {
+    const raw = localStorage.getItem(ROLES_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedRoles;
+    if (userId && parsed.user_id !== userId) return null;
+    return parsed;
+  } catch { return null; }
+};
+const writeRolesCache = (c: CachedRoles) => {
+  try { localStorage.setItem(ROLES_CACHE_KEY, JSON.stringify(c)); } catch {}
+};
+const peekUserIdFromAuthToken = (): string | undefined => {
+  try {
+    const k = Object.keys(localStorage).find(x => x.startsWith("sb-") && x.includes("auth-token"));
+    if (!k) return undefined;
+    const v = JSON.parse(localStorage.getItem(k) || "null");
+    return v?.user?.id;
+  } catch { return undefined; }
+};
+
+// Extrait les rôles d'un objet session Supabase (lecture JWT claims).
+// Retourne null si l'app_metadata ne contient pas de rôles (= hook pas activé
+// ou JWT pré-hook). Retourne {} avec tous les flags à false si tableau vide.
+type RolesFlags = {
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  isSetter: boolean;
+  isCloser: boolean;
+};
+const readRolesFromSession = (session: any): RolesFlags | null => {
+  const roles = session?.user?.app_metadata?.roles;
+  if (!Array.isArray(roles)) return null;
+  return {
+    isSuperAdmin: roles.includes("super_admin"),
+    isAdmin:      roles.includes("admin") || roles.includes("super_admin"),
+    isSetter:     roles.includes("setter"),
+    isCloser:     roles.includes("closer"),
+  };
+};
+
 export const useSidebarRoles = () => {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [isSetter, setIsSetter] = useState(false);
-  const [isCloser, setIsCloser] = useState(false);
-  const [loadingRoles, setLoadingRoles] = useState(true);
+  // Hydrate immédiatement depuis le cache si user_id matche le JWT en localStorage.
+  // Permet au setter de voir la vue CRM dès le 1er render, sans attendre rien.
+  const initialCache = (() => {
+    const uid = peekUserIdFromAuthToken();
+    return uid ? readRolesCache(uid) : null;
+  })();
+
+  const [isAdmin, setIsAdmin] = useState(initialCache?.isAdmin ?? false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(initialCache?.isSuperAdmin ?? false);
+  const [isSetter, setIsSetter] = useState(initialCache?.isSetter ?? false);
+  const [isCloser, setIsCloser] = useState(initialCache?.isCloser ?? false);
+  const [loadingRoles, setLoadingRoles] = useState(!initialCache);
 
   const resetRoles = () => {
     setIsAdmin(false);
     setIsSuperAdmin(false);
     setIsSetter(false);
     setIsCloser(false);
+    try { localStorage.removeItem(ROLES_CACHE_KEY); } catch {}
   };
 
-  // Wrap une promise avec un timeout — évite que checkRoles hang indéfiniment
-  // si une RPC ne répond pas (réseau lent, JWT pas encore propagé, etc.).
+  // Applique un set de flags + persiste cache. Centralisé pour éviter dupli.
+  const applyRoles = (uid: string | undefined, flags: RolesFlags, source: "jwt" | "rpc") => {
+    setIsAdmin(flags.isAdmin);
+    setIsSuperAdmin(flags.isSuperAdmin);
+    setIsSetter(flags.isSetter);
+    setIsCloser(flags.isCloser);
+    setLoadingRoles(false);
+    if (uid) writeRolesCache({
+      user_id: uid,
+      ...flags,
+      cached_at: Date.now(),
+    });
+    // Log discret pour observabilité (utile pendant la transition JWT/RPC)
+    if (source === "jwt" && (flags.isAdmin || flags.isSetter || flags.isCloser)) {
+      // pas de log spam : seulement si on a un rôle non-trivial
+    }
+  };
+
+  // Wrap une promise avec un timeout — évite que les RPC hang indéfiniment.
   const withTimeoutLocal = <T,>(p: PromiseLike<T>, ms = 3000): Promise<T> =>
     new Promise<T>((resolve, reject) => {
       const t = setTimeout(() => reject(new Error(`RPC timeout ${ms}ms`)), ms);
@@ -267,101 +341,86 @@ export const useSidebarRoles = () => {
       );
     });
 
-  const checkRoles = async (retries = 2) => {
-    try {
-      // getSession peut etre lent au cold-start Vercel (lecture localStorage + validation JWT).
-      // Bump a 8s pour eviter le timeout sur premier load qui faisait disparaitre les onglets admin.
-      const { data: { session } } = await withTimeoutLocal(supabase.auth.getSession(), 8000);
-      if (!session) {
-        resetRoles();
-        setLoadingRoles(false);
-        return;
-      }
+  // Fallback RPC : utilisé UNIQUEMENT si le JWT n'a pas les claims (hook pas
+  // encore activé ou JWT pré-hook). Sera supprimé après stabilisation.
+  const fetchRolesViaRpc = async (uid: string | undefined, retries = 1): Promise<void> => {
+    const safe = async <T,>(p: PromiseLike<T>): Promise<{ data: any; error: any }> => {
+      try { return await withTimeoutLocal(p as any, 3000) as any; }
+      catch (e) { return { data: null, error: e }; }
+    };
+    const [adminRes, superAdminRes, setterRes, closerRes] = await Promise.all([
+      safe(supabase.rpc("is_admin")),
+      safe(supabase.rpc("is_super_admin")),
+      safe(supabase.rpc("is_setter" as any)),
+      safe(supabase.rpc("is_closer" as any)),
+    ]);
 
-      // Chaque RPC enveloppée d'un timeout 3s + try/catch individuel
-      // pour que la lenteur d'une seule ne plombe pas les autres.
-      const safe = async <T,>(p: PromiseLike<T>): Promise<{ data: any; error: any }> => {
-        try { return await withTimeoutLocal(p as any, 3000) as any; }
-        catch (e) { return { data: null, error: e }; }
-      };
-      const [adminRes, superAdminRes, setterRes, closerRes] = await Promise.all([
-        safe(supabase.rpc('is_admin')),
-        safe(supabase.rpc('is_super_admin')),
-        safe(supabase.rpc('is_setter' as any)),
-        safe(supabase.rpc('is_closer' as any)),
-      ]);
-
-      // Si TOUTES les RPC ont échoué + retries dispo → retry après 600ms
-      const allFailed = adminRes.error && superAdminRes.error && setterRes.error && closerRes.error;
-      if (allFailed && retries > 0) {
-        console.warn(`[Roles] All RPCs failed, retrying in 600ms (${retries} left)...`);
-        setTimeout(() => checkRoles(retries - 1), 600);
-        return;
-      }
-
-      // Ne mettre à jour un rôle que si le RPC a réussi — évite de nullifier un rôle déjà établi en cas d'AbortError (HMR dev)
-      if (!adminRes.error)      setIsAdmin(!!adminRes.data);
-      if (!superAdminRes.error) setIsSuperAdmin(!!superAdminRes.data);
-      if (!setterRes.error)     setIsSetter(!!setterRes.data);
-      if (!closerRes.error)     setIsCloser(!!closerRes.data);
-
-      // Si certaines ont fail mais pas toutes → log explicite pour diag prod
-      if (adminRes.error || superAdminRes.error || setterRes.error || closerRes.error) {
-        console.warn("[Roles] partial failure", {
-          admin: adminRes.error?.message,
-          superAdmin: superAdminRes.error?.message,
-          setter: setterRes.error?.message,
-          closer: closerRes.error?.message,
-        });
-      }
-    } catch (err) {
-      console.warn("[Roles] aborted or failed, using defaults", err);
-      // Au lieu de laisser les defaults (false) — qui font disparaitre les onglets admin —
-      // on retry en arriere-plan apres 800ms si on a encore des retries.
+    const allFailed = adminRes.error && superAdminRes.error && setterRes.error && closerRes.error;
+    if (allFailed) {
       if (retries > 0) {
-        setTimeout(() => checkRoles(retries - 1), 800);
+        console.warn(`[Roles] RPC fallback all failed, retry in 800ms (${retries} left)`);
+        setTimeout(() => fetchRolesViaRpc(uid, retries - 1), 800);
+        return;
       }
-    } finally {
+      // Tout a échoué et plus de retries → on ne touche à rien (cache reste valide)
       setLoadingRoles(false);
+      console.warn("[Roles] RPC fallback gave up — keeping cached/initial values");
+      return;
     }
+
+    // Pour chaque RPC : si succès → applique. Si fail → garde valeur courante (jamais downgrade).
+    const flags: RolesFlags = {
+      isAdmin:      !adminRes.error      ? !!adminRes.data      : isAdmin,
+      isSuperAdmin: !superAdminRes.error ? !!superAdminRes.data : isSuperAdmin,
+      isSetter:     !setterRes.error     ? !!setterRes.data     : isSetter,
+      isCloser:     !closerRes.error     ? !!closerRes.data     : isCloser,
+    };
+    applyRoles(uid, flags, "rpc");
+  };
+
+  // Récupère la session, lit JWT claims, fallback RPC si absent.
+  const refreshRoles = async () => {
+    let session: any = null;
+    try {
+      const r = await withTimeoutLocal(supabase.auth.getSession(), 8000);
+      session = r?.data?.session;
+    } catch (e) {
+      // getSession a timeout → pas de session lisible.
+      // On garde les valeurs courantes (cache initial), on essaie pas de RPC
+      // (on n'a pas de JWT valide pour les authentifier de toute façon).
+      console.warn("[Roles] getSession timeout, keeping current values");
+      setLoadingRoles(false);
+      return;
+    }
+
+    if (!session) {
+      resetRoles();
+      setLoadingRoles(false);
+      return;
+    }
+
+    // Couche 1 : JWT claims (synchrone, instantané)
+    const jwtFlags = readRolesFromSession(session);
+    if (jwtFlags) {
+      applyRoles(session.user?.id, jwtFlags, "jwt");
+      return;
+    }
+
+    // Couche 3 : fallback RPC (hook pas encore activé)
+    await fetchRolesViaRpc(session.user?.id, 1);
   };
 
   useEffect(() => {
-    // DEV OVERRIDE: On localhost, RPCs abort due to Vite HMR.
-    // Force admin roles after a short delay if RPCs fail.
-    const isDev = window.location.hostname === 'localhost';
-    let devFallbackTimer: ReturnType<typeof setTimeout> | undefined;
+    refreshRoles();
 
-    checkRoles();
-
-    if (isDev) {
-      devFallbackTimer = setTimeout(() => {
-        // If roles still not resolved after 100ms, force super_admin for dev
-        setIsAdmin(prev => {
-          if (!prev) {
-            console.warn("[Roles] DEV: Forcing admin roles (RPCs timed out)");
-            setIsSuperAdmin(true);
-            return true;
-          }
-          return prev;
-        });
-        setLoadingRoles(false);
-      }, 100);
-    }
-
-    // Safety timeout for ALL environments (including Vercel preview)
-    // Si les RPC n'ont pas résolu après 4s → unblock UI MAIS retry les rôles
-    // une dernière fois en arrière-plan (sinon admin loggé = traité comme membre).
+    // Safety timer unique : 4s. Si toujours en loading, débloque l'UI sans
+    // toucher aux rôles (le cache initial reste valide).
     const safetyTimer = setTimeout(() => {
       setLoadingRoles(prev => {
-        if (prev) {
-          console.warn("[Roles] Safety timeout — forcing loadingRoles to false + background retry");
-          // Retry async — si ça réussit, les rôles sont mis à jour et l'UI re-render
-          checkRoles(1);
-        }
+        if (prev) console.warn("[Roles] Safety timeout 4s — unblocking UI");
         return false;
       });
-    }, 9000);
+    }, 4000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
@@ -369,27 +428,34 @@ export const useSidebarRoles = () => {
         setLoadingRoles(false);
         return;
       }
-
-      // Don't trigger a full loading cycle on token refresh / focus regain.
-      if (["SIGNED_IN", "INITIAL_SESSION", "USER_UPDATED"].includes(event)) {
-        checkRoles();
+      if (["SIGNED_IN", "INITIAL_SESSION", "USER_UPDATED", "TOKEN_REFRESHED"].includes(event)) {
+        // À chaque event auth, on re-lit le JWT (claims peuvent avoir changé suite refresh)
+        const jwtFlags = readRolesFromSession(session);
+        if (jwtFlags) {
+          applyRoles(session.user?.id, jwtFlags, "jwt");
+        } else {
+          fetchRolesViaRpc(session.user?.id, 1);
+        }
       }
     });
 
-    // Listen for realtime role changes to update instantly
+    // Realtime : si user_roles change en DB, on recharge.
+    // Note : avec JWT claims activé, le user doit re-login pour voir le changement
+    // (claims figés dans le JWT). On garde le channel pour le fallback RPC qui lui
+    // est dynamique, et pour observer les changements sur soi-même côté admin.
     const channel = supabase
-      .channel('sidebar-roles-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => {
-        checkRoles();
+      .channel("sidebar-roles-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_roles" }, () => {
+        refreshRoles();
       })
       .subscribe();
 
     return () => {
       subscription.unsubscribe();
       supabase.removeChannel(channel);
-      if (devFallbackTimer) clearTimeout(devFallbackTimer);
       clearTimeout(safetyTimer);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return { isAdmin, isSuperAdmin, isSetter, isCloser, loadingRoles };

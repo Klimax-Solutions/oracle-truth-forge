@@ -11,7 +11,7 @@ import {
   FileText, Shield, PhoneForwarded, Headphones, CreditCard,
   DollarSign, MessageCircle, Send, ExternalLink, Lock, Unlock,
   UserX, RotateCcw, Sparkles, Timer, Wifi, Eye, Users,
-  ChevronDown,
+  ChevronDown, ChevronLeft, ChevronRight, MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -79,6 +79,8 @@ const CALL_OUTCOMES = [
 export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialView = "lead", canEditSetting = true, canEditCall = true }: Props) {
   const { toast } = useToast();
   const [view, setView] = useState<LeadModalView>(initialView);
+  // Mobile-only: which panel is in front (content vs timeline). Desktop shows both side-by-side.
+  const [mobilePanel, setMobilePanel] = useState<"content" | "timeline">("content");
   const [notes, setNotes] = useState<LeadNote[]>([]);
   const [newNote, setNewNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -306,13 +308,14 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-stretch md:items-center justify-center p-0 md:p-4" onClick={onClose}>
       <div className="bg-[#0c0d12] border border-white/[0.10] rounded-none md:rounded-2xl w-full max-w-6xl h-full md:h-[90vh] flex flex-col overflow-hidden shadow-2xl shadow-black/50" onClick={e => e.stopPropagation()}>
 
-        {/* ── Header — compact with inline view switcher ── */}
+        {/* ── Header — compact with inline view switcher (responsive) ── */}
         <div className="shrink-0 px-3 md:px-6 py-3 md:py-4 border-b border-white/[0.08]">
-          <div className="flex items-center gap-4">
-            {/* Avatar — click to go back to Lead view */}
+          {/* Row 1 — Identity + actions (always one line) */}
+          <div className="flex items-center gap-3 md:gap-4">
+            {/* Avatar */}
             <button
               onClick={() => setView("lead")}
-              className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold text-white shrink-0 transition-all hover:scale-105 hover:ring-2 hover:ring-white/20",
+              className={cn("w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-base md:text-lg font-bold text-white shrink-0 transition-all hover:scale-105 hover:ring-2 hover:ring-white/20",
                 lead.paid_at ? "bg-emerald-500" : lead.call_outcome === "contracted" ? "bg-violet-500" : lead.call_done ? "bg-blue-500" : lead.contacted ? "bg-purple-500" : lead.status === "approuvée" ? "bg-cyan-500" : "bg-white/20"
               )}
               title="Voir fiche lead"
@@ -321,25 +324,25 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
             </button>
 
             {/* Name + email + sub info */}
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-display font-bold text-white truncate">{lead.first_name || "Sans nom"}</h2>
+                <h2 className="text-base md:text-xl font-display font-bold text-white truncate">{lead.first_name || "Sans nom"}</h2>
                 {lead.early_access_type && (
-                  <span className="text-[9px] font-display uppercase px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-400 border border-violet-500/25 shrink-0">
+                  <span className="hidden sm:inline-flex text-[9px] font-display uppercase px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-400 border border-violet-500/25 shrink-0">
                     <Sparkles className="w-2.5 h-2.5 inline mr-0.5" />{lead.early_access_type}
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-3 mt-0.5">
+              <div className="flex items-center gap-2 md:gap-3 mt-0.5 min-w-0">
                 {lead.email && (
-                  <button onClick={() => copy(lead.email, "Email")} className="flex items-center gap-1 text-[12px] text-white/50 hover:text-white/80 transition-colors group">
-                    <Mail className="w-3 h-3" />
-                    <span className="truncate max-w-[200px]">{lead.email}</span>
-                    <Copy className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <button onClick={() => copy(lead.email, "Email")} className="flex items-center gap-1 text-[11px] md:text-[12px] text-white/50 hover:text-white/80 transition-colors group min-w-0">
+                    <Mail className="w-3 h-3 shrink-0" />
+                    <span className="truncate max-w-[140px] md:max-w-[200px]">{lead.email}</span>
+                    <Copy className="hidden md:inline w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
                 )}
                 {lead.phone && (
-                  <button onClick={() => copy(lead.phone, "Tel")} className="flex items-center gap-1 text-[12px] text-white/50 hover:text-white/80 transition-colors group">
+                  <button onClick={() => copy(lead.phone, "Tel")} className="hidden sm:flex items-center gap-1 text-[12px] text-white/50 hover:text-white/80 transition-colors group">
                     <Phone className="w-3 h-3" />
                     <span>{lead.phone}</span>
                     <Copy className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -347,15 +350,15 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                 )}
               </div>
               {lead.call_scheduled_at && (
-                <p className="text-[11px] text-white/35 font-mono mt-0.5 flex items-center gap-1">
+                <p className="hidden md:flex text-[11px] text-white/35 font-mono mt-0.5 items-center gap-1">
                   <Clock className="w-3 h-3" />
                   {fmtDate(lead.call_scheduled_at)} · {new Date(lead.call_scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                 </p>
               )}
             </div>
 
-            {/* View switcher — inline pills */}
-            <div className="flex items-center gap-0.5 bg-white/[0.03] border border-white/[0.08] rounded-lg p-0.5 ml-auto shrink-0">
+            {/* View switcher — DESKTOP ONLY (mobile gets a dedicated row below) */}
+            <div className="hidden md:flex items-center gap-0.5 bg-white/[0.03] border border-white/[0.08] rounded-lg p-0.5 shrink-0">
               {([
                 { key: "lead" as LeadModalView, label: "Profil", icon: Eye },
                 { key: "setting" as LeadModalView, label: "Setting", icon: PhoneForwarded },
@@ -376,10 +379,10 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
               ))}
             </div>
 
-            {/* Trial timer + Close */}
-            <div className="flex items-center gap-2 shrink-0">
+            {/* Trial timer + actions */}
+            <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
               {lead.status === "approuvée" && (
-                <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-lg border",
+                <div className={cn("hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border",
                   exp === "Expiré" ? "bg-red-500/10 border-red-500/25" : exp && !exp.includes("j") ? "bg-amber-500/10 border-amber-500/25" : "bg-cyan-500/10 border-cyan-500/25"
                 )}>
                   <Timer className={cn("w-3 h-3", exp === "Expiré" ? "text-red-400" : "text-cyan-400")} />
@@ -391,13 +394,13 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                   )}
                 </div>
               )}
-              {/* Archive / Unarchive — soft hide from pipeline */}
+              {/* Archive / Unarchive — desktop only, hidden on mobile to declutter */}
               {(lead as any).archived_at ? (
                 <button
                   onClick={unarchiveLead}
                   disabled={archiving}
                   title="Désarchiver — remettre dans le pipeline"
-                  className="h-8 px-2.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 flex items-center gap-1.5 text-[10px] font-display uppercase tracking-wider transition-colors disabled:opacity-50"
+                  className="hidden md:flex h-8 px-2.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 items-center gap-1.5 text-[10px] font-display uppercase tracking-wider transition-colors disabled:opacity-50"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   Désarchiver
@@ -406,21 +409,77 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                 <button
                   onClick={archiveLead}
                   disabled={archiving}
-                  title="Archiver — masquer du pipeline (faux compte, doublon, non pertinent)"
-                  className="w-8 h-8 rounded-lg bg-white/[0.04] hover:bg-amber-500/15 hover:border-amber-500/30 border border-transparent flex items-center justify-center transition-colors disabled:opacity-50"
+                  title="Archiver — masquer du pipeline"
+                  className="hidden md:flex w-8 h-8 rounded-lg bg-white/[0.04] hover:bg-amber-500/15 hover:border-amber-500/30 border border-transparent items-center justify-center transition-colors disabled:opacity-50"
                 >
                   <UserX className="w-4 h-4 text-white/40 hover:text-amber-300" />
                 </button>
               )}
-              <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors">
+              <button onClick={onClose} className="w-9 h-9 md:w-8 md:h-8 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors">
                 <X className="w-4 h-4 text-white/40" />
               </button>
             </div>
           </div>
+
+          {/* Row 2 — MOBILE ONLY: full-width segmented switcher */}
+          <div className="md:hidden mt-2.5 grid grid-cols-3 gap-0.5 bg-white/[0.03] border border-white/[0.08] rounded-lg p-0.5">
+            {([
+              { key: "lead" as LeadModalView, label: "Profil", icon: Eye },
+              { key: "setting" as LeadModalView, label: "Setting", icon: PhoneForwarded },
+              { key: "call" as LeadModalView, label: "Call", icon: Headphones },
+            ]).map(t => (
+              <button
+                key={t.key}
+                onClick={() => { setView(t.key); setMobilePanel("content"); }}
+                className={cn("flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-[11px] font-display uppercase tracking-wider transition-all",
+                  view === t.key && mobilePanel === "content"
+                    ? "bg-white/[0.10] text-white shadow-sm"
+                    : "text-white/40 hover:text-white/60"
+                )}
+              >
+                <t.icon className="w-3.5 h-3.5" />
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Row 3 — MOBILE ONLY: trial timer (only when relevant) */}
+          {lead.status === "approuvée" && (
+            <div className={cn("md:hidden mt-2 flex items-center gap-1.5 px-2.5 py-1 rounded-lg border w-fit",
+              exp === "Expiré" ? "bg-red-500/10 border-red-500/25" : exp && !exp.includes("j") ? "bg-amber-500/10 border-amber-500/25" : "bg-cyan-500/10 border-cyan-500/25"
+            )}>
+              <Timer className={cn("w-3 h-3", exp === "Expiré" ? "text-red-400" : "text-cyan-400")} />
+              <span className={cn("text-[10px] font-display font-bold", exp === "Expiré" ? "text-red-400" : "text-cyan-400")}>
+                {exp || "Trial actif"}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* ── Body: Left (switches by view) + Right (Timeline always visible) ── */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        {/* ── Body: Left (switches by view) + Right (Timeline)  ── */}
+        {/* Desktop: side-by-side. Mobile: one panel at a time, controlled by mobilePanel. */}
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+
+          {/* Mobile-only: floating chevron to toggle between content and timeline */}
+          <button
+            onClick={() => setMobilePanel(p => p === "content" ? "timeline" : "content")}
+            aria-label={mobilePanel === "content" ? "Voir la timeline" : "Voir la fiche"}
+            className="md:hidden absolute z-30 top-1/2 -translate-y-1/2 right-2 w-9 h-14 rounded-l-lg rounded-r-none bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.10] border-r-0 flex items-center justify-center transition-all shadow-lg backdrop-blur-sm"
+            style={{ right: mobilePanel === "timeline" ? "auto" : "0", left: mobilePanel === "timeline" ? "0" : "auto", borderRadius: mobilePanel === "timeline" ? "0 0.5rem 0.5rem 0" : "0.5rem 0 0 0.5rem", borderLeftWidth: mobilePanel === "timeline" ? 0 : 1, borderRightWidth: mobilePanel === "timeline" ? 1 : 0 }}
+          >
+            {mobilePanel === "content" ? (
+              <ChevronLeft className="w-5 h-5 text-white/70" />
+            ) : (
+              <ChevronRight className="w-5 h-5 text-white/70" />
+            )}
+            {/* Subtle label hint */}
+            <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-cyan-500/20 border border-cyan-500/30 text-[8px] font-display uppercase tracking-widest text-cyan-300 whitespace-nowrap">
+              {mobilePanel === "content" ? "Timeline" : "Fiche"}
+            </span>
+          </button>
+
+          {/* CONTENT WRAPPER — hidden on mobile when timeline is shown */}
+          <div className={cn("flex-1 flex flex-col md:flex-row overflow-hidden", mobilePanel === "timeline" ? "hidden md:flex" : "flex")}>
 
           {/* LEFT — Content switches by view */}
           {view === "lead" ? (
@@ -432,7 +491,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
               <div className="absolute top-0 right-0 w-40 h-40 bg-primary/8 rounded-full blur-3xl pointer-events-none" />
 
               {/* Pipeline visual — premium icons with glow connectors */}
-              <div className="relative flex items-center justify-between px-2 mt-2">
+              <div className="relative flex items-center justify-between px-0 md:px-2 mt-2 overflow-x-auto">
                 {pipelineSteps.map((s, i) => {
                   const Icon = s.icon;
                   const colors: Record<string, { active: string; glow: string }> = {
@@ -448,20 +507,20 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
 
                   return (
                     <div key={s.key} className="flex items-center">
-                      <button onClick={() => setView(s.view)} className="flex flex-col items-center gap-2 group/step">
-                        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all group-hover/step:scale-110",
+                      <button onClick={() => setView(s.view)} className="flex flex-col items-center gap-1.5 md:gap-2 group/step shrink-0">
+                        <div className={cn("w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border-2 transition-all group-hover/step:scale-110",
                           s.done ? c.active : "bg-white/[0.03] border-white/[0.10] group-hover/step:border-white/[0.20]"
                         )}>
-                          <Icon className={cn("w-6 h-6", s.done ? "" : "text-white/20")} />
+                          <Icon className={cn("w-4 h-4 md:w-6 md:h-6", s.done ? "" : "text-white/20")} />
                         </div>
-                        <span className={cn("text-sm font-display font-semibold", s.done ? "text-white" : "text-white/25")}>{s.label}</span>
-                        {s.date && <span className="text-[11px] font-mono text-white/50">{fmtShort(s.date)}</span>}
+                        <span className={cn("text-[10px] md:text-sm font-display font-semibold", s.done ? "text-white" : "text-white/25")}>{s.label}</span>
+                        {s.date && <span className="hidden md:inline text-[11px] font-mono text-white/50">{fmtShort(s.date)}</span>}
                       </button>
                       {i < pipelineSteps.length - 1 && (
-                        <div className={cn("flex-1 h-[3px] mx-3 rounded-full mt-[-24px]",
+                        <div className={cn("flex-1 h-[2px] md:h-[3px] mx-1.5 md:mx-3 rounded-full -mt-4 md:mt-[-24px]",
                           s.done && nextDone ? `bg-gradient-to-r ${c.glow} ${nextColor ? "to-" + pipelineSteps[i+1].color + "-500/50" : "to-white/10"}` :
                           s.done ? `bg-gradient-to-r ${c.glow} to-white/10` : "bg-white/[0.06]"
-                        )} style={{ minWidth: 50 }} />
+                        )} style={{ minWidth: 20 }} />
                       )}
                     </div>
                   );
@@ -705,7 +764,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                 </div>
 
                 {/* ── 4 cartes info (read-only) ── */}
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
                   <div className="bg-[#111318] border border-white/[0.08] rounded-lg px-2.5 py-2">
                     <p className="text-[8px] font-display uppercase tracking-wider text-white/30">Budget</p>
                     <p className="text-[11px] font-display font-bold text-white mt-0.5 truncate">{lead.offer_amount || '—'}</p>
@@ -1038,10 +1097,24 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
           </div>
         </div>
         )}
+          </div>
+          {/* /CONTENT WRAPPER */}
 
-          {/* TIMELINE — Always visible on the right (desktop only) */}
-          <div className="hidden md:block w-[360px] shrink-0 overflow-hidden bg-[#0a0b10] border-l border-white/[0.08]">
-            <LeadThreadPanel lead={lead} />
+          {/* TIMELINE — Desktop: always visible on the right. Mobile: shown when mobilePanel === "timeline". */}
+          <div className={cn(
+            "shrink-0 overflow-hidden bg-[#0a0b10] md:border-l border-white/[0.08]",
+            "w-full md:w-[360px]",
+            mobilePanel === "timeline" ? "flex flex-col flex-1" : "hidden md:flex md:flex-col"
+          )}>
+            {/* Mobile-only mini header — shows current lead context */}
+            <div className="md:hidden shrink-0 px-3 py-2 border-b border-white/[0.08] bg-white/[0.02] flex items-center gap-2">
+              <MessageSquare className="w-3.5 h-3.5 text-cyan-400/60" />
+              <span className="text-[10px] font-display uppercase tracking-widest text-white/50">Timeline</span>
+              <span className="text-[10px] font-display text-white/30 truncate ml-auto">{lead.first_name || "Lead"}</span>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <LeadThreadPanel lead={lead} />
+            </div>
           </div>
         </div>
       </div>
