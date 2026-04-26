@@ -514,25 +514,8 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
 
   // Open dialog for new entry
   const handleNewEntry = () => {
-    const today = new Date().toISOString().split("T")[0];
-    setFormData({
-      ...initialFormData,
-      trade_number: getNextTradeNumber().toString(),
-      trade_date: today,
-      exit_date: today,
-    });
     setEditingId(null);
-    setContextFile(null);
-    setContextPreview(null);
-    setExistingContextUrl(null);
-    setEntryFile(null);
-    setEntryPreview(null);
-    setExistingEntryUrl(null);
-    setContextMode("file");
-    setEntryMode("file");
-    setContextLinkUrl("");
-    setEntryLinkUrl("");
-    setScreenshotError(false);
+    setEditingExec(null);
     setIsDialogOpen(true);
   };
 
