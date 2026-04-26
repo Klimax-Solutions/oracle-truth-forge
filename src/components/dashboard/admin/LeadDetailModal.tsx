@@ -12,7 +12,9 @@ import {
   DollarSign, MessageCircle, Send, ExternalLink, Lock, Unlock,
   UserX, RotateCcw, Sparkles, Timer, Wifi, Eye, Users,
   ChevronDown, ChevronLeft, ChevronRight, MessageSquare,
+  AlertTriangle, ShieldAlert,
 } from "lucide-react";
+import { useLeadDuplicates } from "@/hooks/useLeadDuplicates";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
