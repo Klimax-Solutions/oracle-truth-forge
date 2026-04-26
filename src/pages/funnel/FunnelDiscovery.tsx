@@ -3,6 +3,7 @@ import { useFunnelConfig } from '@/hooks/useFunnelConfig';
 import { useEffect, useState } from 'react';
 import { Loader2, Calendar, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { flushPendingLeads } from '@/lib/funnelLeadQueue';
 
 // ── SLICE: syncBookingToDB ────────────────────────────────────────────────────
 // Self-contained, antifragile. Never throws — failure is logged but never blocks
@@ -86,6 +87,9 @@ export default function FunnelDiscovery() {
   const prefillPhone = searchParams.get('phone') || undefined;
   const calBase = config?.discovery_cal_link ? buildCalEmbedUrl(config.discovery_cal_link) : null;
   const embedUrl = calBase ? appendCalPrefill(calBase, prefillName, prefillEmail, prefillPhone) : null;
+
+  // Rejoue tout lead bloqué dans la queue locale (best-effort, non-blocking)
+  useEffect(() => { flushPendingLeads().catch(() => {}); }, []);
 
   const [booked, setBooked] = useState(false);
   useEffect(() => {

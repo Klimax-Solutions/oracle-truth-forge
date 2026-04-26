@@ -1,11 +1,16 @@
+import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
+import { flushPendingLeads } from '@/lib/funnelLeadQueue';
 import { Loader2, ArrowRight } from 'lucide-react';
 
 export default function FunnelLanding() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { config, loading } = useFunnelConfig(slug);
+
+  // Rejoue tout lead bloqué dans la queue locale (best-effort, non-blocking)
+  useEffect(() => { flushPendingLeads().catch(() => {}); }, []);
 
   if (loading) {
     return (

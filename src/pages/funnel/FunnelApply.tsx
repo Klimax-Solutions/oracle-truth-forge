@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
+import { submitFunnelLead, flushPendingLeads } from '@/lib/funnelLeadQueue';
 import { Loader2, ChevronLeft, Check, ArrowRight } from 'lucide-react';
 
 /**
@@ -118,6 +119,11 @@ export default function FunnelApply() {
     }
   }, [hasVSL, config, loading]);
 
+  // Flush any leads queued from previous failed submissions (best-effort, non-blocking)
+  useEffect(() => {
+    flushPendingLeads().catch(() => {});
+  }, []);
+
   useEffect(() => {
     const raw = Number(config?.vsl_cta_delay_seconds);
     const delay = Number.isFinite(raw) && raw > 0 ? Math.min(raw, 1800) : 0;
@@ -167,99 +173,53 @@ export default function FunnelApply() {
     }
 
     setSubmitting(true); setError('');
+
+    const email = contact.email.trim().toLowerCase();
+    // ⚠️ phone est NOT NULL → on envoie '' pas null
+    const phone = contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : '';
+
+    // Compute enrichment fields from answers
+    const investmentAnswer = answers['investment_amount'] || '';
+    const budgetMatch = investmentAnswer.match(/(\d[\d\s]*)\s*€/);
+    const budgetAmount = budgetMatch ? parseInt(budgetMatch[1].replace(/\s/g, ''), 10) : null;
+    const priorite = budgetAmount && budgetAmount >= 5000 ? 'P1'
+      : budgetAmount && budgetAmount >= 3000 ? 'P2'
+      : budgetAmount && budgetAmount >= 1000 ? 'P3' : null;
+    const impMatch = (answers['time_commitment'] || '').match(/(\d+)/);
+    const importance = impMatch ? parseInt(impMatch[1], 10) : null;
+
+    const leadPayload = {
+      first_name: contact.first_name.trim(),
+      email,
+      phone,
+      status: 'en_attente',
+      form_submitted: true,
+      // Enrichment inclus dans l'INSERT (atomique, pas de UPDATE séparé qui peut échouer)
+      ...(Object.keys(answers).length > 0 ? { form_answers: answers } : {}),
+      ...(investmentAnswer ? { offer_amount: investmentAnswer } : {}),
+      ...(budgetAmount != null ? { budget_amount: budgetAmount } : {}),
+      ...(priorite ? { priorite } : {}),
+      ...(answers['main_difficulty'] ? { difficulte_principale: answers['main_difficulty'] } : {}),
+      ...(importance != null ? { importance_trading: importance } : {}),
+    };
+
+    // ─── Couche antifragile ──────────────────────────────────────────────
+    // submitFunnelLead retry 3x avec backoff. Si encore KO → queue localStorage,
+    // rejoué automatiquement à la prochaine ouverture d'une page funnel.
+    // Le user voit TOUJOURS l'écran de succès. Aucune perte de lead possible.
     try {
-      const email = contact.email.trim().toLowerCase();
-      // ⚠️ Le schéma de `early_access_requests.phone` est NOT NULL.
-      // Si l'utilisateur n'a pas saisi de téléphone, on envoie `''` (et pas null)
-      // pour ne pas faire échouer l'INSERT silencieusement.
-      const phone = contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : '';
-
-      const oneHourAgo = new Date(Date.now() - 3600_000).toISOString();
-      const { count: recentCount } = await supabase
-        .from('early_access_requests')
-        .select('id', { count: 'exact', head: true })
-        .ilike('email', email)
-        .gte('created_at', oneHourAgo);
-      if ((recentCount ?? 0) >= 3) {
-        setSubmitting(false);
-        setError('Trop de tentatives. Réessaie dans une heure.');
-        return;
+      const result = await submitFunnelLead(leadPayload, slug);
+      if (result.queued) {
+        console.warn('[Apply] Lead queued for retry — backend unreachable, will sync later:', email);
       }
+    } catch (err) {
+      // submitFunnelLead ne devrait jamais throw, mais belt-and-suspenders
+      console.error('[Apply] Unexpected error during submit:', err);
+    }
 
-      const { data: existingReq } = await supabase
-        .from('early_access_requests')
-        .select('id, status')
-        .ilike('email', email)
-        .in('status', ['approuvée', 'en_attente'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (existingReq?.status === 'approuvée') {
-        setSubmitting(false);
-        setError('Vous avez déjà un accès Oracle. Connectez-vous directement.');
-        return;
-      }
-
-      let isUpdate = false;
-      if (existingReq?.status === 'en_attente') {
-        isUpdate = true;
-        const { error: updErr } = await supabase.from('early_access_requests').update({
-          first_name: contact.first_name.trim(),
-          phone: phone || undefined,
-          form_submitted: true,
-        } as any).eq('id', existingReq.id);
-        if (updErr) console.warn('[Apply] update existing lead failed:', updErr.message);
-      }
-
-      if (!isUpdate) {
-        const { data: inserted, error: dbError } = await supabase
-          .from('early_access_requests')
-          .insert({
-            first_name: contact.first_name.trim(),
-            email,
-            phone, // empty string if not provided (column is NOT NULL)
-            status: 'en_attente',
-            form_submitted: true,
-          } as any)
-          .select('id')
-          .single();
-        if (dbError) {
-          console.error('[Apply] INSERT failed:', dbError);
-          setError(dbError.message);
-          setSubmitting(false);
-          return;
-        }
-        console.log('[Apply] Lead created in pipeline:', inserted?.id);
-      }
-
-      const investmentAnswer = answers['investment_amount'] || '';
-      const budgetMatch = investmentAnswer.match(/(\d[\d\s]*)\s*€/);
-      const budgetAmount = budgetMatch ? parseInt(budgetMatch[1].replace(/\s/g, ''), 10) : null;
-      const priorite = budgetAmount && budgetAmount >= 5000 ? 'P1'
-        : budgetAmount && budgetAmount >= 3000 ? 'P2'
-        : budgetAmount && budgetAmount >= 1000 ? 'P3' : null;
-      const impMatch = (answers['time_commitment'] || '').match(/(\d+)/);
-      const importance = impMatch ? parseInt(impMatch[1], 10) : null;
-
-      const enrichment: Record<string, any> = {};
-      if (Object.keys(answers).length > 0) enrichment.form_answers = answers;
-      if (investmentAnswer)        enrichment.offer_amount           = investmentAnswer;
-      if (budgetAmount != null)    enrichment.budget_amount          = budgetAmount;
-      if (priorite)                enrichment.priorite               = priorite;
-      if (answers['main_difficulty']) enrichment.difficulte_principale = answers['main_difficulty'];
-      if (importance != null)      enrichment.importance_trading     = importance;
-
-      if (Object.keys(enrichment).length > 0) {
-        const { error: enrichErr } = await supabase
-          .from('early_access_requests')
-          .update(enrichment as any)
-          .eq('email', email);
-        if (enrichErr) console.warn('[Apply] CRM enrichment skipped (non-blocking):', enrichErr.message);
-      }
-
-      setSubmitted(true);
-    } catch { setError('Erreur de connexion.'); setSubmitting(false); }
+    // Toujours afficher l'écran de succès — le lead est soit en DB, soit en queue
+    setSubmitted(true);
+    setSubmitting(false);
   };
 
   const renderEmbed = () => {

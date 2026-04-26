@@ -1,7 +1,8 @@
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { flushPendingLeads } from '@/lib/funnelLeadQueue';
 import { Loader2, CheckCircle2, AlertTriangle, Calendar, Send, Mail, Clock } from 'lucide-react';
 
 export default function FunnelFinal() {
@@ -16,6 +17,9 @@ export default function FunnelFinal() {
   const [question, setQuestion] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Rejoue tout lead bloqué dans la queue locale (best-effort, non-blocking)
+  useEffect(() => { flushPendingLeads().catch(() => {}); }, []);
 
   const handleSubmitQuestion = async () => {
     if (!question.trim() || !leadEmail) return;
