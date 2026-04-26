@@ -6,8 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 // ── SLICE: syncBookingToDB ────────────────────────────────────────────────────
 // Self-contained, antifragile. Never throws — failure is logged but never blocks
-// the redirect flow. Writes call_booked + call_scheduled_at + call_meeting_url
-// to early_access_requests, then emits a lead_events row for the timeline.
+// the redirect flow.
 // ─────────────────────────────────────────────────────────────────────────────
 async function syncBookingToDB(opts: {
   email: string;
@@ -15,7 +14,6 @@ async function syncBookingToDB(opts: {
   meetingUrl: string | null;
 }) {
   try {
-    // 1. Find the request row by email
     const { data: rows, error: findErr } = await supabase
       .from('early_access_requests')
       .select('id')
@@ -25,14 +23,12 @@ async function syncBookingToDB(opts: {
 
     const requestId = rows[0].id;
 
-    // 2. Update booking fields
     await supabase.from('early_access_requests').update({
       call_booked: true,
       ...(opts.scheduledAt ? { call_scheduled_at: opts.scheduledAt } : {}),
       ...(opts.meetingUrl   ? { call_meeting_url: opts.meetingUrl }   : {}),
     }).eq('id', requestId);
 
-    // 3. Emit timeline event (best-effort — table may not exist on older envs)
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('lead_events').insert({
       request_id: requestId,
@@ -45,16 +41,9 @@ async function syncBookingToDB(opts: {
       created_by: user?.id || null,
     });
   } catch (err) {
-    // Non-blocking — funnel redirect continues regardless
     console.warn('[Discovery] syncBookingToDB failed (non-blocking):', err);
   }
 }
-
-// ============================================
-// Funnel Discovery Page — Cal.com iframe embed
-// Route: /:slug/discovery
-// On booking success → redirect to /:slug/final
-// ============================================
 
 function buildCalEmbedUrl(link: string): string | null {
   if (!link?.trim()) return null;
@@ -98,8 +87,6 @@ export default function FunnelDiscovery() {
   const calBase = config?.discovery_cal_link ? buildCalEmbedUrl(config.discovery_cal_link) : null;
   const embedUrl = calBase ? appendCalPrefill(calBase, prefillName, prefillEmail, prefillPhone) : null;
 
-  // Listen for Cal.com booking success via postMessage
-  // Cal.com sends messages in various formats — catch them all
   const [booked, setBooked] = useState(false);
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -110,7 +97,6 @@ export default function FunnelDiscovery() {
         : event.data;
       if (!data) return;
 
-      // Log all Cal messages for debug
       const calAction = data?.Cal?.action || data?.action || data?.type || '';
       if (calAction || data?.Cal) {
         console.log('[Discovery] Cal.com message:', calAction, data);
@@ -122,7 +108,6 @@ export default function FunnelDiscovery() {
         data.type === 'CAL:booking_successful' ||
         data.type === '__cal_booking_successful' ||
         data.action === 'bookingSuccessful' ||
-        // Cal.com v2 also sends __routeChanged to /booking/... after success
         (calAction === '__routeChanged' && typeof data?.Cal?.data?.url === 'string' && data.Cal.data.url.includes('/booking/'));
 
       if (isBooking) {
@@ -132,7 +117,6 @@ export default function FunnelDiscovery() {
         const email = bookingData.attendees?.[0]?.email || bookingData.email || prefillEmail || '';
         const meetingUrl = bookingData.meeting?.url || bookingData.meetingUrl || bookingData.booking?.metadata?.videoCallUrl || null;
 
-        // ISO timestamp for DB, formatted label for the confirmation page
         const scheduledAt = rawDate ? new Date(rawDate).toISOString() : null;
         let dateLabel = '';
         if (rawDate) {
@@ -141,7 +125,6 @@ export default function FunnelDiscovery() {
           } catch { dateLabel = rawDate; }
         }
 
-        // ── SLICE: persist booking to DB (non-blocking, antifragile) ──
         if (email) {
           syncBookingToDB({ email, scheduledAt, meetingUrl });
         }
@@ -161,74 +144,85 @@ export default function FunnelDiscovery() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0B10] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-foreground" />
       </div>
     );
   }
 
   if (!config) {
     return (
-      <div className="min-h-screen bg-[#0A0B10] flex items-center justify-center text-white/40">
+      <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground text-sm">
         Funnel non trouvé
       </div>
     );
   }
 
+  const footerText = config.brand_footer_text?.replace('{year}', new Date().getFullYear().toString())
+    || `Oracle © ${new Date().getFullYear()} — Accès confidentiel`;
+
   return (
-    <div className="min-h-screen bg-[#0A0B10] text-white flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+
       {/* Header */}
-      <div className="text-center px-4 pt-10 pb-6">
+      <div className="text-center px-4 md:px-6 pt-12 md:pt-16 pb-6">
         {config.discovery_badge_text && (
-          <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-xs font-display text-emerald-400 uppercase tracking-widest mb-6">
-            <CheckCircle2 className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-[10px] md:text-xs font-mono text-emerald-500 uppercase tracking-[0.25em] mb-6">
+            <CheckCircle2 className="w-3 h-3" />
             {config.discovery_badge_text}
           </span>
         )}
 
-        <h1 className="text-2xl md:text-3xl font-display font-bold mt-4">
+        <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.3em] md:tracking-[0.4em] text-muted-foreground mb-4 md:mb-6">
+          Réservation
+        </p>
+        <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-foreground">
           {config.discovery_headline || 'Réserve ton appel'}
         </h1>
         {config.discovery_subtitle && (
-          <p className="text-white/50 text-sm md:text-base leading-relaxed mt-3 max-w-md mx-auto">
+          <p className="text-sm md:text-base text-muted-foreground leading-relaxed mt-4 max-w-md mx-auto">
             {config.discovery_subtitle}
           </p>
         )}
       </div>
 
+      <div className="w-full max-w-md h-px bg-border mx-auto mb-8" />
+
       {/* Cal.com embed */}
       {embedUrl ? (
-        <div className="flex-1 w-full max-w-3xl mx-auto px-4 pb-8">
-          <iframe
-            src={embedUrl}
-            title="Réserver un appel"
-            className="w-full rounded-2xl border border-white/[0.08]"
-            style={{ minHeight: 650, border: 'none', colorScheme: 'dark' }}
-            loading="lazy"
-            allow="payment"
-          />
+        <div className="flex-1 w-full max-w-3xl mx-auto px-4 md:px-6 pb-10">
+          <div className="border border-border bg-card rounded-md overflow-hidden">
+            <iframe
+              src={embedUrl}
+              title="Réserver un appel"
+              className="w-full"
+              style={{ minHeight: 650, border: 'none', colorScheme: 'dark' }}
+              loading="lazy"
+              allow="payment"
+            />
+          </div>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center px-4">
-          <div className="text-center space-y-4 max-w-sm">
-            <div className="w-14 h-14 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center mx-auto">
-              <Calendar className="w-7 h-7 text-primary" />
+        <div className="flex-1 flex items-center justify-center px-4 md:px-6 pb-10">
+          <div className="text-center space-y-5 max-w-sm border border-border bg-card rounded-md p-8">
+            <div className="w-12 h-12 rounded-md bg-muted border border-border flex items-center justify-center mx-auto">
+              <Calendar className="w-5 h-5 text-foreground" />
             </div>
             <div>
-              <h3 className="font-display text-lg font-semibold">{config.discovery_cta_title || 'Appel stratégique'}</h3>
-              <p className="text-sm text-white/40 mt-1">{config.discovery_cta_subtitle || '30 minutes'}</p>
+              <h3 className="text-base font-bold text-foreground">{config.discovery_cta_title || 'Appel stratégique'}</h3>
+              <p className="text-sm text-muted-foreground mt-1">{config.discovery_cta_subtitle || '30 minutes'}</p>
             </div>
-            <div className="text-sm text-white/30 bg-white/[0.03] rounded-xl p-4 border border-dashed border-white/[0.10]">
+            <p className="text-xs text-muted-foreground border-t border-border pt-4">
               Lien Cal.com non configuré. Ajoute-le dans le Funnel Editor.
-            </div>
+            </p>
           </div>
         </div>
       )}
 
       {/* Footer */}
-      <footer className="py-4 text-center">
-        <p className="text-[10px] text-white/15 font-display">
-          {config.brand_footer_text?.replace('{year}', new Date().getFullYear().toString()) || `© ${new Date().getFullYear()} Oracle`}
+      <footer className="py-6 text-center">
+        <p className="text-[10px] md:text-xs text-muted-foreground font-mono uppercase tracking-[0.2em] md:tracking-[0.3em]">
+          {footerText}
         </p>
       </footer>
     </div>
