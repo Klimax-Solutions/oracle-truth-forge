@@ -185,17 +185,42 @@ export const EarlyAccessRequestsTab = () => {
                 const allForEmail = submissionsByEmail.get(emailKey) || [];
                 const otherSubmissions = allForEmail.filter((r) => r.id !== req.id);
                 const isDuplicate = otherSubmissions.length > 0;
+                const isAlreadyMember = memberEmails.has(emailKey);
 
                 return (
                 <div
                   key={req.id}
-                  className="border border-amber-500/30 bg-amber-500/5 rounded-md p-3"
+                  className={
+                    isAlreadyMember
+                      ? "border-2 border-red-500/60 bg-red-500/10 rounded-md p-3 shadow-lg shadow-red-500/10"
+                      : "border border-amber-500/30 bg-amber-500/5 rounded-md p-3"
+                  }
                 >
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase bg-amber-500/20 text-amber-500 border border-amber-500/30">
                         Early Access Pré-call
                       </span>
+                      {/* ⚠️ Alerte CRITIQUE : ce mail correspond à un compte membre actif (client payant) */}
+                      {isAlreadyMember && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-red-500/25 text-red-400 border border-red-500/50 cursor-help animate-pulse">
+                              <AlertTriangle className="w-3 h-3" />
+                              ⚠ Déjà membre
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" className="max-w-xs">
+                            <div className="space-y-1 text-[11px]">
+                              <p className="font-semibold text-red-400">Compte membre actif détecté</p>
+                              <p className="text-muted-foreground">
+                                Cet email a déjà un compte avec le rôle <span className="font-mono">member</span>.
+                                Vérifie avant d'approuver — risque de doublon de compte ou tentative de re-trial.
+                              </p>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                       {isDuplicate && (
                         <Tooltip>
                           <TooltipTrigger asChild>
