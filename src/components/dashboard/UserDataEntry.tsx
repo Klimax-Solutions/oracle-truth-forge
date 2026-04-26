@@ -65,8 +65,7 @@ import { Progress } from "@/components/ui/progress";
 import { ScreenshotLink } from "./ScreenshotLink";
 import { SignedImageCard } from "./SignedImageCard";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
-import { OracleTradeDialog, OracleExecution } from "./OracleTradeDialog";
-import { getRecommendedWindow } from "@/lib/oracle-cycle-windows";
+import { OracleTradeDialog } from "./OracleTradeDialog";
 
 interface UserExecution {
   id: string;
