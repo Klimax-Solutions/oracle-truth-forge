@@ -339,11 +339,31 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
 
             {/* Name + email + sub info */}
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base md:text-xl font-display font-bold text-white truncate">{lead.first_name || "Sans nom"}</h2>
                 {lead.early_access_type && (
                   <span className="hidden sm:inline-flex text-[9px] font-display uppercase px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-400 border border-violet-500/25 shrink-0">
                     <Sparkles className="w-2.5 h-2.5 inline mr-0.5" />{lead.early_access_type}
+                  </span>
+                )}
+                {/* ⚠️ Alerte CRITIQUE — déjà membre actif (compte payant existant) */}
+                {dupInfo.isExistingMember && (
+                  <span
+                    title={`Ce lead a déjà un compte membre actif (rôles : ${dupInfo.existingRoles.join(", ")}). Vérifie avant toute action commerciale.`}
+                    className="inline-flex items-center gap-1 text-[10px] font-display font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/40 shrink-0 animate-pulse"
+                  >
+                    <ShieldAlert className="w-3 h-3" />
+                    Déjà membre
+                  </span>
+                )}
+                {/* ⚠️ Warning — d'autres soumissions form pour cet email */}
+                {!dupInfo.isExistingMember && dupInfo.otherSubmissions.length > 0 && (
+                  <span
+                    title={`A déjà soumis le formulaire ${dupInfo.otherSubmissions.length}× auparavant.\n${dupInfo.otherSubmissions.slice(0, 3).map(s => `• ${s.first_name} (${s.status}) — ${new Date(s.created_at).toLocaleDateString("fr-FR")}`).join("\n")}`}
+                    className="inline-flex items-center gap-1 text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0"
+                  >
+                    <AlertTriangle className="w-3 h-3" />
+                    Déjà apply ({dupInfo.otherSubmissions.length})
                   </span>
                 )}
               </div>
