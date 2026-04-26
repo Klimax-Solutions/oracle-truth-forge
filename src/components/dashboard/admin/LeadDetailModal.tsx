@@ -24,6 +24,7 @@ import { CRMLead } from "@/lib/admin/types";
 import { getSetterColor } from "@/lib/admin/setterColors";
 import { getTrialDay, getTrialColor, getChecklistStep, CHECKLIST_LABELS, CHECKLIST_FIELDS, formatRelativeDate } from "@/lib/admin/trialStatus";
 import LeadThreadPanel from "./LeadThreadPanel";
+import KitSequenceSection from "./KitSequenceSection";
 
 type PipelineLead = CRMLead; // Alias local pour compatibilite
 
