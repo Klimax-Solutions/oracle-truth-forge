@@ -93,7 +93,15 @@ Deno.serve(async (req) => {
       lastResp = await fetch(kitUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ api_secret: KIT_API_SECRET, email, first_name }),
+        body: JSON.stringify({
+          api_secret: KIT_API_SECRET,
+          email,
+          first_name,
+          // Stocke le request_id Oracle comme champ custom Kit "lead_id".
+          // Permet de générer des liens email CTA avec {{ subscriber.lead_id }}
+          // → /[slug]/discovery?lead_id={{ subscriber.lead_id }}&email=...&name=...
+          ...(request_id ? { fields: { lead_id: request_id } } : {}),
+        }),
       });
       lastData = await lastResp.json().catch(() => ({}));
       if (lastResp.ok) break; // succès → sortie immédiate

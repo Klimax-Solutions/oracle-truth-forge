@@ -3,7 +3,7 @@ import { useFunnelConfig } from '@/hooks/useFunnelConfig';
 import { useEffect, useState, useMemo } from 'react';
 import { Loader2, Calendar, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { flushPendingLeads, getFunnelSession } from '@/lib/funnelLeadQueue';
+import { flushPendingLeads, getFunnelSession, storeFunnelSession } from '@/lib/funnelLeadQueue';
 
 // ── SLICE: syncBookingToDB ────────────────────────────────────────────────────
 // Self-contained, antifragile. Never throws — failure is logged but never blocks
@@ -96,6 +96,27 @@ export default function FunnelDiscovery() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { config, loading } = useFunnelConfig(slug);
+
+  // ── lead_id URL param (depuis emails Kit) ──────────────────────────────────
+  // Format email Kit : /discovery?lead_id={{ subscriber.lead_id }}&email=...&name=...
+  // Le lead_id est l'UUID de early_access_requests — on le stocke en session
+  // pour que FunnelFinal puisse faire UPDATE par ID (pas par email).
+  const leadIdParam = searchParams.get('lead_id') || null;
+  useEffect(() => {
+    if (!leadIdParam) return;
+    // Si on arrive via un email Kit (lead_id présent), on hydrate la session
+    // avec l'UUID du lead — même si le submit du form est dans un autre browser/session.
+    const existingSession = getFunnelSession();
+    if (!existingSession?.request_id) {
+      storeFunnelSession({
+        request_id: leadIdParam,
+        email:      searchParams.get('email') || existingSession?.email || '',
+        first_name: searchParams.get('name')  || existingSession?.first_name || '',
+        phone:      searchParams.get('phone') || existingSession?.phone || undefined,
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadIdParam]);
 
   // Session locale (stockée par funnelLeadQueue après submit du form)
   // Fallback si les URL params sont perdus (ex: refresh de page)
