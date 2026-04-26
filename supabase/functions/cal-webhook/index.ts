@@ -481,10 +481,14 @@ Deno.serve(async (req: Request) => {
         }
         log.info("BOOKING_CREATED", `Téléphone retenu: ${phone}`);
 
-        // Email : priorité metadata.form_email (vérité) → attendee.email réel (si pas SMS)
-        // Pour les bookings SMS sans form_email, on garde le placeholder @sms.cal.com
-        // mais on flag pour que le CRM puisse demander manuellement le vrai email.
-        const email: string = formEmail || (isSmsBooking ? attendeeEmail : attendeeEmail);
+        // Email : priorité metadata.form_email (source de vérité injectée par le funnel).
+        // Pour les bookings SMS sans form_email : on NE STOCKE PAS @sms.cal.com —
+        // cette adresse fantôme déclencherait un magic link bouncé si un admin approuve le lead.
+        // On génère un placeholder non-livrable (RFC 2606 : .invalid = réservé, jamais livré).
+        // Le CRM affichera "email manquant" et l'admin devra le compléter manuellement.
+        const rawEmail: string = formEmail || (isSmsBooking ? "" : attendeeEmail);
+        const digits = (smsPhone || phone || "").replace(/\D/g, "").slice(-10);
+        const email: string = rawEmail || `sms_${digits || booking.uid?.slice(0, 8) || "unknown"}@sms.invalid`;
 
         const insertData = {
           first_name: firstName,

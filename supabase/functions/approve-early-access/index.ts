@@ -98,6 +98,21 @@ Deno.serve(async (req) => {
     if (fetchErr || !eaReq) throw new Error("Demande introuvable");
     if (eaReq.status !== "en_attente") throw new Error("Demande déjà traitée");
 
+    // ── Guard : email invalide / booking SMS sans vrai email ──────────────────
+    // Les leads créés depuis un booking Cal.com par SMS (ex: 243974750209@sms.cal.com)
+    // ou les placeholders générés par le webhook (.invalid) ne peuvent PAS recevoir
+    // de magic link → l'envoyer causerait un bounce et une DSN dans ta boîte.
+    // L'admin doit d'abord mettre à jour l'email du lead avec le vrai email.
+    const invalidEmailPatterns = ["@sms.cal.com", "@sms.invalid", ".invalid"];
+    const emailLower = eaReq.email?.toLowerCase() || "";
+    if (invalidEmailPatterns.some(p => emailLower.includes(p))) {
+      throw new Error(
+        `Email invalide — ce lead a booké directement via SMS sans passer par le formulaire Oracle. ` +
+        `Email actuel : "${eaReq.email}". Mets à jour son email réel dans le CRM avant d'approuver.`
+      );
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // ── Duplicate check: email & phone ──
     const { data: dupEmail } = await supabaseAdmin
       .from("early_access_requests")
