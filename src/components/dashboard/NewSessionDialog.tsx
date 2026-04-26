@@ -26,7 +26,7 @@ export default function NewSessionDialog({ open, type, onClose, onCreated }: New
   if (!open) return null;
 
   const isBacktesting = type === "backtesting";
-  const accent = isBacktesting ? "#3B82F6" : "#F97316"; // blue / orange
+  const accent = isBacktesting ? "#10B981" : "#F97316"; // emerald (thème) / orange
   const label = isBacktesting ? "BACKTESTING" : "LIVE TRADING";
   const ctaText = isBacktesting ? "Créer la session de backtesting" : "Créer la session de live trading";
 
@@ -168,7 +168,7 @@ export default function NewSessionDialog({ open, type, onClose, onCreated }: New
           <p className="text-[10px] text-white/25 text-center">
             ↳ {isBacktesting
               ? 'Si Live Trading : bouton orange "Créer la session de live trading"'
-              : 'Si Backtesting : bouton bleu "Créer la session de backtesting"'}
+              : 'Si Backtesting : bouton vert "Créer la session de backtesting"'}
           </p>
         </div>
       </div>
