@@ -882,35 +882,67 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                           )}
                         </div>
                       </TableCell>
-                      {/* KIT — séquence email (orange Book-a-call / bleu Nurturing / gris stoppée) */}
+                      {/* KIT — cercle indicateur + Mail (4 états : jamais / Book-a-call actif / Nurturing actif / stoppé) */}
                       <TableCell className="text-center py-3">
                         {(() => {
                           const kit = kitEventsMap[lead.id];
-                          if (!kit) return null;
+                          // État 1 : jamais démarré → cercle gris foncé statique
+                          if (!kit) {
+                            return (
+                              <span
+                                className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/[0.03] border border-white/[0.06]"
+                                title="Aucune séquence email"
+                              >
+                                <Mail className="w-3.5 h-3.5 text-white/20" />
+                              </span>
+                            );
+                          }
                           const seqId = kit.sequence_id ?? "";
                           const seqName = KIT_SEQUENCE_NAMES[seqId] ?? "Séquence Kit";
                           const isActive = kit.status === 'subscribed';
                           const isStopped = kit.status === 'unsubscribed';
                           const isFailed = kit.status === 'failed';
-                          // Couleur selon séquence + état
-                          let colorClass = "text-muted-foreground/50";
+
+                          // Détermine la couleur selon état
+                          let ringClass = "bg-white/[0.04] border-white/10";
+                          let iconClass = "text-white/40";
                           let pulseClass = "";
+                          let tooltip = `${seqName} — Terminée`;
+
                           if (isActive) {
-                            if (seqId === '2624505') colorClass = "text-orange-400";
-                            else if (seqId === '2626026') colorClass = "text-sky-400";
-                            else colorClass = "text-emerald-400";
+                            if (seqId === '2624505') {
+                              // État 2 : Book-a-call actif → orange pulsant
+                              ringClass = "bg-orange-500/15 border-orange-500/40 shadow-[0_0_12px_rgba(251,146,60,0.35)]";
+                              iconClass = "text-orange-400";
+                            } else if (seqId === '2626026') {
+                              // État 3 : Nurturing actif → bleu pulsant
+                              ringClass = "bg-sky-500/15 border-sky-500/40 shadow-[0_0_12px_rgba(56,189,248,0.35)]";
+                              iconClass = "text-sky-400";
+                            } else {
+                              ringClass = "bg-emerald-500/15 border-emerald-500/40 shadow-[0_0_12px_rgba(52,211,153,0.35)]";
+                              iconClass = "text-emerald-400";
+                            }
                             pulseClass = "animate-pulse";
+                            tooltip = `Séquence active — ${seqName}`;
                           } else if (isFailed) {
-                            colorClass = "text-red-400/70";
+                            ringClass = "bg-red-500/10 border-red-500/30";
+                            iconClass = "text-red-400/80";
+                            tooltip = `${seqName} — Échec inscription`;
+                          } else if (isStopped) {
+                            // État 4 : stoppé → gris statique
+                            tooltip = `Séquence terminée — ${seqName}`;
                           }
-                          const tooltip = isFailed
-                            ? `${seqName} — Échec`
-                            : isStopped
-                              ? `${seqName} — Terminée${kit.stopped_at ? ` (${fmtDate(kit.stopped_at)})` : ''}`
-                              : `${seqName} — Active${kit.started_at ? ` depuis ${fmtDate(kit.started_at)}` : ''}`;
+
                           return (
-                            <span className="inline-flex items-center justify-center" title={tooltip}>
-                              <Mail className={cn("w-4 h-4", colorClass, pulseClass)} />
+                            <span
+                              className={cn(
+                                "inline-flex items-center justify-center w-7 h-7 rounded-full border transition-all",
+                                ringClass,
+                                pulseClass
+                              )}
+                              title={tooltip}
+                            >
+                              <Mail className={cn("w-3.5 h-3.5", iconClass)} />
                             </span>
                           );
                         })()}
