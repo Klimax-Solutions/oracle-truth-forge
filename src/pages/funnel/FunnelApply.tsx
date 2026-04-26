@@ -4,6 +4,24 @@ import { supabase } from '@/integrations/supabase/client';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
 import { submitFunnelLead, flushPendingLeads } from '@/lib/funnelLeadQueue';
 import { Loader2, ChevronLeft, Check, ArrowRight } from 'lucide-react';
+import { z } from 'zod';
+
+// Schéma strict appliqué AVANT envoi en base : durcit l'intégrité du lead.
+const contactSchema = z.object({
+  first_name: z
+    .string()
+    .trim()
+    .min(2, 'Prénom trop court (2 caractères minimum)')
+    .max(60, 'Prénom trop long (60 caractères maximum)')
+    .regex(/^[\p{L}\p{M}'’\-\s]+$/u, 'Prénom invalide (lettres, tirets et apostrophes uniquement)'),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email('Email invalide')
+    .max(255, 'Email trop long'),
+  phone: z.string().trim().max(40, 'Téléphone trop long'),
+});
 
 /**
  * Renders text with <u>...</u> as accent underlines.
@@ -63,6 +81,8 @@ export default function FunnelApply() {
   const [submitted, setSubmitted] = useState(false);
   const [disqualified, setDisqualified] = useState(false);
   const [error, setError] = useState('');
+  // Récap obligatoire avant l'envoi définitif → l'utilisateur DOIT relire son prénom/email/tel
+  const [confirming, setConfirming] = useState(false);
   const vslRef = useRef<HTMLDivElement>(null);
   const [ctaVisible, setCtaVisible] = useState(false);
 
@@ -157,13 +177,15 @@ export default function FunnelApply() {
     setTimeout(() => setStep(s => Math.min(s + 1, totalSteps - 1)), 300);
   };
 
-  const handleSubmit = async () => {
-    if (!contact.first_name.trim() || !contact.email.trim()) { setError('Nom et email requis'); return; }
+  // Étape 1 : valider strictement et basculer sur l'écran de récap.
+  // Aucune écriture en DB ici — l'utilisateur DOIT relire ses infos avant.
+  const prepareSubmit = () => {
+    setError('');
 
+    // Honeypot et time-trap restent silencieux (anti-bot)
     if (honeypot.trim()) {
       console.warn('[Apply] honeypot triggered — silent reject');
       setSubmitted(true);
-      // Pas de redirect : bot reste sur fake success, humain n'arrive jamais ici
       return;
     }
     if (Date.now() - formMountedAt.current < 1500) {
@@ -172,11 +194,38 @@ export default function FunnelApply() {
       return;
     }
 
+    const parsed = contactSchema.safeParse({
+      first_name: contact.first_name,
+      email: contact.email,
+      phone: contact.phone,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message || 'Champs invalides');
+      return;
+    }
+
+    setConfirming(true);
+  };
+
+  // Étape 2 : envoi réel. Appelé uniquement depuis l'écran de récap.
+  const confirmSubmit = async () => {
     setSubmitting(true); setError('');
 
-    const email = contact.email.trim().toLowerCase();
+    const parsed = contactSchema.safeParse({
+      first_name: contact.first_name,
+      email: contact.email,
+      phone: contact.phone,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message || 'Champs invalides');
+      setSubmitting(false);
+      setConfirming(false);
+      return;
+    }
+
+    const { first_name, email } = parsed.data;
     // ⚠️ phone est NOT NULL → on envoie '' pas null
-    const phone = contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : '';
+    const phone = parsed.data.phone ? `${contact.countryCode} ${parsed.data.phone}` : '';
 
     // Compute enrichment fields from answers
     const investmentAnswer = answers['investment_amount'] || '';
@@ -189,12 +238,11 @@ export default function FunnelApply() {
     const importance = impMatch ? parseInt(impMatch[1], 10) : null;
 
     const leadPayload = {
-      first_name: contact.first_name.trim(),
+      first_name,
       email,
       phone,
       status: 'en_attente',
       form_submitted: true,
-      // Enrichment inclus dans l'INSERT (atomique, pas de UPDATE séparé qui peut échouer)
       ...(Object.keys(answers).length > 0 ? { form_answers: answers } : {}),
       ...(investmentAnswer ? { offer_amount: investmentAnswer } : {}),
       ...(budgetAmount != null ? { budget_amount: budgetAmount } : {}),
@@ -203,23 +251,18 @@ export default function FunnelApply() {
       ...(importance != null ? { importance_trading: importance } : {}),
     };
 
-    // ─── Couche antifragile ──────────────────────────────────────────────
-    // submitFunnelLead retry 3x avec backoff. Si encore KO → queue localStorage,
-    // rejoué automatiquement à la prochaine ouverture d'une page funnel.
-    // Le user voit TOUJOURS l'écran de succès. Aucune perte de lead possible.
     try {
       const result = await submitFunnelLead(leadPayload, slug);
       if (result.queued) {
         console.warn('[Apply] Lead queued for retry — backend unreachable, will sync later:', email);
       }
     } catch (err) {
-      // submitFunnelLead ne devrait jamais throw, mais belt-and-suspenders
       console.error('[Apply] Unexpected error during submit:', err);
     }
 
-    // Toujours afficher l'écran de succès — le lead est soit en DB, soit en queue
     setSubmitted(true);
     setSubmitting(false);
+    setConfirming(false);
   };
 
   const renderEmbed = () => {
@@ -416,6 +459,65 @@ export default function FunnelApply() {
                 </div>
               </div>
             ) : isContactStep ? (
+              confirming ? (
+                /* ─── ÉCRAN DE CONFIRMATION : l'utilisateur DOIT relire ─── */
+                <div className="space-y-6">
+                  <div className="mb-4">
+                    <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.3em] text-muted-foreground mb-3">
+                      Vérification finale
+                    </p>
+                    <h2 className="text-base md:text-lg font-bold text-foreground mb-1">
+                      Confirme tes informations
+                    </h2>
+                    <p className="text-xs md:text-sm text-muted-foreground">
+                      Vérifie que ton prénom, email et téléphone sont corrects avant l'envoi.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 rounded-md border border-border bg-background/40 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground shrink-0">Prénom</span>
+                      <span className="text-sm font-semibold text-foreground text-right break-words">{contact.first_name.trim()}</span>
+                    </div>
+                    <div className="h-px bg-border" />
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground shrink-0">Email</span>
+                      <span className="text-sm font-mono text-foreground text-right break-all">{contact.email.trim().toLowerCase()}</span>
+                    </div>
+                    <div className="h-px bg-border" />
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground shrink-0">Téléphone</span>
+                      <span className="text-sm font-mono text-foreground text-right">
+                        {contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <p className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2 font-mono">
+                      {error}
+                    </p>
+                  )}
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      onClick={() => { setConfirming(false); setError(''); }}
+                      disabled={submitting}
+                      className="h-12 px-4 rounded-md border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
+                    >
+                      <ChevronLeft className="w-4 h-4 inline mr-1" />
+                      Modifier
+                    </button>
+                    <button
+                      onClick={confirmSubmit}
+                      disabled={submitting}
+                      className="flex-1 h-12 rounded-md bg-foreground hover:bg-foreground/90 text-background font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {submitting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Confirmer et envoyer'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
               <div className="space-y-6">
                 <div className="mb-6 md:mb-8">
                   <h2 className="text-base md:text-lg font-bold text-foreground mb-1">
@@ -428,11 +530,17 @@ export default function FunnelApply() {
 
                 <div className="space-y-5">
                   <div className="space-y-2">
-                    <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                    <label htmlFor="apply-first-name" className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
                       {config.apply_form_name_label || 'Prénom'}
                     </label>
                     <input
+                      id="apply-first-name"
+                      name="given-name"
                       type="text"
+                      autoComplete="given-name"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      maxLength={60}
                       value={contact.first_name}
                       onChange={e => setContact(c => ({ ...c, first_name: e.target.value }))}
                       className="w-full h-12 px-4 bg-background border border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none rounded-md transition-colors"
@@ -442,7 +550,7 @@ export default function FunnelApply() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                    <label htmlFor="apply-phone" className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
                       {config.apply_form_phone_label || 'Numéro de téléphone'}
                     </label>
                     <div className="flex gap-2">
@@ -459,7 +567,11 @@ export default function FunnelApply() {
                         <option value="+243">🇨🇩 +243</option><option value="+352">🇱🇺 +352</option><option value="+377">🇲🇨 +377</option>
                       </select>
                       <input
+                        id="apply-phone"
+                        name="tel-national"
                         type="tel"
+                        autoComplete="tel-national"
+                        maxLength={30}
                         value={contact.phone}
                         onChange={e => { const formatted = formatPhone(e.target.value, contact.countryCode); setContact(c => ({ ...c, phone: formatted })); }}
                         className="flex-1 h-12 px-4 bg-background border border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none rounded-md transition-colors font-mono tracking-wider"
@@ -469,11 +581,17 @@ export default function FunnelApply() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                    <label htmlFor="apply-email" className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
                       {config.apply_form_email_label || 'Adresse email'}
                     </label>
                     <input
+                      id="apply-email"
+                      name="email"
                       type="email"
+                      autoComplete="email"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      maxLength={255}
                       value={contact.email}
                       onChange={e => setContact(c => ({ ...c, email: e.target.value }))}
                       className="w-full h-12 px-4 bg-background border border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none rounded-md transition-colors"
@@ -509,14 +627,15 @@ export default function FunnelApply() {
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={handleSubmit}
+                    onClick={prepareSubmit}
                     disabled={submitting || !contact.first_name.trim() || !contact.email.trim()}
                     className="flex-1 h-12 rounded-md bg-foreground hover:bg-foreground/90 text-background font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
-                    {submitting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Soumettre ma demande'}
+                    Vérifier ma candidature
                   </button>
                 </div>
               </div>
+              )
             ) : (
               <div className="space-y-6" key={step}>
                 <div className="mb-6 md:mb-8">
