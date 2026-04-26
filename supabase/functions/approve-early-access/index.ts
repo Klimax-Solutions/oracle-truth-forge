@@ -58,6 +58,17 @@ Deno.serve(async (req) => {
     if (action === "resend_magic_link") {
       const { email } = body;
       if (!email) throw new Error("email manquant");
+
+      // Guard : même protection que pour l'approbation.
+      // Un email @sms.invalid / @sms.cal.com ne peut pas recevoir de magic link.
+      const _invalidPatterns = ["@sms.cal.com", "@sms.invalid", ".invalid"];
+      const _emailLower = email.toLowerCase();
+      if (_invalidPatterns.some(p => _emailLower.includes(p))) {
+        throw new Error(
+          `Email invalide — impossible d'envoyer un magic link à "${email}". ` +
+          `Mets à jour l'email réel du lead dans le CRM avant de renvoyer.`
+        );
+      }
       const gotrue = `${supabaseUrl}/auth/v1/magiclink`;
       const otpRes = await fetch(gotrue, {
         method: "POST",

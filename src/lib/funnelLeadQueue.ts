@@ -150,10 +150,11 @@ async function attemptInsert(lead: FunnelLeadPayload): Promise<boolean> {
       // 23505 = unique violation → lead déjà existant.
       // On RETOURNE FALSE pour forcer le passage par attemptEdgeFallback,
       // qui logge un event 'funnel_resubmitted' visible dans la timeline.
+      // NOTE : on NE déclenche PAS Kit ici — attemptEdgeFallback va récupérer
+      // le request_id existant et déclencher Kit avec le bon lead_id.
+      // Déclencher Kit ici + dans attemptEdgeFallback = double subscribe, à éviter.
       if ((error as any).code === '23505') {
         console.log('[FunnelQueue] Lead already exists, routing to edge for resubmit logging:', lead.email);
-        // Kit reste idempotent côté Kit — on déclenche quand même
-        triggerKitSequence(lead);
         return false;
       }
       console.warn(`[FunnelQueue] INSERT attempt ${i + 1}/3 failed:`, error.message);

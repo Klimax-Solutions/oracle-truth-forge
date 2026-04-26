@@ -82,7 +82,7 @@ export default function FunnelApply() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [contact, setContact] = useState({
-    first_name: prefillEmail ? prefillName : '',
+    first_name: prefillName || '',
     phone: '',
     email: prefillEmail,
     countryCode: '+33',
@@ -98,7 +98,16 @@ export default function FunnelApply() {
 
   // ── Anti-spam : 3 couches défensives ────────────────────────────────────
   const [honeypot, setHoneypot] = useState('');
+  // ── Anti-spam time-trap ───────────────────────────────────────────────────────
+  // Reset quand le form devient visible (pas au mount du composant, qui peut arriver
+  // pendant le chargement de la VSL — sinon le délai est déjà écoulé avant même
+  // que l'utilisateur voie le form).
   const formMountedAt = useRef<number>(Date.now());
+  useEffect(() => {
+    if (showForm) {
+      formMountedAt.current = Date.now();
+    }
+  }, [showForm]);
 
   const phoneFormats: Record<string, { groups: number[]; placeholder: string }> = {
     '+33':  { groups: [1, 2, 2, 2, 2], placeholder: '6 12 34 56 78' },

@@ -168,10 +168,14 @@ export default function FunnelDiscovery() {
           } catch { dateLabel = rawDate; }
         }
 
-        const syncEmail = email || session?.email || '';
+        // Relire la session directement (pas via le memo stale) pour avoir
+        // le request_id même si storeFunnelSession() a été appelé après le mount
+        // (ex: lead_id URL param arrivé et hydraté par le useEffect).
+        const liveSession = getFunnelSession();
+        const syncEmail = email || liveSession?.email || '';
         if (syncEmail) {
           syncBookingToDB({
-            requestId: session?.request_id,
+            requestId: liveSession?.request_id,
             email: syncEmail,
             scheduledAt,
             meetingUrl,

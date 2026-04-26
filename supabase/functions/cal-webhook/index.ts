@@ -487,7 +487,10 @@ Deno.serve(async (req: Request) => {
         // On génère un placeholder non-livrable (RFC 2606 : .invalid = réservé, jamais livré).
         // Le CRM affichera "email manquant" et l'admin devra le compléter manuellement.
         const rawEmail: string = formEmail || (isSmsBooking ? "" : attendeeEmail);
-        const digits = (smsPhone || phone || "").replace(/\D/g, "").slice(-10);
+        // Utiliser les digits COMPLETS (pas slice(-10)) pour garantir l'unicité du placeholder.
+        // Ex: +33781748022 → "33781748022" — un .slice(-10) sur deux numéros différents
+        // commençant par le même suffixe produirait le même email fantôme.
+        const digits = (smsPhone || phone || "").replace(/\D/g, "");
         const email: string = rawEmail || `sms_${digits || booking.uid?.slice(0, 8) || "unknown"}@sms.invalid`;
 
         const insertData = {
@@ -543,8 +546,9 @@ Deno.serve(async (req: Request) => {
       }
 
       // ── Kit : stop séquence book-a-call → start séquence pre-call ──────────────
-      // Non-bloquant : ne throw jamais, ne ralentit pas la réponse au webhook Cal.com.
-      void manageKitOnBooking({
+      // await pour garantir que les appels Kit se terminent avant la réponse au webhook.
+      // manageKitOnBooking ne throw jamais — elle avale toutes les erreurs en interne.
+      await manageKitOnBooking({
         email:     kitLeadEmail,
         firstName: kitLeadFirstName,
         requestId: kitRequestId,
