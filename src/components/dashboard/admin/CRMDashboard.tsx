@@ -212,8 +212,15 @@ function LeadDetail({ lead, onClose }: { lead: PipelineLead; onClose: () => void
         <div className="space-y-1.5">
           <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Contact</p>
           <button onClick={() => copy(lead.email, "Email")} className="flex items-center gap-2 text-xs hover:text-primary transition-colors w-full text-left">
-            <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" /><span className="truncate flex-1">{lead.email}</span><Copy className="w-3 h-3 text-muted-foreground shrink-0" />
+            <Mail className={cn("w-3.5 h-3.5 shrink-0", lead.email?.endsWith('@sms.cal.com') ? "text-orange-400" : "text-muted-foreground")} />
+            <span className={cn("truncate flex-1", lead.email?.endsWith('@sms.cal.com') && "text-orange-300 italic")}>{lead.email}</span>
+            <Copy className="w-3 h-3 text-muted-foreground shrink-0" />
           </button>
+          {lead.email?.endsWith('@sms.cal.com') && (
+            <p className="text-[10px] font-display text-orange-400/80 pl-5 -mt-0.5">
+              ⚠️ Email placeholder Cal.com — récupère le vrai email lors du call
+            </p>
+          )}
           {lead.phone && (
             <button onClick={() => copy(lead.phone, "Tel")} className="flex items-center gap-2 text-xs hover:text-primary transition-colors w-full text-left">
               <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" /><span>{lead.phone}</span><Copy className="w-3 h-3 text-muted-foreground shrink-0" />
