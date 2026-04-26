@@ -1484,7 +1484,7 @@ export default function GestionPanel() {
                                 {expandedExecs.length === 0 ? (
                                   <div className="text-center py-6 text-[11px] text-muted-foreground">Aucun trade saisi sur ce cycle</div>
                                 ) : (
-                                  <ScrollArea className="max-h-[420px] rounded-md border border-border">
+                                  <ScrollArea className="max-h-[420px] rounded-md border border-border [&_[data-radix-scroll-area-viewport]]:pb-3">
                                     <Table>
                                       <TableHeader>
                                         <TableRow className="bg-muted/50">
