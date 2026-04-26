@@ -483,7 +483,34 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
       setLeads(requests.map(r => mapLead(r)));
       setLoading(false);
 
-      // Enrich in background
+      // Charge les events Kit en parallèle (non-bloquant)
+      const requestIds = requests.map(r => r.id);
+      if (requestIds.length > 0) {
+        supabase.from("lead_events")
+          .select("request_id, event_type, timestamp, metadata")
+          .in("request_id", requestIds)
+          .eq("source", "kit")
+          .order("timestamp", { ascending: false })
+          .then(({ data }) => {
+            if (!data) return;
+            const map: Record<string, { status: 'subscribed' | 'failed' | 'unsubscribed'; at: string; tag_added?: boolean }> = {};
+            // On garde le dernier event significatif par lead (data déjà desc)
+            for (const ev of data as any[]) {
+              if (map[ev.request_id]) continue;
+              let status: 'subscribed' | 'failed' | 'unsubscribed' | null = null;
+              if (ev.event_type === 'kit_sequence_subscribed') status = 'subscribed';
+              else if (ev.event_type === 'kit_subscribe_failed') status = 'failed';
+              else if (ev.event_type === 'kit_unsubscribed' || ev.event_type === 'kit_sequence_unsubscribed') status = 'unsubscribed';
+              if (!status) continue;
+              map[ev.request_id] = {
+                status,
+                at: ev.timestamp,
+                tag_added: !!ev.metadata?.tag_added,
+              };
+            }
+            setKitEventsMap(map);
+          });
+      }
       const userIds = requests.filter(r => r.user_id).map(r => r.user_id);
       if (userIds.length === 0) return;
       const [rolesRes, activityRes, sessionsRes, execsRes, videoViewsRes] = await Promise.all([
