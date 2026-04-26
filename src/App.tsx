@@ -17,6 +17,8 @@ import FunnelLanding from "./pages/funnel/FunnelLanding";
 import FunnelApply from "./pages/funnel/FunnelApply";
 import FunnelDiscovery from "./pages/funnel/FunnelDiscovery";
 import FunnelFinal from "./pages/funnel/FunnelFinal";
+import { SuccessNotification } from "./components/dashboard/SuccessNotification";
+import { MaintenanceLock } from "./components/MaintenanceLock";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -49,6 +51,8 @@ const App = () => (
           <Route path="/:slug/final" element={<FunnelFinal />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <SuccessNotification />
+        <MaintenanceLock />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

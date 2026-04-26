@@ -269,6 +269,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     let authChecked = false;
+    let mounted = true;
     
     const checkUserAccess = async (uid: string, session?: any) => {
       if (authChecked) return true;
@@ -338,6 +339,7 @@ const Dashboard = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
         if (!session) {
           navigate("/auth");
           setLoading(false);
@@ -351,11 +353,12 @@ const Dashboard = () => {
           await checkUserAccess(session.user.id, session);
         }
 
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     );
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
       if (!session) {
         navigate("/auth");
         setLoading(false);

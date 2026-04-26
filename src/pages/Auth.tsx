@@ -149,16 +149,37 @@ const Auth = () => {
             return;
           }
           
-          // Register or update device session
+          // Register or update device session. Do not use upsert here: the DB may not
+          // have a unique constraint on (user_id, device_fingerprint), which would
+          // silently fail and leave the dashboard with an invalid local token.
           const sessionToken = crypto.randomUUID();
-          await supabase
-            .from("user_sessions")
-            .upsert({
-              user_id: data.user.id,
-              session_token: sessionToken,
-              device_info: navigator.userAgent,
-              device_fingerprint: deviceFingerprint,
-            }, { onConflict: "user_id,device_fingerprint" });
+          const existingDeviceSession = (existingSessions || []).find(
+            s => (s as any).device_fingerprint === deviceFingerprint,
+          );
+
+          const sessionWrite = existingDeviceSession
+            ? await supabase
+                .from("user_sessions")
+                .update({
+                  session_token: sessionToken,
+                  device_info: navigator.userAgent,
+                  device_fingerprint: deviceFingerprint,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", (existingDeviceSession as any).id)
+            : await supabase
+                .from("user_sessions")
+                .insert({
+                  user_id: data.user.id,
+                  session_token: sessionToken,
+                  device_info: navigator.userAgent,
+                  device_fingerprint: deviceFingerprint,
+                });
+
+          if (sessionWrite.error) {
+            throw sessionWrite.error;
+          }
+
           localStorage.setItem("oracle_session_token", sessionToken);
 
           // Source de vérité = profiles.first_name (rempli par funnel ou
