@@ -608,8 +608,9 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
 
   const filtered = useMemo(() => {
     let r = [...leads];
-    // Setter auto-filter
-    if (isSetterOnly && currentSetterName) r = r.filter(l => l.setter_name === currentSetterName);
+    // ⚠️ Pas de filtre auto setter : les setters voient le pipeline complet
+    // (les leads existants n'ont pas de `setter_name` rempli, et l'équipe veut
+    // un pool partagé). Le filtre manuel `setterFilter` reste disponible.
     if (search) { const q = search.toLowerCase(); r = r.filter(l => l.first_name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q) || l.phone.includes(q)); }
     // Vue filter
     // Filtres trial — 'non_applicable' exclus implicitement (leads pending/non-approuvés)
