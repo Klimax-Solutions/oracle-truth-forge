@@ -372,7 +372,7 @@ function PreviewApply({ c }: { c: any }) {
 
   // ── Form phase ──
   return (
-    <div className="min-h-full bg-[#0A0B10] p-6">
+    <div className="min-h-full bg-[#0A0B10] p-3 md:p-6">
       <div className="max-w-md mx-auto space-y-6 pt-4">
         {hasVSL && previewShowForm && (
           <button onClick={() => { setPreviewShowForm(false); setPreviewStep(0); }} className="text-[10px] text-white/30 hover:text-white/50 font-display">← Retour à la VSL</button>
@@ -498,7 +498,7 @@ function PreviewDiscovery({ c }: { c: any }) {
   }
 
   return (
-    <div className="min-h-full bg-[#0a0a0f] p-6">
+    <div className="min-h-full bg-[#0a0a0f] p-3 md:p-6">
       <div className="max-w-md mx-auto space-y-6 pt-4 text-center">
         <span className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-xs text-emerald-400">
           <CheckCircle2 className="w-3.5 h-3.5" />

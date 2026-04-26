@@ -150,7 +150,7 @@ export default function AdminFunnelList({ onEditFunnel }: { onEditFunnel?: (id: 
         {/* Header */}
         <header className="border-b border-white/[0.10] bg-black/60 backdrop-blur-xl sticky top-0 z-50">
           <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-          <div className="container max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="container max-w-5xl mx-auto px-3 md:px-6 h-16 flex items-center justify-between gap-3">
             <div className="flex items-center gap-4">
               <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
                 <Layers className="h-4 w-4 text-primary" />
@@ -172,7 +172,7 @@ export default function AdminFunnelList({ onEditFunnel }: { onEditFunnel?: (id: 
           </div>
         </header>
 
-        <main className="container max-w-5xl mx-auto px-6 py-8">
+        <main className="container max-w-5xl mx-auto px-3 md:px-6 py-4 md:py-8">
           {/* Create modal */}
           <AnimatePresence>
             {showCreate && (
@@ -180,7 +180,7 @@ export default function AdminFunnelList({ onEditFunnel }: { onEditFunnel?: (id: 
                 initial={{ opacity: 0, y: -12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
-                className="mb-8 rounded-2xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-primary/20 p-6 space-y-4"
+                className="mb-6 md:mb-8 rounded-2xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-primary/20 p-4 md:p-6 space-y-4"
               >
                 <div className="flex items-center justify-between">
                   <h2 className="font-display text-sm tracking-[0.15em] uppercase text-white">Nouveau funnel</h2>
