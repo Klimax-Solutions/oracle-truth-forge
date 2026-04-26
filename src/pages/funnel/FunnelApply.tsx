@@ -157,13 +157,12 @@ export default function FunnelApply() {
     if (honeypot.trim()) {
       console.warn('[Apply] honeypot triggered — silent reject');
       setSubmitted(true);
-      setTimeout(() => navigate('/'), 1500);
+      // Pas de redirect : bot reste sur fake success, humain n'arrive jamais ici
       return;
     }
-    if (Date.now() - formMountedAt.current < 2000) {
+    if (Date.now() - formMountedAt.current < 1500) {
       console.warn('[Apply] time-trap triggered — silent reject');
       setSubmitted(true);
-      setTimeout(() => navigate('/'), 1500);
       return;
     }
 
