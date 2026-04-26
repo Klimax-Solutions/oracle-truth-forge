@@ -848,11 +848,17 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                               </button>
                             ) : (lead.user_id && lead.status !== 'closed_won' && lead.status !== 'doublon') ? (
                               <button
-                                onClick={e => handleCloseLead(e, lead)}
-                                disabled={closingId === lead.id}
-                                className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-display font-semibold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/25 hover:bg-emerald-500/20 transition-all disabled:opacity-50"
+                                onClick={e => { if (!canEditCall) { e.stopPropagation(); return; } handleCloseLead(e, lead); }}
+                                disabled={closingId === lead.id || !canEditCall}
+                                title={!canEditCall ? "Réservé aux closers et admins — un setter ne peut pas activer un membre payant" : undefined}
+                                className={cn(
+                                  "mt-0.5 inline-flex items-center gap-1 text-[10px] font-display font-semibold px-2 py-0.5 rounded-md border transition-all",
+                                  canEditCall
+                                    ? "text-emerald-300 bg-emerald-500/10 border-emerald-500/25 hover:bg-emerald-500/20 disabled:opacity-50"
+                                    : "text-white/30 bg-white/5 border-white/10 cursor-not-allowed"
+                                )}
                               >
-                                {closingId === lead.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <CheckCircle2 className="w-2.5 h-2.5" />}
+                                {closingId === lead.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : !canEditCall ? <Lock className="w-2.5 h-2.5" /> : <CheckCircle2 className="w-2.5 h-2.5" />}
                                 {closingId === lead.id ? '...' : 'Activer membre'}
                               </button>
                             ) : null}
