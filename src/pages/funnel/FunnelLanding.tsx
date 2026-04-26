@@ -14,7 +14,7 @@ export default function FunnelLanding() {
     <div className="min-h-screen bg-[#0A0B10] text-white flex flex-col">
 
       {/* Center content */}
-      <div className="flex-1 flex items-center justify-center px-6">
+      <div className="flex-1 flex items-center justify-center px-4 md:px-6">
         <div className="max-w-2xl w-full text-center space-y-10">
 
           {/* Brand */}

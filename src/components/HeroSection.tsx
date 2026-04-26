@@ -62,7 +62,7 @@ export const HeroSection = () => {
           <div className="relative animate-slide-up hidden lg:block">
             <div className="relative">
               {/* Main card */}
-              <div className="glass-card rounded-3xl p-8 glow-border">
+              <div className="glass-card rounded-3xl p-5 md:p-8 glow-border">
                 <div className="flex items-center justify-between mb-8">
                   <div>
                     <h3 className="text-2xl font-bold">Progression</h3>
