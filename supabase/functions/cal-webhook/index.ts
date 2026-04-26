@@ -199,6 +199,21 @@ Deno.serve(async (req: Request) => {
       log.info("SMS", `Booking SMS détecté — téléphone extrait: ${smsPhone}`);
     }
 
+    // ── Filet de sécurité : metadata Cal.com (form_email / form_phone) ──
+    // On a injecté ces métadonnées au prefill Cal côté FunnelDiscovery pour
+    // garantir qu'on retrouve le lead d'origine MÊME si l'utilisateur
+    // change l'email dans Cal ou book par SMS. C'est notre source de vérité.
+    const bookingMeta = (booking as any).metadata || {};
+    const formEmail: string | null = typeof bookingMeta.form_email === "string"
+      ? bookingMeta.form_email.toLowerCase().trim()
+      : null;
+    const formPhone: string | null = typeof bookingMeta.form_phone === "string"
+      ? bookingMeta.form_phone.trim()
+      : null;
+    if (formEmail || formPhone) {
+      log.info("METADATA", `form_email=${formEmail || "∅"}, form_phone=${formPhone || "∅"}`);
+    }
+
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // BOOKING_CREATED
     // Quand un lead réserve un call via Cal.com :
