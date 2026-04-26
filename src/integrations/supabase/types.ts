@@ -1037,6 +1037,39 @@ export type Database = {
         }
         Relationships: []
       }
+      trading_sessions: {
+        Row: {
+          archived: boolean
+          asset: string | null
+          created_at: string
+          id: string
+          name: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean
+          asset?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived?: boolean
+          asset?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_custom_variables: {
         Row: {
           created_at: string
@@ -1321,6 +1354,7 @@ export type Database = {
           screenshot_context_url: string | null
           screenshot_entry_url: string | null
           screenshot_url: string | null
+          session_id: string | null
           setup_type: string | null
           sl_placement: string | null
           speculation_hl_valid: boolean | null
@@ -1362,6 +1396,7 @@ export type Database = {
           screenshot_context_url?: string | null
           screenshot_entry_url?: string | null
           screenshot_url?: string | null
+          session_id?: string | null
           setup_type?: string | null
           sl_placement?: string | null
           speculation_hl_valid?: boolean | null
@@ -1403,6 +1438,7 @@ export type Database = {
           screenshot_context_url?: string | null
           screenshot_entry_url?: string | null
           screenshot_url?: string | null
+          session_id?: string | null
           setup_type?: string | null
           sl_placement?: string | null
           speculation_hl_valid?: boolean | null
@@ -1424,6 +1460,13 @@ export type Database = {
             columns: ["custom_setup_id"]
             isOneToOne: false
             referencedRelation: "custom_setups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_personal_trades_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "trading_sessions"
             referencedColumns: ["id"]
           },
         ]
