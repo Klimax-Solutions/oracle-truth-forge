@@ -227,34 +227,76 @@ Deno.serve(async (req: Request) => {
       let leads: any[] | null = null;
       let lookupError: any = null;
 
-      if (!isSmsBooking) {
-        // Lookup par email
-        log.info("BOOKING_CREATED", `Lookup DB par email: ${attendeeEmail}`);
+      // Stratégie de réconciliation (par ordre de priorité) :
+      // 1. metadata.form_email (notre source de vérité injectée au prefill)
+      // 2. metadata.form_phone (idem)
+      // 3. attendee.email si pas SMS
+      // 4. téléphone extrait du @sms.cal.com OU de attendee.phoneNumber
+      const tryLookupByEmail = async (email: string) => {
         const res = await supabase
           .from("early_access_requests")
-          .select("id, first_name, email, phone, call_booked, status")
-          .eq("email", attendeeEmail)
+          .select("id, first_name, email, phone, call_booked, status, form_submitted")
+          .ilike("email", email)
           .order("created_at", { ascending: false })
           .limit(5);
-        leads = res.data;
-        lookupError = res.error;
-        log.info("BOOKING_CREATED", `Résultat lookup email`, { count: leads?.length, error: lookupError?.message });
-      } else if (smsPhone) {
-        // Lookup par téléphone (normalisation des digits)
-        const digits = smsPhone.replace(/\D/g, '');
-        log.info("BOOKING_CREATED", `Lookup DB par téléphone, digits: ${digits}`);
+        return res;
+      };
+
+      const tryLookupByPhone = async (phoneRaw: string) => {
+        const digits = phoneRaw.replace(/\D/g, '');
+        if (!digits) return { data: [], error: null };
         const res = await supabase
           .from("early_access_requests")
-          .select("id, first_name, email, phone, call_booked, status")
+          .select("id, first_name, email, phone, call_booked, status, form_submitted")
           .order("created_at", { ascending: false })
-          .limit(50);
-        leads = (res.data || []).filter((l: any) => {
+          .limit: undefined as never; // sentinel — on fait limit après
+        // (on refait proprement ci-dessous)
+        const res2 = await supabase
+          .from("early_access_requests")
+          .select("id, first_name, email, phone, call_booked, status, form_submitted")
+          .order("created_at", { ascending: false })
+          .limit(100);
+        const filtered = (res2.data || []).filter((l: any) => {
           if (!l.phone) return false;
           const leadDigits = l.phone.replace(/\D/g, '');
-          return leadDigits === digits || leadDigits === digits.replace(/^0+/, '');
+          return leadDigits === digits || leadDigits === digits.replace(/^0+/, '') || leadDigits.endsWith(digits.slice(-9));
         });
-        lookupError = res.error;
-        log.info("BOOKING_CREATED", `Résultat lookup téléphone`, { matched: leads?.length });
+        return { data: filtered, error: res2.error };
+      };
+
+      // Étape 1 : metadata.form_email
+      if (formEmail) {
+        log.info("BOOKING_CREATED", `Lookup #1 (metadata.form_email): ${formEmail}`);
+        const res = await tryLookupByEmail(formEmail);
+        leads = res.data; lookupError = res.error;
+        log.info("BOOKING_CREATED", `Résultat lookup form_email`, { count: leads?.length });
+      }
+
+      // Étape 2 : metadata.form_phone
+      if ((!leads || leads.length === 0) && formPhone) {
+        log.info("BOOKING_CREATED", `Lookup #2 (metadata.form_phone): ${formPhone}`);
+        const res = await tryLookupByPhone(formPhone);
+        leads = res.data; lookupError = res.error;
+        log.info("BOOKING_CREATED", `Résultat lookup form_phone`, { count: leads?.length });
+      }
+
+      // Étape 3 : attendee.email (si pas SMS)
+      if ((!leads || leads.length === 0) && !isSmsBooking) {
+        log.info("BOOKING_CREATED", `Lookup #3 (attendee.email): ${attendeeEmail}`);
+        const res = await tryLookupByEmail(attendeeEmail);
+        leads = res.data; lookupError = res.error;
+        log.info("BOOKING_CREATED", `Résultat lookup attendee.email`, { count: leads?.length });
+      }
+
+      // Étape 4 : téléphone (SMS booking ou attendee.phoneNumber)
+      if (!leads || leads.length === 0) {
+        const phoneCandidate = smsPhone || (attendee as any)?.phoneNumber || null;
+        if (phoneCandidate) {
+          log.info("BOOKING_CREATED", `Lookup #4 (phone fallback): ${phoneCandidate}`);
+          const res = await tryLookupByPhone(phoneCandidate);
+          leads = res.data; lookupError = res.error;
+          log.info("BOOKING_CREATED", `Résultat lookup phone`, { count: leads?.length });
+        }
       }
 
       if (lookupError) {
