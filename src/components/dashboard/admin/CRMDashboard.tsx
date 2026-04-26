@@ -840,6 +840,46 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                           )}
                         </div>
                       </TableCell>
+                      {/* MAIL — statut séquence Kit (subscribed / failed / unsubscribed) */}
+                      <TableCell className="text-center py-3">
+                        {(() => {
+                          const kit = kitEventsMap[lead.id];
+                          if (!kit) return <span className="text-white/15 text-[11px]">—</span>;
+                          if (kit.status === 'subscribed') {
+                            return (
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/25" title="Inscrit à la séquence Kit">
+                                  <Send className="w-3 h-3 shrink-0" />
+                                  <span className="font-bold">{fmtDate(kit.at)}</span>
+                                  <span className="opacity-50">{fmtTime(kit.at)}</span>
+                                </span>
+                                <span className="text-[9px] font-display text-emerald-400/60 uppercase tracking-wider">séquence active</span>
+                              </div>
+                            );
+                          }
+                          if (kit.status === 'unsubscribed') {
+                            return (
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-violet-300 bg-violet-500/10 px-2.5 py-1 rounded-lg border border-violet-500/25" title="Désinscrit (call booké)">
+                                  <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                  <span className="font-bold">{fmtDate(kit.at)}</span>
+                                </span>
+                                <span className="text-[9px] font-display text-violet-400/60 uppercase tracking-wider">stop · call booké</span>
+                              </div>
+                            );
+                          }
+                          // failed
+                          return (
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-red-300 bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/30" title="Échec de l'inscription Kit">
+                                <X className="w-3 h-3 shrink-0" />
+                                <span className="font-bold">{fmtDate(kit.at)}</span>
+                              </span>
+                              <span className="text-[9px] font-display text-red-400/60 uppercase tracking-wider">échec</span>
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
                       {/* CALL — date+h colorée selon outcome (valeurs canoniques) */}
                       <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "call"); }}>
                         {lead.call_no_show ? (
