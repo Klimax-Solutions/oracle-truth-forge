@@ -123,15 +123,52 @@ async function attemptInsert(lead: FunnelLeadPayload): Promise<boolean> {
 }
 
 /**
- * Submit principal — tente l'INSERT, en cas d'échec total queue le lead.
- * Retourne toujours { ok: true } pour le UX. Le serveur peut être HS, le user voit toujours succès.
+ * Filet de sécurité ULTIME : appelle l'edge function service-role qui bypass RLS.
+ * N'est utilisée que si l'INSERT direct a échoué 3x. Ne throw jamais.
  */
-export async function submitFunnelLead(lead: FunnelLeadPayload, slug?: string): Promise<{ ok: true; queued: boolean }> {
-  const ok = await attemptInsert(lead);
-  if (ok) {
-    console.log('[FunnelQueue] Lead landed in pipeline:', lead.email);
+async function attemptEdgeFallback(lead: FunnelLeadPayload, slug?: string): Promise<boolean> {
+  try {
+    const { _attempted_at, _attempts, _slug, ...payload } = lead;
+    void _attempted_at; void _attempts; void _slug;
+    const { data, error } = await supabase.functions.invoke('submit-funnel-lead', {
+      body: { ...payload, ...(slug ? { slug } : {}) },
+    });
+    if (error) {
+      console.warn('[FunnelQueue] Edge fallback error:', error.message);
+      return false;
+    }
+    if ((data as any)?.ok) {
+      console.log('[FunnelQueue] Lead recovered via edge fallback:', lead.email, data);
+      // Déclenche Kit (idempotent côté Kit, pas de double inscription)
+      triggerKitSequence(lead, (data as any)?.id);
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.warn('[FunnelQueue] Edge fallback threw:', err);
+    return false;
+  }
+}
+
+/**
+ * Submit principal — 3 niveaux de protection :
+ *  1. INSERT direct (RLS user) avec retry 3x
+ *  2. Edge function fallback (service_role, bypass RLS)
+ *  3. Queue localStorage si tout a échoué
+ * Retourne toujours { ok: true } pour le UX.
+ */
+export async function submitFunnelLead(lead: FunnelLeadPayload, slug?: string): Promise<{ ok: true; queued: boolean; recovered?: boolean }> {
+  const directOk = await attemptInsert(lead);
+  if (directOk) {
+    console.log('[FunnelQueue] Lead landed in pipeline (direct):', lead.email);
     return { ok: true, queued: false };
   }
+  // Filet de sécurité serveur
+  const edgeOk = await attemptEdgeFallback(lead, slug);
+  if (edgeOk) {
+    return { ok: true, queued: false, recovered: true };
+  }
+  // Dernier recours : queue locale
   enqueue({ ...lead, _slug: slug });
   return { ok: true, queued: true };
 }
