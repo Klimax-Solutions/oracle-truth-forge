@@ -839,347 +839,49 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Export</span>
             </Button>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" onClick={handleNewEntry} className="gap-1.5 flex-1 md:flex-none">
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Nouveau</span> Trade
-                </Button>
-              </DialogTrigger>
-              {/* ── DIALOG PLEIN ÉCRAN — 2 colonnes, zéro scroll ── */}
-              <DialogContent className="w-[96vw] max-w-[96vw] h-[88vh] p-0 bg-card border-border flex flex-col overflow-hidden">
-
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
-                  <h2 className="text-base font-bold tracking-tight text-foreground">
-                    {editingId ? `Modifier Trade #${formData.trade_number}` : "Nouveau Trade"}
-                  </h2>
-                  <div className="w-4" />
-                </div>
-
-                {/* Corps — 2 colonnes */}
-                <div className="flex-1 flex overflow-hidden text-sm">
-
-                  {/* ── COL GAUCHE ── */}
-                  <div className="flex flex-col gap-0 w-[52%] border-r border-white/[.10] overflow-y-auto">
-
-                    {/* Section: Direction */}
-                    <div className="px-6 pt-5 pb-4 border-b border-white/[.10]">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-foreground mb-3">Direction</p>
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <button type="button" onClick={() => setFormData({ ...formData, direction: "Long" })}
-                          className={cn("flex items-center justify-center gap-2.5 py-3.5 rounded-xl border-2 transition-all duration-150 font-bold text-sm",
-                            formData.direction === "Long"
-                              ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_24px_-8px_theme(colors.emerald.500/80)]"
-                              : "border-white/25 text-foreground/70 hover:border-emerald-500/60 hover:text-emerald-400 hover:bg-emerald-500/5")}>
-                          <TrendingUp className="w-4 h-4" /> Long
-                        </button>
-                        <button type="button" onClick={() => setFormData({ ...formData, direction: "Short" })}
-                          className={cn("flex items-center justify-center gap-2.5 py-3.5 rounded-xl border-2 transition-all duration-150 font-bold text-sm",
-                            formData.direction === "Short"
-                              ? "border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_24px_-8px_theme(colors.red.500/80)]"
-                              : "border-white/25 text-foreground/70 hover:border-red-500/60 hover:text-red-400 hover:bg-red-500/5")}>
-                          <TrendingDown className="w-4 h-4" /> Short
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Section: Timing */}
-                    <div className="px-6 pt-4 pb-4 border-b border-white/[.10]">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-foreground mb-3">Timing</p>
-
-                      {/* R4 — Fenêtre temporelle Oracle (guidage doux) */}
-                      {temporalGuidance?.recommendedWindow && (
-                        <div className={cn(
-                          "mb-3 px-3 py-2 rounded-lg border text-[11px] leading-snug",
-                          dateWindowStatus === "outside"
-                            ? "border-orange-500/30 bg-orange-500/[.06]"
-                            : dateWindowStatus === "warning"
-                            ? "border-amber-500/25 bg-amber-500/[.05]"
-                            : "border-white/[.08] bg-white/[.02]"
-                        )}>
-                          <div className="flex items-start gap-2">
-                            <Calendar className={cn(
-                              "w-3 h-3 shrink-0 mt-0.5",
-                              dateWindowStatus === "outside" ? "text-orange-400" :
-                              dateWindowStatus === "warning" ? "text-amber-400" : "text-foreground/40"
-                            )} />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                                <span className={cn(
-                                  "font-semibold",
-                                  dateWindowStatus === "outside" ? "text-orange-400" :
-                                  dateWindowStatus === "warning" ? "text-amber-400" : "text-foreground/60"
-                                )}>
-                                  Fenêtre {temporalGuidance.oracleWindow?.name}
-                                </span>
-                                <span className="font-mono text-foreground/50">
-                                  {formatDateShort(temporalGuidance.recommendedWindow.start)}
-                                  {" → "}
-                                  {formatDateShort(temporalGuidance.recommendedWindow.end)}
-                                </span>
-                                {temporalGuidance.offsetDays !== 0 && (
-                                  <span className="text-foreground/35 italic">
-                                    (Oracle + {temporalGuidance.offsetDays > 0 ? "+" : ""}{temporalGuidance.offsetDays}j offset)
-                                  </span>
-                                )}
-                              </div>
-                              {dateWindowStatus === "outside" && (
-                                <p className="mt-0.5 text-orange-400/80">
-                                  ⚠ Date très éloignée de la fenêtre Oracle — vérifie que tu compares les mêmes conditions de marché.
-                                </p>
-                              )}
-                              {dateWindowStatus === "warning" && (
-                                <p className="mt-0.5 text-amber-400/80">
-                                  Date en limite de fenêtre (±tolérance 30%).
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          {/* Oracle reference */}
-                          {temporalGuidance.oracleWindow?.oracleStart && (
-                            <div className="mt-1.5 flex items-center gap-1.5 text-foreground/30">
-                              <span className="font-mono text-[10px]">Oracle réf.</span>
-                              <span className="font-mono text-[10px]">
-                                {formatDateShort(temporalGuidance.oracleWindow.oracleStart)}
-                                {" → "}
-                                {formatDateShort(temporalGuidance.oracleWindow.oracleEnd)}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-4 gap-2">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-foreground/85">N°</Label>
-                          <Input type="number" value={formData.trade_number} onChange={(e) => setFormData({ ...formData, trade_number: e.target.value })} className="h-9 border-white/30 bg-white/[.04]" />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-foreground/85">
-                            Date
-                            {minTradeDate && !editingId && (
-                              <span className="ml-1 text-foreground/35 font-normal normal-case">min {new Date(minTradeDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
-                            )}
-                          </Label>
-                          <DatePicker value={formData.trade_date} onChange={handleEntryDateChange} className="border-white/30 bg-white/[.04]" minDate={!editingId ? (minTradeDate ?? undefined) : undefined} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-foreground/85">H. Entrée</Label>
-                          <TimeField value={formData.entry_time} onChange={(v) => setFormData({ ...formData, entry_time: v })} className="h-9" />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-foreground/85">H. Sortie</Label>
-                          <TimeField value={formData.exit_time} onChange={(v) => setFormData({ ...formData, exit_time: v })} className="h-9" />
-                        </div>
-                      </div>
-                      {(!isSameDay || !formData.exit_date) && (
-                        <div className="mt-2 w-1/4 space-y-1.5">
-                          <Label className="text-xs font-semibold text-foreground/85">Date sortie</Label>
-                          <DatePicker value={formData.exit_date} onChange={(v) => setFormData({ ...formData, exit_date: v })} className="border-white/30 bg-white/[.04]" />
-                          {!isSameDay && formData.exit_date && (
-                            <p className="text-[10px] text-orange-400 font-mono mt-1">
-                              J+{Math.ceil((new Date(formData.exit_date).getTime() - new Date(formData.trade_date).getTime()) / 86400000)}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Section: Résultat */}
-                    <div className="px-6 pt-4 pb-4 border-b border-white/[.10]">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-foreground mb-3">Résultat</p>
-                      <div className="grid grid-cols-3 gap-2 mb-3">
-                        {([
-                          { value: "Win",  label: "Win",  icon: "↑", active: "border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_20px_-8px_theme(colors.emerald.500/80)]" },
-                          { value: "Loss", label: "Loss", icon: "↓", active: "border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_20px_-8px_theme(colors.red.500/80)]" },
-                          { value: "BE",   label: "BE",   icon: "–", active: "border-amber-500 bg-amber-500/10 text-amber-400 shadow-[0_0_20px_-8px_theme(colors.amber.500/80)]" },
-                        ] as const).map((opt) => (
-                          <button key={opt.value} type="button" onClick={() => setFormData({ ...formData, result: opt.value })}
-                            className={cn("py-3 rounded-xl border-2 font-bold text-sm transition-all duration-150 flex items-center justify-center gap-1.5",
-                              formData.result === opt.value
-                                ? opt.active
-                                : "border-white/25 text-foreground/70 hover:border-white/50 hover:text-foreground")}>
-                            <span className="font-mono text-lg leading-none">{opt.icon}</span>
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-foreground/85">Risk / Reward (RR)</Label>
-                        <Input
-                          type="number" step="0.1"
-                          value={formData.rr}
-                          onChange={(e) => setFormData({ ...formData, rr: e.target.value })}
-                          placeholder="ex : 2.5"
-                          className={cn(
-                            "h-10 text-xl font-bold tabular-nums border-white/30 bg-white/[.04] tracking-tight",
-                            formData.result === "Win" && formData.rr ? "text-emerald-400" : "",
-                            formData.result === "Loss" && formData.rr ? "text-red-400" : "",
-                            formData.result === "BE" && formData.rr ? "text-amber-400" : "",
-                          )}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Section: Optionnel */}
-                    <div className="px-6 pt-4 pb-5 flex-1">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-foreground/70 mb-3">Optionnel</p>
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold text-foreground/75">Taille SL</Label>
-                            <Input value={formData.stop_loss_size} onChange={(e) => setFormData({ ...formData, stop_loss_size: e.target.value })} placeholder="Points / pips" className="h-9 border-white/20 bg-white/[.03]" />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold text-foreground/75 invisible">_</Label>
-                            <div
-                              className="flex items-center gap-2.5 h-9 px-3 rounded-md border border-white/[.12] cursor-pointer hover:border-white/20 transition-colors"
-                              onClick={() => setFormData({ ...formData, news_day: !formData.news_day, news_label: !formData.news_day ? formData.news_label : "" })}
-                            >
-                              <Checkbox id="news_day_exec" checked={formData.news_day} onCheckedChange={(c) => setFormData({ ...formData, news_day: !!c, news_label: !!c ? formData.news_label : "" })} />
-                              <Label htmlFor="news_day_exec" className="cursor-pointer text-xs font-semibold text-foreground/75 leading-none">Jour de news</Label>
-                            </div>
-                          </div>
-                        </div>
-                        {formData.news_day && (
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold text-foreground/75">Label news</Label>
-                            <Input value={formData.news_label} onChange={(e) => setFormData({ ...formData, news_label: e.target.value })} placeholder="NFP, CPI, FOMC…" className="h-9 border-white/20 bg-white/[.03]" />
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setShowAdvancedPrices(!showAdvancedPrices)}
-                          className="flex items-center gap-1.5 text-xs font-semibold text-foreground/60 hover:text-foreground transition-colors"
-                        >
-                          <span className={cn("transition-transform duration-200 text-[10px]", showAdvancedPrices ? "rotate-90" : "")}>▶</span>
-                          Prix exacts
-                        </button>
-                        {showAdvancedPrices && (
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1.5"><Label className="text-xs font-semibold text-foreground/75">Prix Entrée</Label><Input type="number" step="0.00001" value={formData.entry_price} onChange={(e) => setFormData({ ...formData, entry_price: e.target.value })} placeholder="1.08542" className="h-9 border-white/20 bg-white/[.03]" /></div>
-                            <div className="space-y-1.5"><Label className="text-xs font-semibold text-foreground/75">Prix Sortie</Label><Input type="number" step="0.00001" value={formData.exit_price} onChange={(e) => setFormData({ ...formData, exit_price: e.target.value })} placeholder="1.08650" className="h-9 border-white/20 bg-white/[.03]" /></div>
-                            <div className="space-y-1.5"><Label className="text-xs font-semibold text-foreground/75">Stop Loss</Label><Input type="number" step="0.00001" value={formData.stop_loss} onChange={(e) => setFormData({ ...formData, stop_loss: e.target.value })} placeholder="1.08500" className="h-9 border-white/20 bg-white/[.03]" /></div>
-                            <div className="space-y-1.5"><Label className="text-xs font-semibold text-foreground/75">Take Profit</Label><Input type="number" step="0.00001" value={formData.take_profit} onChange={(e) => setFormData({ ...formData, take_profit: e.target.value })} placeholder="1.08700" className="h-9 border-white/20 bg-white/[.03]" /></div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── COL DROITE ── */}
-                  <div className="flex flex-col gap-0 flex-1 overflow-y-auto">
-
-                    {/* Section: Screenshots */}
-                    <div className="px-6 pt-5 pb-4 border-b border-white/[.10]">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-foreground mb-3">
-                        Screenshots
-                        <span className="text-destructive ml-1.5">*</span>
-                        {screenshotError && (
-                          <span className="text-destructive text-[10px] ml-2 normal-case tracking-normal font-normal">2 screenshots requis</span>
-                        )}
-                      </p>
-                      <div className="grid grid-cols-2 gap-3">
-                        {/* Contexte M15 */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs font-semibold text-foreground/85">Contexte M15</Label>
-                            <div className="flex items-center gap-px bg-white/[.05] rounded-md p-0.5 border border-white/[.08]">
-                              <button type="button" onClick={() => { setContextMode("file"); setContextLinkUrl(""); }} className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-all font-medium", contextMode === "file" ? "bg-white/[.1] text-foreground" : "text-foreground/60 hover:text-foreground")}><ImageIcon className="w-2.5 h-2.5" /> Fichier</button>
-                              <button type="button" onClick={() => { setContextMode("link"); setContextFile(null); setContextPreview(null); setExistingContextUrl(null); }} className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-all font-medium", contextMode === "link" ? "bg-white/[.1] text-foreground" : "text-foreground/60 hover:text-foreground")}><LinkIcon className="w-2.5 h-2.5" /> Lien</button>
-                            </div>
-                          </div>
-                          <input ref={contextFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setContextFile, setContextPreview)} className="hidden" />
-                          {contextMode === "link" ? (
-                            <div className="space-y-1.5">
-                              <Input type="url" value={contextLinkUrl} onChange={(e) => setContextLinkUrl(e.target.value)} placeholder="https://tradingview.com/x/…" className={cn("h-9 text-xs border-white/30 bg-white/[.04]", screenshotError && !contextLinkUrl.trim() && "border-red-500")} />
-                              {contextLinkUrl.trim() && (/\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(contextLinkUrl)
-                                ? <div className="relative border border-white/[.12] rounded-lg p-1"><img src={contextLinkUrl} alt="M15" className="max-h-28 object-contain mx-auto rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /><Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-4 w-4" onClick={() => setContextLinkUrl("")}><X className="w-2.5 h-2.5" /></Button></div>
-                                : <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/[.04] border border-white/[.08] text-xs text-foreground/50"><ExternalLink className="w-3 h-3 shrink-0" /><a href={contextLinkUrl} target="_blank" rel="noopener noreferrer" className="truncate">{contextLinkUrl}</a></div>)}
-                            </div>
-                          ) : (contextPreview || existingContextUrl)
-                            ? <div className="relative border border-white/[.12] rounded-lg p-1"><img src={contextPreview || existingContextUrl || ""} alt="M15" className="max-h-28 object-contain mx-auto rounded" /><Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-4 w-4" onClick={() => { setContextFile(null); setContextPreview(null); setExistingContextUrl(null); }}><X className="w-2.5 h-2.5" /></Button></div>
-                            : <Button type="button" variant="ghost" onClick={() => contextFileRef.current?.click()} className={cn("w-full h-20 border border-dashed flex-col gap-1.5 rounded-xl", screenshotError ? "border-red-500/70 hover:border-red-500" : "border-white/[.12] hover:border-white/25 hover:bg-white/[.03]")} disabled={uploading}>
-                                {uploading ? <Loader2 className="w-4 h-4 animate-spin text-foreground/40" /> : <ImageIcon className="w-4 h-4 text-foreground/50" />}
-                                <span className="text-[11px] text-foreground/60 font-medium">M15 — Contexte</span>
-                              </Button>
-                          }
-                        </div>
-                        {/* Entrée TF */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs font-semibold text-foreground/85">Entrée TF</Label>
-                            <div className="flex items-center gap-px bg-white/[.05] rounded-md p-0.5 border border-white/[.08]">
-                              <button type="button" onClick={() => { setEntryMode("file"); setEntryLinkUrl(""); }} className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-all font-medium", entryMode === "file" ? "bg-white/[.1] text-foreground" : "text-foreground/60 hover:text-foreground")}><ImageIcon className="w-2.5 h-2.5" /> Fichier</button>
-                              <button type="button" onClick={() => { setEntryMode("link"); setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }} className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-all font-medium", entryMode === "link" ? "bg-white/[.1] text-foreground" : "text-foreground/60 hover:text-foreground")}><LinkIcon className="w-2.5 h-2.5" /> Lien</button>
-                            </div>
-                          </div>
-                          <input ref={entryFileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e, setEntryFile, setEntryPreview)} className="hidden" />
-                          {entryMode === "link" ? (
-                            <div className="space-y-1.5">
-                              <Input type="url" value={entryLinkUrl} onChange={(e) => setEntryLinkUrl(e.target.value)} placeholder="https://tradingview.com/x/…" className={cn("h-9 text-xs border-white/30 bg-white/[.04]", screenshotError && !entryLinkUrl.trim() && "border-red-500")} />
-                              {entryLinkUrl.trim() && (/\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(entryLinkUrl)
-                                ? <div className="relative border border-white/[.12] rounded-lg p-1"><img src={entryLinkUrl} alt="TF" className="max-h-28 object-contain mx-auto rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /><Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-4 w-4" onClick={() => setEntryLinkUrl("")}><X className="w-2.5 h-2.5" /></Button></div>
-                                : <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/[.04] border border-white/[.08] text-xs text-foreground/50"><ExternalLink className="w-3 h-3 shrink-0" /><a href={entryLinkUrl} target="_blank" rel="noopener noreferrer" className="truncate">{entryLinkUrl}</a></div>)}
-                            </div>
-                          ) : (entryPreview || existingEntryUrl)
-                            ? <div className="relative border border-white/[.12] rounded-lg p-1"><img src={entryPreview || existingEntryUrl || ""} alt="TF" className="max-h-28 object-contain mx-auto rounded" /><Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-4 w-4" onClick={() => { setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }}><X className="w-2.5 h-2.5" /></Button></div>
-                            : <Button type="button" variant="ghost" onClick={() => entryFileRef.current?.click()} className={cn("w-full h-20 border border-dashed flex-col gap-1.5 rounded-xl", screenshotError ? "border-red-500/70 hover:border-red-500" : "border-white/[.12] hover:border-white/25 hover:bg-white/[.03]")} disabled={uploading}>
-                                {uploading ? <Loader2 className="w-4 h-4 animate-spin text-foreground/40" /> : <ImageIcon className="w-4 h-4 text-foreground/50" />}
-                                <span className="text-[11px] text-foreground/60 font-medium">TF — Entrée</span>
-                              </Button>
-                          }
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Section: Classification */}
-                    <div className="px-6 pt-4 pb-4 border-b border-white/[.10] flex-1">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-foreground/70 mb-3">Classification du Setup</p>
-                      <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
-                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-foreground/75">Type de config</Label><CustomizableMultiSelect value={formData.setup_type} onChange={(v) => setFormData({ ...formData, setup_type: v })} fixedOptions={SETUP_TYPE_FIXED_OPTIONS} customOptions={variables.setup_type} variableType="setup_type" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
-                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-foreground/75">Contexte</Label><CustomizableMultiSelect value={formData.direction_structure} onChange={(v) => setFormData({ ...formData, direction_structure: v })} customOptions={variables.direction_structure} variableType="direction_structure" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
-                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-foreground/75">Entry Model</Label><CustomizableMultiSelect value={formData.entry_model} onChange={(v) => setFormData({ ...formData, entry_model: v })} fixedOptions={ENTRY_MODEL_FIXED_OPTIONS} customOptions={variables.entry_model} variableType="entry_model" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
-                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-foreground/75">Timing</Label><CustomizableMultiSelect value={formData.entry_timing} onChange={(v) => setFormData({ ...formData, entry_timing: v })} fixedOptions={TIMING_FIXED_OPTIONS} customOptions={variables.entry_timing} variableType="entry_timing" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
-                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-foreground/75">Time Frame</Label><CustomizableMultiSelect value={formData.entry_timeframe} onChange={(v) => setFormData({ ...formData, entry_timeframe: v })} fixedOptions={ENTRY_TIMEFRAME_FIXED_OPTIONS} customOptions={variables.entry_timeframe} variableType="entry_timeframe" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
-                        <div className="space-y-1.5"><Label className="text-xs font-semibold text-foreground/75">Placement SL</Label><CustomizableMultiSelect value={formData.sl_placement} onChange={(v) => setFormData({ ...formData, sl_placement: v })} customOptions={variables.sl_placement || []} variableType="sl_placement" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
-                        <div className="col-span-2 space-y-1.5"><Label className="text-xs font-semibold text-foreground/75">Placement TP</Label><CustomizableMultiSelect value={formData.tp_placement} onChange={(v) => setFormData({ ...formData, tp_placement: v })} customOptions={variables.tp_placement || []} variableType="tp_placement" placeholder="Sélectionner…" onOptionsChanged={refetchVariables} compact /></div>
-                      </div>
-                    </div>
-
-                    {/* Section: Notes */}
-                    <div className="px-6 pt-4 pb-5">
-                      <Label className="text-[11px] font-bold uppercase tracking-[0.18em] text-foreground/70 block mb-3">Notes</Label>
-                      <Textarea
-                        value={formData.notes}
-                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        placeholder="Observations, contexte du trade…"
-                        className="resize-none h-16 border-white/20 bg-white/[.03] text-sm placeholder:text-foreground/25"
-                      />
-                    </div>
-
-                  </div>{/* fin col droite */}
-                </div>{/* fin corps 2 colonnes */}
-
-                {/* Footer — actions */}
-                <div className="flex items-center justify-between px-6 py-3.5 border-t border-border flex-shrink-0">
-                  <p className="text-[9px] font-mono text-muted-foreground/40 uppercase tracking-widest">
-                    {editingId ? "Modification en cours" : "Nouveau trade"}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(false)}>
-                      <X className="w-3.5 h-3.5 mr-1.5" /> Annuler
-                    </Button>
-                    <Button size="sm" onClick={handleSave} disabled={saving || uploading} className="gap-1.5 px-5">
-                      {(saving || uploading) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                      {uploading ? "Upload en cours…" : "Enregistrer le trade"}
-                    </Button>
-                  </div>
-                </div>
-
-              </DialogContent>
-          </Dialog>
+            <Button size="sm" onClick={handleNewEntry} className="gap-1.5 flex-1 md:flex-none">
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Nouveau</span> Trade
+            </Button>
+            <OracleTradeDialog
+              isOpen={isDialogOpen}
+              onClose={() => { setIsDialogOpen(false); setEditingExec(null); setEditingId(null); }}
+              onSaved={() => { setIsDialogOpen(false); setEditingExec(null); setEditingId(null); fetchExecutions(); }}
+              editingTrade={editingExec ? {
+                id: editingExec.id,
+                trade_number: editingExec.trade_number,
+                trade_date: editingExec.trade_date,
+                exit_date: editingExec.exit_date,
+                direction: editingExec.direction,
+                direction_structure: (editingExec as any).direction_structure ?? null,
+                entry_time: editingExec.entry_time,
+                exit_time: editingExec.exit_time,
+                trade_duration: (editingExec as any).trade_duration ?? null,
+                rr: editingExec.rr,
+                stop_loss_size: (editingExec as any).stop_loss_size ?? null,
+                setup_type: editingExec.setup_type,
+                entry_timing: editingExec.entry_timing,
+                entry_model: editingExec.entry_model,
+                entry_timeframe: (editingExec as any).entry_timeframe ?? null,
+                context_timeframe: (editingExec as any).context_timeframe ?? null,
+                sl_placement: (editingExec as any).sl_placement ?? null,
+                tp_placement: (editingExec as any).tp_placement ?? null,
+                screenshot_url: editingExec.screenshot_url,
+                screenshot_entry_url: (editingExec as any).screenshot_entry_url ?? null,
+                result: editingExec.result,
+                notes: editingExec.notes,
+                news_day: (editingExec as any).news_day ?? null,
+                news_label: (editingExec as any).news_label ?? null,
+                entry_price: editingExec.entry_price,
+                exit_price: editingExec.exit_price,
+                stop_loss: editingExec.stop_loss,
+                take_profit: editingExec.take_profit,
+              } : null}
+              nextTradeNumber={getNextTradeNumber()}
+              recommendedWindow={temporalGuidance?.recommendedWindow ?? null}
+              currentCycleNum={temporalGuidance?.currentCycleNum ?? null}
+              minTradeDate={minTradeDate || null}
+            />
         </div>
         </div>
       </div>
