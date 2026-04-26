@@ -68,6 +68,26 @@ function enqueue(lead: FunnelLeadPayload) {
 /**
  * Tente un INSERT, retry 3x avec backoff. Retourne true si succès.
  */
+/**
+ * Fire-and-forget : inscrit le lead dans la séquence Kit. Non-bloquant.
+ * Toute erreur réseau / Kit est avalée — la fonction edge logge déjà dans lead_events.
+ */
+function triggerKitSequence(lead: { email: string; first_name: string }, requestId?: string) {
+  try {
+    void supabase.functions.invoke('subscribe-to-kit', {
+      body: {
+        email: lead.email,
+        first_name: lead.first_name,
+        ...(requestId ? { request_id: requestId } : {}),
+      },
+    }).then(({ error }) => {
+      if (error) console.warn('[FunnelQueue] Kit subscribe invoke error:', error.message);
+    });
+  } catch (err) {
+    console.warn('[FunnelQueue] Kit subscribe threw (ignored):', err);
+  }
+}
+
 async function attemptInsert(lead: FunnelLeadPayload): Promise<boolean> {
   // Sépare métadonnées internes des colonnes DB
   const { _attempted_at, _attempts, _slug, ...dbPayload } = lead;
@@ -75,11 +95,21 @@ async function attemptInsert(lead: FunnelLeadPayload): Promise<boolean> {
 
   for (let i = 0; i < 3; i++) {
     try {
-      const { error } = await supabase.from('early_access_requests').insert(dbPayload as any);
-      if (!error) return true;
+      // .select('id') pour récupérer le request_id et le passer à Kit (utile pour lead_events)
+      const { data, error } = await supabase
+        .from('early_access_requests')
+        .insert(dbPayload as any)
+        .select('id')
+        .maybeSingle();
+      if (!error) {
+        triggerKitSequence(lead, (data as any)?.id);
+        return true;
+      }
       // 23505 = unique violation → considère comme succès (lead déjà là)
       if ((error as any).code === '23505') {
         console.log('[FunnelQueue] Lead already exists, treating as success:', lead.email);
+        // Le lead existe déjà → on déclenche quand même Kit (idempotent côté Kit)
+        triggerKitSequence(lead);
         return true;
       }
       console.warn(`[FunnelQueue] INSERT attempt ${i + 1}/3 failed:`, error.message);
