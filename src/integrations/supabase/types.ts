@@ -1790,6 +1790,13 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_team_emails: {
+        Args: never
+        Returns: {
+          email: string
+          user_id: string
+        }[]
+      }
       get_user_status: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["user_status"]
