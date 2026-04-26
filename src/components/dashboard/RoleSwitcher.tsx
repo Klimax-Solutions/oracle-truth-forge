@@ -48,9 +48,13 @@ export const getEffectiveRoles = (
   simulatedRole: SimulatedRole,
   realIsSetter: boolean = false,
   realIsCloser: boolean = false,
+  realIsAdmin: boolean = false,
 ) => {
   if (!realIsSuperAdmin || simulatedRole === "none") {
-    return { effectiveIsAdmin: realIsSuperAdmin, effectiveIsSuperAdmin: realIsSuperAdmin, effectiveIsEarlyAccess: false, effectiveIsSetter: realIsSetter, effectiveIsCloser: realIsCloser, effectiveIsMember: true };
+    // Admin (non-super) doit avoir effectiveIsAdmin=true.
+    // Sans ça, les guards de panel (CRM, Vérifications, Gestion, Config)
+    // bloquent les admins même s'ils voient l'onglet en sidebar.
+    return { effectiveIsAdmin: realIsAdmin || realIsSuperAdmin, effectiveIsSuperAdmin: realIsSuperAdmin, effectiveIsEarlyAccess: false, effectiveIsSetter: realIsSetter, effectiveIsCloser: realIsCloser, effectiveIsMember: true };
   }
 
   switch (simulatedRole) {

@@ -23,7 +23,7 @@ if (typeof document !== "undefined" && !document.getElementById("inter-font-orac
 
 interface VideoInfo { id: string; title: string; embed_url: string; }
 interface ExecInfo { id: string; trade_number: number; rr: number | null; trade_date: string; direction: string; screenshot_url: string | null; }
-interface CycleInfo { id: string; name: string; total_trades: number; cycle_number: number; userStatus: string | null; userProgress: number; }
+interface CycleInfo { id: string; name: string; total_trades: number; cycle_number: number; userStatus: string | null; userProgress: number; userCycleId: string | null; }
 
 interface OracleHomePageProps {
   onNavigateToVideos: () => void;
@@ -202,7 +202,7 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
             const priorTotal = cyclesRes.data!.slice(0, i).reduce((s, pc) => s + pc.total_trades, 0);
             const prog = Math.min(Math.max(count - priorTotal, 0), c.total_trades);
             const uc = ucMap[c.id];
-            return { id: c.id, name: c.name, total_trades: c.total_trades, cycle_number: c.cycle_number, userStatus: uc?.status || null, userProgress: uc?.status === "validated" ? c.total_trades : prog };
+            return { id: c.id, name: c.name, total_trades: c.total_trades, cycle_number: c.cycle_number, userStatus: uc?.status || null, userProgress: uc?.status === "validated" ? c.total_trades : prog, userCycleId: uc?.id || null };
           });
           setAllCycles(enriched);
           resolvedCurrent = enriched.find(c => c.userStatus === "in_progress") || enriched.find(c => !c.userStatus) || enriched[0] || null;
@@ -254,9 +254,32 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
     if (!currentCycle || !userId) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("verification_requests").insert({ user_id: userId, cycle_id: currentCycle.id, status: "pending" });
+      // user_cycle_id est NOT NULL en DB → on doit le résoudre (et créer la row user_cycles si elle n'existe pas)
+      let userCycleId = currentCycle.userCycleId;
+      if (!userCycleId) {
+        const { data: existing } = await supabase
+          .from("user_cycles")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("cycle_id", currentCycle.id)
+          .maybeSingle();
+        if (existing?.id) {
+          userCycleId = existing.id;
+        } else {
+          const { data: created, error: createErr } = await supabase
+            .from("user_cycles")
+            .insert({ user_id: userId, cycle_id: currentCycle.id, status: "in_progress" } as any)
+            .select("id")
+            .single();
+          if (createErr) throw createErr;
+          userCycleId = created.id;
+        }
+      }
+      const { error } = await supabase
+        .from("verification_requests")
+        .insert({ user_id: userId, cycle_id: currentCycle.id, user_cycle_id: userCycleId, status: "pending" } as any);
       if (error) throw error;
-      setCurrentCycle(prev => prev ? { ...prev, userStatus: "pending" } : prev);
+      setCurrentCycle(prev => prev ? { ...prev, userCycleId, userStatus: "pending" } : prev);
       toast({ title: "Demande envoyée", description: "Un admin va vérifier votre cycle." });
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });

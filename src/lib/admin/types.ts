@@ -78,6 +78,11 @@ export interface CRMLead {
   rappel_date: string | null;
   rappel_note: string | null;
 
+  // Archive (soft-hide du pipeline) — MIG 20260426100000
+  archived_at?: string | null;
+  archived_by?: string | null;
+  archive_reason?: string | null;
+
   // Enrichissement (optionnel, rempli en background apres le 1er rendu)
   is_online?: boolean;
   session_count?: number;
@@ -90,7 +95,7 @@ export interface CRMLead {
 /**
  * Stages du pipeline CRM.
  */
-export type StageFilter = 'all' | 'pending' | 'approved' | 'contacted' | 'call_booked' | 'call_done' | 'paid';
+export type StageFilter = 'all' | 'pending' | 'approved' | 'contacted' | 'call_booked' | 'call_done' | 'paid' | 'archived' | 'a_contacter' | 'expirent' | 'expires';
 
 /**
  * Determine le stage d'un lead.
@@ -180,6 +185,9 @@ export function mapRowToCRMLead(r: any, enrich?: {
     raison_non_closing: r.raison_non_closing || null,
     rappel_date: r.rappel_date || null,
     rappel_note: r.rappel_note || null,
+    archived_at: r.archived_at || null,
+    archived_by: r.archived_by || null,
+    archive_reason: r.archive_reason || null,
     is_online: enrich?.activityMap?.[r.user_id]?.is_active || false,
     session_count: enrich?.sessionMap?.[r.user_id] || 0,
     execution_count: execCount,

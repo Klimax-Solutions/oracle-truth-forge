@@ -168,7 +168,7 @@ const Dashboard = () => {
   // Sub-navigation pour "recolte-donnees" : landing (RecolteDonneesPage) ou oracle (OraclePage)
   const [recolteView, setRecolteView] = useState<"landing" | "oracle">("landing");
   const { effectiveIsAdmin, effectiveIsSuperAdmin, effectiveIsEarlyAccess, effectiveIsSetter, effectiveIsCloser } =
-    getEffectiveRoles(realIsSuperAdmin, simulatedRole, realIsSetter, realIsCloser);
+    getEffectiveRoles(realIsSuperAdmin, simulatedRole, realIsSetter, realIsCloser, realIsAdmin);
   
   // Sync activeTab → URL (?tab=crm, ?tab=agenda, etc.)
   // Only depend on activeTab — not searchParams (would cause infinite loop)

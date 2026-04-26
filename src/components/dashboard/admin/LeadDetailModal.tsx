@@ -195,6 +195,59 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
     }
   }, [lead.id, lead.user_id, lead.first_name, lead.paid_at, toast, onLeadUpdated, emitEvent]);
 
+  // ── Archive / Unarchive ─────────────────────────────────────────────
+  // Soft-hide du pipeline. archived_at = timestamp + raison libre.
+  // Réversible via Désarchiver.
+  const [archiving, setArchiving] = useState(false);
+  const archiveLead = useCallback(async () => {
+    const reason = window.prompt(
+      `Archiver ${lead.first_name} ?\n\nLe lead sera masqué du pipeline (toujours retrouvable via "Archivés").\n\nRaison (optionnelle) :`,
+      ""
+    );
+    // null = annulation. "" = OK sans raison. On accepte les deux.
+    if (reason === null) return;
+    setArchiving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from("early_access_requests")
+        .update({
+          archived_at: new Date().toISOString(),
+          archived_by: user?.id,
+          archive_reason: reason.trim() || null,
+        } as any)
+        .eq("id", lead.id);
+      if (error) throw error;
+      emitEvent("lead_archived", { reason: reason.trim() || null });
+      toast({ title: "Lead archivé", description: `${lead.first_name} masqué du pipeline.` });
+      onLeadUpdated?.();
+      onClose();
+    } catch (err: any) {
+      toast({ title: "Erreur archivage", description: err.message, variant: "destructive" });
+    } finally {
+      setArchiving(false);
+    }
+  }, [lead.id, lead.first_name, toast, onLeadUpdated, onClose, emitEvent]);
+
+  const unarchiveLead = useCallback(async () => {
+    if (!confirm(`Désarchiver ${lead.first_name} ?\n\nLe lead réapparaîtra dans le pipeline.`)) return;
+    setArchiving(true);
+    try {
+      const { error } = await supabase
+        .from("early_access_requests")
+        .update({ archived_at: null, archived_by: null, archive_reason: null } as any)
+        .eq("id", lead.id);
+      if (error) throw error;
+      emitEvent("lead_unarchived");
+      toast({ title: "Lead désarchivé", description: `${lead.first_name} de retour dans le pipeline.` });
+      onLeadUpdated?.();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setArchiving(false);
+    }
+  }, [lead.id, lead.first_name, toast, onLeadUpdated, emitEvent]);
+
   // Submit note
   const submitNote = async () => {
     if (!newNote.trim()) return;
@@ -337,6 +390,27 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                     <span className="text-[9px] text-white/25 font-mono ml-1">depuis {fmtShort(lead.reviewed_at)}</span>
                   )}
                 </div>
+              )}
+              {/* Archive / Unarchive — soft hide from pipeline */}
+              {(lead as any).archived_at ? (
+                <button
+                  onClick={unarchiveLead}
+                  disabled={archiving}
+                  title="Désarchiver — remettre dans le pipeline"
+                  className="h-8 px-2.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 flex items-center gap-1.5 text-[10px] font-display uppercase tracking-wider transition-colors disabled:opacity-50"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Désarchiver
+                </button>
+              ) : (
+                <button
+                  onClick={archiveLead}
+                  disabled={archiving}
+                  title="Archiver — masquer du pipeline (faux compte, doublon, non pertinent)"
+                  className="w-8 h-8 rounded-lg bg-white/[0.04] hover:bg-amber-500/15 hover:border-amber-500/30 border border-transparent flex items-center justify-center transition-colors disabled:opacity-50"
+                >
+                  <UserX className="w-4 h-4 text-white/40 hover:text-amber-300" />
+                </button>
               )}
               <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors">
                 <X className="w-4 h-4 text-white/40" />

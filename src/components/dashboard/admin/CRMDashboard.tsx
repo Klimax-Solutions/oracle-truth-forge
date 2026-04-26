@@ -546,9 +546,10 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
     else if (stageFilter === "expirent") r = r.filter(l => l.statut_trial === 'actif' && getTrialDay(l).day >= 5);
     else if (stageFilter === "expires") r = r.filter(l => l.statut_trial === 'expire');
     // "Demandes" = uniquement en_attente (exclut doublon + rejetée qui sont des états terminaux)
-    else if (stageFilter === "pending") r = r.filter(l => l.status === 'en_attente');
-    else if (stageFilter === "all") r = r.filter(l => l.status !== 'doublon' && l.status !== 'rejetée');
-    else r = r.filter(l => getStage(l) === stageFilter);
+    else if (stageFilter === "pending") r = r.filter(l => l.status === 'en_attente' && !(l as any).archived_at);
+    else if (stageFilter === "all") r = r.filter(l => l.status !== 'doublon' && l.status !== 'rejetée' && !(l as any).archived_at);
+    else if (stageFilter === "archived") r = r.filter(l => !!(l as any).archived_at);
+    else r = r.filter(l => getStage(l) === stageFilter && !(l as any).archived_at);
     // Manual filters
     if (setterFilter !== "all") r = r.filter(l => l.setter_name === setterFilter);
     if (prioFilter !== "all") r = r.filter(l => l.priorite === prioFilter);
@@ -655,6 +656,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                 { v: "expirent", label: "Expirent" },
                 { v: "expires", label: "Expirés" },
                 { v: "all", label: "Tous" },
+                { v: "archived", label: "Archivés" },
               ].map(vue => (
                 <button key={vue.v} onClick={() => setStageFilter(vue.v as StageFilter)}
                   className={cn("px-3 py-1.5 rounded-lg text-[10px] font-display font-semibold uppercase tracking-wider transition-all border",

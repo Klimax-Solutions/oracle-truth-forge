@@ -68,6 +68,13 @@ export default function FunnelApply() {
   const vslRef = useRef<HTMLDivElement>(null);
   const [ctaVisible, setCtaVisible] = useState(false);
 
+  // ── Anti-spam : 3 couches défensives ────────────────────────────────────
+  // 1. Honeypot — champ invisible. Bot le remplit → silently fake success.
+  // 2. Time-trap — submit < 2s après mount = bot. Silently fake success.
+  // 3. Rate-limit DB — > 3 'en_attente' du même email en 1h → reject explicite.
+  const [honeypot, setHoneypot] = useState('');
+  const formMountedAt = useRef<number>(Date.now());
+
   // Phone formatting patterns per country code (groups of digits)
   const phoneFormats: Record<string, { groups: number[]; placeholder: string }> = {
     '+33':  { groups: [1, 2, 2, 2, 2], placeholder: '6 12 34 56 78' },
@@ -159,10 +166,39 @@ export default function FunnelApply() {
 
   const handleSubmit = async () => {
     if (!contact.first_name.trim() || !contact.email.trim()) { setError('Nom et email requis'); return; }
+
+    // ── ANTI-SPAM Couche 1 : honeypot (champ invisible rempli = bot)
+    if (honeypot.trim()) {
+      console.warn('[Apply] honeypot triggered — silent reject');
+      setSubmitted(true); // fake success pour ne pas alerter le bot
+      setTimeout(() => navigate('/'), 1500);
+      return;
+    }
+    // ── ANTI-SPAM Couche 2 : time-trap (submit < 2s = bot, humain n'a pas le temps)
+    if (Date.now() - formMountedAt.current < 2000) {
+      console.warn('[Apply] time-trap triggered — silent reject');
+      setSubmitted(true);
+      setTimeout(() => navigate('/'), 1500);
+      return;
+    }
+
     setSubmitting(true); setError('');
     try {
       const email = contact.email.trim().toLowerCase();
       const phone = contact.phone.trim() ? `${contact.countryCode} ${contact.phone.trim()}` : null;
+
+      // ── ANTI-SPAM Couche 3 : rate-limit DB (>3 demandes du même email en 1h)
+      const oneHourAgo = new Date(Date.now() - 3600_000).toISOString();
+      const { count: recentCount } = await supabase
+        .from('early_access_requests')
+        .select('id', { count: 'exact', head: true })
+        .ilike('email', email)
+        .gte('created_at', oneHourAgo);
+      if ((recentCount ?? 0) >= 3) {
+        setSubmitting(false);
+        setError('Trop de tentatives. Réessaie dans une heure.');
+        return;
+      }
 
       // ── PRE-CHECK: état de l'email dans le pipeline ───────────────────────
       // POLITIQUE (dans le marbre) :
@@ -391,6 +427,17 @@ export default function FunnelApply() {
                       className="w-full h-12 px-4 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white placeholder:text-white/25 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all" placeholder="ton@email.com" />
                   </div>
                 </div>
+                {/* Honeypot — invisible aux humains, rempli par les bots */}
+                <input
+                  type="text"
+                  name="website"
+                  value={honeypot}
+                  onChange={e => setHoneypot(e.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }}
+                />
                 {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">{error}</p>}
                 <div className="flex items-center gap-3 pt-2">
                   <button onClick={() => setStep(s => s - 1)} className="h-12 px-5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-white/60 hover:text-white hover:bg-white/[0.08] transition-all"><ChevronLeft className="w-4 h-4" /></button>

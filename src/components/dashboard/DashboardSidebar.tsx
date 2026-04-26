@@ -256,34 +256,62 @@ export const useSidebarRoles = () => {
     setIsCloser(false);
   };
 
+  // Wrap une promise avec un timeout — évite que checkRoles hang indéfiniment
+  // si une RPC ne répond pas (réseau lent, JWT pas encore propagé, etc.).
+  const withTimeoutLocal = <T,>(p: PromiseLike<T>, ms = 3000): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error(`RPC timeout ${ms}ms`)), ms);
+      Promise.resolve(p).then(
+        (v) => { clearTimeout(t); resolve(v); },
+        (e) => { clearTimeout(t); reject(e); },
+      );
+    });
+
   const checkRoles = async (retries = 2) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await withTimeoutLocal(supabase.auth.getSession(), 3000);
       if (!session) {
         resetRoles();
         setLoadingRoles(false);
         return;
       }
 
+      // Chaque RPC enveloppée d'un timeout 3s + try/catch individuel
+      // pour que la lenteur d'une seule ne plombe pas les autres.
+      const safe = async <T,>(p: PromiseLike<T>): Promise<{ data: any; error: any }> => {
+        try { return await withTimeoutLocal(p as any, 3000) as any; }
+        catch (e) { return { data: null, error: e }; }
+      };
       const [adminRes, superAdminRes, setterRes, closerRes] = await Promise.all([
-        supabase.rpc('is_admin'),
-        supabase.rpc('is_super_admin'),
-        supabase.rpc('is_setter' as any),
-        supabase.rpc('is_closer' as any),
+        safe(supabase.rpc('is_admin')),
+        safe(supabase.rpc('is_super_admin')),
+        safe(supabase.rpc('is_setter' as any)),
+        safe(supabase.rpc('is_closer' as any)),
       ]);
 
-      // If all results errored/null and we have retries left, try again after 500ms
-      if (adminRes.error && superAdminRes.error && retries > 0) {
-        console.warn(`[Roles] RPCs failed, retrying (${retries} left)...`);
-        setTimeout(() => checkRoles(retries - 1), 500);
+      // Si TOUTES les RPC ont échoué + retries dispo → retry après 600ms
+      const allFailed = adminRes.error && superAdminRes.error && setterRes.error && closerRes.error;
+      if (allFailed && retries > 0) {
+        console.warn(`[Roles] All RPCs failed, retrying in 600ms (${retries} left)...`);
+        setTimeout(() => checkRoles(retries - 1), 600);
         return;
       }
 
       // Ne mettre à jour un rôle que si le RPC a réussi — évite de nullifier un rôle déjà établi en cas d'AbortError (HMR dev)
-      if (!adminRes.error) setIsAdmin(!!adminRes.data);
+      if (!adminRes.error)      setIsAdmin(!!adminRes.data);
       if (!superAdminRes.error) setIsSuperAdmin(!!superAdminRes.data);
-      if (!setterRes.error) setIsSetter(!!setterRes.data);
-      if (!closerRes.error) setIsCloser(!!closerRes.data);
+      if (!setterRes.error)     setIsSetter(!!setterRes.data);
+      if (!closerRes.error)     setIsCloser(!!closerRes.data);
+
+      // Si certaines ont fail mais pas toutes → log explicite pour diag prod
+      if (adminRes.error || superAdminRes.error || setterRes.error || closerRes.error) {
+        console.warn("[Roles] partial failure", {
+          admin: adminRes.error?.message,
+          superAdmin: superAdminRes.error?.message,
+          setter: setterRes.error?.message,
+          closer: closerRes.error?.message,
+        });
+      }
     } catch (err) {
       console.warn("[Roles] aborted or failed, using defaults", err);
     } finally {
@@ -315,10 +343,15 @@ export const useSidebarRoles = () => {
     }
 
     // Safety timeout for ALL environments (including Vercel preview)
-    // If RPCs haven't resolved after 4s, stop loading to avoid infinite spinner
+    // Si les RPC n'ont pas résolu après 4s → unblock UI MAIS retry les rôles
+    // une dernière fois en arrière-plan (sinon admin loggé = traité comme membre).
     const safetyTimer = setTimeout(() => {
       setLoadingRoles(prev => {
-        if (prev) console.warn("[Roles] Safety timeout — forcing loadingRoles to false");
+        if (prev) {
+          console.warn("[Roles] Safety timeout — forcing loadingRoles to false + background retry");
+          // Retry async — si ça réussit, les rôles sont mis à jour et l'UI re-render
+          checkRoles(1);
+        }
         return false;
       });
     }, 4000);
