@@ -12,7 +12,7 @@ import {
   Users, Search, ChevronDown, CheckCircle, XCircle,
   ShieldCheck, Shield, Award, UserPlus, User, Tag,
   Snowflake, Ban, UserX, RefreshCw, Check, X,
-  MoreHorizontal, Clock, Lock,
+  MoreHorizontal, Clock, Lock, Mail,
 } from "lucide-react";
 import { AccessRulesPanel } from "./AccessRulesPanel";
 import { Button } from "@/components/ui/button";
