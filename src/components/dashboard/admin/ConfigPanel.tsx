@@ -170,10 +170,10 @@ const ROLE_CHECK_COLOR: Record<RoleId, string> = {
 
 function PermissionsTab() {
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
 
       {/* Règle fondamentale */}
-      <div className="rounded-2xl border border-white/[0.10] bg-gradient-to-br from-white/[0.04] to-transparent p-5">
+      <div className="rounded-2xl border border-white/[0.10] bg-gradient-to-br from-white/[0.04] to-transparent p-4 md:p-5">
         <div className="flex items-start gap-3">
           <div className="w-9 h-9 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center shrink-0">
             <Lock className="w-4 h-4 text-violet-400" />
@@ -482,21 +482,21 @@ export default function ConfigPanel() {
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
       <div className="shrink-0 border-b border-white/[0.10]">
-        <div className="px-6 flex items-center justify-between h-14">
-          <div className="flex items-center gap-1">
+        <div className="px-3 md:px-6 flex items-center justify-between h-14 gap-2">
+          <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap scrollbar-hide flex-1 min-w-0">
             {TABS.map((t) => (
               <button key={t.id} onClick={() => setActiveTab(t.id)} className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium uppercase tracking-wider transition-all border",
+                "shrink-0 flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg text-xs font-medium uppercase tracking-wider transition-all border",
                 activeTab === t.id
                   ? "bg-violet-500/20 text-white border-violet-500/30 shadow-[0_0_12px_rgba(139,92,246,0.15)]"
                   : "border-transparent text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
               )}>
                 <t.icon className="w-4 h-4 opacity-80" />
-                {t.label}
+                <span className="hidden sm:inline">{t.label}</span>
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2 shrink-0">
             <IconBox color="violet"><Settings className="w-3 h-3 text-violet-400/80" /></IconBox>
             <span className="text-xs text-white/40 uppercase tracking-wider">Configuration</span>
           </div>
@@ -514,9 +514,9 @@ export default function ConfigPanel() {
               <p className="text-white/40">Accès réservé aux administrateurs</p>
             </div>
           ) : (
-            <div className="px-6 py-4 space-y-3">
+            <div className="px-3 md:px-6 py-4 space-y-3">
               {/* Search */}
-              <div className="relative max-w-lg">
+              <div className="relative md:max-w-lg">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
                 <Input value={search} onChange={(e) => setSearch(e.target.value)}
                   placeholder="Rechercher par nom, prénom ou ID..."
@@ -525,8 +525,8 @@ export default function ConfigPanel() {
               </div>
 
               {/* Filters bar — équipe uniquement */}
-              <div className="flex items-center justify-between rounded-xl bg-white/[0.03] border border-white/[0.08] px-4 py-2">
-                <div className="flex items-center gap-2 overflow-x-auto">
+              <div className="flex items-center justify-between rounded-xl bg-white/[0.03] border border-white/[0.08] px-3 md:px-4 py-2 gap-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
+                <div className="flex items-center gap-2 overflow-x-auto shrink-0">
                   {([
                     { key: "all", label: "Équipe", count: filterCounts.all },
                     { key: "super_admin", label: "Super Admin", count: filterCounts.super_admin },
@@ -547,7 +547,7 @@ export default function ConfigPanel() {
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-2 shrink-0 ml-3">
+                <div className="hidden md:flex items-center gap-2 shrink-0 ml-3">
                   <span className="text-lg font-bold text-white tabular-nums">{filteredUsers.length}</span>
                   <span className="text-white/30 text-[10px] uppercase">membres équipe</span>
                   <Button variant="ghost" size="sm" onClick={fetchUsers} className="text-white/40 hover:text-white/70 h-8 w-8 p-0 ml-1"><RefreshCw className="w-3.5 h-3.5" /></Button>
@@ -555,9 +555,9 @@ export default function ConfigPanel() {
               </div>
 
               {/* Table */}
-              <div className={cn("rounded-xl border border-white/[0.10] overflow-hidden", BG)}>
+              <div className={cn("rounded-xl border border-white/[0.10] overflow-x-auto", BG)}>
                 {/* Headers */}
-                <div className={cn("flex items-center gap-4 px-5 py-3 border-b border-white/[0.08]", BG)}>
+                <div className={cn("flex items-center gap-4 px-5 py-3 border-b border-white/[0.08] min-w-max", BG)}>
                   <div className="w-8 shrink-0" />
                   <div className="w-[160px] shrink-0 flex items-center gap-2">
                     <IconBox color="white"><Users className="w-3 h-3 text-white/50" /></IconBox>
@@ -581,7 +581,7 @@ export default function ConfigPanel() {
                   const isExpanded = expandedUser === u.user_id;
                   return (
                     <div key={u.user_id} className={cn("border-b border-white/[0.06] transition-colors", isExpanded && "bg-white/[0.03]")}>
-                      <button onClick={() => setExpandedUser(isExpanded ? null : u.user_id)} className="w-full flex items-center gap-4 px-5 py-2.5 hover:bg-white/[0.04] transition-colors text-left">
+                      <button onClick={() => setExpandedUser(isExpanded ? null : u.user_id)} className="w-full min-w-max flex items-center gap-4 px-5 py-2.5 hover:bg-white/[0.04] transition-colors text-left">
                         {/* Avatar */}
                         <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0",
                           u.status === "frozen" ? "bg-blue-500" : u.status === "banned" ? "bg-red-500" : "bg-violet-500/60"

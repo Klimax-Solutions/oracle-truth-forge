@@ -431,7 +431,8 @@ export default function AgendaTab() {
         </div>
       ) : viewMode === 'week' ? (
         /* =============== WEEK VIEW — Time Grid (spike-launch style) =============== */
-        <div className="rounded-xl border border-white/[0.08] overflow-hidden bg-[#0d0e14]">
+        <div className="rounded-xl border border-white/[0.08] overflow-x-auto bg-[#0d0e14]">
+          <div className="min-w-[760px]">
           {/* Header Row with days */}
           <div className="grid border-b border-white/[0.1] bg-gradient-to-r from-white/[0.03] to-transparent" style={{ gridTemplateColumns: '70px repeat(7, 1fr)' }}>
             <div className="p-3 border-r border-white/[0.08] flex items-center justify-center">
@@ -580,6 +581,7 @@ export default function AgendaTab() {
                 </div>
               );
             })()}
+          </div>
           </div>
         </div>
       ) : (

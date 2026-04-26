@@ -70,10 +70,10 @@ export default function CockpitTab({ leads }: CockpitTabProps) {
   }, [leads]);
 
   return (
-    <div className="p-6 space-y-5 animate-fade-in max-w-6xl">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-5 animate-fade-in max-w-6xl">
 
       {/* ── Row 1: KPI Cards (like EA existing: Pipeline / En Ligne / Hors Ligne / Jamais / Contactes) ── */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
         {[
           { label: 'Pipeline', value: topKpis.pipeline, icon: Users, color: 'white', active: true },
           { label: 'En ligne', value: topKpis.online, icon: Wifi, color: 'emerald', active: topKpis.online > 0 },
@@ -84,22 +84,22 @@ export default function CockpitTab({ leads }: CockpitTabProps) {
           const textColor = kpi.color === 'emerald' ? 'text-emerald-400' : kpi.color === 'red' ? 'text-red-400' : kpi.color === 'violet' ? 'text-violet-400' : 'text-white';
           const iconColor = kpi.color === 'emerald' ? 'text-emerald-400/60' : kpi.color === 'red' ? 'text-red-400/60' : kpi.color === 'violet' ? 'text-violet-400/60' : 'text-white/30';
           return (
-            <div key={kpi.label} className={`rounded-xl border p-4 transition-all ${kpi.active ? 'bg-white/[0.03] border-white/[0.10]' : 'bg-white/[0.01] border-white/[0.05]'}`}>
+            <div key={kpi.label} className={`rounded-xl border p-3 md:p-4 transition-all ${kpi.active ? 'bg-white/[0.03] border-white/[0.10]' : 'bg-white/[0.01] border-white/[0.05]'}`}>
               <div className="flex items-center gap-2 mb-2">
                 <kpi.icon className={`w-4 h-4 ${iconColor}`} />
-                <span className="text-[10px] font-display uppercase tracking-widest text-white/40">{kpi.label}</span>
+                <span className="text-[9px] md:text-[10px] font-display uppercase tracking-widest text-white/40 truncate">{kpi.label}</span>
               </div>
-              <span className={`text-3xl font-display font-bold tabular-nums ${textColor}`}>{kpi.value}</span>
+              <span className={`text-2xl md:text-3xl font-display font-bold tabular-nums ${textColor}`}>{kpi.value}</span>
             </div>
           );
         })}
       </div>
 
       {/* ── Row 2: Closing + Revenue side by side ── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
 
         {/* Call outcomes */}
-        <div className="rounded-xl border border-white/[0.10] bg-white/[0.02] p-5">
+        <div className="rounded-xl border border-white/[0.10] bg-white/[0.02] p-4 md:p-5">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[10px] font-display uppercase tracking-widest text-white/30">Issues des calls</span>
             {callStats.closeRate > 0 && (
@@ -126,7 +126,7 @@ export default function CockpitTab({ leads }: CockpitTabProps) {
         </div>
 
         {/* Revenue */}
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-5">
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4 md:p-5">
           <span className="text-[10px] font-display uppercase tracking-widest text-emerald-400/50">Revenue</span>
           <div className="mt-3 space-y-4">
             <div>
@@ -150,9 +150,9 @@ export default function CockpitTab({ leads }: CockpitTabProps) {
       </div>
 
       {/* ── Row 3: Setter performance ── */}
-      <div className="rounded-xl border border-white/[0.10] bg-white/[0.02] p-5">
+      <div className="rounded-xl border border-white/[0.10] bg-white/[0.02] p-4 md:p-5 overflow-x-auto">
         <span className="text-[10px] font-display uppercase tracking-widest text-white/30">Performance par setter</span>
-        <div className="mt-4">
+        <div className="mt-4 min-w-[560px]">
           {/* Header */}
           <div className="grid grid-cols-6 gap-2 pb-2 border-b border-white/[0.10] text-[10px] font-display uppercase tracking-widest text-white/25">
             <span className="col-span-1">Setter</span>

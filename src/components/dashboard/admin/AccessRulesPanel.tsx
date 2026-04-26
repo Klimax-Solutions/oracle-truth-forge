@@ -424,7 +424,7 @@ const ORACLE_PROGRESSION = [
 
 export function AccessRulesPanel() {
   return (
-    <div className="space-y-6 px-6 py-5 max-w-5xl mx-auto">
+    <div className="space-y-4 md:space-y-6 px-3 md:px-6 py-4 md:py-5 max-w-5xl mx-auto">
 
       {/* ═══ INTRO ═══ */}
       <div className="flex items-start gap-3 p-4 rounded-xl border border-primary/20 bg-primary/[.04]">

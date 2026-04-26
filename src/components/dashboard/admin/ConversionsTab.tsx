@@ -86,7 +86,7 @@ export default function ConversionsTab({ leads }: ConversionsTabProps) {
   }, [leads]);
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in max-w-5xl">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6 animate-fade-in max-w-5xl">
       {/* Title */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
@@ -99,8 +99,8 @@ export default function ConversionsTab({ leads }: ConversionsTabProps) {
       </div>
 
       {/* Main Funnel — horizontal bars */}
-      <div className="bg-white/[0.02] border border-white/[0.10] rounded-xl p-6">
-        <div className="flex items-end gap-4">
+      <div className="bg-white/[0.02] border border-white/[0.10] rounded-xl p-3 md:p-6 overflow-x-auto">
+        <div className="flex items-end gap-2 md:gap-4 min-w-[640px]">
           <FunnelBar label="Forms" count={stats.forms} maxCount={stats.forms} color="amber" />
           <ConversionRate from={stats.forms} to={stats.calls} label="→ Call" />
           <FunnelBar label="Calls" count={stats.calls} maxCount={stats.forms} color="blue" />
@@ -112,10 +112,10 @@ export default function ConversionsTab({ leads }: ConversionsTabProps) {
       </div>
 
       {/* Revenue card */}
-      <div className="bg-emerald-500/[0.06] border border-emerald-500/20 rounded-xl p-5 flex items-center justify-between">
+      <div className="bg-emerald-500/[0.06] border border-emerald-500/20 rounded-xl p-4 md:p-5 flex items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-display uppercase tracking-widest text-emerald-400/60">Chiffre d'affaires total</p>
-          <p className="text-3xl font-display font-bold text-emerald-400 mt-1 tabular-nums">{stats.revenue.toLocaleString()}€</p>
+          <p className="text-2xl md:text-3xl font-display font-bold text-emerald-400 mt-1 tabular-nums">{stats.revenue.toLocaleString()}€</p>
         </div>
         <div className="text-right">
           <p className="text-[10px] text-white/30 font-display">Panier moyen</p>
@@ -135,7 +135,7 @@ export default function ConversionsTab({ leads }: ConversionsTabProps) {
       </button>
 
       {showDaily && (
-        <div className="bg-white/[0.02] border border-white/[0.10] rounded-xl overflow-hidden">
+        <div className="bg-white/[0.02] border border-white/[0.10] rounded-xl overflow-x-auto">
           <div className="grid grid-cols-5 gap-0 text-[10px] font-display uppercase tracking-widest text-white/30 border-b border-white/[0.10] bg-white/[0.02]">
             <div className="py-2.5 px-4">Jour</div>
             <div className="py-2.5 px-3 text-center text-amber-400/60">Forms</div>
