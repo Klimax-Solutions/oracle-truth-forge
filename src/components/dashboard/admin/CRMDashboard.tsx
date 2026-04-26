@@ -40,6 +40,12 @@ import type { LeadModalView } from "./LeadDetailModal";
 // ── Types — CRMLead imported from @/lib/admin/types (source de verite unique) ──
 type PipelineLead = CRMLead; // Alias local pour compatibilite
 
+// Map des séquences Kit (sequence_id → nom lisible)
+export const KIT_SEQUENCE_NAMES: Record<string, string> = {
+  '2624505': 'Book-a-call',
+  '2626026': 'Nurturing',
+};
+
 function fmtDate(d: string | null): string {
   if (!d) return "";
   const date = new Date(d);
@@ -302,7 +308,14 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [closingId, setClosingId] = useState<string | null>(null);
   // Map request_id → état Kit (subscribed | failed | unsubscribed) + dernier event
-  const [kitEventsMap, setKitEventsMap] = useState<Record<string, { status: 'subscribed' | 'failed' | 'unsubscribed'; at: string; tag_added?: boolean }>>({});
+  const [kitEventsMap, setKitEventsMap] = useState<Record<string, {
+    status: 'subscribed' | 'failed' | 'unsubscribed';
+    at: string;
+    sequence_id: string | null;
+    started_at: string | null;
+    stopped_at: string | null;
+    tag_added?: boolean;
+  }>>({});
   const { toast } = useToast();
 
   // Effective roles: overrideRoles (from RoleSwitcher) prend le dessus sur les valeurs DB
@@ -493,20 +506,49 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
           .order("timestamp", { ascending: false })
           .then(({ data }) => {
             if (!data) return;
-            const map: Record<string, { status: 'subscribed' | 'failed' | 'unsubscribed'; at: string; tag_added?: boolean }> = {};
-            // On garde le dernier event significatif par lead (data déjà desc)
-            for (const ev of data as any[]) {
-              if (map[ev.request_id]) continue;
-              let status: 'subscribed' | 'failed' | 'unsubscribed' | null = null;
-              if (ev.event_type === 'kit_sequence_subscribed') status = 'subscribed';
-              else if (ev.event_type === 'kit_subscribe_failed') status = 'failed';
-              else if (ev.event_type === 'kit_unsubscribed' || ev.event_type === 'kit_sequence_unsubscribed') status = 'unsubscribed';
-              if (!status) continue;
-              map[ev.request_id] = {
-                status,
-                at: ev.timestamp,
-                tag_added: !!ev.metadata?.tag_added,
-              };
+            type KitEntry = {
+              status: 'subscribed' | 'failed' | 'unsubscribed';
+              at: string;
+              sequence_id: string | null;
+              started_at: string | null;
+              stopped_at: string | null;
+              tag_added?: boolean;
+            };
+            const map: Record<string, KitEntry> = {};
+            // data est trié desc → on parcourt à l'envers pour respecter la chrono
+            const ordered = [...(data as any[])].reverse();
+            for (const ev of ordered) {
+              const reqId = ev.request_id as string;
+              const seqId = (ev.metadata?.sequence_id ?? null) as string | null;
+              const cur = map[reqId];
+              if (ev.event_type === 'kit_sequence_subscribed') {
+                map[reqId] = {
+                  status: 'subscribed',
+                  at: ev.timestamp,
+                  sequence_id: seqId,
+                  started_at: ev.timestamp,
+                  stopped_at: null,
+                  tag_added: cur?.tag_added,
+                };
+              } else if (ev.event_type === 'kit_subscribe_failed') {
+                map[reqId] = {
+                  status: 'failed',
+                  at: ev.timestamp,
+                  sequence_id: seqId ?? cur?.sequence_id ?? null,
+                  started_at: cur?.started_at ?? null,
+                  stopped_at: cur?.stopped_at ?? null,
+                  tag_added: cur?.tag_added,
+                };
+              } else if (ev.event_type === 'kit_unsubscribed' || ev.event_type === 'kit_sequence_unsubscribed') {
+                map[reqId] = {
+                  status: 'unsubscribed',
+                  at: ev.timestamp,
+                  sequence_id: cur?.sequence_id ?? seqId,
+                  started_at: cur?.started_at ?? null,
+                  stopped_at: ev.timestamp,
+                  tag_added: !!ev.metadata?.tag_added || cur?.tag_added,
+                };
+              }
             }
             setKitEventsMap(map);
           });
@@ -735,7 +777,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 pl-5 min-w-[160px]">Lead</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[110px]">Form / EA</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[130px]">Setting</TableHead>
-                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[110px]">Mail</TableHead>
+                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center w-14">Kit</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[130px]">Call</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center w-16">Trial</TableHead>
                     {isSuperAdmin && <TableHead className="w-8" />}
@@ -840,43 +882,36 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                           )}
                         </div>
                       </TableCell>
-                      {/* MAIL — statut séquence Kit (subscribed / failed / unsubscribed) */}
+                      {/* KIT — séquence email (orange Book-a-call / bleu Nurturing / gris stoppée) */}
                       <TableCell className="text-center py-3">
                         {(() => {
                           const kit = kitEventsMap[lead.id];
-                          if (!kit) return <span className="text-white/15 text-[11px]">—</span>;
-                          if (kit.status === 'subscribed') {
-                            return (
-                              <div className="flex flex-col items-center gap-1">
-                                <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/25" title="Inscrit à la séquence Kit">
-                                  <Send className="w-3 h-3 shrink-0" />
-                                  <span className="font-bold">{fmtDate(kit.at)}</span>
-                                  <span className="opacity-50">{fmtTime(kit.at)}</span>
-                                </span>
-                                <span className="text-[9px] font-display text-emerald-400/60 uppercase tracking-wider">séquence active</span>
-                              </div>
-                            );
+                          if (!kit) return null;
+                          const seqId = kit.sequence_id ?? "";
+                          const seqName = KIT_SEQUENCE_NAMES[seqId] ?? "Séquence Kit";
+                          const isActive = kit.status === 'subscribed';
+                          const isStopped = kit.status === 'unsubscribed';
+                          const isFailed = kit.status === 'failed';
+                          // Couleur selon séquence + état
+                          let colorClass = "text-muted-foreground/50";
+                          let pulseClass = "";
+                          if (isActive) {
+                            if (seqId === '2624505') colorClass = "text-orange-400";
+                            else if (seqId === '2626026') colorClass = "text-sky-400";
+                            else colorClass = "text-emerald-400";
+                            pulseClass = "animate-pulse";
+                          } else if (isFailed) {
+                            colorClass = "text-red-400/70";
                           }
-                          if (kit.status === 'unsubscribed') {
-                            return (
-                              <div className="flex flex-col items-center gap-1">
-                                <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-violet-300 bg-violet-500/10 px-2.5 py-1 rounded-lg border border-violet-500/25" title="Désinscrit (call booké)">
-                                  <CheckCircle2 className="w-3 h-3 shrink-0" />
-                                  <span className="font-bold">{fmtDate(kit.at)}</span>
-                                </span>
-                                <span className="text-[9px] font-display text-violet-400/60 uppercase tracking-wider">stop · call booké</span>
-                              </div>
-                            );
-                          }
-                          // failed
+                          const tooltip = isFailed
+                            ? `${seqName} — Échec`
+                            : isStopped
+                              ? `${seqName} — Terminée${kit.stopped_at ? ` (${fmtDate(kit.stopped_at)})` : ''}`
+                              : `${seqName} — Active${kit.started_at ? ` depuis ${fmtDate(kit.started_at)}` : ''}`;
                           return (
-                            <div className="flex flex-col items-center gap-1">
-                              <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-red-300 bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/30" title="Échec de l'inscription Kit">
-                                <X className="w-3 h-3 shrink-0" />
-                                <span className="font-bold">{fmtDate(kit.at)}</span>
-                              </span>
-                              <span className="text-[9px] font-display text-red-400/60 uppercase tracking-wider">échec</span>
-                            </div>
+                            <span className="inline-flex items-center justify-center" title={tooltip}>
+                              <Mail className={cn("w-4 h-4", colorClass, pulseClass)} />
+                            </span>
                           );
                         })()}
                       </TableCell>

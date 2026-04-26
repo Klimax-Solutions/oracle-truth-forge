@@ -24,6 +24,7 @@ import { CRMLead } from "@/lib/admin/types";
 import { getSetterColor } from "@/lib/admin/setterColors";
 import { getTrialDay, getTrialColor, getChecklistStep, CHECKLIST_LABELS, CHECKLIST_FIELDS, formatRelativeDate } from "@/lib/admin/trialStatus";
 import LeadThreadPanel from "./LeadThreadPanel";
+import KitSequenceSection from "./KitSequenceSection";
 
 type PipelineLead = CRMLead; // Alias local pour compatibilite
 
@@ -1116,6 +1117,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
               <span className="text-[10px] font-display uppercase tracking-widest text-white/50">Timeline</span>
               <span className="text-[10px] font-display text-white/30 truncate ml-auto">{lead.first_name || "Lead"}</span>
             </div>
+            <KitSequenceSection requestId={lead.id} />
             <div className="flex-1 overflow-hidden">
               <LeadThreadPanel lead={lead} />
             </div>
