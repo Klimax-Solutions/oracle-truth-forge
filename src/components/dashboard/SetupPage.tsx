@@ -754,7 +754,7 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
 
 function SubViewHeader({ icon, label, onBack }: { icon: React.ReactNode; label: string; onBack: () => void }) {
   return (
-    <div className="px-6 py-3 border-b border-border bg-card flex items-center gap-3">
+    <div className="px-3 md:px-6 py-3 border-b border-border bg-card flex items-center gap-3">
       <Button variant="ghost" size="sm" onClick={onBack} className="gap-2 text-sm">
         ← Retour
       </Button>

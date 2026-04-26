@@ -1001,7 +1001,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
 
         {/* Summary Table - hidden for Early Access */}
         {!isEarlyAccess && (
-          <div className="border border-border p-6 bg-transparent rounded-md">
+          <div className="border border-border p-4 md:p-6 bg-transparent rounded-md overflow-x-auto">
             <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-4">
               Récapitulatif des Cycles
             </h3>

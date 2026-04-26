@@ -148,7 +148,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
     return (
       <div className="h-full flex flex-col bg-[#0A0B10]">
         {/* Session header */}
-        <div className="shrink-0 border-b border-white/[0.08] px-6 py-4 flex items-center gap-4">
+        <div className="shrink-0 border-b border-white/[0.08] px-3 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4 flex-wrap">
           <button
             onClick={handleBackFromSession}
             className="text-sm text-white/60 hover:text-white transition-colors inline-flex items-center gap-1.5"
@@ -228,7 +228,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
         background: `radial-gradient(ellipse 55% 45% at 15% 20%, ${TEAL_G}, transparent 65%)`,
       }} />
 
-      <div className="relative z-10 max-w-5xl mx-auto px-6 md:px-10 py-10">
+      <div className="relative z-10 max-w-5xl mx-auto px-3 md:px-10 py-6 md:py-10">
 
         {/* ── Header éditorial ── */}
         <div className="mb-10">
@@ -328,7 +328,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* BACKTESTING */}
-            <div className="rounded-2xl p-6 border" style={{ borderColor: `${TEAL}30`, backgroundColor: `${TEAL}07` }}>
+            <div className="rounded-2xl p-4 md:p-6 border" style={{ borderColor: `${TEAL}30`, backgroundColor: `${TEAL}07` }}>
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${TEAL}18` }}>
                   <LineChart className="w-5 h-5" style={{ color: TEAL }} />
@@ -345,7 +345,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
             </div>
 
             {/* LIVE TRADING */}
-            <div className="rounded-2xl p-6 border" style={{ borderColor: `${ORANGE}30`, backgroundColor: `${ORANGE}07` }}>
+            <div className="rounded-2xl p-4 md:p-6 border" style={{ borderColor: `${ORANGE}30`, backgroundColor: `${ORANGE}07` }}>
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${ORANGE}18` }}>
                   <Play className="w-5 h-5" style={{ color: ORANGE }} />

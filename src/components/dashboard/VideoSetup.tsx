@@ -214,8 +214,8 @@ export const VideoSetup = ({ overrideIsEarlyAccess }: VideoSetupProps = {}) => {
       )}
 
       {/* ── Navigation sections — style progress tracks (comme le bas d'OracleHomePage) ── */}
-      <div className="relative z-10 shrink-0 px-6 md:px-10 pt-4 pb-2">
-        <div className="flex gap-6 max-w-5xl">
+      <div className="relative z-10 shrink-0 px-3 md:px-10 pt-4 pb-2">
+        <div className="flex gap-3 md:gap-6 max-w-5xl">
           {(["oracle", "mercure"] as const).map((s) => {
             const p = PALETTE[s];
             const isActive = section === s;
@@ -323,7 +323,7 @@ const OraclePlayer = ({
 
       {/* ── Colonne principale : header + player ── */}
       <div className="flex-1 flex flex-col overflow-auto" style={{ scrollbarWidth: "none" }}>
-        <div className="px-6 md:px-10 pt-5 pb-6 flex flex-col gap-4">
+        <div className="px-3 md:px-10 pt-4 md:pt-5 pb-4 md:pb-6 flex flex-col gap-4">
 
           {/*
            * Header info — animé à chaque changement de vidéo via key remount.
@@ -596,7 +596,7 @@ const MercureSection = ({
 }) => (
   <div className="h-full flex flex-col overflow-hidden">
     {/* Header Mercure — même style badge/titre qu'Oracle */}
-    <div className="px-6 md:px-10 pt-5 pb-4 shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.045)" }}>
+    <div className="px-3 md:px-10 pt-4 md:pt-5 pb-4 shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.045)" }}>
       <div className="flex items-center gap-3">
         <StepBadge
           index="01"
