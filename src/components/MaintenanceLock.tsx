@@ -8,7 +8,14 @@ import { Clock, LogOut } from "lucide-react";
 // déjà connectés (les vrais clients existants) le temps de finaliser la maj.
 // Tout le reste (anonymes, signups, EA, staff) passe normalement.
 export const MAINTENANCE_MODE = false; // legacy export, plus utilisé pour bloquer le site
-const ALLOWED_ROUTES = ["/auth", "/reset-password", "/setup-password"];
+// Routes toujours accessibles, même pour un membre bloqué.
+// On inclut tous les funnels publics (/:slug/landing|apply|discovery|final) + la home + les flux auth.
+const ALLOWED_EXACT = ["/", "/auth", "/reset-password", "/setup-password"];
+const ALLOWED_SUFFIXES = ["/landing", "/apply", "/discovery", "/final"];
+const isAllowedRoute = (pathname: string) => {
+  if (ALLOWED_EXACT.includes(pathname)) return true;
+  return ALLOWED_SUFFIXES.some((s) => pathname.endsWith(s));
+};
 
 export const MaintenanceLock = () => {
   const location = useLocation();
