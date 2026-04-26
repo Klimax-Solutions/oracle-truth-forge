@@ -500,20 +500,49 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
           .order("timestamp", { ascending: false })
           .then(({ data }) => {
             if (!data) return;
-            const map: Record<string, { status: 'subscribed' | 'failed' | 'unsubscribed'; at: string; tag_added?: boolean }> = {};
-            // On garde le dernier event significatif par lead (data déjà desc)
-            for (const ev of data as any[]) {
-              if (map[ev.request_id]) continue;
-              let status: 'subscribed' | 'failed' | 'unsubscribed' | null = null;
-              if (ev.event_type === 'kit_sequence_subscribed') status = 'subscribed';
-              else if (ev.event_type === 'kit_subscribe_failed') status = 'failed';
-              else if (ev.event_type === 'kit_unsubscribed' || ev.event_type === 'kit_sequence_unsubscribed') status = 'unsubscribed';
-              if (!status) continue;
-              map[ev.request_id] = {
-                status,
-                at: ev.timestamp,
-                tag_added: !!ev.metadata?.tag_added,
-              };
+            type KitEntry = {
+              status: 'subscribed' | 'failed' | 'unsubscribed';
+              at: string;
+              sequence_id: string | null;
+              started_at: string | null;
+              stopped_at: string | null;
+              tag_added?: boolean;
+            };
+            const map: Record<string, KitEntry> = {};
+            // data est trié desc → on parcourt à l'envers pour respecter la chrono
+            const ordered = [...(data as any[])].reverse();
+            for (const ev of ordered) {
+              const reqId = ev.request_id as string;
+              const seqId = (ev.metadata?.sequence_id ?? null) as string | null;
+              const cur = map[reqId];
+              if (ev.event_type === 'kit_sequence_subscribed') {
+                map[reqId] = {
+                  status: 'subscribed',
+                  at: ev.timestamp,
+                  sequence_id: seqId,
+                  started_at: ev.timestamp,
+                  stopped_at: null,
+                  tag_added: cur?.tag_added,
+                };
+              } else if (ev.event_type === 'kit_subscribe_failed') {
+                map[reqId] = {
+                  status: 'failed',
+                  at: ev.timestamp,
+                  sequence_id: seqId ?? cur?.sequence_id ?? null,
+                  started_at: cur?.started_at ?? null,
+                  stopped_at: cur?.stopped_at ?? null,
+                  tag_added: cur?.tag_added,
+                };
+              } else if (ev.event_type === 'kit_unsubscribed' || ev.event_type === 'kit_sequence_unsubscribed') {
+                map[reqId] = {
+                  status: 'unsubscribed',
+                  at: ev.timestamp,
+                  sequence_id: cur?.sequence_id ?? seqId,
+                  started_at: cur?.started_at ?? null,
+                  stopped_at: ev.timestamp,
+                  tag_added: !!ev.metadata?.tag_added || cur?.tag_added,
+                };
+              }
             }
             setKitEventsMap(map);
           });
