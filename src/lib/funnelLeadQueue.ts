@@ -192,7 +192,11 @@ export async function flushPendingLeads(): Promise<{ flushed: number; remaining:
       stillPending.push(lead);
       continue;
     }
-    const ok = await attemptInsert(lead);
+    let ok = await attemptInsert(lead);
+    if (!ok) {
+      // Filet de sécurité : tente l'edge function avant de re-queuer
+      ok = await attemptEdgeFallback(lead, lead._slug);
+    }
     if (ok) {
       flushed++;
     } else {
