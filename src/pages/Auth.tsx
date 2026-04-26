@@ -444,10 +444,7 @@ const AuthForm = ({
       </div>
 
       <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-        Vous n'avez pas encore de compte ?{" "}
-        <a href="/early-access" className="text-primary hover:text-primary/80 font-medium underline underline-offset-2 transition-colors">
-          Déposez votre candidature
-        </a>
+        L'accès à Oracle se fait uniquement sur candidature via notre processus dédié.
       </p>
     </div>
   </>
