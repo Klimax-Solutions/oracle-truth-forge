@@ -30,19 +30,14 @@ export default function FunnelFinal() {
     setSubmitting(true);
     try {
       const requestId = session?.request_id;
-      if (requestId) {
-        // UPDATE par ID → précis, pas de risque de toucher le mauvais lead
-        await supabase
-          .from('early_access_requests')
-          .update({ precall_question: question.trim() } as any)
-          .eq('id', requestId);
-      } else {
-        // Fallback : UPDATE par email (legacy — OK si un seul lead avec cet email)
-        await supabase
-          .from('early_access_requests')
-          .update({ precall_question: question.trim() } as any)
-          .eq('email', email.toLowerCase().trim());
-      }
+      // Passe par l'edge function (service_role) — les users anon ne peuvent pas
+      // faire d'UPDATE direct sur early_access_requests (bloqué par RLS).
+      await supabase.functions.invoke('save-precall-question', {
+        body: {
+          question: question.trim(),
+          ...(requestId ? { request_id: requestId } : { email: email.toLowerCase().trim() }),
+        },
+      });
       setSubmitted(true);
     } catch {
       // Silent fail — not critical

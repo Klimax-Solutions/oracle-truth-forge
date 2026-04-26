@@ -123,6 +123,10 @@ function triggerKitSequence(lead: { email: string; first_name: string }, request
   }
 }
 
+// Colonnes garanties présentes sur PROD (appliquées via Lovable dès le départ).
+// Utilisées comme fallback si le schéma complet n'est pas encore migré.
+const CORE_COLUMNS = ['first_name', 'email', 'phone', 'status', 'form_submitted'] as const;
+
 async function attemptInsert(lead: FunnelLeadPayload): Promise<boolean> {
   // Sépare métadonnées internes des colonnes DB
   const { _attempted_at, _attempts, _slug, ...dbPayload } = lead;
@@ -156,6 +160,34 @@ async function attemptInsert(lead: FunnelLeadPayload): Promise<boolean> {
       if ((error as any).code === '23505') {
         console.log('[FunnelQueue] Lead already exists, routing to edge for resubmit logging:', lead.email);
         return false;
+      }
+      // 42703 = undefined_column — migrations DB en retard côté prod.
+      // Dégradation gracieuse : retenter avec uniquement les colonnes core garanties.
+      // Les données d'enrichissement (form_answers, budget, etc.) seront perdues MAIS
+      // le lead est au moins capturé. À régler en appliquant les migrations manquantes.
+      if ((error as any).code === '42703' || error.message?.includes('column')) {
+        console.warn('[FunnelQueue] Schema lag detected — retrying with core columns only');
+        const corePayload = Object.fromEntries(
+          CORE_COLUMNS.map(k => [k, (lead as any)[k]])
+        );
+        const { data: d2, error: e2 } = await supabase
+          .from('early_access_requests')
+          .insert(corePayload as any)
+          .select('id')
+          .maybeSingle();
+        if (!e2) {
+          storeFunnelSession({
+            request_id: (d2 as any)?.id ?? null,
+            email: lead.email,
+            first_name: lead.first_name,
+            phone: lead.phone,
+          });
+          triggerKitSequence(lead, (d2 as any)?.id);
+          return true;
+        }
+        if ((e2 as any).code === '23505') return false; // dupe même sur core
+        console.warn('[FunnelQueue] Core-only INSERT also failed:', e2.message);
+        return false; // passe à la edge
       }
       console.warn(`[FunnelQueue] INSERT attempt ${i + 1}/3 failed:`, error.message);
     } catch (err) {

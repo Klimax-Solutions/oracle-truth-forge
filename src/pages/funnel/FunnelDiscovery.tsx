@@ -6,9 +6,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { flushPendingLeads, getFunnelSession, storeFunnelSession } from '@/lib/funnelLeadQueue';
 
 // ── SLICE: syncBookingToDB ────────────────────────────────────────────────────
-// Self-contained, antifragile. Never throws — failure is logged but never blocks
-// the redirect flow.
-// Priorité : request_id (sessionStorage) > lookup par email (fallback).
+// Best-effort côté client — purement de la redondance.
+// ⚠️  RLS NOTE : les utilisateurs anon du funnel ne peuvent pas UPDATE ni SELECT
+// sur early_access_requests (policy : is_super_admin() / is_setter() uniquement).
+// Cette fonction sera donc silencieusement no-op pour les visiteurs non-auth.
+// C'est INTENTIONNEL : le cal-webhook (edge function service_role) est la source
+// de vérité canonique pour call_booked / call_scheduled_at / call_meeting_url.
+// syncBookingToDB ne sert que si le webhook Cal.com est en retard ou absent.
+// Never throws — failure is logged but never blocks the redirect flow.
 // ─────────────────────────────────────────────────────────────────────────────
 async function syncBookingToDB(opts: {
   requestId?: string | null;
