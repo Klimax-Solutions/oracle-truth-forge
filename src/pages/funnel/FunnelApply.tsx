@@ -378,21 +378,23 @@ export default function FunnelApply() {
           </div>
         )}
 
-        <div className="flex-1 flex items-center justify-center px-4 py-16">
+        <div className="flex-1 flex items-center justify-center px-4 py-16 md:py-24">
           <div className="w-full max-w-lg">
 
             {/* Header au-dessus du form (caché en cas de submit / disqualification) */}
             {!disqualified && !submitted && (
-              <div className="text-center mb-8 space-y-2">
-                <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight">
-                  Oracle <span className="text-primary">Free Trial</span> 7 jours
+              <div className="text-center mb-12 space-y-4">
+                <h1 className="text-3xl md:text-5xl font-display font-bold tracking-tight leading-tight">
+                  Oracle <span className="text-primary">Free Trial</span>
+                  <span className="block text-white/90 mt-1">7 jours</span>
                 </h1>
-                <p className="text-sm md:text-base text-white/60 font-display">
+                <p className="text-sm md:text-base text-white/50 font-display tracking-wide">
                   Faire ma demande pour rejoindre
                 </p>
               </div>
             )}
 
+            <div className={!disqualified && !submitted ? "rounded-2xl border border-white/80 bg-white/[0.02] backdrop-blur-sm p-6 md:p-10 shadow-[0_0_40px_rgba(255,255,255,0.04)]" : ""}>
             {disqualified ? (
               <div className="text-center space-y-4">
                 <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mx-auto"><span className="text-3xl">🙏</span></div>
@@ -460,7 +462,7 @@ export default function FunnelApply() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-6" key={step}>
+              <div className="space-y-7" key={step}>
                 <div>
                   <p className="text-xs text-primary/60 font-display uppercase tracking-widest mb-2">Question {step + 1} / {questions.length}</p>
                   <h2 className="text-xl font-display font-bold leading-relaxed">{currentQuestion?.title}</h2>
@@ -484,6 +486,7 @@ export default function FunnelApply() {
                 {step > 0 && <button onClick={() => setStep(s => s - 1)} className="text-xs text-white/30 hover:text-white/60 font-display uppercase tracking-wider transition-colors"><ChevronLeft className="w-3 h-3 inline mr-1" />Retour</button>}
               </div>
             )}
+            </div>
           </div>
         </div>
 
