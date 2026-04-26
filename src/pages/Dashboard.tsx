@@ -368,7 +368,7 @@ const Dashboard = () => {
         if (prev) console.warn("[Dashboard] Auth loading timeout — forcing render");
         return false;
       });
-    }, devMode ? 200 : 3000);
+    }, devMode ? 200 : 6000);
 
     return () => {
       subscription.unsubscribe();

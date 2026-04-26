@@ -269,7 +269,9 @@ export const useSidebarRoles = () => {
 
   const checkRoles = async (retries = 2) => {
     try {
-      const { data: { session } } = await withTimeoutLocal(supabase.auth.getSession(), 3000);
+      // getSession peut etre lent au cold-start Vercel (lecture localStorage + validation JWT).
+      // Bump a 8s pour eviter le timeout sur premier load qui faisait disparaitre les onglets admin.
+      const { data: { session } } = await withTimeoutLocal(supabase.auth.getSession(), 8000);
       if (!session) {
         resetRoles();
         setLoadingRoles(false);
@@ -314,6 +316,11 @@ export const useSidebarRoles = () => {
       }
     } catch (err) {
       console.warn("[Roles] aborted or failed, using defaults", err);
+      // Au lieu de laisser les defaults (false) — qui font disparaitre les onglets admin —
+      // on retry en arriere-plan apres 800ms si on a encore des retries.
+      if (retries > 0) {
+        setTimeout(() => checkRoles(retries - 1), 800);
+      }
     } finally {
       setLoadingRoles(false);
     }
@@ -354,7 +361,7 @@ export const useSidebarRoles = () => {
         }
         return false;
       });
-    }, 4000);
+    }, 9000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
