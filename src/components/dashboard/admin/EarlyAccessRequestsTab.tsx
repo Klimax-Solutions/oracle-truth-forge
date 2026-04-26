@@ -33,6 +33,31 @@ export const EarlyAccessRequestsTab = () => {
   const [durations, setDurations] = useState<Record<string, number>>({});
   const { toast } = useToast();
 
+  // Format en heure de Paris (équipe FR — l'heure du navigateur peut différer)
+  const fmtParis = (iso: string) => {
+    const d = new Date(iso);
+    const date = d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit", timeZone: "Europe/Paris" });
+    const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
+    return `${date} à ${time}`;
+  };
+
+  // Index des soumissions par email (case-insensitive) → détection de doublons.
+  // Important : on n'écrase JAMAIS les anciennes soumissions, on les liste pour audit.
+  const submissionsByEmail = useMemo(() => {
+    const map = new Map<string, EARequest[]>();
+    for (const r of requests) {
+      const key = (r.email || "").trim().toLowerCase();
+      if (!key) continue;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    // Trier chaque groupe par date desc
+    for (const arr of map.values()) {
+      arr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+    return map;
+  }, [requests]);
+
   const fetchRequests = async () => {
     setLoading(true);
     const { data } = await supabase
