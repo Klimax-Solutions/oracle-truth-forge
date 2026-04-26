@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { forwardRef, useState, useEffect, useRef, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Trophy, X, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,8 +13,9 @@ interface Notification {
 }
 
 const SUCCESS_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3";
+const AUTHENTICATED_ROUTES = ["/dashboard", "/setup", "/oracle-m"];
 
-const SuccessNotification = () => {
+const SuccessNotification = forwardRef<HTMLDivElement>((_, ref) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -21,25 +23,55 @@ const SuccessNotification = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { fireConfetti } = useSuccessConfetti();
   const initialLoadDone = useRef(false);
+  const { pathname } = useLocation();
+  const shouldMount = AUTHENTICATED_ROUTES.some((route) => pathname.startsWith(route));
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   useEffect(() => {
+    if (!shouldMount) {
+      setUserId(null);
+      setHasAccess(false);
+      setNotifications([]);
+      setIsOpen(false);
+      return;
+    }
+
+    let mounted = true;
     audioRef.current = new Audio(SUCCESS_SOUND_URL);
     audioRef.current.volume = 0.5;
 
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!mounted) return;
+
+        if (!user) {
+          setUserId(null);
+          setHasAccess(false);
+          return;
+        }
+
         setUserId(user.id);
-        // Check if user has EA, admin, or super_admin role
-        const { data: isEA } = await supabase.rpc("is_early_access");
-        const { data: isAdminResult } = await supabase.rpc("is_admin");
-        setHasAccess(!!isEA || !!isAdminResult);
+        const [{ data: isEA }, { data: isAdminResult }] = await Promise.all([
+          supabase.rpc("is_early_access"),
+          supabase.rpc("is_admin"),
+        ]);
+        if (mounted) setHasAccess(!!isEA || !!isAdminResult);
+      } catch {
+        if (mounted) {
+          setUserId(null);
+          setHasAccess(false);
+        }
       }
     };
+
     getUser();
-  }, []);
+
+    return () => {
+      mounted = false;
+    };
+  }, [shouldMount]);
 
   const playSound = useCallback(() => {
     if (audioRef.current) {
@@ -49,7 +81,7 @@ const SuccessNotification = () => {
   }, []);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!shouldMount || !userId) return;
 
     // Listen for success posts
     const channel = supabase
@@ -139,21 +171,22 @@ const SuccessNotification = () => {
 
     return () => {
       clearTimeout(timer);
+      initialLoadDone.current = false;
       supabase.removeChannel(channel);
       supabase.removeChannel(resultsChannel);
       supabase.removeChannel(notifChannel);
       supabase.removeChannel(verificationChannel);
     };
-  }, [userId, playSound, fireConfetti]);
+  }, [shouldMount, userId, playSound, fireConfetti]);
 
   const markAllRead = () => { setNotifications((prev) => prev.map((n) => ({ ...n, read: true }))); };
   const handleToggle = () => { if (!isOpen) markAllRead(); setIsOpen(!isOpen); };
 
-  // Hide notifications for plain members (only show for EA, admin, super_admin)
-  if (hasAccess === false) return null;
+  // Hide notifications for public pages and plain members (only show for EA, admin, super_admin)
+  if (!shouldMount || hasAccess === false) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+    <div ref={ref} className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
       {isOpen && (
         <div className="w-80 max-h-96 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-fade-in mb-2">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
@@ -193,6 +226,8 @@ const SuccessNotification = () => {
       </button>
     </div>
   );
-};
+});
+
+SuccessNotification.displayName = "SuccessNotification";
 
 export { SuccessNotification };
