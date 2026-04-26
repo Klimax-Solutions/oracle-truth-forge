@@ -396,6 +396,12 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
    */
   const handleCloseLead = async (e: React.MouseEvent, lead: PipelineLead) => {
     e.stopPropagation();
+    // Garde de rôle : seuls closer / admin / super_admin peuvent activer un membre payant.
+    // Les setters voient le bouton grisé (UX) mais cette garde bloque aussi tout bypass UI.
+    if (!isCloserRole && !isAdminRole && !isSuperAdmin) {
+      toast({ title: "Action réservée", description: "Seul un closer ou un admin peut activer un membre payant.", variant: "destructive" });
+      return;
+    }
     if (!lead.user_id) { toast({ title: "Impossible", description: "Le lead n'a pas encore de compte. Approuvez-le d'abord.", variant: "destructive" }); return; }
     if (!confirm(`Activer ${lead.first_name} (${lead.email}) comme membre actif ?\n\nCette action :\n• Ajoute le rôle "member" (accès complet)\n• Retire "early_access" (clear timer)\n• Marque le profil comme client payant\n• Archive le lead en closed_won`)) return;
     setClosingId(lead.id);
