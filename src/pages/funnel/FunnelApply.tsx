@@ -381,6 +381,18 @@ export default function FunnelApply() {
         <div className="flex-1 flex items-center justify-center px-4 py-16">
           <div className="w-full max-w-lg">
 
+            {/* Header au-dessus du form (caché en cas de submit / disqualification) */}
+            {!disqualified && !submitted && (
+              <div className="text-center mb-8 space-y-2">
+                <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight">
+                  Oracle <span className="text-primary">Free Trial</span> 7 jours
+                </h1>
+                <p className="text-sm md:text-base text-white/60 font-display">
+                  Faire ma demande pour rejoindre
+                </p>
+              </div>
+            )}
+
             {disqualified ? (
               <div className="text-center space-y-4">
                 <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mx-auto"><span className="text-3xl">🙏</span></div>
