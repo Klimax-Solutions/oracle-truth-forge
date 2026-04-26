@@ -212,8 +212,15 @@ function LeadDetail({ lead, onClose }: { lead: PipelineLead; onClose: () => void
         <div className="space-y-1.5">
           <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Contact</p>
           <button onClick={() => copy(lead.email, "Email")} className="flex items-center gap-2 text-xs hover:text-primary transition-colors w-full text-left">
-            <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" /><span className="truncate flex-1">{lead.email}</span><Copy className="w-3 h-3 text-muted-foreground shrink-0" />
+            <Mail className={cn("w-3.5 h-3.5 shrink-0", lead.email?.endsWith('@sms.cal.com') ? "text-orange-400" : "text-muted-foreground")} />
+            <span className={cn("truncate flex-1", lead.email?.endsWith('@sms.cal.com') && "text-orange-300 italic")}>{lead.email}</span>
+            <Copy className="w-3 h-3 text-muted-foreground shrink-0" />
           </button>
+          {lead.email?.endsWith('@sms.cal.com') && (
+            <p className="text-[10px] font-display text-orange-400/80 pl-5 -mt-0.5">
+              ⚠️ Email placeholder Cal.com — récupère le vrai email lors du call
+            </p>
+          )}
           {lead.phone && (
             <button onClick={() => copy(lead.phone, "Tel")} className="flex items-center gap-2 text-xs hover:text-primary transition-colors w-full text-left">
               <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" /><span>{lead.phone}</span><Copy className="w-3 h-3 text-muted-foreground shrink-0" />
@@ -816,6 +823,15 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                             <div className="flex items-center gap-1.5">
                               <p className="text-[15px] font-display font-bold text-white">{lead.first_name || "—"}</p>
                               {lead.priorite && <span className={cn("text-[8px] font-display font-bold", lead.priorite === 'P1' ? 'text-emerald-400' : lead.priorite === 'P2' ? 'text-amber-400' : 'text-red-400')}>{lead.priorite}</span>}
+                              {/* Badge SMS — email placeholder Cal.com (booking sans form, email à compléter) */}
+                              {lead.email?.endsWith('@sms.cal.com') && (
+                                <span
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-orange-500/15 border border-orange-500/40 text-[9px] font-display font-bold text-orange-300 uppercase tracking-wider"
+                                  title="Booking SMS — email réel à récupérer (le client n'a pas soumis le form)"
+                                >
+                                  📵 SMS
+                                </span>
+                              )}
                             </div>
                             {lead.setter_name && sc ? (
                               <span className={`text-[10px] font-display ${sc.text}`} onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}>
