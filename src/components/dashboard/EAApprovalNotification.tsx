@@ -13,7 +13,7 @@ interface EANotif {
   created_at: string;
 }
 
-const DEFAULT_DURATION_HOURS = 72;
+const DEFAULT_DURATION_HOURS = 168; // 7 jours par défaut
 
 export const EAApprovalNotification = () => {
   const [pending, setPending] = useState<EANotif[]>([]);

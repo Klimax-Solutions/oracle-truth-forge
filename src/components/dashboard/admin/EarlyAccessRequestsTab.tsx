@@ -22,7 +22,7 @@ interface EARequest {
   created_at: string;
 }
 
-const DEFAULT_DURATION_HOURS = 72;
+const DEFAULT_DURATION_HOURS = 168; // 7 jours par défaut
 
 export const EarlyAccessRequestsTab = () => {
   const [requests, setRequests] = useState<EARequest[]>([]);
