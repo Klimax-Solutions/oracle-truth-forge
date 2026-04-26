@@ -244,24 +244,20 @@ Deno.serve(async (req: Request) => {
 
       const tryLookupByPhone = async (phoneRaw: string) => {
         const digits = phoneRaw.replace(/\D/g, '');
-        if (!digits) return { data: [], error: null };
+        if (!digits) return { data: [] as any[], error: null as any };
         const res = await supabase
           .from("early_access_requests")
           .select("id, first_name, email, phone, call_booked, status, form_submitted")
           .order("created_at", { ascending: false })
-          .limit: undefined as never; // sentinel — on fait limit après
-        // (on refait proprement ci-dessous)
-        const res2 = await supabase
-          .from("early_access_requests")
-          .select("id, first_name, email, phone, call_booked, status, form_submitted")
-          .order("created_at", { ascending: false })
           .limit(100);
-        const filtered = (res2.data || []).filter((l: any) => {
+        const filtered = (res.data || []).filter((l: any) => {
           if (!l.phone) return false;
           const leadDigits = l.phone.replace(/\D/g, '');
-          return leadDigits === digits || leadDigits === digits.replace(/^0+/, '') || leadDigits.endsWith(digits.slice(-9));
+          return leadDigits === digits
+            || leadDigits === digits.replace(/^0+/, '')
+            || (digits.length >= 9 && leadDigits.endsWith(digits.slice(-9)));
         });
-        return { data: filtered, error: res2.error };
+        return { data: filtered, error: res.error };
       };
 
       // Étape 1 : metadata.form_email
