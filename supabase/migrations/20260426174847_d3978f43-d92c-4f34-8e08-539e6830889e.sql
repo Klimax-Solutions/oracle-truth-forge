@@ -1,0 +1,1 @@
+UPDATE public.funnel_config SET discovery_cal_link = 'https://cal.com/contact.capitalmercure/oracle', updated_at = now() WHERE funnel_id = '7aa3f1fa-a0c6-4f5f-b63f-e786184b470b';
