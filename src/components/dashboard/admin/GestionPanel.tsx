@@ -1557,7 +1557,7 @@ export default function GestionPanel() {
                                   <span>Moy: <b>{stats.avgRR.toFixed(2)}</b></span>
                                   <span>W/L: <b>{stats.wins}/{stats.losses}</b></span>
                                 </div>
-                                <ScrollArea className="max-h-[280px] rounded-md border border-border">
+                                <ScrollArea className="max-h-[280px] rounded-md border border-border [&_[data-radix-scroll-area-viewport]]:pb-3">
                                   <Table>
                                     <TableHeader>
                                       <TableRow className="bg-muted/50">
