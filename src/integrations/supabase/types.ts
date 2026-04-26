@@ -292,52 +292,172 @@ export type Database = {
       }
       early_access_requests: {
         Row: {
+          archive_reason: string | null
+          archived_at: string | null
+          archived_by: string | null
+          booking_event_id: string | null
+          brief_closer: string | null
+          budget_amount: number | null
           call_booked: boolean
+          call_debrief: string | null
           call_done: boolean
+          call_done_at: string | null
+          call_meeting_url: string | null
+          call_no_show: boolean | null
+          call_outcome: string | null
+          call_rescheduled_at: string | null
+          call_scheduled_at: string | null
+          call_scheduled_duration: number | null
+          checkout_unlocked: boolean | null
+          closer_name: string | null
           contact_method: string | null
+          contacte_aujourdhui: boolean | null
           contacted: boolean
+          contacted_at: string | null
           created_at: string
+          date_activation_trial: string | null
+          derniere_interaction: string | null
+          difficulte_principale: string | null
           email: string
           first_name: string
+          form_answers: Json | null
           form_submitted: boolean
           id: string
+          importance_trading: number | null
+          offer_amount: string | null
+          paid_amount: number | null
+          paid_at: string | null
           phone: string
+          precall_question: string | null
+          priorite: string | null
+          quick_win: boolean | null
+          raison_non_closing: string | null
+          raison_perdu: string | null
+          rappel_date: string | null
+          rappel_note: string | null
+          recolte_demarree: boolean | null
+          recolte_terminee: boolean | null
           reviewed_at: string | null
           reviewed_by: string | null
+          setter_name: string | null
           status: string
+          statut_trial: string | null
+          trade_execute: boolean | null
           user_id: string | null
+          videos_en_cours: boolean | null
+          videos_terminees: boolean | null
         }
         Insert: {
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          booking_event_id?: string | null
+          brief_closer?: string | null
+          budget_amount?: number | null
           call_booked?: boolean
+          call_debrief?: string | null
           call_done?: boolean
+          call_done_at?: string | null
+          call_meeting_url?: string | null
+          call_no_show?: boolean | null
+          call_outcome?: string | null
+          call_rescheduled_at?: string | null
+          call_scheduled_at?: string | null
+          call_scheduled_duration?: number | null
+          checkout_unlocked?: boolean | null
+          closer_name?: string | null
           contact_method?: string | null
+          contacte_aujourdhui?: boolean | null
           contacted?: boolean
+          contacted_at?: string | null
           created_at?: string
+          date_activation_trial?: string | null
+          derniere_interaction?: string | null
+          difficulte_principale?: string | null
           email: string
           first_name: string
+          form_answers?: Json | null
           form_submitted?: boolean
           id?: string
+          importance_trading?: number | null
+          offer_amount?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
           phone: string
+          precall_question?: string | null
+          priorite?: string | null
+          quick_win?: boolean | null
+          raison_non_closing?: string | null
+          raison_perdu?: string | null
+          rappel_date?: string | null
+          rappel_note?: string | null
+          recolte_demarree?: boolean | null
+          recolte_terminee?: boolean | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          setter_name?: string | null
           status?: string
+          statut_trial?: string | null
+          trade_execute?: boolean | null
           user_id?: string | null
+          videos_en_cours?: boolean | null
+          videos_terminees?: boolean | null
         }
         Update: {
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          booking_event_id?: string | null
+          brief_closer?: string | null
+          budget_amount?: number | null
           call_booked?: boolean
+          call_debrief?: string | null
           call_done?: boolean
+          call_done_at?: string | null
+          call_meeting_url?: string | null
+          call_no_show?: boolean | null
+          call_outcome?: string | null
+          call_rescheduled_at?: string | null
+          call_scheduled_at?: string | null
+          call_scheduled_duration?: number | null
+          checkout_unlocked?: boolean | null
+          closer_name?: string | null
           contact_method?: string | null
+          contacte_aujourdhui?: boolean | null
           contacted?: boolean
+          contacted_at?: string | null
           created_at?: string
+          date_activation_trial?: string | null
+          derniere_interaction?: string | null
+          difficulte_principale?: string | null
           email?: string
           first_name?: string
+          form_answers?: Json | null
           form_submitted?: boolean
           id?: string
+          importance_trading?: number | null
+          offer_amount?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
           phone?: string
+          precall_question?: string | null
+          priorite?: string | null
+          quick_win?: boolean | null
+          raison_non_closing?: string | null
+          raison_perdu?: string | null
+          rappel_date?: string | null
+          rappel_note?: string | null
+          recolte_demarree?: boolean | null
+          recolte_terminee?: boolean | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          setter_name?: string | null
           status?: string
+          statut_trial?: string | null
+          trade_execute?: boolean | null
           user_id?: string | null
+          videos_en_cours?: boolean | null
+          videos_terminees?: boolean | null
         }
         Relationships: []
       }
@@ -371,6 +491,285 @@ export type Database = {
         }
         Relationships: []
       }
+      funnel_config: {
+        Row: {
+          apply_blocks: Json | null
+          apply_form_email_label: string | null
+          apply_form_name_label: string | null
+          apply_form_phone_label: string | null
+          apply_form_questions: Json | null
+          apply_headline: string | null
+          apply_social_proof_enabled: boolean | null
+          apply_social_proof_text: string | null
+          apply_subtitle: string | null
+          brand_footer_text: string | null
+          brand_name: string | null
+          created_at: string | null
+          discovery_badge_text: string | null
+          discovery_blocks: Json | null
+          discovery_cal_link: string | null
+          discovery_cta_button: string | null
+          discovery_cta_subtitle: string | null
+          discovery_cta_title: string | null
+          discovery_headline: string | null
+          discovery_headline_personalized: string | null
+          discovery_subtitle: string | null
+          final_badge_text: string | null
+          final_blocks: Json | null
+          final_headline_accent: string | null
+          final_headline_confirmation: string | null
+          final_headline_personalized: string | null
+          final_step1_congrats: string | null
+          final_step1_details: string | null
+          final_step1_instructions: string | null
+          final_step1_title: string | null
+          final_step1_warning_consequence: string | null
+          final_step1_warning_text: string | null
+          final_step1_warning_title: string | null
+          final_step2_placeholder: string | null
+          final_step2_subtext: string | null
+          final_step2_title: string | null
+          funnel_id: string | null
+          id: string
+          landing_blocks: Json | null
+          landing_cta_subtext: string | null
+          landing_cta_text: string | null
+          landing_footer_text: string | null
+          landing_headline: string | null
+          landing_headline_accent: string | null
+          landing_subtitle: string | null
+          updated_at: string | null
+          vsl_cta_delay_seconds: number | null
+          vsl_embed_code: string | null
+          vsl_enabled: boolean | null
+          vsl_page: string | null
+          vsl_provider: string | null
+        }
+        Insert: {
+          apply_blocks?: Json | null
+          apply_form_email_label?: string | null
+          apply_form_name_label?: string | null
+          apply_form_phone_label?: string | null
+          apply_form_questions?: Json | null
+          apply_headline?: string | null
+          apply_social_proof_enabled?: boolean | null
+          apply_social_proof_text?: string | null
+          apply_subtitle?: string | null
+          brand_footer_text?: string | null
+          brand_name?: string | null
+          created_at?: string | null
+          discovery_badge_text?: string | null
+          discovery_blocks?: Json | null
+          discovery_cal_link?: string | null
+          discovery_cta_button?: string | null
+          discovery_cta_subtitle?: string | null
+          discovery_cta_title?: string | null
+          discovery_headline?: string | null
+          discovery_headline_personalized?: string | null
+          discovery_subtitle?: string | null
+          final_badge_text?: string | null
+          final_blocks?: Json | null
+          final_headline_accent?: string | null
+          final_headline_confirmation?: string | null
+          final_headline_personalized?: string | null
+          final_step1_congrats?: string | null
+          final_step1_details?: string | null
+          final_step1_instructions?: string | null
+          final_step1_title?: string | null
+          final_step1_warning_consequence?: string | null
+          final_step1_warning_text?: string | null
+          final_step1_warning_title?: string | null
+          final_step2_placeholder?: string | null
+          final_step2_subtext?: string | null
+          final_step2_title?: string | null
+          funnel_id?: string | null
+          id?: string
+          landing_blocks?: Json | null
+          landing_cta_subtext?: string | null
+          landing_cta_text?: string | null
+          landing_footer_text?: string | null
+          landing_headline?: string | null
+          landing_headline_accent?: string | null
+          landing_subtitle?: string | null
+          updated_at?: string | null
+          vsl_cta_delay_seconds?: number | null
+          vsl_embed_code?: string | null
+          vsl_enabled?: boolean | null
+          vsl_page?: string | null
+          vsl_provider?: string | null
+        }
+        Update: {
+          apply_blocks?: Json | null
+          apply_form_email_label?: string | null
+          apply_form_name_label?: string | null
+          apply_form_phone_label?: string | null
+          apply_form_questions?: Json | null
+          apply_headline?: string | null
+          apply_social_proof_enabled?: boolean | null
+          apply_social_proof_text?: string | null
+          apply_subtitle?: string | null
+          brand_footer_text?: string | null
+          brand_name?: string | null
+          created_at?: string | null
+          discovery_badge_text?: string | null
+          discovery_blocks?: Json | null
+          discovery_cal_link?: string | null
+          discovery_cta_button?: string | null
+          discovery_cta_subtitle?: string | null
+          discovery_cta_title?: string | null
+          discovery_headline?: string | null
+          discovery_headline_personalized?: string | null
+          discovery_subtitle?: string | null
+          final_badge_text?: string | null
+          final_blocks?: Json | null
+          final_headline_accent?: string | null
+          final_headline_confirmation?: string | null
+          final_headline_personalized?: string | null
+          final_step1_congrats?: string | null
+          final_step1_details?: string | null
+          final_step1_instructions?: string | null
+          final_step1_title?: string | null
+          final_step1_warning_consequence?: string | null
+          final_step1_warning_text?: string | null
+          final_step1_warning_title?: string | null
+          final_step2_placeholder?: string | null
+          final_step2_subtext?: string | null
+          final_step2_title?: string | null
+          funnel_id?: string | null
+          id?: string
+          landing_blocks?: Json | null
+          landing_cta_subtext?: string | null
+          landing_cta_text?: string | null
+          landing_footer_text?: string | null
+          landing_headline?: string | null
+          landing_headline_accent?: string | null
+          landing_subtitle?: string | null
+          updated_at?: string | null
+          vsl_cta_delay_seconds?: number | null
+          vsl_embed_code?: string | null
+          vsl_enabled?: boolean | null
+          vsl_page?: string | null
+          vsl_provider?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funnel_config_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      funnels: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      lead_comments: {
+        Row: {
+          author_id: string
+          author_name: string
+          author_role: string
+          comment_type: string
+          content: string
+          created_at: string
+          edited_at: string | null
+          id: string
+          request_id: string
+        }
+        Insert: {
+          author_id: string
+          author_name: string
+          author_role?: string
+          comment_type?: string
+          content: string
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          request_id: string
+        }
+        Update: {
+          author_id?: string
+          author_name?: string
+          author_role?: string
+          comment_type?: string
+          content?: string
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_comments_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "early_access_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_events: {
+        Row: {
+          created_by: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          request_id: string
+          source: string
+          timestamp: string
+        }
+        Insert: {
+          created_by?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          request_id: string
+          source?: string
+          timestamp?: string
+        }
+        Update: {
+          created_by?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          request_id?: string
+          source?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_events_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "early_access_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -382,6 +781,8 @@ export type Database = {
           frozen_at: string | null
           frozen_by: string | null
           id: string
+          imported_at: string | null
+          imported_from_prod: boolean
           is_client: boolean
           status: Database["public"]["Enums"]["user_status"]
           status_reason: string | null
@@ -399,6 +800,8 @@ export type Database = {
           frozen_at?: string | null
           frozen_by?: string | null
           id?: string
+          imported_at?: string | null
+          imported_from_prod?: boolean
           is_client?: boolean
           status?: Database["public"]["Enums"]["user_status"]
           status_reason?: string | null
@@ -416,6 +819,8 @@ export type Database = {
           frozen_at?: string | null
           frozen_by?: string | null
           id?: string
+          imported_at?: string | null
+          imported_from_prod?: boolean
           is_client?: boolean
           status?: Database["public"]["Enums"]["user_status"]
           status_reason?: string | null
@@ -1330,6 +1735,9 @@ export type Database = {
         Args: { p_cycle_id: string; p_user_cycle_id: string; p_user_id: string }
         Returns: number
       }
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      disable_import_triggers: { Args: never; Returns: undefined }
+      enable_import_triggers: { Args: never; Returns: undefined }
       get_leaderboard_data: {
         Args: never
         Returns: {
@@ -1376,6 +1784,7 @@ export type Database = {
         | "early_access"
         | "institute"
         | "setter"
+        | "closer"
       cycle_status:
         | "locked"
         | "in_progress"
@@ -1517,6 +1926,7 @@ export const Constants = {
         "early_access",
         "institute",
         "setter",
+        "closer",
       ],
       cycle_status: [
         "locked",
