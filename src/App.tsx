@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import EarlyAccess from "./pages/EarlyAccess";
 import SetupPasswordPage from "./pages/SetupPasswordPage";
 import { SuccessNotification } from "./components/dashboard/SuccessNotification";
+import { MaintenanceLock } from "./components/MaintenanceLock";
 
 const queryClient = new QueryClient({
   defaultOptions: {
