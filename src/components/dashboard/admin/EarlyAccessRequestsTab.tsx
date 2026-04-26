@@ -58,6 +58,10 @@ export const EarlyAccessRequestsTab = () => {
     return map;
   }, [requests]);
 
+  // Set des emails (lowercase) qui ont DÉJÀ un compte membre actif (rôle 'member')
+  // → permet d'afficher une alerte CRITIQUE sur les nouvelles demandes pour ces emails
+  const [memberEmails, setMemberEmails] = useState<Set<string>>(new Set());
+
   const fetchRequests = async () => {
     setLoading(true);
     const { data } = await supabase
@@ -69,8 +73,34 @@ export const EarlyAccessRequestsTab = () => {
     setLoading(false);
   };
 
+  // Récupère la liste des emails de tous les comptes ayant le rôle 'member'.
+  // Best-effort : si ça échoue, pas d'alerte mais rien ne casse.
+  const fetchMemberEmails = async () => {
+    try {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "member");
+      if (!roles?.length) return;
+      const userIds = roles.map((r: any) => r.user_id);
+      // Récupère les emails via early_access_requests qui linkent user_id↔email
+      const { data: linked } = await supabase
+        .from("early_access_requests" as any)
+        .select("email, user_id")
+        .in("user_id", userIds);
+      const set = new Set<string>();
+      (linked as any[] | null)?.forEach((r) => {
+        if (r.email) set.add(String(r.email).trim().toLowerCase());
+      });
+      setMemberEmails(set);
+    } catch (err) {
+      console.warn("[EARequests] memberEmails fetch failed:", err);
+    }
+  };
+
   useEffect(() => {
     fetchRequests();
+    fetchMemberEmails();
   }, []);
 
   const handleApprove = async (request: EARequest) => {
