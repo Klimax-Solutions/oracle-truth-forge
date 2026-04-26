@@ -280,9 +280,9 @@ export function useAdminFunnelConfig(tenantId: string | null, funnelId?: string)
         let query = supabase.from('funnel_config').select('*');
 
         if (funnelId) {
-          query = query.eq('funnel_id', funnelId);
+          query = (query as any).eq('funnel_id', funnelId);
         } else if (tenantId) {
-          query = query.eq('tenant_id', tenantId);
+          query = (query as any).eq('tenant_id', tenantId);
         }
 
         const { data, error } = await query.maybeSingle();
