@@ -301,6 +301,8 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
   const [currentSetterName, setCurrentSetterName] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [closingId, setClosingId] = useState<string | null>(null);
+  // Map request_id → état Kit (subscribed | failed | unsubscribed) + dernier event
+  const [kitEventsMap, setKitEventsMap] = useState<Record<string, { status: 'subscribed' | 'failed' | 'unsubscribed'; at: string; tag_added?: boolean }>>({});
   const { toast } = useToast();
 
   // Effective roles: overrideRoles (from RoleSwitcher) prend le dessus sur les valeurs DB
@@ -481,7 +483,34 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
       setLeads(requests.map(r => mapLead(r)));
       setLoading(false);
 
-      // Enrich in background
+      // Charge les events Kit en parallèle (non-bloquant)
+      const requestIds = requests.map(r => r.id);
+      if (requestIds.length > 0) {
+        supabase.from("lead_events")
+          .select("request_id, event_type, timestamp, metadata")
+          .in("request_id", requestIds)
+          .eq("source", "kit")
+          .order("timestamp", { ascending: false })
+          .then(({ data }) => {
+            if (!data) return;
+            const map: Record<string, { status: 'subscribed' | 'failed' | 'unsubscribed'; at: string; tag_added?: boolean }> = {};
+            // On garde le dernier event significatif par lead (data déjà desc)
+            for (const ev of data as any[]) {
+              if (map[ev.request_id]) continue;
+              let status: 'subscribed' | 'failed' | 'unsubscribed' | null = null;
+              if (ev.event_type === 'kit_sequence_subscribed') status = 'subscribed';
+              else if (ev.event_type === 'kit_subscribe_failed') status = 'failed';
+              else if (ev.event_type === 'kit_unsubscribed' || ev.event_type === 'kit_sequence_unsubscribed') status = 'unsubscribed';
+              if (!status) continue;
+              map[ev.request_id] = {
+                status,
+                at: ev.timestamp,
+                tag_added: !!ev.metadata?.tag_added,
+              };
+            }
+            setKitEventsMap(map);
+          });
+      }
       const userIds = requests.filter(r => r.user_id).map(r => r.user_id);
       if (userIds.length === 0) return;
       const [rolesRes, activityRes, sessionsRes, execsRes, videoViewsRes] = await Promise.all([
@@ -706,6 +735,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 pl-5 min-w-[160px]">Lead</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[110px]">Form / EA</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[130px]">Setting</TableHead>
+                    <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[110px]">Mail</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[130px]">Call</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center w-16">Trial</TableHead>
                     {isSuperAdmin && <TableHead className="w-8" />}
@@ -713,7 +743,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={isSuperAdmin ? 6 : 5} className="text-center py-20 text-white/30 text-sm font-display">Aucun lead</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-20 text-white/30 text-sm font-display">Aucun lead</TableCell></TableRow>
                   ) : filtered.slice(0, 100).map((lead) => {
                     const sc = lead.setter_name ? getSetterColor(lead.setter_name) : null;
                     const trial = getTrialDay(lead);
@@ -809,6 +839,46 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                             </span>
                           )}
                         </div>
+                      </TableCell>
+                      {/* MAIL — statut séquence Kit (subscribed / failed / unsubscribed) */}
+                      <TableCell className="text-center py-3">
+                        {(() => {
+                          const kit = kitEventsMap[lead.id];
+                          if (!kit) return <span className="text-white/15 text-[11px]">—</span>;
+                          if (kit.status === 'subscribed') {
+                            return (
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/25" title="Inscrit à la séquence Kit">
+                                  <Send className="w-3 h-3 shrink-0" />
+                                  <span className="font-bold">{fmtDate(kit.at)}</span>
+                                  <span className="opacity-50">{fmtTime(kit.at)}</span>
+                                </span>
+                                <span className="text-[9px] font-display text-emerald-400/60 uppercase tracking-wider">séquence active</span>
+                              </div>
+                            );
+                          }
+                          if (kit.status === 'unsubscribed') {
+                            return (
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-violet-300 bg-violet-500/10 px-2.5 py-1 rounded-lg border border-violet-500/25" title="Désinscrit (call booké)">
+                                  <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                  <span className="font-bold">{fmtDate(kit.at)}</span>
+                                </span>
+                                <span className="text-[9px] font-display text-violet-400/60 uppercase tracking-wider">stop · call booké</span>
+                              </div>
+                            );
+                          }
+                          // failed
+                          return (
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-red-300 bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/30" title="Échec de l'inscription Kit">
+                                <X className="w-3 h-3 shrink-0" />
+                                <span className="font-bold">{fmtDate(kit.at)}</span>
+                              </span>
+                              <span className="text-[9px] font-display text-red-400/60 uppercase tracking-wider">échec</span>
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       {/* CALL — date+h colorée selon outcome (valeurs canoniques) */}
                       <TableCell className="text-center py-3" onClick={e => { e.stopPropagation(); openLead(lead, "call"); }}>
