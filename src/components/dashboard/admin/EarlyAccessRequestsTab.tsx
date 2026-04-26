@@ -58,6 +58,10 @@ export const EarlyAccessRequestsTab = () => {
     return map;
   }, [requests]);
 
+  // Set des emails (lowercase) qui ont DÉJÀ un compte membre actif (rôle 'member')
+  // → permet d'afficher une alerte CRITIQUE sur les nouvelles demandes pour ces emails
+  const [memberEmails, setMemberEmails] = useState<Set<string>>(new Set());
+
   const fetchRequests = async () => {
     setLoading(true);
     const { data } = await supabase
@@ -69,8 +73,34 @@ export const EarlyAccessRequestsTab = () => {
     setLoading(false);
   };
 
+  // Récupère la liste des emails de tous les comptes ayant le rôle 'member'.
+  // Best-effort : si ça échoue, pas d'alerte mais rien ne casse.
+  const fetchMemberEmails = async () => {
+    try {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "member");
+      if (!roles?.length) return;
+      const userIds = roles.map((r: any) => r.user_id);
+      // Récupère les emails via early_access_requests qui linkent user_id↔email
+      const { data: linked } = await supabase
+        .from("early_access_requests" as any)
+        .select("email, user_id")
+        .in("user_id", userIds);
+      const set = new Set<string>();
+      (linked as any[] | null)?.forEach((r) => {
+        if (r.email) set.add(String(r.email).trim().toLowerCase());
+      });
+      setMemberEmails(set);
+    } catch (err) {
+      console.warn("[EARequests] memberEmails fetch failed:", err);
+    }
+  };
+
   useEffect(() => {
     fetchRequests();
+    fetchMemberEmails();
   }, []);
 
   const handleApprove = async (request: EARequest) => {
@@ -155,17 +185,42 @@ export const EarlyAccessRequestsTab = () => {
                 const allForEmail = submissionsByEmail.get(emailKey) || [];
                 const otherSubmissions = allForEmail.filter((r) => r.id !== req.id);
                 const isDuplicate = otherSubmissions.length > 0;
+                const isAlreadyMember = memberEmails.has(emailKey);
 
                 return (
                 <div
                   key={req.id}
-                  className="border border-amber-500/30 bg-amber-500/5 rounded-md p-3"
+                  className={
+                    isAlreadyMember
+                      ? "border-2 border-red-500/60 bg-red-500/10 rounded-md p-3 shadow-lg shadow-red-500/10"
+                      : "border border-amber-500/30 bg-amber-500/5 rounded-md p-3"
+                  }
                 >
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase bg-amber-500/20 text-amber-500 border border-amber-500/30">
                         Early Access Pré-call
                       </span>
+                      {/* ⚠️ Alerte CRITIQUE : ce mail correspond à un compte membre actif (client payant) */}
+                      {isAlreadyMember && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-red-500/25 text-red-400 border border-red-500/50 cursor-help animate-pulse">
+                              <AlertTriangle className="w-3 h-3" />
+                              ⚠ Déjà membre
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" className="max-w-xs">
+                            <div className="space-y-1 text-[11px]">
+                              <p className="font-semibold text-red-400">Compte membre actif détecté</p>
+                              <p className="text-muted-foreground">
+                                Cet email a déjà un compte avec le rôle <span className="font-mono">member</span>.
+                                Vérifie avant d'approuver — risque de doublon de compte ou tentative de re-trial.
+                              </p>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                       {isDuplicate && (
                         <Tooltip>
                           <TooltipTrigger asChild>
