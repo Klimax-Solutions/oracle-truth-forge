@@ -1,4 +1,4 @@
-import { Menu, LogOut, ExternalLink } from "lucide-react";
+import { Menu, LogOut, ExternalLink, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -35,8 +35,8 @@ const adminTabs = [
   { id: "gestion", label: "Gestion", icon: Crown, section: "admin" },
   { id: "config", label: "Configuration", icon: Settings, section: "admin" },
   { id: "video-admin", label: "Vidéos (Admin)", icon: Film, section: "admin" },
-  { id: "admin", label: "Vérifications Admin", icon: ShieldCheck, section: "admin" },
-  { id: "early-access-mgmt", label: "Early Access (legacy)", icon: Users, section: "admin" },
+  { id: "admin", label: "Vérif. Admin", icon: ShieldCheck, section: "admin", deprecated: true },
+  { id: "early-access-mgmt", label: "Early Access", icon: Users, section: "admin", deprecated: true },
 ];
 
 const setterOnlyTabs = [{ id: "crm", label: "CRM", icon: Users }];
@@ -83,7 +83,7 @@ export const MobileHeader = ({
     );
   }
 
-  let allTabs: Array<{ id: string; label: string; icon: any; section?: string }> = [...tabs];
+  let allTabs: Array<{ id: string; label: string; icon: any; section?: string; deprecated?: boolean }> = [...tabs];
 
   // Admin V2: tous les onglets admin pour admin OU super_admin (Sidebar fait pareil)
   if (isAdmin || isSuperAdmin) {
@@ -130,12 +130,19 @@ export const MobileHeader = ({
                               "w-full flex items-center gap-3 px-4 py-3 transition-all",
                               "text-sm font-medium",
                               activeTab === tab.id
-                                ? "bg-primary text-primary-foreground"
-                                : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                                ? tab.deprecated
+                                  ? "bg-amber-500/15 text-amber-400 border border-amber-500/20"
+                                  : "bg-primary text-primary-foreground"
+                                : tab.deprecated
+                                  ? "text-muted-foreground/40 hover:text-amber-400/60 hover:bg-amber-500/5"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-accent",
                             )}
                           >
-                            <tab.icon className="w-4 h-4 flex-shrink-0" />
-                            <span>{tab.label}</span>
+                            <tab.icon className={cn("w-4 h-4 flex-shrink-0", tab.deprecated && "opacity-50")} />
+                            <span className={cn("flex-1 text-left", tab.deprecated && "opacity-60")}>{tab.label}</span>
+                            {tab.deprecated && (
+                              <AlertTriangle className="w-3 h-3 text-amber-500/60 flex-shrink-0" />
+                            )}
                           </button>
                         </SheetTrigger>
                       </div>
