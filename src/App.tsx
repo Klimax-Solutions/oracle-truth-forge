@@ -11,7 +11,7 @@ import SetupDetail from "./pages/SetupDetail";
 import OracleM from "./pages/OracleM";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
-import EarlyAccess from "./pages/EarlyAccess";
+
 import SetupPasswordPage from "./pages/SetupPasswordPage";
 import FunnelLanding from "./pages/funnel/FunnelLanding";
 import FunnelApply from "./pages/funnel/FunnelApply";
