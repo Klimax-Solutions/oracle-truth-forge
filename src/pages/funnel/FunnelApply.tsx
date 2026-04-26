@@ -81,6 +81,8 @@ export default function FunnelApply() {
   const [submitted, setSubmitted] = useState(false);
   const [disqualified, setDisqualified] = useState(false);
   const [error, setError] = useState('');
+  // Récap obligatoire avant l'envoi définitif → l'utilisateur DOIT relire son prénom/email/tel
+  const [confirming, setConfirming] = useState(false);
   const vslRef = useRef<HTMLDivElement>(null);
   const [ctaVisible, setCtaVisible] = useState(false);
 
