@@ -186,8 +186,8 @@ const OracleM = () => {
                   }`}
                 >
                   {/* Main row */}
-                  <div className="px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-6">
+                  <div className="px-3 md:px-6 py-3 md:py-4 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 md:gap-6 min-w-0">
                       {/* Trade number */}
                       <span className="text-2xl font-bold text-muted-foreground/50 w-12">
                         {String(trade.trade_number).padStart(3, '0')}
@@ -226,7 +226,7 @@ const OracleM = () => {
 
                   {/* Expanded details */}
                   {selectedTrade?.id === trade.id && (
-                    <div className="px-6 py-4 border-t border-border grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="px-3 md:px-6 py-3 md:py-4 border-t border-border grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                       <div>
                         <p className="text-xs text-muted-foreground font-mono uppercase mb-1">Entrée</p>
                         <p className="text-sm text-foreground">{trade.entry_time || '—'}</p>
