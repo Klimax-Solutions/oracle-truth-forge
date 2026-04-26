@@ -12,7 +12,7 @@ import {
   Users, Search, ChevronDown, CheckCircle, XCircle,
   ShieldCheck, Shield, Award, UserPlus, User, Tag,
   Snowflake, Ban, UserX, RefreshCw, Check, X,
-  MoreHorizontal, Clock, Lock,
+  MoreHorizontal, Clock, Lock, Mail,
 } from "lucide-react";
 import { AccessRulesPanel } from "./AccessRulesPanel";
 import { Button } from "@/components/ui/button";
@@ -315,14 +315,17 @@ export default function ConfigPanel() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: profiles }, { data: roles }] = await Promise.all([
+      const [{ data: profiles }, { data: roles }, { data: emails }] = await Promise.all([
         supabase.from("profiles").select("user_id, display_name, first_name, status, status_reason, is_client"),
         supabase.from("user_roles").select("user_id, role"),
+        supabase.rpc("get_team_emails" as any),
       ]);
+      const emailMap = new Map<string, string>();
+      (emails as any[] || []).forEach((e: any) => emailMap.set(e.user_id, e.email));
       const map = new Map<string, RoleUser>();
       (profiles || []).forEach((p: any) => {
         map.set(p.user_id, {
-          user_id: p.user_id, email: p.display_name || "?", display_name: p.display_name,
+          user_id: p.user_id, email: emailMap.get(p.user_id) || p.display_name || "?", display_name: p.display_name,
           first_name: p.first_name || null, roles: [], status: p.status || "active",
           status_reason: p.status_reason, is_client: p.is_client || false,
         });
@@ -564,6 +567,10 @@ export default function ConfigPanel() {
                     <span className="text-white/70 text-xs font-medium uppercase tracking-wider">Nom</span>
                   </div>
                   <div className="w-[120px] shrink-0 text-white/70 text-xs font-medium uppercase tracking-wider">Prénom</div>
+                  <div className="w-[220px] shrink-0 flex items-center gap-2">
+                    <IconBox color="cyan"><Mail className="w-3 h-3 text-cyan-400/80" /></IconBox>
+                    <span className="text-white/70 text-xs font-medium uppercase tracking-wider">Email</span>
+                  </div>
                   <div className="flex-1 flex items-center gap-2">
                     <IconBox color="violet"><Crown className="w-3 h-3 text-violet-400/80" /></IconBox>
                     <span className="text-white/70 text-xs font-medium uppercase tracking-wider">Rôles</span>
@@ -597,11 +604,21 @@ export default function ConfigPanel() {
                           <span className="text-sm text-white/60">{u.first_name || <span className="text-white/20">—</span>}</span>
                         </div>
 
-                        {/* Roles */}
+                        {/* Email */}
+                        <div className="w-[220px] shrink-0 truncate">
+                          <span className="text-sm text-white/60 font-mono text-xs" title={u.email}>{u.email}</span>
+                        </div>
+
+                        {/* Roles — super_admin supersedes admin, hide admin badge if SA present */}
                         <div className="flex-1 flex gap-1 flex-wrap">
-                          {u.roles.filter((r) => r !== "member").map((r) => (
-                            <span key={r} className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono border", getRoleCls(r))}>{getRoleIcon(r)}{getRoleLabel(r)}</span>
-                          ))}
+                          {(() => {
+                            const visible = u.roles.filter((r) => r !== "member");
+                            const hasSA = visible.includes("super_admin");
+                            const filtered = hasSA ? visible.filter((r) => r !== "admin") : visible;
+                            return filtered.map((r) => (
+                              <span key={r} className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono border", getRoleCls(r))}>{getRoleIcon(r)}{getRoleLabel(r)}</span>
+                            ));
+                          })()}
                           {u.roles.filter((r) => r !== "member").length === 0 && <span className="text-white/20 text-xs">Membre</span>}
                         </div>
 
