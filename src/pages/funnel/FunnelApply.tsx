@@ -382,7 +382,8 @@ export default function FunnelApply() {
             {!disqualified && !submitted && (
               <div className="text-center mb-12 space-y-4">
                 <h1 className="text-3xl md:text-5xl font-display font-bold tracking-tight leading-tight">
-                  Oracle <span className="text-primary">Free Trial</span>
+                  Oracle<sup className="text-[0.45em] font-normal align-super ml-0.5 text-white/70">™</sup>
+                  {' '}<span className="text-primary">Free Trial</span>
                   <span className="block text-white/90 mt-1">7 jours</span>
                 </h1>
                 <p className="text-sm md:text-base text-white/50 font-display tracking-wide">
@@ -427,7 +428,7 @@ export default function FunnelApply() {
                   }}
                   className="w-full h-14 rounded-xl bg-[#19B7C9] hover:bg-[#19B7C9]/90 text-[#0A0B10] font-display text-sm md:text-base font-semibold tracking-wide transition-all shadow-[0_0_30px_rgba(25,183,201,0.25)] hover:shadow-[0_0_40px_rgba(25,183,201,0.35)]"
                 >
-                  Clique ici pour sécuriser ton accès à vie à Oracle
+                  Clique ici pour sécuriser ton accès à vie à Oracle<sup className="text-[0.55em] font-normal align-super ml-0.5">™</sup>
                 </button>
               </div>
             ) : isContactStep ? (

@@ -18,9 +18,9 @@ export default function FunnelLanding() {
         <div className="max-w-2xl w-full text-center space-y-10">
 
           {/* Brand */}
-          <p className="text-[11px] tracking-[0.5em] uppercase text-white/25 font-display">
-            {config.brand_name || 'Oracle'}
-          </p>
+          <h2 className="text-3xl md:text-4xl font-display font-semibold tracking-tight text-white">
+            Oracle<sup className="text-[0.45em] font-normal align-super ml-0.5 text-white/70">™</sup>
+          </h2>
 
           {/* Headline */}
           <h1 className="text-3xl md:text-5xl lg:text-6xl font-display font-bold leading-[1.15] tracking-tight">
