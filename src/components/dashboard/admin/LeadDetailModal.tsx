@@ -109,6 +109,13 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
 
   const copy = (t: string, l: string) => { navigator.clipboard.writeText(t); toast({ title: `${l} copié` }); };
 
+  // Détecte les doublons (autres soumissions du form) + si déjà membre actif
+  const dupInfo = useLeadDuplicates({
+    requestId: lead.id,
+    email: lead.email,
+    userId: lead.user_id,
+  });
+
   // Load setters list (from user_roles + profiles, fallback to existing leads)
   useEffect(() => {
     (async () => {
