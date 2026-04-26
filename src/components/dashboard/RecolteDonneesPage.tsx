@@ -49,9 +49,12 @@ interface RecolteDonneesPageProps {
   onNavigateToSetupOracle?: () => void;
   /** SA role simulation — si défini, override le hook useEarlyAccess */
   overrideIsEarlyAccess?: boolean;
+  /** Admin-only : action de consultation Oracle Max (Data Analysis) */
+  isAdmin?: boolean;
+  onConsultOracleMax?: () => void;
 }
 
-export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIsEarlyAccess }: RecolteDonneesPageProps = {}) {
+export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIsEarlyAccess, isAdmin, onConsultOracleMax }: RecolteDonneesPageProps = {}) {
   const { isEarlyAccess: isEarlyAccessFromDB } = useEarlyAccess();
   const isEarlyAccess = overrideIsEarlyAccess !== undefined ? overrideIsEarlyAccess : isEarlyAccessFromDB;
   const [sessions, setSessions] = useState<TradingSession[]>([]);
