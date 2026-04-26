@@ -451,7 +451,6 @@ export const useSidebarRoles = () => {
       .subscribe();
 
     return () => {
-      mounted = false;
       subscription.unsubscribe();
       supabase.removeChannel(channel);
       clearTimeout(safetyTimer);

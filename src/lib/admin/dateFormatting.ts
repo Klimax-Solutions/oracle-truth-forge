@@ -1,4 +1,4 @@
-import { format as fnsFormat } from 'date-fns';
+import { format as fnsFormat, type Locale } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 /**
