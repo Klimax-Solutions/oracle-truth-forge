@@ -272,11 +272,8 @@ export default function FunnelApply() {
 
       // ── Proceed ──────────────────────────────────────────────────────────
       setSubmitted(true);
-      const params = new URLSearchParams();
-      params.set('name', contact.first_name.trim());
-      params.set('email', email);
-      if (phone) params.set('phone', phone);
-      setTimeout(() => navigate(`/${slug}/discovery?${params}`), 1500);
+      // Pas de redirect auto : l'utilisateur clique le CTA "sécuriser ton accès"
+      // pour aller à /discovery. Les params sont stockés dans le state pour le bouton.
     } catch { setError('Erreur de connexion.'); setSubmitting(false); }
   };
 
@@ -402,10 +399,36 @@ export default function FunnelApply() {
                 <p className="text-white/50 text-sm leading-relaxed max-w-sm mx-auto">Malheureusement, ton profil ne correspond pas aux critères requis pour le moment.</p>
               </div>
             ) : submitted ? (
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mx-auto mb-6"><Check className="w-8 h-8 text-emerald-400" /></div>
-                <h2 className="text-2xl font-display font-bold mb-2">Candidature envoyée !</h2>
-                <p className="text-white/50">Redirection en cours...</p>
+              <div className="text-center space-y-10 py-4">
+                <div className="space-y-6">
+                  <div className="w-14 h-14 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto">
+                    <Check className="w-6 h-6 text-emerald-400" />
+                  </div>
+                  <div className="space-y-3">
+                    <h2 className="text-2xl md:text-3xl font-display font-bold tracking-tight">
+                      Demande de Free Trial étudiée
+                    </h2>
+                    <p className="text-sm md:text-base text-white/55 font-display leading-relaxed max-w-sm mx-auto">
+                      Un membre de notre équipe reviendra vers toi pour valider ta candidature.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="h-px w-16 bg-white/15 mx-auto" />
+
+                <button
+                  onClick={() => {
+                    const params = new URLSearchParams();
+                    params.set('name', contact.first_name.trim());
+                    params.set('email', contact.email.trim().toLowerCase());
+                    const phone = contact.phone ? `${contact.countryCode}${contact.phone.replace(/\s/g, '')}` : '';
+                    if (phone) params.set('phone', phone);
+                    navigate(`/${slug}/discovery?${params}`);
+                  }}
+                  className="w-full h-14 rounded-xl bg-[#19B7C9] hover:bg-[#19B7C9]/90 text-[#0A0B10] font-display text-sm md:text-base font-semibold tracking-wide transition-all shadow-[0_0_30px_rgba(25,183,201,0.25)] hover:shadow-[0_0_40px_rgba(25,183,201,0.35)]"
+                >
+                  Clique ici pour sécuriser ton accès à vie à Oracle
+                </button>
               </div>
             ) : isContactStep ? (
               <div className="space-y-6">
