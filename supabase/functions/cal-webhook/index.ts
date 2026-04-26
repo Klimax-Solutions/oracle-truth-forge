@@ -338,20 +338,28 @@ Deno.serve(async (req: Request) => {
 
         log.ok("BOOKING_CREATED", `Lead ${lead.id} mis à jour — call_booked=true, scheduled=${callScheduledAt}`);
       } else {
-        // Aucun lead trouvé → création automatique depuis le booking
+        // Aucun lead trouvé → création automatique depuis le booking.
+        // Priorité aux données form_email / form_phone (metadata Cal) si présentes.
         log.warn("BOOKING_CREATED", `Aucun lead trouvé pour ${attendeeEmail} — création d'un nouveau lead`);
 
         const firstName = attendeeName.split(" ")[0] || attendeeEmail.split("@")[0];
-        let phone = null;
-        if (booking.responses) {
+
+        // Téléphone : priorité metadata.form_phone → attendee.phoneNumber → smsPhone → responses
+        let phone: string | null = formPhone || (attendee as any)?.phoneNumber || smsPhone || null;
+        if (!phone && booking.responses) {
           const r = booking.responses as Record<string, any>;
-          phone = r.phone?.value || r.phone || r.smsReminderNumber?.value || null;
-          log.info("BOOKING_CREATED", `Téléphone extrait des responses: ${phone}`);
+          phone = r.attendeePhoneNumber?.value || r.phone?.value || r.phone || r.smsReminderNumber?.value || null;
         }
+        log.info("BOOKING_CREATED", `Téléphone retenu: ${phone}`);
+
+        // Email : priorité metadata.form_email (vérité) → attendee.email réel (si pas SMS)
+        // Pour les bookings SMS sans form_email, on garde le placeholder @sms.cal.com
+        // mais on flag pour que le CRM puisse demander manuellement le vrai email.
+        const email: string = formEmail || (isSmsBooking ? attendeeEmail : attendeeEmail);
 
         const insertData = {
           first_name: firstName,
-          email: attendeeEmail,
+          email,
           phone: phone || "",
           status: "en_attente",
           form_submitted: false,
@@ -362,16 +370,38 @@ Deno.serve(async (req: Request) => {
         };
 
         log.info("BOOKING_CREATED", `INSERT early_access_requests`, insertData);
-        const { error: insertError } = await supabase
+        const { data: created, error: insertError } = await supabase
           .from("early_access_requests")
-          .insert(insertData);
+          .insert(insertData)
+          .select("id")
+          .maybeSingle();
 
         if (insertError) {
           log.error("BOOKING_CREATED", "Erreur INSERT", insertError);
           throw new Error(`Insert error: ${insertError.message}`);
         }
 
-        log.ok("BOOKING_CREATED", `Nouveau lead créé pour ${attendeeEmail}`);
+        log.ok("BOOKING_CREATED", `Nouveau lead créé pour ${email} (id=${created?.id})`);
+
+        // Audit : log d'événement spécifique pour les leads créés via webhook (utile pour debug)
+        if (created?.id) {
+          try {
+            await supabase.from("lead_events").insert({
+              request_id: created.id,
+              event_type: "lead_created_from_webhook",
+              source: "cal",
+              metadata: {
+                attendee_email: attendeeEmail,
+                form_email: formEmail,
+                phone,
+                is_sms_booking: isSmsBooking,
+                booking_uid: booking.uid,
+              },
+            });
+          } catch (e) {
+            log.warn("BOOKING_CREATED", `lead_events insert failed (non-blocking): ${(e as Error).message}`);
+          }
+        }
       }
 
       return new Response(JSON.stringify({ success: true, event: "booking_created", email: attendeeEmail }), {
