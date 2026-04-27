@@ -694,7 +694,10 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
               {/* Meta */}
               <div className="text-[10px] text-white/15 font-mono space-y-0.5 pt-1">
                 <p>{lead.id}</p>
-                <p>Soumis: {fmtDate(lead.created_at)}</p>
+                {lead.form_submitted
+                  ? <p>Soumis: {fmtDate(lead.created_at)}</p>
+                  : <p className="text-orange-400/50">Call booké sans form — {fmtDate(lead.created_at)}</p>
+                }
               </div>
             </div>
           </div>

@@ -893,9 +893,16 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                       {/* FORM / EA — date soumission + date approbation */}
                       <TableCell className="text-center py-3">
                         <div className="flex flex-col items-center gap-1">
-                          <span className="inline-block text-[11px] font-mono font-semibold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/25">
-                            <span className="font-bold">{fmtDate(lead.created_at)}</span> <span className="text-amber-400/60">{fmtTime(lead.created_at)}</span>
-                          </span>
+                          {lead.form_submitted ? (
+                            <span className="inline-block text-[11px] font-mono font-semibold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/25">
+                              <span className="font-bold">{fmtDate(lead.created_at)}</span> <span className="text-amber-400/60">{fmtTime(lead.created_at)}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-orange-300 bg-orange-500/10 px-2 py-0.5 rounded-lg border border-orange-500/30"
+                              title="Ce lead a booké directement via Cal.com sans remplir le formulaire">
+                              📵 <span>sans form</span>
+                            </span>
+                          )}
                           {lead.reviewed_at && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-mono text-cyan-400/80 bg-cyan-500/8 px-2 py-0.5 rounded border border-cyan-500/20">
                               <Shield className="w-2.5 h-2.5 shrink-0" />
