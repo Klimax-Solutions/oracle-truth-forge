@@ -834,12 +834,12 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center w-14">Kit</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center min-w-[130px]">Call</TableHead>
                     <TableHead className="text-white/50 font-display text-[10px] uppercase tracking-widest py-3 text-center w-16">Trial</TableHead>
-                    {isSuperAdmin && <TableHead className="w-8" />}
+                    {(isAdminRole || isSuperAdmin) && <TableHead className="w-8" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-20 text-white/30 text-sm font-display">Aucun lead</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={(isAdminRole || isSuperAdmin) ? 7 : 6} className="text-center py-20 text-white/30 text-sm font-display">Aucun lead</TableCell></TableRow>
                   ) : filtered.slice(0, 100).map((lead) => {
                     const sc = lead.setter_name ? getSetterColor(lead.setter_name) : null;
                     const trial = getTrialDay(lead);
@@ -1083,7 +1083,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                         )}
                       </TableCell>
                       {/* DELETE (superadmin) */}
-                      {isSuperAdmin && (
+                      {(isAdminRole || isSuperAdmin) && (
                         <TableCell className="py-2.5 pr-2">
                           <button onClick={(e) => deleteLead(e, lead)} className="p-1 rounded text-white/15 hover:text-red-400 hover:bg-red-500/10 transition-all">
                             <Trash2 className="w-3 h-3" />

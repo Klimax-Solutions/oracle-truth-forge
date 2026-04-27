@@ -107,6 +107,15 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
     lead.call_scheduled_at ? new Date(lead.call_scheduled_at).toISOString().slice(0, 16) : ""
   );
   const [rescheduling, setRescheduling] = useState(false);
+  const [cancellingCall, setCancellingCall] = useState(false);
+
+  // Edit info (nom / email / phone) — admin + super_admin
+  const canEditInfo = canEditCall; // admin + closer + super_admin
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [editName, setEditName]   = useState(lead.first_name || "");
+  const [editEmail, setEditEmail] = useState(lead.email || "");
+  const [editPhone, setEditPhone] = useState(lead.phone || "");
+  const [savingInfo, setSavingInfo] = useState(false);
 
   const copy = (t: string, l: string) => { navigator.clipboard.writeText(t); toast({ title: `${l} copié` }); };
 
@@ -178,6 +187,53 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
     if (error) toast({ title: "Erreur", description: error.message, variant: "destructive" });
     else { toast({ title: "Sauvegardé" }); onLeadUpdated?.(); }
   }, [lead.id, toast, onLeadUpdated]);
+
+  // ── Cancel call ───────────────────────────────────────────────────────
+  const cancelCall = async () => {
+    if (!confirm(`Annuler le call de ${lead.first_name} ?\n\nLe créneau sera libéré et le lead repassera en attente de setting.`)) return;
+    setCancellingCall(true);
+    try {
+      const { error } = await supabase.from("early_access_requests").update({
+        call_booked: false,
+        call_scheduled_at: null,
+        call_meeting_url: null,
+        call_no_show: false,
+      }).eq("id", lead.id);
+      if (error) throw error;
+      await supabase.from("lead_events").insert({
+        request_id: lead.id,
+        event_type: "call_cancelled",
+        source: "crm",
+        metadata: { cancelled_by: "admin", previous_scheduled_at: lead.call_scheduled_at },
+      }).then(() => {}, () => {});
+      toast({ title: "Call annulé", description: `Le call de ${lead.first_name} a été annulé.` });
+      onLeadUpdated?.();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setCancellingCall(false);
+    }
+  };
+
+  // ── Save info (nom / email / phone) ──────────────────────────────────
+  const saveInfo = async () => {
+    setSavingInfo(true);
+    try {
+      const { error } = await supabase.from("early_access_requests").update({
+        first_name: editName.trim() || lead.first_name,
+        email: editEmail.trim().toLowerCase() || lead.email,
+        phone: editPhone.trim() || lead.phone,
+      }).eq("id", lead.id);
+      if (error) throw error;
+      toast({ title: "Infos mises à jour" });
+      setEditingInfo(false);
+      onLeadUpdated?.();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingInfo(false);
+    }
+  };
 
   // ── Activate as paid member (1-clic) ─────────────────────────────────
   // Conversion complète : profile.is_client + role member, retire EA, log event.
@@ -700,6 +756,48 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                   : <p className="text-orange-400/50">Call booké sans form — {fmtDate(lead.created_at)}</p>
                 }
               </div>
+
+              {/* Edit info — nom / email / phone */}
+              {canEditInfo && (
+                <div className="border border-white/[0.08] rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => { setEditingInfo(v => !v); setEditName(lead.first_name || ""); setEditEmail(lead.email || ""); setEditPhone(lead.phone || ""); }}
+                    className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-display uppercase tracking-widest text-white/30 hover:text-white/60 hover:bg-white/[0.03] transition-all"
+                  >
+                    <span className="flex items-center gap-1.5"><AlertTriangle className="w-3 h-3" /> Modifier les infos</span>
+                    <ChevronDown className={cn("w-3 h-3 transition-transform", editingInfo && "rotate-180")} />
+                  </button>
+                  {editingInfo && (
+                    <div className="px-3 pb-3 space-y-2 bg-white/[0.02]">
+                      <div>
+                        <label className="text-[9px] text-white/30 font-display uppercase tracking-widest">Prénom</label>
+                        <input value={editName} onChange={e => setEditName(e.target.value)}
+                          className="w-full mt-0.5 bg-[#111318] border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-white/25" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-white/30 font-display uppercase tracking-widest">Email</label>
+                        <input value={editEmail} onChange={e => setEditEmail(e.target.value)} type="email"
+                          className="w-full mt-0.5 bg-[#111318] border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-white/25" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-white/30 font-display uppercase tracking-widest">Téléphone</label>
+                        <input value={editPhone} onChange={e => setEditPhone(e.target.value)} type="tel"
+                          className="w-full mt-0.5 bg-[#111318] border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-white/25" />
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <button onClick={saveInfo} disabled={savingInfo}
+                          className="flex-1 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-display font-semibold text-white disabled:opacity-50 transition-all">
+                          {savingInfo ? "Sauvegarde..." : "Sauvegarder"}
+                        </button>
+                        <button onClick={() => setEditingInfo(false)}
+                          className="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-xs font-display text-white/50 transition-all">
+                          Annuler
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ) : view === "setting" ? (
@@ -921,11 +1019,23 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
               </div>
             )}
 
-            {/* Call scheduled */}
+            {/* Call scheduled + bouton annulation */}
             {lead.call_scheduled_at && (
-              <p className="text-[10px] text-white/30 font-display flex items-center gap-1.5 px-1">
-                <Calendar className="w-3 h-3" /> Call réservé le {fmtDate(lead.call_scheduled_at)}
-              </p>
+              <div className="flex items-center justify-between gap-2 px-1">
+                <p className="text-[10px] text-white/30 font-display flex items-center gap-1.5">
+                  <Calendar className="w-3 h-3" /> Call réservé le {fmtDate(lead.call_scheduled_at)}
+                </p>
+                {canEditCall && !lead.call_done && (
+                  <button
+                    onClick={cancelCall}
+                    disabled={cancellingCall}
+                    className="inline-flex items-center gap-1 text-[9px] font-display font-semibold text-red-400/70 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 px-2 py-0.5 rounded transition-all disabled:opacity-50"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                    {cancellingCall ? "..." : "Annuler"}
+                  </button>
+                )}
+              </div>
             )}
 
             {/* Brief setter (read-only) */}
