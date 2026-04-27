@@ -1,6 +1,6 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Loader2, Calendar, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { flushPendingLeads, getFunnelSession, storeFunnelSession } from '@/lib/funnelLeadQueue';
@@ -189,9 +189,14 @@ export default function FunnelDiscovery() {
   useEffect(() => { flushPendingLeads().catch(() => {}); }, []);
 
   const [booked, setBooked] = useState(false);
+  // Ref synchrone pour éviter le double-fire : Cal.com envoie parfois plusieurs
+  // events booking successifs (bookingSuccessfulV2 + __routeChanged) avant que
+  // React ne re-render avec booked=true (closure stale). Le ref est mis à jour
+  // immédiatement et empêche le deuxième event de déclencher syncBookingToDB.
+  const bookedRef = useRef(false);
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (!event.data || booked) return;
+      if (!event.data || bookedRef.current) return;
 
       const data = typeof event.data === 'string'
         ? (() => { try { return JSON.parse(event.data); } catch { return null; } })()
@@ -212,6 +217,7 @@ export default function FunnelDiscovery() {
         (calAction === '__routeChanged' && typeof data?.Cal?.data?.url === 'string' && data.Cal.data.url.includes('/booking/'));
 
       if (isBooking) {
+        bookedRef.current = true; // synchrone — bloque tout event suivant immédiatement
         setBooked(true);
         const bookingData = data.Cal?.data || data.data || {};
         const rawDate = bookingData.date || bookingData.startTime || bookingData.booking?.startTime || '';
