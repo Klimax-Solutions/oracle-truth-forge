@@ -375,7 +375,12 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
 
   const quickUpdate = async (e: React.MouseEvent, leadId: string, fields: Record<string, any>) => {
     e.stopPropagation();
-    await supabase.from("early_access_requests").update(fields).eq("id", leadId);
+    const { error } = await supabase.from("early_access_requests").update(fields).eq("id", leadId);
+    if (error) {
+      toast({ title: "Erreur mise à jour", description: error.message, variant: "destructive" });
+      console.error("[CRM] quickUpdate error:", error);
+      return;
+    }
     loadLeads();
   };
 
@@ -383,7 +388,11 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
     e.stopPropagation();
     if (!confirm(`Supprimer ${lead.first_name} (${lead.email}) ? Cette action est irréversible.`)) return;
     const { error } = await supabase.from("early_access_requests").delete().eq("id", lead.id);
-    if (error) { console.error("[CRM] Delete error:", error); return; }
+    if (error) {
+      toast({ title: "Erreur suppression", description: error.message, variant: "destructive" });
+      console.error("[CRM] Delete error:", error);
+      return;
+    }
     setLeads(prev => prev.filter(l => l.id !== lead.id));
     if (selectedLead?.id === lead.id) setSelectedLead(null);
   };
@@ -471,31 +480,37 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
 
     setApprovingId(lead.id);
     try {
-      const { data, error } = await supabase.functions.invoke("approve-early-access", {
-        body: { requestId: lead.id },
-      });
+      // Utiliser fetch direct pour garantir l'extraction du vrai message d'erreur.
+      // supabase.functions.invoke consomme le body de la Response avant qu'on puisse le lire.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Session expirée — reconnecte-toi.");
 
-      // Supabase SDK swallows the real error body on non-2xx — extract it ourselves.
-      if (error) {
-        let detail = error.message;
-        try {
-          // Newer SDK versions expose the raw Response in error.context
-          if (typeof (error as any).context?.json === "function") {
-            const body = await (error as any).context.json();
-            detail = body?.error || error.message;
-          } else if (data && (data as any).error) {
-            detail = (data as any).error;
-          }
-        } catch { /* keep generic message */ }
-        throw new Error(detail);
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/approve-early-access`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ requestId: lead.id }),
+        }
+      );
+
+      let body: any = {};
+      try { body = await res.json(); } catch { body = { error: `HTTP ${res.status} — réponse non-JSON` }; }
+
+      if (!res.ok) {
+        throw new Error(body?.error || `Erreur HTTP ${res.status}: ${res.statusText}`);
       }
 
-      const msg = (data as any)?.magic_link
+      const msg = body?.magic_link
         ? `Magic link généré (email échoué) — copier manuellement`
         : `${lead.first_name} approuvé — magic link envoyé`;
       toast({ title: "✅ Approuvé", description: msg });
-      if ((data as any)?.magic_link) {
-        console.info("[Approve] Magic link manuel:", (data as any).magic_link);
+      if (body?.magic_link) {
+        console.info("[Approve] Magic link manuel:", body.magic_link);
       }
       loadLeads();
     } catch (err: any) {
@@ -521,6 +536,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
       );
       if (error) {
         if (isAuthError(error)) { await clearStaleSession("crm_load_401"); return; }
+        toast({ title: "Erreur chargement CRM", description: `DB: ${error.message}`, variant: "destructive" });
         setLoading(false); return;
       }
       if (!requests) { setLoading(false); return; }
@@ -601,9 +617,10 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
       execsRes.data?.forEach((e: any) => { execMap[e.user_id] = (execMap[e.user_id] || 0) + 1; });
       videoViewsRes.data?.forEach((v: any) => { videoViewMap[v.user_id] = (videoViewMap[v.user_id] || 0) + 1; });
       setLeads(requests.map(r => mapLead(r, { rolesMap, activityMap, sessionMap, execMap, videoViewMap })));
-    } catch (err) {
+    } catch (err: any) {
       console.warn("[CRM] Load error:", err);
       if (isAuthError(err)) { await clearStaleSession("crm_load_catch"); return; }
+      toast({ title: "Erreur chargement CRM", description: err?.message || "Erreur réseau — réessaie dans quelques secondes.", variant: "destructive" });
       setLoading(false);
     }
   }, [mapLead]);
