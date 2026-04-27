@@ -21,7 +21,12 @@ const contactSchema = z.object({
     .toLowerCase()
     .email('Email invalide')
     .max(255, 'Email trop long'),
-  phone: z.string().trim().max(40, 'Téléphone trop long'),
+  phone: z
+    .string()
+    .trim()
+    .min(6, 'Téléphone requis')
+    .max(40, 'Téléphone trop long')
+    .regex(/\d/, 'Téléphone invalide'),
 });
 
 /**
