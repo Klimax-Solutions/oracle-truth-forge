@@ -171,11 +171,13 @@ export default function FunnelDiscovery() {
   useEffect(() => {
     if (!leadIdParam) return;
     // Le useEffect leadIdParam fetche la DB et store en session.
-    // On poll la session une fois la promesse résolue (~200ms) pour récupérer le phone.
+    // On poll la session une fois la promesse résolue. 800ms = marge suffisante
+    // même sur réseau lent (3G/4G mobile) pour que le fetch DB soit terminé avant
+    // que l'iframe Cal.com soit montée — évite la race condition phone absent du prefill.
     const t = setTimeout(() => {
       const s = getFunnelSession();
       if (s?.phone) setPrefillPhone(s.phone);
-    }, 300);
+    }, 800);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadIdParam]);

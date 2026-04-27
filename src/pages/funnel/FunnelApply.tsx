@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
-import { submitFunnelLead, flushPendingLeads } from '@/lib/funnelLeadQueue';
+import { submitFunnelLead, flushPendingLeads, getFunnelSession } from '@/lib/funnelLeadQueue';
 import { normalizePhone } from '@/lib/normalizePhone';
 import { Loader2, ChevronLeft, Check, ArrowRight } from 'lucide-react';
 import { z } from 'zod';
@@ -470,6 +470,10 @@ export default function FunnelApply() {
                       params.set('email', contact.email.trim().toLowerCase());
                       const phone = contact.phone ? `${contact.countryCode}${contact.phone.replace(/\s/g, '')}` : '';
                       if (phone) params.set('phone', phone);
+                      // Passe le lead_id dans l'URL pour que Discovery puisse retrouver
+                      // le lead sans dépendre du sessionStorage (qui peut être vidé entre tabs).
+                      const session = getFunnelSession();
+                      if (session?.request_id) params.set('lead_id', session.request_id);
                       navigate(`/${slug}/discovery?${params}`);
                     }}
                     className="relative w-full min-h-[64px] py-4 px-5 rounded-md bg-foreground hover:bg-foreground/90 text-background font-bold text-sm md:text-base transition-all hover:scale-[1.02] inline-flex items-center justify-center gap-3 ring-2 ring-foreground/20 ring-offset-2 ring-offset-card shadow-lg"
