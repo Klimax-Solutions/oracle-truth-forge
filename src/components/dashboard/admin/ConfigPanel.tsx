@@ -60,9 +60,22 @@ interface RoleUser {
   status: UserStatus;
   status_reason: string | null;
   is_client: boolean;
+  last_login_at: string | null;
 }
 
 // ── Helpers ──
+function formatRelativeLogin(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 2) return "À l'instant";
+  if (m < 60) return `Il y a ${m}min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `Il y a ${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `Il y a ${d}j`;
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
 function getRoleLabel(r: string) {
   const m: Record<string, string> = { super_admin: "Super Admin", admin: "Admin", early_access: "Early Access", institute: "Institut", setter: "Setter", closer: "Closer", member: "Membre" };
   return m[r] || r;
@@ -318,7 +331,7 @@ export default function ConfigPanel() {
     setLoading(true);
     try {
       const [{ data: profiles }, { data: roles }, { data: emails }] = await Promise.all([
-        supabase.from("profiles").select("user_id, display_name, first_name, status, status_reason, is_client"),
+        supabase.from("profiles").select("user_id, display_name, first_name, status, status_reason, is_client, last_login_at"),
         supabase.from("user_roles").select("user_id, role"),
         supabase.rpc("get_team_emails" as any),
       ]);
@@ -330,6 +343,7 @@ export default function ConfigPanel() {
           user_id: p.user_id, email: emailMap.get(p.user_id) || p.display_name || "?", display_name: p.display_name,
           first_name: p.first_name || null, roles: [], status: p.status || "active",
           status_reason: p.status_reason, is_client: p.is_client || false,
+          last_login_at: p.last_login_at || null,
         });
       });
       (roles || []).forEach((r: any) => { const u = map.get(r.user_id); if (u) u.roles.push(r.role); });
@@ -622,6 +636,14 @@ export default function ConfigPanel() {
                             ));
                           })()}
                           {u.roles.filter((r) => r !== "member").length === 0 && <span className="text-white/20 text-xs">Membre</span>}
+                        </div>
+
+                        {/* Dernière connexion */}
+                        <div className="w-[130px] shrink-0">
+                          {u.last_login_at
+                            ? <span className="text-[10px] font-mono text-white/40" title={new Date(u.last_login_at).toLocaleString('fr-FR')}>{formatRelativeLogin(u.last_login_at)}</span>
+                            : <span className="text-[10px] font-mono text-orange-400/60">Jamais connecté</span>
+                          }
                         </div>
 
                         {/* Status */}

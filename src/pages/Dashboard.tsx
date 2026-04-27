@@ -354,6 +354,12 @@ const Dashboard = () => {
           await checkUserAccess(session.user.id, session);
         }
 
+        // Enregistre la connexion (last_login_at + historique) uniquement sur un vrai login,
+        // pas sur la restauration de session (INITIAL_SESSION) ni les refreshs de token.
+        if (event === "SIGNED_IN") {
+          supabase.rpc("record_login" as any).then(() => {}, () => {});
+        }
+
         if (mounted) setLoading(false);
       }
     );

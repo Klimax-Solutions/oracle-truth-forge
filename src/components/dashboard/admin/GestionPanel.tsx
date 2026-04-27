@@ -599,7 +599,7 @@ export default function GestionPanel() {
           executions: userExecs,
           sessionCount: sessionCounts[userId] || 0,
           isOnline: onlineMap[userId] || false,
-          lastSeen: lastSeenMap[userId] || null,
+          lastSeen: profile?.last_login_at || lastSeenMap[userId] || null,
           roles: rolesMap[userId] || [],
           teamRoles: (rolesMap[userId] || []).filter((r) => ["super_admin", "admin", "setter"].includes(r)),
           hasEarlyAccess: (rolesMap[userId] || []).includes("early_access"),
