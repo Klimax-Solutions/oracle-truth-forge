@@ -1,0 +1,1 @@
+DELETE FROM early_access_requests WHERE first_name LIKE 'TEST_%' AND email LIKE 'test_%@example.com';

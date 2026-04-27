@@ -21,9 +21,9 @@ const contactSchema = z.object({
     .toLowerCase()
     .email('Email invalide')
     .max(255, 'Email trop long'),
-  phone: z.string().trim().max(40, 'Téléphone trop long')
+  phone: z.string().trim().min(6, 'Téléphone requis').max(40, 'Téléphone trop long')
     .refine(v => {
-      if (!v) return true; // optionnel
+      if (!v) return true;
       const digits = v.replace(/\D/g, '');
       return digits.length >= 9 && digits.length <= 15;
     }, 'Numéro invalide — vérifie le format (ex: 06 12 34 56 78)'),
