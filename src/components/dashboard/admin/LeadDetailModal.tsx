@@ -921,7 +921,46 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                   </div>
                 </div>
 
-                {/* ── Brief closer — rédigé par le setter, lu par le closer ── */}
+                {/* ── Récap opt-in call — en premier, plus visible ──────────────
+                    Rédigé par le setter après l'appel de découverte.
+                    Stocké dans call_debrief.
+                ──────────────────────────────────────────────────────────────── */}
+                <div className="rounded-lg overflow-hidden border border-blue-500/40 ring-1 ring-blue-500/10 shadow-[0_0_12px_rgba(59,130,246,0.07)]">
+                  <div className="px-3 py-2 border-b border-blue-500/20 bg-blue-500/[0.06] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                      <span className="text-[11px] font-display text-blue-300 font-bold tracking-wide">Récap opt-in call</span>
+                    </div>
+                    {!canEditSetting && (
+                      <span className="text-[9px] text-white/25 font-display">Lecture seule</span>
+                    )}
+                  </div>
+                  <Textarea
+                    value={debrief}
+                    onChange={e => canEditSetting && setDebrief(e.target.value)}
+                    readOnly={!canEditSetting}
+                    placeholder={canEditSetting ? "Déroulé de l'appel, objections soulevées, niveau d'intérêt, prochaine étape..." : "Aucun récap"}
+                    className="min-h-[110px] bg-[#0d0f16] border-0 text-xs text-white/90 placeholder:text-white/20 resize-y rounded-none px-3 py-2.5 leading-relaxed focus-visible:ring-0 read-only:opacity-60 read-only:cursor-default"
+                  />
+                </div>
+
+                {/* Save récap opt-in */}
+                {canEditSetting && debrief !== (lead.call_debrief || "") && (
+                  <Button
+                    onClick={async () => {
+                      setSaving(true);
+                      await updateField({ call_debrief: debrief || null });
+                      emitEvent("setting_call_recap_saved", { debrief_length: debrief.length });
+                      setSaving(false);
+                    }}
+                    disabled={saving}
+                    className="w-full h-9 bg-blue-500/80 hover:bg-blue-500/90 text-white font-display text-xs font-bold tracking-wide rounded-lg"
+                  >
+                    {saving ? "Sauvegarde..." : "Sauvegarder le récap"}
+                  </Button>
+                )}
+
+                {/* ── Brief closer — sous le récap opt-in ── */}
                 <div className="bg-[#111318] border border-cyan-500/20 rounded-lg overflow-hidden">
                   <div className="px-3 py-1.5 border-b border-cyan-500/10 bg-cyan-500/[0.03] flex items-center justify-between">
                     <span className="text-[10px] font-display text-cyan-400 font-semibold">Brief pour le closer</span>
@@ -946,43 +985,6 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                     className="w-full h-9 bg-[#19B7C9] hover:bg-[#19B7C9]/90 text-[#0A0B10] font-display text-xs font-bold tracking-wide rounded-lg"
                   >
                     {saving ? "Sauvegarde..." : "Sauvegarder le brief"}
-                  </Button>
-                )}
-
-                {/* ── Récap opt-in call ─────────────────────────────────────────
-                    Rédigé par le setter après l'appel de découverte.
-                    Stocké dans call_debrief — même champ que le closer voit
-                    dans la vue Call. Pas de migration nécessaire.
-                ──────────────────────────────────────────────────────────────── */}
-                <div className="bg-[#111318] border border-blue-500/20 rounded-lg overflow-hidden">
-                  <div className="px-3 py-1.5 border-b border-blue-500/10 bg-blue-500/[0.03] flex items-center justify-between">
-                    <span className="text-[10px] font-display text-blue-400 font-semibold">Récap opt-in call</span>
-                    {!canEditSetting && (
-                      <span className="text-[9px] text-white/25 font-display">Lecture seule</span>
-                    )}
-                  </div>
-                  <Textarea
-                    value={debrief}
-                    onChange={e => canEditSetting && setDebrief(e.target.value)}
-                    readOnly={!canEditSetting}
-                    placeholder={canEditSetting ? "Déroulé de l'appel, objections soulevées, niveau d'intérêt, prochaine étape..." : "Aucun récap"}
-                    className="min-h-[90px] bg-transparent border-0 text-xs text-white/90 placeholder:text-white/20 resize-y rounded-none px-3 py-2 leading-relaxed focus-visible:ring-0 read-only:opacity-60 read-only:cursor-default"
-                  />
-                </div>
-
-                {/* Save récap opt-in */}
-                {canEditSetting && debrief !== (lead.call_debrief || "") && (
-                  <Button
-                    onClick={async () => {
-                      setSaving(true);
-                      await updateField({ call_debrief: debrief || null });
-                      emitEvent("setting_call_recap_saved", { debrief_length: debrief.length });
-                      setSaving(false);
-                    }}
-                    disabled={saving}
-                    className="w-full h-9 bg-blue-500/80 hover:bg-blue-500/90 text-white font-display text-xs font-bold tracking-wide rounded-lg"
-                  >
-                    {saving ? "Sauvegarde..." : "Sauvegarder le récap"}
                   </Button>
                 )}
               </>;
