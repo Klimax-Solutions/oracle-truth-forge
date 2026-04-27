@@ -108,9 +108,10 @@ export default function FunnelDiscovery() {
   // Tous les autres sans session → redirect vers /apply.
   const leadIdParam = searchParams.get('lead_id') || null;
   const hasValidEntry = useMemo(() => {
-    if (leadIdParam) return true;           // Email Kit — toujours valide
+    if (leadIdParam) return true;                      // Email Kit avec lead_id
+    if (searchParams.get('email')) return true;        // Email Kit avec email param (nurture séquence)
     const s = getFunnelSession();
-    return !!s?.email;                      // A rempli le form dans cette session
+    return !!s?.email;                                 // A rempli le form dans cette session
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
