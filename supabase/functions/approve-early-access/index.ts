@@ -1,5 +1,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+/** Normalise en E.164 pour comparaison fiable des doublons téléphone. */
+function normalizePhone(raw: string | null | undefined): string {
+  if (!raw?.trim()) return "";
+  let s = raw.trim().replace(/[\s\-().]/g, "");
+  if (/^0\d{9}$/.test(s)) return "+33" + s.slice(1);
+  if (/^33\d{9}$/.test(s)) return "+" + s;
+  return s;
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -143,7 +152,7 @@ Deno.serve(async (req) => {
     }
 
     // Phone duplicate check — skip entirely if phone is absent (optional field)
-    const phoneClean = eaReq.phone ? eaReq.phone.replace(/\s+/g, "") : null;
+    const phoneClean = normalizePhone(eaReq.phone);
     if (phoneClean) {
       const { data: allApproved } = await supabaseAdmin
         .from("early_access_requests")
@@ -152,7 +161,7 @@ Deno.serve(async (req) => {
         .neq("id", requestId);
 
       const dupPhone = (allApproved || []).find(
-        (r: any) => r.phone && r.phone.replace(/\s+/g, "") === phoneClean
+        (r: any) => r.phone && normalizePhone(r.phone) === phoneClean
       );
       if (dupPhone) {
         await supabaseAdmin

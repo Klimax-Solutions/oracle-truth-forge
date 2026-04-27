@@ -6,6 +6,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { z } from "https://esm.sh/zod@3.23.8";
 
+/** Normalise en E.164 : "+33622221156" quel que soit le format d'entrée. */
+function normalizePhone(raw: string): string {
+  if (!raw?.trim()) return "";
+  let s = raw.trim().replace(/[\s\-().]/g, "");
+  if (/^0\d{9}$/.test(s)) return "+33" + s.slice(1);   // 06XXXXXXXX → +336XXXXXXXX
+  if (/^33\d{9}$/.test(s)) return "+" + s;              // 336XXXXXXXX → +336XXXXXXXX
+  return s;
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -16,7 +25,7 @@ const corsHeaders = {
 const BodySchema = z.object({
   first_name: z.string().min(1).max(120),
   email: z.string().email().max(255),
-  phone: z.string().max(60).optional().default(""),
+  phone: z.string().max(60).optional().default("").transform(normalizePhone),
   status: z.string().max(40).optional().default("en_attente"),
   form_submitted: z.boolean().optional().default(true),
   form_answers: z.record(z.unknown()).optional(),

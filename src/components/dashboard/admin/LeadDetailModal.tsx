@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { CRMLead } from "@/lib/admin/types";
+import { normalizePhoneForWhatsApp } from "@/lib/normalizePhone";
 import { getSetterColor } from "@/lib/admin/setterColors";
 import { getTrialDay, getTrialColor, getChecklistStep, CHECKLIST_LABELS, CHECKLIST_FIELDS, formatRelativeDate } from "@/lib/admin/trialStatus";
 import LeadThreadPanel from "./LeadThreadPanel";
@@ -774,7 +775,7 @@ export default function LeadDetailModal({ lead, onClose, onLeadUpdated, initialV
                   {/* WhatsApp + canal */}
                   <div className="flex gap-1.5">
                     {lead.phone && (
-                      <a href={`https://wa.me/${lead.phone.replace(/[\s+()-]/g, '')}`} target="_blank" rel="noopener noreferrer"
+                      <a href={`https://wa.me/${normalizePhoneForWhatsApp(lead.phone)}`} target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/15 transition-all font-display text-[10px] font-semibold">
                         <MessageCircle className="w-3 h-3" /> WhatsApp <ExternalLink className="w-2.5 h-2.5 opacity-50" />
                       </a>

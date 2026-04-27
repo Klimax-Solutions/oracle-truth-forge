@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useFunnelConfig } from '@/hooks/useFunnelConfig';
 import { submitFunnelLead, flushPendingLeads } from '@/lib/funnelLeadQueue';
+import { normalizePhone } from '@/lib/normalizePhone';
 import { Loader2, ChevronLeft, Check, ArrowRight } from 'lucide-react';
 import { z } from 'zod';
 
@@ -243,8 +244,8 @@ export default function FunnelApply() {
     }
 
     const { first_name, email } = parsed.data;
-    // ⚠️ phone est NOT NULL → on envoie '' pas null
-    const phone = parsed.data.phone ? `${contact.countryCode} ${parsed.data.phone}` : '';
+    // Normalise en E.164 avant stockage — couvre +33/0/33 et tous formats avec espaces.
+    const phone = normalizePhone(parsed.data.phone ? `${contact.countryCode}${parsed.data.phone}` : '');
 
     // Compute enrichment fields from answers
     const investmentAnswer = answers['investment_amount'] || '';
