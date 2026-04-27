@@ -605,17 +605,18 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
       }
       const userIds = requests.filter(r => r.user_id).map(r => r.user_id);
       if (userIds.length === 0) return;
-      const [rolesRes, memberRolesRes, activityRes, sessionsRes, execsRes, videoViewsRes, profilesRes] = await Promise.all([
+      const [rolesRes, activityRes, sessionsRes, execsRes, videoViewsRes, profilesRes] = await Promise.all([
         supabase.from("user_roles").select("user_id, expires_at, early_access_type").in("user_id", userIds).eq("role", "early_access"),
-        supabase.from("user_roles").select("user_id").in("user_id", userIds).eq("role", "member"),
         supabase.from("ea_activity_tracking").select("user_id, active_tab, last_heartbeat").in("user_id", userIds),
         supabase.from("user_sessions").select("user_id").in("user_id", userIds),
         supabase.from("user_executions").select("user_id").in("user_id", userIds),
         supabase.from("user_video_views").select("user_id").in("user_id", userIds),
-        supabase.from("profiles").select("user_id, last_login_at").in("user_id", userIds),
+        supabase.from("profiles").select("user_id, last_login_at, is_client").in("user_id", userIds),
       ]);
       const rolesMap: Record<string, any> = {}, activityMap: Record<string, any> = {}, sessionMap: Record<string, number> = {}, execMap: Record<string, number> = {}, videoViewMap: Record<string, number> = {}, lastLoginMap: Record<string, string | null> = {};
-      const memberSet = new Set<string>((memberRolesRes.data || []).map((r: any) => r.user_id));
+      // ⚠️ "Membre" = client payant (is_client=true), PAS le rôle "member" qui est auto-assigné à tous les comptes.
+      // Sans ça, tout lead EA approuvé apparaîtrait comme "Membre" (faux positif).
+      const memberSet = new Set<string>((profilesRes.data || []).filter((p: any) => p.is_client === true).map((p: any) => p.user_id));
       rolesRes.data?.forEach((r: any) => { rolesMap[r.user_id] = r; });
       activityRes.data?.forEach((a: any) => { activityMap[a.user_id] = { is_active: !!(a.last_heartbeat && (Date.now() - new Date(a.last_heartbeat).getTime()) < 60000), active_tab: a.active_tab }; });
       sessionsRes.data?.forEach((s: any) => { sessionMap[s.user_id] = (sessionMap[s.user_id] || 0) + 1; });
