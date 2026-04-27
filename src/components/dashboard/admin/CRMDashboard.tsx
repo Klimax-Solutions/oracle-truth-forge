@@ -154,7 +154,7 @@ function LeadDetail({ lead, onClose }: { lead: PipelineLead; onClose: () => void
   const stage = getStage(lead);
 
   const steps = [
-    { key: "form", label: "Form", icon: FileText, color: "amber", done: true, date: lead.created_at },
+    { key: "form", label: "Form", icon: FileText, color: "amber", done: !!lead.form_submitted, date: lead.form_submitted ? lead.created_at : null },
     { key: "ea", label: "EA", icon: Shield, color: "cyan", done: lead.status === "approuvée", date: lead.reviewed_at },
     { key: "setting", label: "Setting", icon: PhoneForwarded, color: "purple", done: lead.contacted, date: null },
     { key: "call", label: "Call", icon: Headphones, color: "blue", done: lead.call_done, date: null },
@@ -280,7 +280,10 @@ function LeadDetail({ lead, onClose }: { lead: PipelineLead; onClose: () => void
 
         {/* Meta */}
         <div className="space-y-1 text-[10px] text-muted-foreground font-mono pt-2 border-t border-border/50">
-          <p>Soumis: {fmtDateTime(lead.created_at)}</p>
+          {lead.form_submitted
+            ? <p>Form soumis: {fmtDateTime(lead.created_at)}</p>
+            : <p className="text-orange-400/70">Call booké sans form — {fmtDateTime(lead.created_at)}</p>
+          }
           {lead.reviewed_at && <p>Approuvé: {fmtDateTime(lead.reviewed_at)}</p>}
           <p>ID: {lead.id.slice(0, 8)}</p>
         </div>

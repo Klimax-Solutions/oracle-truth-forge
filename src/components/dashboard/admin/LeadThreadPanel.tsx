@@ -93,6 +93,9 @@ const EVENT_CONFIG: Record<string, { label: string; icon: any; style: "card" | "
   payment_received:            { label: "Paiement reçu",        icon: CreditCard,    style: "card",  color: "emerald" },
   lead_assigned_setter:        { label: "Setter assigné",       icon: PhoneForwarded,style: "chip",  color: "purple" },
   lead_assigned_closer:        { label: "Closer assigné",       icon: Headphones,    style: "chip",  color: "violet" },
+  lead_created_from_webhook:   { label: "Call booké sans form", icon: Calendar,      style: "card",  color: "gray" },
+  funnel_lead_fallback_recovered: { label: "Lead récupéré (filet)", icon: Shield,    style: "chip",  color: "gray" },
+  setting_call_recap_saved:    { label: "Récap call opt-in",    icon: FileText,      style: "chip",  color: "purple" },
 };
 
 const COLOR_MAP: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {
@@ -156,8 +159,10 @@ export default function LeadThreadPanel({ lead }: { lead: CRMLead }) {
     const eventTypes = new Set(events.map(e => e.event_type));
 
     // Synthetic events from lead fields
-    if (!eventTypes.has("form_submitted") && lead.created_at)
+    if (!eventTypes.has("form_submitted") && lead.form_submitted && lead.created_at)
       items.push({ kind: "event", data: { id: "syn-form", event_type: "form_submitted", source: "synthetic", timestamp: lead.created_at, metadata: {}, created_by: null }, time: new Date(lead.created_at) });
+    if (!eventTypes.has("lead_created_from_webhook") && !lead.form_submitted && lead.call_booked && lead.created_at)
+      items.push({ kind: "event", data: { id: "syn-webhook", event_type: "lead_created_from_webhook", source: "synthetic", timestamp: lead.created_at, metadata: {}, created_by: null }, time: new Date(lead.created_at) });
     if (!eventTypes.has("ea_approved") && lead.status === "approuvée" && lead.reviewed_at)
       items.push({ kind: "event", data: { id: "syn-ea", event_type: "ea_approved", source: "synthetic", timestamp: lead.reviewed_at, metadata: {}, created_by: null }, time: new Date(lead.reviewed_at) });
     if (!eventTypes.has("setting_contacted_whatsapp") && !eventTypes.has("setting_contacted_email") && lead.contacted && (lead as any).contacted_at) {
