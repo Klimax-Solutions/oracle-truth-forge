@@ -45,6 +45,7 @@ interface VideoData {
   embed_url: string;
   open_url: string | null;
   sort_order: number;
+  accessible_roles: string[];
 }
 
 interface VideoSetupProps {
@@ -84,15 +85,19 @@ export const VideoSetup = ({ overrideIsEarlyAccess }: VideoSetupProps = {}) => {
           supabase.from("user_video_views").select("video_id").eq("user_id", user.id),
           supabase.from("user_roles").select("role").eq("user_id", user.id),
         ]);
-        if (videosRes.data) {
-          setVideos(videosRes.data);
-          const video5 = videosRes.data.find((v: VideoData) => v.sort_order === 5);
-          setSelectedVideo(isEarlyAccess && video5 ? video5 : videosRes.data[0] ?? null);
-        }
+        const userRolesList: string[] = rolesRes.data?.map((r: any) => r.role) ?? [];
+        if (rolesRes.data) setUserRoles(userRolesList);
         if (viewsRes.data) setViewedIds(new Set(viewsRes.data.map((v: any) => v.video_id)));
-        if (rolesRes.data) {
-          const roles = rolesRes.data.map((r: any) => r.role);
-          setUserRoles(roles);
+        if (videosRes.data) {
+          // Filtrer selon accessible_roles configuré dans la médiathèque
+          // (tableau vide = accessible à tous)
+          const filtered = videosRes.data.filter((v: any) => {
+            const roles: string[] = v.accessible_roles ?? [];
+            if (roles.length === 0) return true;
+            return userRolesList.some(r => roles.includes(r));
+          });
+          setVideos(filtered);
+          setSelectedVideo(filtered[0] ?? null);
         }
       } catch (err) {
         console.warn("[VideoSetup]", err);
@@ -315,7 +320,9 @@ const OraclePlayer = ({
 }: OraclePlayerProps) => {
   const unlockUrl  = eaSettings.find(s => s.button_key === "acceder_a_oracle")?.button_url;
   const idx        = selectedVideo ? videos.findIndex(v => v.id === selectedVideo.id) : -1;
-  const isLocked   = (v: VideoData) => isEarlyAccess && (isEaExpired || v.sort_order !== 5);
+  // Les vidéos visibles ont déjà été filtrées par accessible_roles.
+  // Le seul cas de lock restant : EA avec timer expiré.
+  const isLocked   = (_v: VideoData) => isEarlyAccess && isEaExpired;
   const pct        = totalCount > 0 ? Math.round((viewedCount / totalCount) * 100) : 0;
 
   return (
