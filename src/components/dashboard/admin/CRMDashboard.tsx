@@ -464,16 +464,32 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
 
   const handleApproveLead = async (e: React.MouseEvent, lead: PipelineLead) => {
     e.stopPropagation();
+    const confirmed = window.confirm(
+      `Approuver ${lead.first_name} (${lead.email}) ?\n\nUn compte sera créé et un magic link envoyé à cet email.`
+    );
+    if (!confirmed) return;
+
     setApprovingId(lead.id);
     try {
       const { data, error } = await supabase.functions.invoke("approve-early-access", {
         body: { requestId: lead.id },
       });
-      // Supabase wraps the real error — extract it from the response body
+
+      // Supabase SDK swallows the real error body on non-2xx — extract it ourselves.
       if (error) {
-        const detail = (data as any)?.error || error.message;
+        let detail = error.message;
+        try {
+          // Newer SDK versions expose the raw Response in error.context
+          if (typeof (error as any).context?.json === "function") {
+            const body = await (error as any).context.json();
+            detail = body?.error || error.message;
+          } else if (data && (data as any).error) {
+            detail = (data as any).error;
+          }
+        } catch { /* keep generic message */ }
         throw new Error(detail);
       }
+
       const msg = (data as any)?.magic_link
         ? `Magic link généré (email échoué) — copier manuellement`
         : `${lead.first_name} approuvé — magic link envoyé`;
