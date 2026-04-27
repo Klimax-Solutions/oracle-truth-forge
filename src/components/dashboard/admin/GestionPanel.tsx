@@ -478,9 +478,13 @@ export default function GestionPanel() {
       // alors qu'on n'affiche que les is_client + soumetteurs de vérif (~10% du volume).
       // Maintenant : .in("user_id", relevantIds) → divise le payload par ~10.
       const clientIds = profiles.filter((p: any) => p.is_client === true).map((p: any) => p.user_id);
+      // Institut : rôle 'institute' dans user_roles (déjà fetchés en phase A)
+      const instituteIds = new Set(
+        (rolesRes.data || []).filter((r: any) => r.role === 'institute').map((r: any) => r.user_id)
+      );
       const vrUserIds = [...pendingVrs, ...processedVrs].map((v: any) => v.user_id).filter(Boolean);
-      const relevantIds = Array.from(new Set([...clientIds, ...vrUserIds]));
-      console.log(`[Gestion] relevantIds count: ${relevantIds.length} (clients: ${clientIds.length}, VR-only: ${vrUserIds.filter(u => !clientIds.includes(u)).length})`);
+      const relevantIds = Array.from(new Set([...clientIds, ...instituteIds, ...vrUserIds]));
+      console.log(`[Gestion] relevantIds count: ${relevantIds.length} (clients: ${clientIds.length}, institute: ${instituteIds.size}, VR-only: ${vrUserIds.filter(u => !clientIds.includes(u)).length})`);
 
       const [userCyclesData, executionsData] = relevantIds.length > 0
         ? await withTimeout(Promise.all([
@@ -552,9 +556,11 @@ export default function GestionPanel() {
         }
       };
 
-      // Build users — source: profiles filtered to clients only
+      // Build users — source: profiles is_client=true + rôle 'institute'
       // profileMap contains ALL profiles (for reviewer name lookups)
-      const clientProfiles = profiles.filter((p: any) => p.is_client === true);
+      const clientProfiles = profiles.filter((p: any) =>
+        p.is_client === true || instituteIds.has(p.user_id)
+      );
       const uniqueUserIds = clientProfiles.map((p: any) => p.user_id);
       const platformUsers: PlatformUser[] = uniqueUserIds.map((userId: string) => {
         const ucs = userCycles.filter((uc) => uc.user_id === userId);
