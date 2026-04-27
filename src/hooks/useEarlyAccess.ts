@@ -8,30 +8,35 @@ export const useEarlyAccess = () => {
   const [loading, setLoading] = useState(true);
 
   const check = async () => {
-    const { data } = await supabase.rpc("is_early_access");
-    setIsEarlyAccess(!!data);
+    try {
+      const { data } = await supabase.rpc("is_early_access");
+      setIsEarlyAccess(!!data);
 
-    if (data) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // activate_ea_timer() supprimé — expires_at est posé à l'approbation (J+7 déterministe)
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("expires_at, early_access_type" as any)
-          .eq("user_id", user.id)
-          .eq("role", "early_access")
-          .maybeSingle();
-        if (roleData) {
-          const rd = roleData as any;
-          if (rd.expires_at) setExpiresAt(rd.expires_at);
-          setEarlyAccessType(rd.early_access_type || null);
+      if (data) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // activate_ea_timer() supprimé — expires_at est posé à l'approbation (J+7 déterministe)
+          const { data: roleData } = await supabase
+            .from("user_roles")
+            .select("expires_at, early_access_type" as any)
+            .eq("user_id", user.id)
+            .eq("role", "early_access")
+            .maybeSingle();
+          if (roleData) {
+            const rd = roleData as any;
+            if (rd.expires_at) setExpiresAt(rd.expires_at);
+            setEarlyAccessType(rd.early_access_type || null);
+          }
         }
+      } else {
+        setExpiresAt(null);
+        setEarlyAccessType(null);
       }
-    } else {
-      setExpiresAt(null);
-      setEarlyAccessType(null);
+    } catch (err) {
+      console.warn('[useEarlyAccess] check error:', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
