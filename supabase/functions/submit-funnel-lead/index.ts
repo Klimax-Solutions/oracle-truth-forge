@@ -162,21 +162,47 @@ Deno.serve(async (req) => {
       }
       inserted = insertedCore;
     } else if ((insertErr as any).code === "23505") {
-      // Race condition : le lead vient d'être inséré entre le SELECT et l'INSERT.
-      // Re-fetch et retourner comme deduped.
-      const { data: raceExisting } = await admin
+      // Unique violation — peut être l'email OU le téléphone (contrainte unique_ea_request_phone).
+      // On cherche le lead existant par email d'abord, puis par téléphone si pas trouvé.
+      // Garantit qu'un lead soumis avec un numéro déjà enregistré est TOUJOURS trouvé.
+
+      // 1) lookup par email
+      const { data: byEmail } = await admin
         .from("early_access_requests")
         .select("id")
         .ilike("email", payload.email)
         .limit(1)
         .maybeSingle();
-      if (raceExisting?.id) {
+      if (byEmail?.id) {
         return new Response(
-          JSON.stringify({ ok: true, id: raceExisting.id, deduped: true, race: true }),
+          JSON.stringify({ ok: true, id: byEmail.id, deduped: true, race: true }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-      console.error("[submit-funnel-lead] INSERT failed:", insertErr);
+
+      // 2) lookup par téléphone (contrainte unique sur les chiffres normalisés)
+      if (payload.phone) {
+        const phoneDigits = payload.phone.replace(/\D/g, "");
+        const suffix = phoneDigits.length >= 9 ? phoneDigits.slice(-9) : phoneDigits;
+        const { data: byPhoneRows } = await admin
+          .from("early_access_requests")
+          .select("id, phone")
+          .ilike("phone", `%${suffix}%`)
+          .limit(20);
+        const byPhone = (byPhoneRows || []).find((r: any) => {
+          const d = (r.phone || "").replace(/\D/g, "");
+          return d === phoneDigits || (phoneDigits.length >= 9 && d.endsWith(phoneDigits.slice(-9)));
+        });
+        if (byPhone?.id) {
+          console.warn("[submit-funnel-lead] Unique violation on phone — found existing lead by phone:", byPhone.id);
+          return new Response(
+            JSON.stringify({ ok: true, id: byPhone.id, deduped: true, phone_match: true }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      }
+
+      console.error("[submit-funnel-lead] INSERT 23505 but no matching lead found by email or phone:", insertErr.message);
       return new Response(
         JSON.stringify({ ok: false, error: insertErr.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
