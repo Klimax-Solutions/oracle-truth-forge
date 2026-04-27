@@ -1364,63 +1364,45 @@ export default function GestionPanel() {
                                     <div className="flex items-center justify-center mb-0.5">{getStatusIcon(st2)}</div>
                                     <p className="text-[9px] font-mono font-bold">{cycle.cycle_number === 0 ? "Éb." : `C${cycle.cycle_number}`}</p>
                                     {uc && uc.total_rr != null && <p className={cn("text-[9px] font-mono", (uc.total_rr || 0) >= 0 ? "text-emerald-400" : "text-red-400")}>{(uc.total_rr || 0) >= 0 ? "+" : ""}{(uc.total_rr || 0).toFixed(0)}</p>}
-                                    {uc && st2 !== "locked" && (() => {
-                                      // Soft-lock 24h : après une décision (validated/rejected), les boutons inline
-                                      // sont désactivés au-delà de 24h. Pour modifier, l'admin doit cliquer
-                                      // "Réouvrir le cycle" dans le drill-down (audit trail explicite).
-                                      const decided = st2 === "validated" || st2 === "rejected";
-                                      const verifiedAtMs = uc.verified_at ? new Date(uc.verified_at).getTime() : null;
-                                      const lockedSince24h = decided && verifiedAtMs != null && (Date.now() - verifiedAtMs) > 24 * 60 * 60 * 1000;
-                                      const lockTitle = lockedSince24h ? "Verrouillé (>24h). Utilise 'Réouvrir le cycle' pour modifier." : "";
-                                      return (
-                                        <div className="flex gap-0.5 mt-1 justify-center">
-                                          <button
-                                            disabled={lockedSince24h}
-                                            className={cn("p-0.5 rounded transition-opacity",
-                                              st2 === "validated" ? "bg-emerald-500/30 text-emerald-400" : "hover:bg-emerald-500/20 text-muted-foreground hover:text-emerald-400",
-                                              lockedSince24h && "opacity-40 cursor-not-allowed hover:bg-transparent",
-                                            )}
-                                            title={lockedSince24h ? lockTitle : "Valider le cycle"}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              if (lockedSince24h) return;
-                                              if (st2 === "validated") return;
-                                              const label = cycle.cycle_number === 0 ? "le cycle Ébauche" : `le Cycle ${cycle.cycle_number}`;
-                                              if (confirm(`Valider ${label} pour ${u.displayName} ?\n\n→ Le cycle suivant sera déverrouillé\n→ Action loggée avec timestamp\n→ Soft-lock 24h après validation\n\nConfirmer la validation ?`)) {
-                                                handleCycleStatusChangeDirectly(u.id, cycle, uc, "validated");
-                                              }
-                                            }}
-                                          ><CheckCircle className="w-2.5 h-2.5" /></button>
-                                          <button
-                                            disabled={lockedSince24h}
-                                            className={cn("p-0.5 rounded transition-opacity",
-                                              st2 === "pending_review" || st2 === "in_progress" ? "bg-white/10 text-muted-foreground" : "hover:bg-white/10 text-muted-foreground/50 hover:text-muted-foreground",
-                                              lockedSince24h && "opacity-40 cursor-not-allowed hover:bg-transparent",
-                                            )}
-                                            title={lockedSince24h ? lockTitle : "Neutre — repasser en attente de revue"}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              if (lockedSince24h) return;
-                                              if (st2 === "pending_review") return;
-                                              handleCycleStatusChangeDirectly(u.id, cycle, uc, "pending_review");
-                                            }}
-                                          ><MinusCircle className="w-2.5 h-2.5" /></button>
-                                          <button
-                                            disabled={lockedSince24h}
-                                            className={cn("p-0.5 rounded transition-opacity",
-                                              st2 === "rejected" ? "bg-red-500/30 text-red-400" : "hover:bg-red-500/20 text-muted-foreground hover:text-red-400",
-                                              lockedSince24h && "opacity-40 cursor-not-allowed hover:bg-transparent",
-                                            )}
-                                            title={lockedSince24h ? lockTitle : "Rejeter le cycle"}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              if (lockedSince24h) return;
-                                              if (st2 !== "rejected") handleCycleStatusChangeDirectly(u.id, cycle, uc, "rejected");
-                                            }}
-                                          ><XCircle className="w-2.5 h-2.5" /></button>
-                                        </div>
-                                      );
-                                    })()}
+                                    {uc && st2 !== "locked" && (
+                                      <div className="flex gap-0.5 mt-1 justify-center">
+                                        <button
+                                          className={cn("p-0.5 rounded transition-opacity",
+                                            st2 === "validated" ? "bg-emerald-500/30 text-emerald-400" : "hover:bg-emerald-500/20 text-muted-foreground hover:text-emerald-400",
+                                          )}
+                                          title="Valider le cycle"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (st2 === "validated") return;
+                                            const label = cycle.cycle_number === 0 ? "le cycle Ébauche" : `le Cycle ${cycle.cycle_number}`;
+                                            if (confirm(`Valider ${label} pour ${u.displayName} ?\n\n→ Le cycle suivant sera déverrouillé\n→ Action loggée avec timestamp\n\nConfirmer la validation ?`)) {
+                                              handleCycleStatusChangeDirectly(u.id, cycle, uc, "validated");
+                                            }
+                                          }}
+                                        ><CheckCircle className="w-2.5 h-2.5" /></button>
+                                        <button
+                                          className={cn("p-0.5 rounded transition-opacity",
+                                            st2 === "pending_review" || st2 === "in_progress" ? "bg-white/10 text-muted-foreground" : "hover:bg-white/10 text-muted-foreground/50 hover:text-muted-foreground",
+                                          )}
+                                          title="Neutre — repasser en attente de revue"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (st2 === "pending_review") return;
+                                            handleCycleStatusChangeDirectly(u.id, cycle, uc, "pending_review");
+                                          }}
+                                        ><MinusCircle className="w-2.5 h-2.5" /></button>
+                                        <button
+                                          className={cn("p-0.5 rounded transition-opacity",
+                                            st2 === "rejected" ? "bg-red-500/30 text-red-400" : "hover:bg-red-500/20 text-muted-foreground hover:text-red-400",
+                                          )}
+                                          title="Rejeter le cycle"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (st2 !== "rejected") handleCycleStatusChangeDirectly(u.id, cycle, uc, "rejected");
+                                          }}
+                                        ><XCircle className="w-2.5 h-2.5" /></button>
+                                      </div>
+                                    )}
                                     {uc && (st2 === "validated" || st2 === "rejected") && (
                                       <button className="mt-0.5 p-0.5 rounded text-primary hover:text-primary/80" onClick={async (e) => {
                                         e.stopPropagation();
