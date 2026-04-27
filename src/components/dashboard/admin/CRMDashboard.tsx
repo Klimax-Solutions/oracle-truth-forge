@@ -872,13 +872,22 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                             <div className="flex items-center gap-1.5">
                               <p className="text-[15px] font-display font-bold text-white">{lead.first_name || "—"}</p>
                               {lead.priorite && <span className={cn("text-[8px] font-display font-bold", lead.priorite === 'P1' ? 'text-emerald-400' : lead.priorite === 'P2' ? 'text-amber-400' : 'text-red-400')}>{lead.priorite}</span>}
-                              {/* Badge Membre — accès actif confirmé (closed_won, paid_at, ou role=member ancien) */}
+                              {/* Badge Membre payé — uniquement si is_client=true OU paid_at (vrai client). Le rôle "member" seul ne suffit PAS (auto-assigné à tous). */}
                               {lead.is_member && (
                                 <span
                                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/40 text-[9px] font-display font-bold text-emerald-300 uppercase tracking-wider"
-                                  title={lead.paid_at ? `Membre actif depuis le ${fmtDate(lead.paid_at)}` : "Membre actif"}
+                                  title={lead.paid_at ? `Client payant depuis le ${fmtDate(lead.paid_at)}` : "Client payant"}
                                 >
                                   <CheckCircle2 className="w-2.5 h-2.5" /> Membre
+                                </span>
+                              )}
+                              {/* Badge EA Trial — accès anticipé actif (rôle early_access non expiré), sans paiement */}
+                              {!lead.is_member && lead.role_data?.role === 'early_access' && (!lead.role_data?.expires_at || new Date(lead.role_data.expires_at) > new Date()) && (
+                                <span
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-violet-500/15 border border-violet-500/40 text-[9px] font-display font-bold text-violet-300 uppercase tracking-wider"
+                                  title="Membre EA — accès anticipé en cours (trial)"
+                                >
+                                  EA
                                 </span>
                               )}
                               {/* Badge SMS — email placeholder Cal.com (booking sans form, email à compléter) */}
