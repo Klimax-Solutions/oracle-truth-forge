@@ -25,7 +25,7 @@ const corsHeaders = {
 const BodySchema = z.object({
   first_name: z.string().min(1).max(120),
   email: z.string().email().max(255),
-  phone: z.string().max(60).optional().default("").transform(normalizePhone),
+  phone: z.string().max(60).transform(normalizePhone).pipe(z.string().min(6, "phone_required")),
   status: z.string().max(40).optional().default("en_attente"),
   form_submitted: z.boolean().optional().default(true),
   form_answers: z.record(z.unknown()).optional(),
