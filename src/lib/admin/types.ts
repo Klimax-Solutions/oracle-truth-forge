@@ -90,6 +90,8 @@ export interface CRMLead {
   video_view_count?: number;
   expires_at?: string | null;
   early_access_type?: string | null;
+  /** true si user_roles contient role='member' — couvre les anciens membres antérieurs à closed_won */
+  is_member?: boolean;
 }
 
 /**
@@ -121,6 +123,7 @@ export function mapRowToCRMLead(r: any, enrich?: {
   execMap?: Record<string, number>;
   rolesMap?: Record<string, any>;
   videoViewMap?: Record<string, number>;
+  memberSet?: Set<string>;
 }): CRMLead {
   const videoViews = enrich?.videoViewMap?.[r.user_id] || 0;
   const execCount = enrich?.execMap?.[r.user_id] || 0;
@@ -194,6 +197,7 @@ export function mapRowToCRMLead(r: any, enrich?: {
     video_view_count: videoViews,
     expires_at: enrich?.rolesMap?.[r.user_id]?.expires_at || null,
     early_access_type: enrich?.rolesMap?.[r.user_id]?.early_access_type || null,
+    is_member: enrich?.memberSet?.has(r.user_id) || r.status === 'closed_won' || !!r.paid_at,
   };
 }
 

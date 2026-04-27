@@ -526,6 +526,8 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
     sessionMap: enrich.sessionMap,
     execMap: enrich.execMap,
     rolesMap: enrich.rolesMap,
+    videoViewMap: enrich.videoViewMap,
+    memberSet: enrich.memberSet,
   } : undefined), []);
 
   const loadLeads = useCallback(async () => {
@@ -603,20 +605,22 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
       }
       const userIds = requests.filter(r => r.user_id).map(r => r.user_id);
       if (userIds.length === 0) return;
-      const [rolesRes, activityRes, sessionsRes, execsRes, videoViewsRes] = await Promise.all([
+      const [rolesRes, memberRolesRes, activityRes, sessionsRes, execsRes, videoViewsRes] = await Promise.all([
         supabase.from("user_roles").select("user_id, expires_at, early_access_type").in("user_id", userIds).eq("role", "early_access"),
+        supabase.from("user_roles").select("user_id").in("user_id", userIds).eq("role", "member"),
         supabase.from("ea_activity_tracking").select("user_id, active_tab, last_heartbeat").in("user_id", userIds),
         supabase.from("user_sessions").select("user_id").in("user_id", userIds),
         supabase.from("user_executions").select("user_id").in("user_id", userIds),
         supabase.from("user_video_views").select("user_id").in("user_id", userIds),
       ]);
       const rolesMap: Record<string, any> = {}, activityMap: Record<string, any> = {}, sessionMap: Record<string, number> = {}, execMap: Record<string, number> = {}, videoViewMap: Record<string, number> = {};
+      const memberSet = new Set<string>((memberRolesRes.data || []).map((r: any) => r.user_id));
       rolesRes.data?.forEach((r: any) => { rolesMap[r.user_id] = r; });
       activityRes.data?.forEach((a: any) => { activityMap[a.user_id] = { is_active: !!(a.last_heartbeat && (Date.now() - new Date(a.last_heartbeat).getTime()) < 60000), active_tab: a.active_tab }; });
       sessionsRes.data?.forEach((s: any) => { sessionMap[s.user_id] = (sessionMap[s.user_id] || 0) + 1; });
       execsRes.data?.forEach((e: any) => { execMap[e.user_id] = (execMap[e.user_id] || 0) + 1; });
       videoViewsRes.data?.forEach((v: any) => { videoViewMap[v.user_id] = (videoViewMap[v.user_id] || 0) + 1; });
-      setLeads(requests.map(r => mapLead(r, { rolesMap, activityMap, sessionMap, execMap, videoViewMap })));
+      setLeads(requests.map(r => mapLead(r, { rolesMap, activityMap, sessionMap, execMap, videoViewMap, memberSet })));
     } catch (err: any) {
       console.warn("[CRM] Load error:", err);
       if (isAuthError(err)) { await clearStaleSession("crm_load_catch"); return; }
@@ -865,8 +869,8 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                             <div className="flex items-center gap-1.5">
                               <p className="text-[15px] font-display font-bold text-white">{lead.first_name || "—"}</p>
                               {lead.priorite && <span className={cn("text-[8px] font-display font-bold", lead.priorite === 'P1' ? 'text-emerald-400' : lead.priorite === 'P2' ? 'text-amber-400' : 'text-red-400')}>{lead.priorite}</span>}
-                              {/* Badge Membre — accès actif confirmé */}
-                              {(lead.status === 'closed_won' || lead.paid_at) && (
+                              {/* Badge Membre — accès actif confirmé (closed_won, paid_at, ou role=member ancien) */}
+                              {lead.is_member && (
                                 <span
                                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/40 text-[9px] font-display font-bold text-emerald-300 uppercase tracking-wider"
                                   title={lead.paid_at ? `Membre actif depuis le ${fmtDate(lead.paid_at)}` : "Membre actif"}
