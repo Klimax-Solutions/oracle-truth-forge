@@ -71,46 +71,61 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
   // ── Fetch sessions + stats ──
   const loadSessions = useCallback(async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
 
-    const { data: sessionsData } = await supabase
-      .from("trading_sessions")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("archived", false)
-      .order("updated_at", { ascending: false });
-
-    setSessions((sessionsData || []) as TradingSession[]);
-
-    // Fetch stats per session
-    if (sessionsData && sessionsData.length > 0) {
-      const ids = sessionsData.map(s => s.id);
-      const { data: trades } = await supabase
-        .from("user_personal_trades")
-        .select("session_id, rr, result")
-        .in("session_id", ids);
-
-      const stats: Record<string, SessionStats> = {};
-      (trades || []).forEach((t: any) => {
-        if (!t.session_id) return;
-        if (!stats[t.session_id]) stats[t.session_id] = { trades: 0, rr: 0, winRate: 0, avgRR: 0 };
-        stats[t.session_id].trades += 1;
-        stats[t.session_id].rr += t.rr || 0;
+    // Timeout de sécurité — si les requêtes bloquent (session cassée, réseau),
+    // on sort du spinner après 8s plutôt que de rester coincé indéfiniment.
+    const safetyTimer = setTimeout(() => {
+      setLoading(prev => {
+        if (prev) console.warn("[RecolteDonnees] load timeout — forcing render");
+        return false;
       });
+    }, 8000);
 
-      // Calcul winRate + avgRR
-      for (const sid of Object.keys(stats)) {
-        const sessionTrades = (trades || []).filter((t: any) => t.session_id === sid);
-        const wins = sessionTrades.filter((t: any) => (t.rr || 0) > 0).length;
-        stats[sid].winRate = sessionTrades.length > 0 ? (wins / sessionTrades.length) * 100 : 0;
-        stats[sid].avgRR = sessionTrades.length > 0 ? stats[sid].rr / sessionTrades.length : 0;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: sessionsData } = await supabase
+        .from("trading_sessions")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("archived", false)
+        .order("updated_at", { ascending: false });
+
+      setSessions((sessionsData || []) as TradingSession[]);
+
+      // Fetch stats per session
+      if (sessionsData && sessionsData.length > 0) {
+        const ids = sessionsData.map(s => s.id);
+        const { data: trades } = await supabase
+          .from("user_personal_trades")
+          .select("session_id, rr, result")
+          .in("session_id", ids);
+
+        const stats: Record<string, SessionStats> = {};
+        (trades || []).forEach((t: any) => {
+          if (!t.session_id) return;
+          if (!stats[t.session_id]) stats[t.session_id] = { trades: 0, rr: 0, winRate: 0, avgRR: 0 };
+          stats[t.session_id].trades += 1;
+          stats[t.session_id].rr += t.rr || 0;
+        });
+
+        // Calcul winRate + avgRR
+        for (const sid of Object.keys(stats)) {
+          const sessionTrades = (trades || []).filter((t: any) => t.session_id === sid);
+          const wins = sessionTrades.filter((t: any) => (t.rr || 0) > 0).length;
+          stats[sid].winRate = sessionTrades.length > 0 ? (wins / sessionTrades.length) * 100 : 0;
+          stats[sid].avgRR = sessionTrades.length > 0 ? stats[sid].rr / sessionTrades.length : 0;
+        }
+
+        setSessionStats(stats);
       }
-
-      setSessionStats(stats);
+    } catch (err) {
+      console.warn("[RecolteDonnees] loadSessions error:", err);
+    } finally {
+      clearTimeout(safetyTimer);
+      setLoading(false);
     }
-
-    setLoading(false);
   }, []);
 
   useEffect(() => { loadSessions(); }, [loadSessions]);
