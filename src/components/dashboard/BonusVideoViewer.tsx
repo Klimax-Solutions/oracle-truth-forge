@@ -159,6 +159,7 @@ export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false }: BonusV
 
   const formationCount = allVideos.filter(v => (v.category || "formation") === "formation").length;
   const liveCount = allVideos.filter(v => (v.category || "formation") === "live").length;
+  const showCategoryTabs = formationCount > 0 && liveCount > 0;
 
   if (allVideos.length === 0) {
     return (
@@ -216,16 +217,18 @@ export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false }: BonusV
           <span className="font-semibold text-amber-400">Attention :</span> Les vidéos bonus du Mercure Institut sont consultables uniquement et exclusivement sur <span className="font-semibold text-amber-400">Google Chrome</span>, par souci de sécurité.
         </p>
       </div>
-      {/* Category tabs + count */}
-      <div className="px-4 md:px-6 py-3 border-b border-border flex items-center justify-between gap-3">
-        <Tabs value={activeCategory} onValueChange={setActiveCategory}>
-          <TabsList className="h-8">
-            <TabsTrigger value="formation" className="text-[10px] px-3 h-7">Formation ({formationCount})</TabsTrigger>
-            <TabsTrigger value="live" className="text-[10px] px-3 h-7">Live ({liveCount})</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <Badge variant="secondary" className="font-mono text-[10px]">{videos.length} vidéos</Badge>
-      </div>
+      {/* Category tabs — affichés uniquement si les deux catégories ont du contenu */}
+      {showCategoryTabs && (
+        <div className="px-4 md:px-6 py-3 border-b border-border flex items-center justify-between gap-3">
+          <Tabs value={activeCategory} onValueChange={setActiveCategory}>
+            <TabsList className="h-8">
+              <TabsTrigger value="formation" className="text-[10px] px-3 h-7">Formation ({formationCount})</TabsTrigger>
+              <TabsTrigger value="live" className="text-[10px] px-3 h-7">Live ({liveCount})</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Badge variant="secondary" className="font-mono text-[10px]">{videos.length} vidéos</Badge>
+        </div>
+      )}
 
       {/* Split layout: Player + Playlist */}
       <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
