@@ -27,6 +27,7 @@ const contactSchema = z.object({
       const digits = v.replace(/\D/g, '');
       return digits.length >= 9 && digits.length <= 15;
     }, 'Numéro invalide — vérifie le format (ex: 06 12 34 56 78)'),
+  // Note: pas de regex \p{L} ici — compatibilité Safari pré-15.4
 });
 
 /**

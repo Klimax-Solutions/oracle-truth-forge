@@ -198,10 +198,11 @@ export function useFunnelConfig(slug?: string) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
+    let cancelled = false;
+
+    const attempt = async (): Promise<boolean> => {
       try {
         if (slug) {
-          // Resolve slug → funnel → config
           const { data: funnel } = await supabase
             .from('funnels')
             .select('id')
@@ -217,14 +218,13 @@ export function useFunnelConfig(slug?: string) {
               .maybeSingle();
 
             if (!error && data) {
-              setConfig(data as unknown as FunnelConfig);
-              setLoading(false);
-              return;
+              if (!cancelled) setConfig(data as unknown as FunnelConfig);
+              return true;
             }
           }
         }
 
-        // Fallback: load first available config
+        // Fallback: first available config
         const { data, error } = await supabase
           .from('funnel_config')
           .select('*')
@@ -232,16 +232,28 @@ export function useFunnelConfig(slug?: string) {
           .maybeSingle();
 
         if (!error && data) {
-          setConfig(data as unknown as FunnelConfig);
+          if (!cancelled) setConfig(data as unknown as FunnelConfig);
+          return true;
         }
+        return false;
       } catch (err) {
-        console.error('[FunnelConfig] Load error:', err);
-      } finally {
-        setLoading(false);
+        console.warn('[FunnelConfig] Load error:', err);
+        return false;
       }
     };
 
+    const load = async () => {
+      // 2 tentatives avec 1.5s d'intervalle — couvre les connexions lentes (Safari mobile)
+      let ok = await attempt();
+      if (!ok && !cancelled) {
+        await new Promise(r => setTimeout(r, 1500));
+        ok = await attempt();
+      }
+      if (!cancelled) setLoading(false);
+    };
+
     load();
+    return () => { cancelled = true; };
   }, [slug]);
 
   return { config, loading, defaults: DEFAULT_CONFIG };

@@ -8,9 +8,30 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// Safari Private Mode lance une QuotaExceededError sur localStorage.setItem.
+// Ce wrapper intercepte l'erreur et tombe back sur un stockage en mémoire,
+// ce qui permet au client Supabase d'initialiser correctement même sans storage.
+const safeStorage = (() => {
+  try {
+    localStorage.setItem('__sb_test', '1');
+    localStorage.removeItem('__sb_test');
+    return localStorage;
+  } catch {
+    const mem: Record<string, string> = {};
+    return {
+      getItem:    (k: string) => mem[k] ?? null,
+      setItem:    (k: string, v: string) => { mem[k] = v; },
+      removeItem: (k: string) => { delete mem[k]; },
+      length: 0,
+      key: (_i: number) => null,
+      clear: () => { Object.keys(mem).forEach(k => delete mem[k]); },
+    } as Storage;
+  }
+})();
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: safeStorage,
     persistSession: true,
     autoRefreshToken: true,
   }
