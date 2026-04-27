@@ -467,82 +467,21 @@ Deno.serve(async (req: Request) => {
         kitLeadFirstName = lead.first_name || kitLeadFirstName;
         kitRequestId     = lead.id;
       } else {
-        // Aucun lead trouvé → création automatique depuis le booking.
-        // Priorité aux données form_email / form_phone (metadata Cal) si présentes.
-        log.warn("BOOKING_CREATED", `Aucun lead trouvé pour ${attendeeEmail} — création d'un nouveau lead`);
+        // Aucun lead trouvé → REJET.
+        // Tout booking Cal.com doit obligatoirement venir d'un lead qui a rempli le form.
+        // On ne crée jamais de lead depuis le webhook Cal — le form est l'unique point d'entrée.
+        log.warn("BOOKING_CREATED", `Aucun lead trouvé pour ${attendeeEmail} — booking ignoré (pas de lead form)`);
 
-        const firstName = attendeeName.split(" ")[0] || attendeeEmail.split("@")[0];
-
-        // Téléphone : priorité metadata.form_phone → attendee.phoneNumber → smsPhone → responses
-        let phone: string | null = formPhone || (attendee as any)?.phoneNumber || smsPhone || null;
-        if (!phone && booking.responses) {
-          const r = booking.responses as Record<string, any>;
-          phone = r.attendeePhoneNumber?.value || r.phone?.value || r.phone || r.smsReminderNumber?.value || null;
-        }
-        log.info("BOOKING_CREATED", `Téléphone retenu: ${phone}`);
-
-        // Email : priorité metadata.form_email (source de vérité injectée par le funnel).
-        // Pour les bookings SMS sans form_email : on NE STOCKE PAS @sms.cal.com —
-        // cette adresse fantôme déclencherait un magic link bouncé si un admin approuve le lead.
-        // On génère un placeholder non-livrable (RFC 2606 : .invalid = réservé, jamais livré).
-        // Le CRM affichera "email manquant" et l'admin devra le compléter manuellement.
-        const rawEmail: string = formEmail || (isSmsBooking ? "" : attendeeEmail);
-        // Utiliser les digits COMPLETS (pas slice(-10)) pour garantir l'unicité du placeholder.
-        // Ex: +33781748022 → "33781748022" — un .slice(-10) sur deux numéros différents
-        // commençant par le même suffixe produirait le même email fantôme.
-        const digits = (smsPhone || phone || "").replace(/\D/g, "");
-        const email: string = rawEmail || `sms_${digits || booking.uid?.slice(0, 8) || "unknown"}@sms.invalid`;
-
-        const insertData = {
-          first_name: firstName,
-          email,
-          phone: phone || "",
-          status: "en_attente",
-          form_submitted: false,
-          call_booked: true,
-          call_scheduled_at: callScheduledAt,
-          call_meeting_url: meetingUrl,
-          booking_event_id: booking.uid || null,
-        };
-
-        log.info("BOOKING_CREATED", `INSERT early_access_requests`, insertData);
-        const { data: created, error: insertError } = await supabase
-          .from("early_access_requests")
-          .insert(insertData)
-          .select("id")
-          .maybeSingle();
-
-        if (insertError) {
-          log.error("BOOKING_CREATED", "Erreur INSERT", insertError);
-          throw new Error(`Insert error: ${insertError.message}`);
-        }
-
-        log.ok("BOOKING_CREATED", `Nouveau lead créé pour ${email} (id=${created?.id})`);
-
-        // Données pour Kit
-        kitLeadEmail     = email;
-        kitLeadFirstName = firstName;
-        kitRequestId     = created?.id || null;
-
-        // Audit : log d'événement spécifique pour les leads créés via webhook (utile pour debug)
-        if (created?.id) {
-          try {
-            await supabase.from("lead_events").insert({
-              request_id: created.id,
-              event_type: "lead_created_from_webhook",
-              source: "cal",
-              metadata: {
-                attendee_email: attendeeEmail,
-                form_email: formEmail,
-                phone,
-                is_sms_booking: isSmsBooking,
-                booking_uid: booking.uid,
-              },
-            });
-          } catch (e) {
-            log.warn("BOOKING_CREATED", `lead_events insert failed (non-blocking): ${(e as Error).message}`);
-          }
-        }
+        return new Response(
+          JSON.stringify({
+            success: true,
+            skipped: "no_lead_found",
+            reason: "Booking received but no matching lead found. Leads must originate from the apply form.",
+            email: attendeeEmail,
+            form_email: formEmail,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
       // ── Kit : stop séquence book-a-call → start séquence pre-call ──────────────
