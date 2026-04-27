@@ -102,11 +102,28 @@ export default function FunnelDiscovery() {
   const [searchParams] = useSearchParams();
   const { config, loading } = useFunnelConfig(slug);
 
+  // ── Guard : accès direct sans form ────────────────────────────────────────
+  // Bloque les visiteurs qui arrivent sur /discovery sans avoir rempli le form.
+  // Cas légitimes sans session locale : email Kit avec lead_id dans l'URL.
+  // Tous les autres sans session → redirect vers /apply.
+  const leadIdParam = searchParams.get('lead_id') || null;
+  const hasValidEntry = useMemo(() => {
+    if (leadIdParam) return true;           // Email Kit — toujours valide
+    const s = getFunnelSession();
+    return !!s?.email;                      // A rempli le form dans cette session
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!hasValidEntry && !loading && slug) {
+      navigate(`/${slug}/apply`, { replace: true });
+    }
+  }, [hasValidEntry, loading, slug, navigate]);
+
   // ── lead_id URL param (depuis emails Kit) ──────────────────────────────────
   // Format email Kit : /discovery?lead_id={{ subscriber.lead_id }}&email=...&name=...
   // Le lead_id est l'UUID de early_access_requests — on le stocke en session
   // pour que FunnelFinal puisse faire UPDATE par ID (pas par email).
-  const leadIdParam = searchParams.get('lead_id') || null;
   useEffect(() => {
     if (!leadIdParam) return;
     // Si on arrive via un email Kit (lead_id présent), on hydrate la session
@@ -199,6 +216,11 @@ export default function FunnelDiscovery() {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [slug, navigate, prefillName, prefillEmail, session, booked]);
+
+  // Redirect en cours (guard) — écran vide pour éviter le flash de contenu
+  if (!hasValidEntry) {
+    return <div className="min-h-screen bg-background" />;
+  }
 
   if (loading) {
     return (
