@@ -865,6 +865,15 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                             <div className="flex items-center gap-1.5">
                               <p className="text-[15px] font-display font-bold text-white">{lead.first_name || "—"}</p>
                               {lead.priorite && <span className={cn("text-[8px] font-display font-bold", lead.priorite === 'P1' ? 'text-emerald-400' : lead.priorite === 'P2' ? 'text-amber-400' : 'text-red-400')}>{lead.priorite}</span>}
+                              {/* Badge Membre — accès actif confirmé */}
+                              {(lead.status === 'closed_won' || lead.paid_at) && (
+                                <span
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/40 text-[9px] font-display font-bold text-emerald-300 uppercase tracking-wider"
+                                  title={lead.paid_at ? `Membre actif depuis le ${fmtDate(lead.paid_at)}` : "Membre actif"}
+                                >
+                                  <CheckCircle2 className="w-2.5 h-2.5" /> Membre
+                                </span>
+                              )}
                               {/* Badge SMS — email placeholder Cal.com (booking sans form, email à compléter) */}
                               {lead.email?.endsWith('@sms.cal.com') && (
                                 <span
