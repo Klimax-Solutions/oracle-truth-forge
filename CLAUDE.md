@@ -2,10 +2,19 @@
 
 ## ⛔ REGLES ABSOLUES — LIRE AVANT TOUTE ACTION
 
-### 1. Ne JAMAIS modifier `main`
-- `main` est synchronise avec Lovable Cloud. Lovable deploie depuis `main`.
-- Tout dev se fait sur la branche `crm-integration` (ou une feature branch).
-- Pour merger dans main : PR reviewee, build OK, test OK.
+### 1. Deux contextes de travail — bien identifier où on est
+
+Ce repo existe en deux worktrees locaux avec des règles de push différentes :
+
+| Dossier local | Branche locale | Push prod |
+|--------------|---------------|-----------|
+| `/projets/oracle-truth-forge/` | `crm-integration` | `git merge crm-integration` depuis `main` |
+| `/projets/oracle-funnel-clean/` | `funnel-clean` | `git push origin HEAD:main` |
+
+**Règle absolue** : avant tout push, vérifier `git branch --show-current`.
+- Depuis `oracle-funnel-clean` → toujours `git push origin HEAD:main`
+- Ne jamais écrire `git push origin crm-integration` depuis `oracle-funnel-clean` (pousse une branche locale sans rapport avec le travail en cours)
+- `main` est synchronisé avec Lovable Cloud → auto-deploy à chaque push.
 
 ### 2. Ne JAMAIS `supabase db push` sur le projet Cloud
 - Le Supabase `pggkwyhtplxyarctuoze` est gere par Lovable Cloud.
@@ -24,15 +33,11 @@ npm run build  # DOIT passer sans erreur
 git diff --stat  # Verifier les fichiers modifies
 ```
 
-### 5. Soft-lock 24h sur les décisions de cycle (intégrité audit)
-- Une fois qu'un cycle est `validated` ou `rejected` par un admin, les boutons inline ✓/neutre/✗ se **verrouillent automatiquement 24h après `verified_at`**.
-- Au-delà de 24h, ils deviennent grisés et non-cliquables avec tooltip "Verrouillé (>24h). Utilise 'Réouvrir le cycle' pour modifier."
-- Pour modifier une décision verrouillée, l'admin doit explicitement cliquer **"Réouvrir le cycle"** (bouton bleu dans le drill-down panel) → repasse le cycle en `in_progress`, clear `verified_at` + `completed_at`.
-- Logique : 24h pour corriger une erreur évidente, ensuite friction obligatoire pour audit trail.
-- Implémentation : `GestionPanel.tsx`, sub-tab Cycles, calcul `lockedSince24h = (Date.now() - verified_at) > 24h`.
-- ⚠️ Ne pas contourner cette règle. Elle protège l'intégrité des décisions admin.
-- Validation = `confirm()` dialog explicite (pas de validation accidentelle).
-- Évolution future : quand on a du volume, ajouter table `cycle_status_changes` (audit log complet : old_status, new_status, changed_by, changed_at, reason).
+### 5. ~~Soft-lock 24h sur les décisions de cycle~~ — Supprimé (2026-04-27)
+- Les boutons inline ✓/neutre/✗ sur les cycles sont maintenant **toujours cliquables** après une décision, sans restriction temporelle.
+- La logique `lockedSince24h` a été retirée de `GestionPanel.tsx`.
+- La validation reste protégée par un `confirm()` dialog explicite pour éviter les clics accidentels.
+- Évolution future envisagée : table `cycle_status_changes` (audit log complet : old_status, new_status, changed_by, changed_at, reason).
 
 ### 6. Framework "Migration" — reflexe obligatoire
 Avant TOUTE modification de schema DB ou de structure de donnees, se poser systematiquement :
@@ -87,7 +92,8 @@ vercel --prod
 |---------|------|-------------|
 | `main` | Production Lovable | Lovable Cloud (auto-deploy sur push) |
 | `lovable-stable` | Sauvegarde version Lovable | Personne (ne jamais supprimer) |
-| `crm-integration` | Dev CRM + ameliorations | Nous (local dev, futur merge dans main) |
+| `crm-integration` | Dev CRM + ameliorations (depuis oracle-truth-forge) | `git push origin main` après merge |
+| `funnel-clean` | Dev funnel + fixes (depuis oracle-funnel-clean) | `git push origin HEAD:main` |
 
 ### Ports dev
 - spike-launch : `localhost:3002`
@@ -308,30 +314,31 @@ Pipeline CRM :
 
 ## Workflow de developpement
 
-### Pour ajouter une feature
+### Depuis oracle-funnel-clean (branche funnel-clean) ← contexte actuel
+```bash
+# Vérifier où on est (réflexe obligatoire)
+git branch --show-current        # doit afficher "funnel-clean"
+
+# Coder la feature
+npm run build                    # Verifier compilation — DOIT passer
+git add <fichiers specifiques>   # PAS git add -A
+git commit -m "feat: description"
+
+# Deployer en prod
+git push origin HEAD:main        # Lovable auto-deploy
+```
+
+### Depuis oracle-truth-forge (branche crm-integration)
 ```bash
 git checkout crm-integration
 # Coder la feature
-npm run build                    # Verifier compilation
-git add <fichiers specifiques>   # PAS git add -A
+npm run build
+git add <fichiers specifiques>
 git commit -m "feat: description"
-# Tester en local sur localhost:3003
-```
-
-### Pour deployer en production
-```bash
+# Pour deployer :
 git checkout main
-git merge crm-integration       # Ou PR sur GitHub
+git merge crm-integration
 git push origin main             # Lovable auto-deploy
-```
-
-### Pour creer une nouvelle feature branch
-```bash
-git checkout crm-integration
-git checkout -b feature/nom-feature
-# Coder
-git checkout crm-integration
-git merge feature/nom-feature
 ```
 
 ### Commandes utiles
@@ -339,6 +346,7 @@ git merge feature/nom-feature
 # Dev servers
 cd /projets/spike-launch && npm run dev -- --port 3002
 cd /projets/oracle-truth-forge && npm run dev -- --port 3003
+cd /projets/oracle-funnel-clean && npm run dev -- --port 3003
 
 # Build check
 npm run build
@@ -346,11 +354,8 @@ npm run build
 # Voir les changements
 git diff --stat
 
-# Revenir a la version Lovable
-git checkout main
-
-# Travailler sur le CRM
-git checkout crm-integration
+# Vérifier la branche courante (toujours faire avant un push)
+git branch --show-current
 ```
 
 ---
