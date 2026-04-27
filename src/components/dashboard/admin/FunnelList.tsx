@@ -43,12 +43,21 @@ export default function AdminFunnelList({ onEditFunnel }: { onEditFunnel?: (id: 
   const canEdit = true; // Oracle: admins can always edit
 
   const loadFunnels = async () => {
-    const { data } = await supabase
-      .from('funnels')
-      .select('*')
-      .order('created_at', { ascending: true });
-    setFunnels((data as unknown as Funnel[]) || []);
-    setLoading(false);
+    // Safety timeout: if the query hangs (AbortError in dev / network issue),
+    // force loading=false after 6s so the spinner never stays forever.
+    const safetyTimer = setTimeout(() => setLoading(false), 6000);
+    try {
+      const { data } = await supabase
+        .from('funnels')
+        .select('*')
+        .order('created_at', { ascending: true });
+      setFunnels((data as unknown as Funnel[]) || []);
+    } catch (err) {
+      console.warn('[FunnelList] loadFunnels error:', err);
+    } finally {
+      clearTimeout(safetyTimer);
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
