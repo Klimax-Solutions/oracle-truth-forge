@@ -882,7 +882,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                                 </span>
                               )}
                               {/* Badge EA Trial — accès anticipé actif (rôle early_access non expiré), sans paiement */}
-                              {!lead.is_member && lead.role_data?.role === 'early_access' && (!lead.role_data?.expires_at || new Date(lead.role_data.expires_at) > new Date()) && (
+                              {!lead.is_member && lead.early_access_type && (!lead.expires_at || new Date(lead.expires_at) > new Date()) && (
                                 <span
                                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-violet-500/15 border border-violet-500/40 text-[9px] font-display font-bold text-violet-300 uppercase tracking-wider"
                                   title="Membre EA — accès anticipé en cours (trial)"
