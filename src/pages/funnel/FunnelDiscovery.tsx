@@ -125,28 +125,63 @@ export default function FunnelDiscovery() {
   // Format email Kit : /discovery?lead_id={{ subscriber.lead_id }}&email=...&name=...
   // Le lead_id est l'UUID de early_access_requests — on le stocke en session
   // pour que FunnelFinal puisse faire UPDATE par ID (pas par email).
+  // On fetche aussi le téléphone depuis la DB pour le prefill Cal.com (absent de l'URL Kit).
   useEffect(() => {
     if (!leadIdParam) return;
-    // Si on arrive via un email Kit (lead_id présent), on hydrate la session
-    // avec l'UUID du lead — même si le submit du form est dans un autre browser/session.
     const existingSession = getFunnelSession();
-    if (!existingSession?.request_id) {
-      storeFunnelSession({
-        request_id: leadIdParam,
-        email:      searchParams.get('email') || existingSession?.email || '',
-        first_name: searchParams.get('name')  || existingSession?.first_name || '',
-        phone:      searchParams.get('phone') || existingSession?.phone || undefined,
+
+    // Fetch le lead en DB pour récupérer first_name + phone (absents du lien Kit)
+    supabase
+      .from('early_access_requests')
+      .select('first_name, phone')
+      .eq('id', leadIdParam)
+      .maybeSingle()
+      .then(({ data }) => {
+        storeFunnelSession({
+          request_id: leadIdParam,
+          email:      searchParams.get('email') || existingSession?.email || '',
+          first_name: searchParams.get('name')  || data?.first_name || existingSession?.first_name || '',
+          phone:      searchParams.get('phone') || data?.phone      || existingSession?.phone      || undefined,
+        });
+      })
+      .catch(() => {
+        // Fallback sans phone si la DB est injoignable
+        if (!existingSession?.request_id) {
+          storeFunnelSession({
+            request_id: leadIdParam,
+            email:      searchParams.get('email') || existingSession?.email || '',
+            first_name: searchParams.get('name')  || existingSession?.first_name || '',
+            phone:      searchParams.get('phone') || existingSession?.phone || undefined,
+          });
+        }
       });
-    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadIdParam]);
 
   // Session locale (stockée par funnelLeadQueue après submit du form)
   // Fallback si les URL params sont perdus (ex: refresh de page)
   const session = useMemo(() => getFunnelSession(), []);
+
+  // prefillPhone est réactif : il se met à jour quand le fetch DB (lead_id path) retourne
+  // le numéro. On initialise depuis l'URL ou la session locale, et on override si la DB
+  // retourne un numéro plus complet (ex: arrivée via email Kit sans phone dans l'URL).
+  const [prefillPhone, setPrefillPhone] = useState<string | undefined>(
+    searchParams.get('phone') || session?.phone || undefined
+  );
+  useEffect(() => {
+    if (!leadIdParam) return;
+    // Le useEffect leadIdParam fetche la DB et store en session.
+    // On poll la session une fois la promesse résolue (~200ms) pour récupérer le phone.
+    const t = setTimeout(() => {
+      const s = getFunnelSession();
+      if (s?.phone) setPrefillPhone(s.phone);
+    }, 300);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadIdParam]);
+
   const prefillName  = searchParams.get('name')  || session?.first_name || undefined;
   const prefillEmail = searchParams.get('email') || session?.email      || undefined;
-  const prefillPhone = searchParams.get('phone') || session?.phone      || undefined;
   const calBase = config?.discovery_cal_link ? buildCalEmbedUrl(config.discovery_cal_link) : null;
   const embedUrl = calBase ? appendCalPrefill(calBase, prefillName, prefillEmail, prefillPhone) : null;
 
