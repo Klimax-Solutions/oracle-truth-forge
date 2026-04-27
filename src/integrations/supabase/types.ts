@@ -784,6 +784,7 @@ export type Database = {
           imported_at: string | null
           imported_from_prod: boolean
           is_client: boolean
+          last_login_at: string | null
           status: Database["public"]["Enums"]["user_status"]
           status_reason: string | null
           timezone: string | null
@@ -803,6 +804,7 @@ export type Database = {
           imported_at?: string | null
           imported_from_prod?: boolean
           is_client?: boolean
+          last_login_at?: string | null
           status?: Database["public"]["Enums"]["user_status"]
           status_reason?: string | null
           timezone?: string | null
@@ -822,6 +824,7 @@ export type Database = {
           imported_at?: string | null
           imported_from_prod?: boolean
           is_client?: boolean
+          last_login_at?: string | null
           status?: Database["public"]["Enums"]["user_status"]
           status_reason?: string | null
           timezone?: string | null
@@ -1293,6 +1296,24 @@ export type Database = {
           message_sent?: boolean | null
           notes?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_login_history: {
+        Row: {
+          id: string
+          logged_in_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          logged_in_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          logged_in_at?: string
           user_id?: string
         }
         Relationships: []
@@ -1821,6 +1842,7 @@ export type Database = {
       is_institute: { Args: never; Returns: boolean }
       is_setter: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      record_login: { Args: never; Returns: undefined }
       unlock_next_cycle: {
         Args: { p_current_cycle_number: number; p_user_id: string }
         Returns: undefined
