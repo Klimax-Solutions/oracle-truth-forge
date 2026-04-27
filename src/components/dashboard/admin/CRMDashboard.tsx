@@ -843,7 +843,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                               <span className={`text-[10px] font-display ${sc.text}`} onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}>
                                 Setter : {lead.setter_name}
                               </span>
-                            ) : getStage(lead) === 'pending' ? (
+                            ) : lead.status === 'en_attente' ? (
                               <button
                                 onClick={e => handleApproveLead(e, lead)}
                                 disabled={approvingId === lead.id}
