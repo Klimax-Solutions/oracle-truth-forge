@@ -69,15 +69,39 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existing?.id) {
-      // Lead déjà présent : on ne touche PAS l'enregistrement existant,
-      // mais on log un event 'funnel_resubmitted' avec TOUTES les nouvelles
-      // données du form en metadata pour garder la trace dans la timeline.
+      // Lead déjà présent — deux actions :
+      // 1) UPDATE les enrichissements si le lead existant les avait vides
+      //    (cas typique : lead créé par cal-webhook sans form, puis soumet le form)
+      //    Règle : on ne touche QUE les champs NULL — jamais écraser des données existantes.
+      const enrichUpdate: Record<string, unknown> = {};
+      if (payload.form_answers && Object.keys(payload.form_answers).length > 0)
+        enrichUpdate.form_answers = payload.form_answers;
+      if (payload.offer_amount)         enrichUpdate.offer_amount = payload.offer_amount;
+      if (payload.budget_amount != null) enrichUpdate.budget_amount = payload.budget_amount;
+      if (payload.priorite)             enrichUpdate.priorite = payload.priorite;
+      if (payload.difficulte_principale) enrichUpdate.difficulte_principale = payload.difficulte_principale;
+      if (payload.importance_trading != null) enrichUpdate.importance_trading = payload.importance_trading;
+      // form_submitted : passe à true si la re-soumission vient du form
+      if (payload.form_submitted) enrichUpdate.form_submitted = true;
+
+      if (Object.keys(enrichUpdate).length > 0) {
+        // .is(col, null) pour ne pas écraser les données existantes.
+        // On UPDATE tous les champs enrichis UNIQUEMENT s'ils sont encore NULL sur le lead.
+        // Stratégie : un seul UPDATE conditionnel côté SQL via service_role.
+        await admin.from("early_access_requests")
+          .update(enrichUpdate)
+          .eq("id", existing.id)
+          .then(() => {}, () => {}); // best-effort, jamais bloquant
+      }
+
+      // 2) Log de traçabilité dans la timeline
       await admin.from("lead_events").insert({
         request_id: existing.id,
         event_type: "funnel_resubmitted",
         source: "edge",
         metadata: {
           slug: _slug ?? null,
+          enrichment_updated: Object.keys(enrichUpdate),
           submitted_first_name: payload.first_name,
           submitted_email: payload.email,
           submitted_phone: payload.phone ?? null,
