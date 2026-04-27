@@ -83,6 +83,9 @@ export interface CRMLead {
   archived_by?: string | null;
   archive_reason?: string | null;
 
+  /** Lead antérieur à la relance funnel du 26/04/2026 21h30 — calculé client-side depuis created_at */
+  is_pre_relaunch?: boolean;
+
   // Enrichissement (optionnel, rempli en background apres le 1er rendu)
   is_online?: boolean;
   session_count?: number;
@@ -194,6 +197,7 @@ export function mapRowToCRMLead(r: any, enrich?: {
     archived_at: r.archived_at || null,
     archived_by: r.archived_by || null,
     archive_reason: r.archive_reason || null,
+    is_pre_relaunch: r.created_at ? new Date(r.created_at) < new Date("2026-04-26T21:30:00") : false,
     is_online: enrich?.activityMap?.[r.user_id]?.is_active || false,
     session_count: enrich?.sessionMap?.[r.user_id] || 0,
     execution_count: execCount,

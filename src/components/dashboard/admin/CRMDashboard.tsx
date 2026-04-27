@@ -306,6 +306,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
   const [setterFilter, setSetterFilter] = useState("all");
   const [prioFilter, setPrioFilter] = useState("all");
   const [sortAsc, setSortAsc] = useState(false);
+  const [hidePreRelaunch, setHidePreRelaunch] = useState(false);
   const [selectedLead, setSelectedLead] = useState<PipelineLead | null>(null);
   const [modalView, setModalView] = useState<LeadModalView>("lead");
   const [refreshing, setRefreshing] = useState(false);
@@ -681,6 +682,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
     // Manual filters
     if (setterFilter !== "all") r = r.filter(l => l.setter_name === setterFilter);
     if (prioFilter !== "all") r = r.filter(l => l.priorite === prioFilter);
+    if (hidePreRelaunch) r = r.filter(l => !l.is_pre_relaunch);
     // Tri : spécifique uniquement pour les vues trial (à contacter / expirent / expirés)
     // Pour toutes les autres vues → ordre DB conservé : created_at DESC (plus récent en haut)
     if (["a_contacter", "expirent", "expires"].includes(stageFilter)) {
@@ -697,7 +699,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
       r.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
     return r;
-  }, [leads, search, stageFilter, setterFilter, prioFilter, isSetterOnly, currentSetterName]);
+  }, [leads, search, stageFilter, setterFilter, prioFilter, hidePreRelaunch, isSetterOnly, currentSetterName]);
 
   // ── Permissions effectives (overrideRoles ou DB) ──────────────────────────
   const canEditSetting = isSetterRole || isAdminRole || isSuperAdmin;
@@ -815,6 +817,19 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                   <SelectItem value="P3" className="text-red-400 font-display text-xs font-bold">P3</SelectItem>
                 </SelectContent>
               </Select>
+              {/* Toggle masquer anciens */}
+              <button
+                onClick={() => setHidePreRelaunch(v => !v)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-display font-semibold uppercase tracking-wider transition-all border",
+                  hidePreRelaunch
+                    ? "bg-white/[0.08] border-white/[0.20] text-white"
+                    : "border-transparent text-white/25 hover:text-white/50"
+                )}
+                title={hidePreRelaunch ? "Afficher tous les leads (y compris pré-relance)" : "Masquer les leads antérieurs au 26/04/2026 21h30"}
+              >
+                {hidePreRelaunch ? "Anciens masqués" : "Masquer anciens"}
+              </button>
             </div>
 
             {/* Right: Count */}
@@ -897,6 +912,15 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                                   title="Booking SMS — email réel à récupérer (le client n'a pas soumis le form)"
                                 >
                                   📵 SMS
+                                </span>
+                              )}
+                              {/* Badge pré-relance — lead antérieur au funnel du 26/04 21h30 */}
+                              {lead.is_pre_relaunch && (
+                                <span
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.12] text-[9px] font-display font-bold text-white/30 uppercase tracking-wider"
+                                  title="Lead antérieur à la relance funnel du 26/04/2026 à 21h30"
+                                >
+                                  Ancien
                                 </span>
                               )}
                             </div>
