@@ -50,13 +50,15 @@ interface VideoData {
 
 interface VideoSetupProps {
   overrideIsEarlyAccess?: boolean;
+  /** Rôles simulés — quand défini, remplace les rôles DB pour le filtrage des vidéos */
+  overrideRoles?: string[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPOSANT PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const VideoSetup = ({ overrideIsEarlyAccess }: VideoSetupProps = {}) => {
+export const VideoSetup = ({ overrideIsEarlyAccess, overrideRoles }: VideoSetupProps = {}) => {
   const [videos, setVideos]               = useState<VideoData[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null);
   const [viewedIds, setViewedIds]         = useState<Set<string>>(new Set());
@@ -75,6 +77,9 @@ export const VideoSetup = ({ overrideIsEarlyAccess }: VideoSetupProps = {}) => {
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  // Clé stable pour comparer overrideRoles sans provoquer de boucle infinie
+  const overrideRolesKey = overrideRoles ? overrideRoles.slice().sort().join(",") : null;
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -83,18 +88,20 @@ export const VideoSetup = ({ overrideIsEarlyAccess }: VideoSetupProps = {}) => {
         const [videosRes, viewsRes, rolesRes] = await Promise.all([
           supabase.from("videos").select("*").order("sort_order", { ascending: true }),
           supabase.from("user_video_views").select("video_id").eq("user_id", user.id),
+          // Rôles DB — toujours chargés pour MercureSection et userRoles state
           supabase.from("user_roles").select("role").eq("user_id", user.id),
         ]);
-        const userRolesList: string[] = rolesRes.data?.map((r: any) => r.role) ?? [];
-        if (rolesRes.data) setUserRoles(userRolesList);
+        const dbRoles: string[] = rolesRes.data?.map((r: any) => r.role) ?? [];
+        if (rolesRes.data) setUserRoles(dbRoles);
         if (viewsRes.data) setViewedIds(new Set(viewsRes.data.map((v: any) => v.video_id)));
         if (videosRes.data) {
-          // Filtrer selon accessible_roles configuré dans la médiathèque
-          // (tableau vide = accessible à tous)
+          // Si simulation active → filtrer avec les rôles simulés, sinon rôles réels DB
+          const effectiveRoles = overrideRoles ?? dbRoles;
+          // accessible_roles vide = accessible à tous
           const filtered = videosRes.data.filter((v: any) => {
             const roles: string[] = v.accessible_roles ?? [];
             if (roles.length === 0) return true;
-            return userRolesList.some(r => roles.includes(r));
+            return effectiveRoles.some(r => roles.includes(r));
           });
           setVideos(filtered);
           setSelectedVideo(filtered[0] ?? null);
@@ -106,7 +113,8 @@ export const VideoSetup = ({ overrideIsEarlyAccess }: VideoSetupProps = {}) => {
       }
     };
     load();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overrideRolesKey]);
 
   const markAsViewed = async (videoId: string) => {
     if (viewedIds.has(videoId)) return;

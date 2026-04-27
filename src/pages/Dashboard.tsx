@@ -202,8 +202,20 @@ const Dashboard = () => {
   const isCloser = effectiveIsCloser;
   const isSetterOnly = (isSetter || isCloser) && !isSuperAdmin && !isAdmin;
   const isEarlyAccess = simulatedRole !== "none" ? effectiveIsEarlyAccess : realIsEarlyAccess;
+
+  // Rôles simulés pour le filtrage des vidéos (accessible_roles).
+  // Reflète exactement ce que verrait un utilisateur avec ce rôle.
+  const simulatedRolesForVideos: string[] | undefined = simulatedRole === "none" ? undefined : {
+    admin:          ["admin", "member"],
+    member:         ["member"],
+    early_access:   ["early_access"],
+    setter:         ["setter"],
+    closer:         ["closer"],
+    "setter+closer":["setter", "closer"],
+  }[simulatedRole];
+
   // When simulating EA, create a fake expiresAt 3 days from now for demo
-  const effectiveExpiresAt = simulatedRole === "early_access" 
+  const effectiveExpiresAt = simulatedRole === "early_access"
     ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
     : expiresAt;
   
@@ -580,7 +592,10 @@ const Dashboard = () => {
         );
       }
       case "videos":
-        return <VideoSetup overrideIsEarlyAccess={simulatedRole !== "none" ? isEarlyAccess : undefined} />;
+        return <VideoSetup
+          overrideIsEarlyAccess={simulatedRole !== "none" ? isEarlyAccess : undefined}
+          overrideRoles={simulatedRolesForVideos}
+        />;
       case "successes":
         return <SuccessPage />;
       case "results":
