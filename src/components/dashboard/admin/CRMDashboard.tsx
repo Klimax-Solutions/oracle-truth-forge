@@ -535,8 +535,29 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
     return c;
   }, [leads]);
 
-  // Unique setters list for filter dropdown
-  const settersList = useMemo(() => [...new Set(leads.map(l => l.setter_name).filter(Boolean))].sort() as string[], [leads]);
+  // Setters list from DB (user_roles + profiles) — used for quick-assign inline
+  const [staffSetters, setStaffSetters] = useState<string[]>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: roleData } = await supabase.from("user_roles").select("user_id").eq("role", "setter");
+        if (roleData && roleData.length > 0) {
+          const userIds = roleData.map((r: any) => r.user_id);
+          const { data: profiles } = await supabase.from("profiles").select("first_name, display_name").in("user_id", userIds);
+          if (profiles && profiles.length > 0) {
+            const names = profiles.map((p: any) => p.display_name || p.first_name).filter(Boolean).sort() as string[];
+            if (names.length > 0) { setStaffSetters(names); return; }
+          }
+        }
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  // Unique setters list for filter dropdown (staff + leads already assigned)
+  const settersList = useMemo(() => {
+    const fromLeads = leads.map(l => l.setter_name).filter(Boolean) as string[];
+    return [...new Set([...staffSetters, ...fromLeads])].sort();
+  }, [leads, staffSetters]);
 
   const colorOrder = { red: 0, orange: 1, green: 2 };
 
@@ -750,11 +771,38 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                               {lead.priorite && <span className={cn("text-[8px] font-display font-bold", lead.priorite === 'P1' ? 'text-emerald-400' : lead.priorite === 'P2' ? 'text-amber-400' : 'text-red-400')}>{lead.priorite}</span>}
                               {!lead.phone && <span className="text-[8px] font-mono text-orange-400 bg-orange-500/10 px-1 py-0.5 rounded border border-orange-500/20">📵</span>}
                             </div>
-                            {lead.setter_name && sc ? (
-                              <span className={`text-[10px] font-display ${sc.text}`} onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}>
-                                Setter : {lead.setter_name}
+                            {/* Setter quick-assign inline — visible sur toutes les lignes sauf closed/doublon */}
+                            {lead.status !== 'closed_won' && lead.status !== 'doublon' && !isSetterOnly && settersList.length > 0 ? (
+                              <select
+                                value={lead.setter_name || ""}
+                                onClick={e => e.stopPropagation()}
+                                onChange={async e => {
+                                  e.stopPropagation();
+                                  const val = e.target.value;
+                                  await supabase.from("early_access_requests")
+                                    .update({ setter_name: val || null })
+                                    .eq("id", lead.id);
+                                  loadLeads();
+                                }}
+                                className={cn(
+                                  "mt-0.5 text-[10px] font-display font-semibold px-1.5 py-0.5 rounded border bg-transparent cursor-pointer outline-none transition-all",
+                                  lead.setter_name && sc
+                                    ? `${sc.text} border-current/30 hover:opacity-80`
+                                    : "text-white/30 border-white/10 hover:text-white/60 hover:border-white/20"
+                                )}
+                              >
+                                <option value="">+ Setter</option>
+                                {settersList.map(s => (
+                                  <option key={s} value={s} className="bg-[#12141a] text-white">{s}</option>
+                                ))}
+                              </select>
+                            ) : lead.setter_name && sc ? (
+                              <span className={`text-[10px] font-display ${sc.text}`}>
+                                {lead.setter_name}
                               </span>
-                            ) : getStage(lead) === 'pending' ? (
+                            ) : null}
+                            {/* Pending → bouton Approuver */}
+                            {getStage(lead) === 'pending' && (
                               <button
                                 onClick={e => handleApproveLead(e, lead)}
                                 disabled={approvingId === lead.id}
@@ -763,7 +811,8 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                                 {approvingId === lead.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <UserCheck className="w-2.5 h-2.5" />}
                                 {approvingId === lead.id ? '...' : 'Approuver'}
                               </button>
-                            ) : (lead.user_id && lead.status !== 'closed_won' && lead.status !== 'doublon') ? (
+                            )}
+                            {(lead.user_id && lead.status !== 'closed_won' && lead.status !== 'doublon') ? (
                               <button
                                 onClick={e => handleCloseLead(e, lead)}
                                 disabled={closingId === lead.id}
