@@ -6,6 +6,45 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { z } from "https://esm.sh/zod@3.23.8";
 
+// ── Telegram notification helper ──────────────────────────────────────────────
+// Lit TELEGRAM_BOT_TOKEN + TELEGRAM_NOTIFY_CHAT_ID depuis les secrets Supabase.
+// Si absents ou si Telegram renvoie une erreur → log warn, jamais throw.
+async function sendTelegramNotification(p: {
+  first_name?: string; email?: string; phone?: string;
+  offer_amount?: string; budget_amount?: number | null;
+  priorite?: string | null; difficulte_principale?: string;
+  importance_trading?: number | null; slug?: string;
+}) {
+  try {
+    const BOT = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    const CHAT = Deno.env.get("TELEGRAM_NOTIFY_CHAT_ID");
+    if (!BOT || !CHAT) return;
+    const esc = (s: string) => s.replace(/[_*[\]()~`>#+\-=|{}.!]/g, "\\$&");
+    const lines = [
+      `🔔 *Nouveau lead Oracle*`,
+      ``,
+      `👤 *Prénom :* ${esc(p.first_name || "?")}`,
+      `📧 *Email :* ${esc(p.email || "?")}`,
+      p.phone ? `📞 *Tél :* ${esc(p.phone)}` : `📞 *Tél :* ⚠️ absent`,
+      ...(p.offer_amount   ? [`💰 *Offre :* ${esc(p.offer_amount)}`]                : []),
+      ...(p.budget_amount != null ? [`💶 *Budget :* ${p.budget_amount}€`]           : []),
+      ...(p.priorite       ? [`⚡ *Priorité :* ${esc(p.priorite)}`]                  : []),
+      ...(p.importance_trading != null ? [`📊 *Importance :* ${p.importance_trading}/10`] : []),
+      ...(p.difficulte_principale ? [`🎯 *Difficulté :* ${esc(p.difficulte_principale)}`] : []),
+      ...(p.slug           ? [`🌐 *Funnel :* ${esc(p.slug)}`]                        : []),
+    ];
+    const res = await fetch(`https://api.telegram.org/bot${BOT}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: CHAT, text: lines.join("\n"), parse_mode: "MarkdownV2" }),
+    });
+    if (!res.ok) console.warn("[submit-funnel-lead] Telegram error:", await res.text());
+  } catch (err) {
+    console.warn("[submit-funnel-lead] Telegram notification failed (non-blocking):", err);
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 /** Normalise en E.164 : "+33622221156" quel que soit le format d'entrée. */
 function normalizePhone(raw: string): string {
   if (!raw?.trim()) return "";
@@ -230,6 +269,19 @@ Deno.serve(async (req) => {
       source: "edge",
       metadata: { slug: _slug ?? null, recovered: true },
     }).then(() => {}, () => {});
+
+    // 4) Notification Telegram — best-effort, non-blocking
+    void sendTelegramNotification({
+      first_name: payload.first_name,
+      email: payload.email,
+      phone: payload.phone,
+      offer_amount: payload.offer_amount,
+      budget_amount: payload.budget_amount,
+      priorite: payload.priorite,
+      difficulte_principale: payload.difficulte_principale,
+      importance_trading: payload.importance_trading,
+      slug: _slug,
+    });
 
     return new Response(
       JSON.stringify({ ok: true, id: inserted.id, recovered: true }),

@@ -104,6 +104,35 @@ function enqueue(lead: FunnelLeadPayload) {
  * Tente un INSERT, retry 3x avec backoff. Retourne true si succès.
  */
 /**
+ * Fire-and-forget : notifie l'admin via Telegram. Non-bloquant.
+ * Appelle l'edge function notify-funnel-lead qui lit TELEGRAM_BOT_TOKEN
+ * et TELEGRAM_NOTIFY_CHAT_ID depuis les secrets Supabase.
+ * Toute erreur réseau / Telegram est avalée silencieusement.
+ */
+function notifyAdmin(lead: FunnelLeadPayload, requestId?: string) {
+  try {
+    void supabase.functions.invoke('notify-funnel-lead', {
+      body: {
+        first_name: lead.first_name,
+        email: lead.email,
+        phone: lead.phone || '',
+        offer_amount: lead.offer_amount,
+        budget_amount: lead.budget_amount,
+        priorite: lead.priorite,
+        difficulte_principale: lead.difficulte_principale,
+        importance_trading: lead.importance_trading,
+        slug: lead._slug,
+        request_id: requestId,
+      },
+    }).then(({ error }) => {
+      if (error) console.warn('[FunnelQueue] Admin notify error (non-blocking):', error.message);
+    });
+  } catch (err) {
+    console.warn('[FunnelQueue] Admin notify threw (ignored):', err);
+  }
+}
+
+/**
  * Fire-and-forget : inscrit le lead dans la séquence Kit. Non-bloquant.
  * Toute erreur réseau / Kit est avalée — la fonction edge logge déjà dans lead_events.
  */
@@ -141,14 +170,16 @@ async function attemptInsert(lead: FunnelLeadPayload): Promise<boolean> {
         .select('id')
         .maybeSingle();
       if (!error) {
+        const insertedId: string | undefined = (data as any)?.id;
         // Persiste l'identité du lead dans la session tab — utilisé par Discovery/Final
         storeFunnelSession({
-          request_id: (data as any)?.id ?? null,
+          request_id: insertedId ?? null,
           email: lead.email,
           first_name: lead.first_name,
           phone: lead.phone,
         });
-        triggerKitSequence(lead, (data as any)?.id);
+        triggerKitSequence(lead, insertedId);
+        notifyAdmin(lead, insertedId);  // 🔔 Notification admin Telegram
         return true;
       }
       // 23505 = unique violation → lead déjà existant.
