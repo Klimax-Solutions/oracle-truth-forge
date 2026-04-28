@@ -658,8 +658,29 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
     return c;
   }, [leads]);
 
-  // Unique setters list for filter dropdown
-  const settersList = useMemo(() => [...new Set(leads.map(l => l.setter_name).filter(Boolean))].sort() as string[], [leads]);
+  // Setters list: chargée depuis user_roles + profiles, complétée par les leads existants
+  const [staffSetters, setStaffSetters] = useState<string[]>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: roleData } = await supabase.from("user_roles").select("user_id").eq("role", "setter");
+        if (roleData && roleData.length > 0) {
+          const userIds = roleData.map((r: any) => r.user_id);
+          const { data: profiles } = await supabase.from("profiles").select("first_name, display_name").in("user_id", userIds);
+          if (profiles && profiles.length > 0) {
+            const names = profiles.map((p: any) => p.display_name || p.first_name).filter(Boolean).sort() as string[];
+            if (names.length > 0) { setStaffSetters(names); return; }
+          }
+        }
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  // Unique setters list for filter dropdown (staff DB + leads déjà assignés)
+  const settersList = useMemo(() => {
+    const fromLeads = leads.map(l => l.setter_name).filter(Boolean) as string[];
+    return [...new Set([...staffSetters, ...fromLeads])].sort();
+  }, [leads, staffSetters]);
 
   const colorOrder = { red: 0, orange: 1, green: 2 };
 
@@ -914,6 +935,15 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                                   📵 SMS
                                 </span>
                               )}
+                              {/* Badge sans numéro — lead sans téléphone (non SMS Cal.com) */}
+                              {!lead.phone && !lead.email?.endsWith('@sms.cal.com') && (
+                                <span
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-red-500/10 border border-red-500/30 text-[9px] font-display font-bold text-red-400 uppercase tracking-wider"
+                                  title="Aucun numéro de téléphone — contacter par email"
+                                >
+                                  📵 No tel
+                                </span>
+                              )}
                               {/* Badge pré-relance — lead antérieur au funnel du 26/04 21h30 */}
                               {lead.is_pre_relaunch && (
                                 <span
@@ -924,11 +954,32 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                                 </span>
                               )}
                             </div>
-                            {lead.setter_name && sc ? (
-                              <span className={`text-[10px] font-display ${sc.text}`} onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}>
-                                Setter : {lead.setter_name}
-                              </span>
-                            ) : lead.status === 'en_attente' ? (
+                            {/* Setter quick-assign — visible pour admin/setter sur tous les leads non-clôturés */}
+                            {lead.status !== 'closed_won' && lead.status !== 'doublon' && canEditSetting && settersList.length > 0 ? (
+                              <select
+                                value={lead.setter_name || ""}
+                                onClick={e => e.stopPropagation()}
+                                onChange={async e => {
+                                  e.stopPropagation();
+                                  const val = e.target.value;
+                                  await supabase.from("early_access_requests").update({ setter_name: val || null }).eq("id", lead.id);
+                                  loadLeads();
+                                }}
+                                className={cn(
+                                  "mt-0.5 text-[10px] font-display font-semibold px-1.5 py-0.5 rounded border bg-transparent cursor-pointer outline-none transition-all",
+                                  lead.setter_name && sc
+                                    ? `${sc.text} border-current/30 hover:opacity-80`
+                                    : "text-white/30 border-white/10 hover:text-white/60 hover:border-white/20"
+                                )}
+                              >
+                                <option value="" className="bg-[#12141a] text-white">+ Setter</option>
+                                {settersList.map(s => <option key={s} value={s} className="bg-[#12141a] text-white">{s}</option>)}
+                              </select>
+                            ) : lead.setter_name && sc ? (
+                              <span className={`text-[10px] font-display ${sc.text}`}>{lead.setter_name}</span>
+                            ) : null}
+                            {/* Bouton Approuver — uniquement pour leads en attente */}
+                            {lead.status === 'en_attente' && (
                               <button
                                 onClick={e => handleApproveLead(e, lead)}
                                 disabled={approvingId === lead.id}
@@ -937,7 +988,9 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                                 {approvingId === lead.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <UserCheck className="w-2.5 h-2.5" />}
                                 {approvingId === lead.id ? '...' : 'Approuver'}
                               </button>
-                            ) : (lead.user_id && lead.status !== 'closed_won' && lead.status !== 'doublon') ? (
+                            )}
+                            {/* Bouton Activer membre — pour leads avec user_id non encore clôturés */}
+                            {(lead.user_id && lead.status !== 'closed_won' && lead.status !== 'doublon') ? (
                               <button
                                 onClick={e => { if (!canEditCall) { e.stopPropagation(); return; } handleCloseLead(e, lead); }}
                                 disabled={closingId === lead.id || !canEditCall}
