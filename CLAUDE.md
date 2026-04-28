@@ -1,59 +1,57 @@
 # Oracle Truth Forge — Instructions Claude
 
-## ⛔ REGLES ABSOLUES — LIRE AVANT TOUTE ACTION
+> **Mis à jour : 2026-04-28**
+> Toujours lire ce fichier en entier avant d'écrire du code.
 
-### 1. Deux contextes de travail — bien identifier où on est
+---
 
-Ce repo existe en deux worktrees locaux avec des règles de push différentes :
+## ⛔ RÈGLES ABSOLUES — PRIORITÉ MAXIMALE
 
-| Dossier local | Branche locale | Push prod |
+### 1. Stratégie de branches — CRITIQUE
+
+| Dossier local | Branche active | Push prod |
 |--------------|---------------|-----------|
-| `/projets/oracle-truth-forge/` | `crm-integration` | `git merge crm-integration` depuis `main` |
+| `/projets/oracle-truth-forge/` | **`main`** | `git push origin main` |
 | `/projets/oracle-funnel-clean/` | `funnel-clean` | `git push origin HEAD:main` |
 
-**Règle absolue** : avant tout push, vérifier `git branch --show-current`.
-- Depuis `oracle-funnel-clean` → toujours `git push origin HEAD:main`
-- Ne jamais écrire `git push origin crm-integration` depuis `oracle-funnel-clean` (pousse une branche locale sans rapport avec le travail en cours)
-- `main` est synchronisé avec Lovable Cloud → auto-deploy à chaque push.
+> **⚠️ IMPORTANT — changement de stratégie (2026-04-28)**
+> La branche `crm-integration` est **ABANDONNÉE** — 271 commits de retard sur `origin/main`, impossiblee à merger sans régressions.
+> **Tous les changements oracle-truth-forge se font désormais directement sur `main`.**
+> Réflexe obligatoire avant tout push : `git branch --show-current` → doit afficher `main`.
 
-### 2. Ne JAMAIS `supabase db push` sur le projet Cloud
-- Le Supabase `pggkwyhtplxyarctuoze` est gere par Lovable Cloud.
-- Les migrations passent par l'outil interne Lovable (pas par CLI).
-- Ajouter un fichier SQL dans `supabase/migrations/` ne l'applique PAS automatiquement.
-- Pour modifier le schema : tester sur un projet Supabase separe d'abord, puis appliquer via Lovable.
-
-### 3. Ne JAMAIS ecraser un composant existant
-- Tout ajout doit etre ADDITIF. On ne refactore pas les composants existants.
-- Si un fichier existant doit etre modifie, seules des ADDITIONS sont permises (import, case dans switch, nav item).
-- Composants intouchables : EarlyAccessCRM, AdminVerification, EarlyAccessManagement, tous les fichiers dans dashboard/admin/ sauf CRMDashboard.tsx
-
-### 4. Toujours verifier avant de commit
 ```bash
-npm run build  # DOIT passer sans erreur
-git diff --stat  # Verifier les fichiers modifies
+# Workflow oracle-truth-forge (branche main)
+git branch --show-current     # DOIT afficher "main"
+# Coder la feature
+npm run build                 # DOIT passer sans erreur
+git add <fichiers specifiques>
+git commit -m "feat: description"
+git push origin main          # Lovable auto-deploy immédiat
 ```
 
-### 5. ~~Soft-lock 24h sur les décisions de cycle~~ — Supprimé (2026-04-27)
-- Les boutons inline ✓/neutre/✗ sur les cycles sont maintenant **toujours cliquables** après une décision, sans restriction temporelle.
-- La logique `lockedSince24h` a été retirée de `GestionPanel.tsx`.
-- La validation reste protégée par un `confirm()` dialog explicite pour éviter les clics accidentels.
-- Évolution future envisagée : table `cycle_status_changes` (audit log complet : old_status, new_status, changed_by, changed_at, reason).
+### 2. Ne JAMAIS `supabase db push` sur le projet Cloud
+- Le Supabase `pggkwyhtplxyarctuoze` est géré par Lovable Cloud.
+- Les migrations passent par l'outil interne Lovable (pas par CLI).
+- Ajouter un fichier SQL dans `supabase/migrations/` ne l'applique PAS automatiquement.
+- Pour modifier le schéma : tester sur Supabase séparé (mkog), puis appliquer via Lovable.
 
-### 6. Framework "Migration" — reflexe obligatoire
-Avant TOUTE modification de schema DB ou de structure de donnees, se poser systematiquement :
+### 3. Ne JAMAIS écraser un composant existant
+- Tout ajout doit être ADDITIF.
+- Composants intouchables : `EarlyAccessCRM`, `AdminVerification`, `EarlyAccessManagement`, tous les fichiers dans `dashboard/admin/` **sauf** `CRMDashboard.tsx`
 
-1. **Qu'est-ce qu'il y a deja en prod ?** — combien d'users, combien de rows impactees
-2. **Que devient l'existant ?** — migration automatique ou intervention manuelle
-3. **Rupture compatible ?** — peut-on deployer le code avant/apres la migration SQL sans casser l'app
-4. **Rollback possible ?** — si ca casse en prod, comment revenir en arriere
-5. **Data perdue ?** — on ne doit JAMAIS perdre des donnees utilisateur sans backup explicite
+### 4. Toujours vérifier avant de commit
+```bash
+npm run build   # DOIT passer sans erreur
+git diff --stat # Vérifier les fichiers modifiés
+```
 
-**Exemples concrets** :
-- Ajouter une table `user_sessions` ? -> creer session "default" par user existant + rattacher ses trades existants
-- Renommer un tab ? -> garder les anciennes URLs qui redirigent
-- Changer un role enum ? -> migrer les rows avec l'ancienne valeur
-
-**Toujours ecrire la migration dans le commit qui introduit le changement**, pas plus tard. Sinon c'est oublie.
+### 5. Framework "Migration" — réflexe obligatoire
+Avant TOUTE modification de schéma DB :
+1. Qu'est-ce qu'il y a déjà en prod ? (nb users, nb rows impactées)
+2. Que devient l'existant ? (migration automatique ou manuelle)
+3. Rupture compatible ? (peut-on déployer avant/après la migration SQL sans casser l'app)
+4. Rollback possible ?
+5. Data perdue ? (jamais sans backup explicite)
 
 ---
 
@@ -62,305 +60,192 @@ Avant TOUTE modification de schema DB ou de structure de donnees, se poser syste
 | Environnement | URL | Branch | DB Supabase | Qui gère |
 |--------------|-----|--------|-------------|---------|
 | **PROD** | `oracle-truth-forge.lovable.app` | `main` | `pggkwyhtplxyarctuoze` | Lovable Cloud (auto-deploy) |
-| **TEST / Staging** | `oracle-truth-forge.vercel.app` | `crm-integration` | `mkogljvoqqcnqrgcnfau` (mkog) | Nous (deploy manuel `vercel --prod`) |
+| **TEST / Staging** | `oracle-truth-forge.vercel.app` | anciennement `crm-integration` | `mkogljvoqqcnqrgcnfau` (mkog) | Nous (deploy manuel `vercel --prod`) |
 
-**Règle** : Vercel est le serveur de test interne (équipe setters/closers). Lovable est la vraie prod (leads réels).
+**Règle** : Vercel = test interne (setters/closers). Lovable = vraie prod (leads réels).
 Ne jamais pointer Vercel vers la DB prod (`pggkwyhtplxyarctuoze`).
-
-### Deploy TEST (Vercel)
-```bash
-# 1. Si edge functions modifiées :
-supabase functions deploy approve-early-access --project-ref mkogljvoqqcnqrgcnfau
-
-# 2. Deploy frontend :
-vercel --prod
-```
 
 ---
 
 ## Architecture
 
 ### Projets
-| Projet | Role | DB Supabase |
+| Projet | Rôle | DB Supabase |
 |--------|------|-------------|
-| **oracle-truth-forge** (ce repo) | Plateforme trading + Admin unifie | `pggkwyhtplxyarctuoze` (Lovable Cloud) |
-| **spike-launch** (`/projets/spike-launch/`) | CRM/Funnel acquisition (reference) | `lcisptkyzgzvzsdkiihj` (Supabase direct) |
-| **mercureinstitut** (`/projets/mercureinstitut/`) | Archive backup | `noewzreurtigsqdlgoas` |
+| **oracle-truth-forge** (ce repo) | Plateforme trading + Admin unifié | `pggkwyhtplxyarctuoze` (Lovable Cloud) |
+| **oracle-funnel-clean** (`/projets/oracle-funnel-clean/`) | Funnel acquisition (Landing/Apply/Discovery/Final) | même DB |
+| **spike-launch** (`/projets/spike-launch/`) | CRM/Funnel référence (ne pas modifier) | `lcisptkyzgzvzsdkiihj` |
 
-### Branches (ce repo)
-| Branche | Role | Qui deploie |
-|---------|------|-------------|
-| `main` | Production Lovable | Lovable Cloud (auto-deploy sur push) |
-| `lovable-stable` | Sauvegarde version Lovable | Personne (ne jamais supprimer) |
-| `crm-integration` | Dev CRM + ameliorations (depuis oracle-truth-forge) | `git push origin main` après merge |
-| `funnel-clean` | Dev funnel + fixes (depuis oracle-funnel-clean) | `git push origin HEAD:main` |
+### Branches
+| Branche | Rôle | Statut |
+|---------|------|--------|
+| `main` | Production Lovable — **branche de travail active** | ✅ Active |
+| `lovable-stable` | Sauvegarde version Lovable | ⚠️ Ne jamais supprimer |
+| `crm-integration` | **ABANDONNÉE** — 271 commits de retard | ❌ Ne plus utiliser |
+| `funnel-clean` | Dev funnel (depuis oracle-funnel-clean) | ✅ Active (autre repo) |
 
 ### Ports dev
-- spike-launch : `localhost:3002`
 - oracle-truth-forge : `localhost:3003`
+- spike-launch : `localhost:3002`
 
 ---
 
-## Lovable Cloud — Ce qui est cache (pas dans le repo)
+## État du projet — Log des features déployées
 
-### Secrets backend (injectes auto dans Edge Functions)
-- `SUPABASE_SERVICE_ROLE_KEY` — cle admin DB
-- `SUPABASE_DB_URL` — connection string directe
-- `LOVABLE_API_KEY` — API interne Lovable
+### ✅ DÉPLOYÉ EN PROD (pggk / Lovable Cloud)
 
-### SMTP
-- Les emails (magic links, reset password) passent par le SMTP integre de Lovable Cloud
-- C'est Supabase Auth qui envoie, pas le frontend
-- Si on deploie sur Vercel avec le meme project ID Supabase, les emails continuent de marcher
-- MAIS il faut ajouter le nouveau domaine dans les Redirect URLs autorisees de Supabase Auth
+| Date | Feature | Commit | Repo |
+|------|---------|--------|------|
+| 2026-04-28 | **Notification Telegram nouveaux leads** — edge function `notify-funnel-lead`, appelée depuis `funnelLeadQueue.ts` path direct + `submit-funnel-lead` fallback | `60fc72f` | oracle-funnel-clean |
+| 2026-04-28 | **Badge 📵 "No tel"** — leads sans numéro de téléphone (rouge dans pipeline) | `8285432` | oracle-truth-forge |
+| 2026-04-28 | **Setter quick-assign inline** — select natif dans chaque card pipeline, chargé depuis `user_roles` + `profiles`, visible admin/setter uniquement | `8285432` | oracle-truth-forge |
+| 2026-04-28 | **staffSetters dynamiques** — chargé depuis `user_roles WHERE role='setter'` + `profiles.display_name/first_name`, merge avec setters déjà sur les leads | `8285432` | oracle-truth-forge |
+| 2026-04-26 | CRM Pipeline complet (Pipeline, Agenda, Métriques, Cockpit, Conversions, Leads sans form) | — | oracle-truth-forge |
+| 2026-04-26 | Badge "Pré-relance" (leads antérieurs au 26/04 21h30) | — | oracle-truth-forge |
+| 2026-04-26 | Point 5 — lead approuvé → stage "Approuvés" dans pipeline (déjà fonctionnel via `approve-early-access`) | — | oracle-truth-forge |
 
-### Auth config (geree par Lovable)
-- Auto-confirm : desactive
-- Signup : active
-- Magic link + password login
+### ⏳ À FAIRE — Priorité
 
-### Storage (4 buckets Supabase)
-- `avatars` (public)
-- `trade-screenshots` (prive, signed URLs)
-- `success-screenshots` (prive)
-- `result-screenshots` (prive)
-- Les policies RLS sont dans les migrations SQL
+| # | Feature | Statut | Notes |
+|---|---------|--------|-------|
+| 🔴 | **Deploy `notify-funnel-lead` edge function** sur PROD (pggk) | **Bloquant** | `supabase functions deploy notify-funnel-lead --project-ref pggkwyhtplxyarctuoze` |
+| 🔴 | **Secrets Telegram** dans Supabase pggk | **Bloquant** | `TELEGRAM_BOT_TOKEN` + `TELEGRAM_NOTIFY_CHAT_ID` via dashboard Supabase |
+| 🟡 | Badge 📵 dans le **detail panel** du lead (champ "Numéro absent") | Nice-to-have | Déjà fait sur crm-integration (stale), à re-appliquer sur main |
+| 🟡 | **Agenda tab** — Cal.com webhook sync (CASSÉ — P0 sales pipeline) | Important | Voir `oracle_sales_pipeline_audit.md` |
+| 🟡 | **Stripe** — paiement (ABSENT) | Important | Décision : manuel pour l'instant |
+| 🟢 | Leads sans form dans pipeline — badge + filtre | Fait | |
+| 🟢 | Timeline events CRM (funnel_resubmitted, fallback_recovered) | Fait | |
 
-### RPC Functions (dans les migrations SQL)
-- `is_admin()`, `is_super_admin()`, `is_setter()`, `is_early_access()`
-- `is_institute()`, `has_role()`, `activate_ea_timer()`
-- `check_cycle_accuracy_and_auto_validate()`
-- Toutes definies dans `supabase/migrations/`, pas dans un dashboard separe
+### 🔒 Migrations SQL — État
 
-### Edge Functions (deploy auto par Lovable)
-- `approve-early-access` — deploye auto quand le code change dans `supabase/functions/`
-- Si on ajoute une nouvelle function hors Lovable → deploy manuel via `supabase functions deploy`
-
-### Pas de crons ni webhooks externes detectes
-
-### Custom domain
-- `oracle-truth-forge.lovable.app` → A record `185.158.133.1` (Lovable Cloud)
-- Deployer sur Vercel = safe cote backend (Supabase reste le meme)
-- Il faudra ajouter le domaine Vercel dans Supabase Auth Redirect URLs
+| Migration | TEST (mkog) | PROD (pggk) | Notes |
+|-----------|------------|------------|-------|
+| `notify-funnel-lead` edge fn | ✅ | ❌ **À déployer** | Manuel uniquement |
+| Autres migrations | Voir `oracle_pending_migrations.md` | — | |
 
 ---
 
-## Safe vs Risque
+## Objectif du projet
 
-| Action | Safe ? | Notes |
-|--------|--------|-------|
-| `npm run dev` en local | ✅ | Lit la DB Lovable en lecture |
-| Modifier le frontend sur `crm-integration` | ✅ | Pas de risque |
-| `npm run build` | ✅ | Verif compilation |
-| Push sur `crm-integration` | ✅ | Pas de deploy auto |
-| Push sur `main` | ⚠️ | Lovable auto-deploy ! Faire une PR |
-| `supabase db push` depuis local | ❌ INTERDIT | Risque de corrompre la DB prod |
-| `supabase functions deploy` | ⚠️ | Ecrase la function en prod. Tester avant |
-| Ajouter une migration SQL dans le repo | ✅ | Pas appliquee auto (Lovable gere) |
-| Deployer sur Vercel (meme Supabase) | ✅ | Config Redirect URLs |
-| Creer des tables via Supabase dashboard | ⚠️ | Pas de migration, difficile a rollback |
+**Oracle V2** — Plateforme trading + funnel d'acquisition + CRM interne.
 
----
-
-## Separation CRM / Gestion / Config — Règle architecturale
-
-### Modèle mental (dans le marbre)
-- **CRM** = tout ce qui concerne les personnes qui n'ont PAS encore payé (leads, EA en trial, no-shows, perdus)
-- **Gestion** = UNIQUEMENT les clients qui ont payé (is_client = true)
-- **Config → Rôles** = UNIQUEMENT l'équipe interne (admin, setter, super_admin) — 3 à 5 personnes
-
-### L'EA n'est PAS un statut produit. C'est un outil de vente.
-Le trial 7j permet au lead d'évaluer avant d'acheter. Il reste dans le CRM. Il n'apparaît PAS dans Gestion.
-
-### Qui fait quoi
-
-| Action | CRM | Gestion | Config → Rôles |
-|--------|-----|---------|----------------|
-| Approuver un lead EA | ✅ | — | — |
-| Étendre le timer EA | ✅ (outil de vente) | — | — |
-| Freeze / ban un EA | ✅ | — | — |
-| Marquer is_client = true (closing) | ✅ (closed won) | ✅ (accès créé) | — |
-| Freeze / ban un client | — | ✅ | — |
-| Assigner admin / setter | — | — | ✅ |
-| Upsells | — | ✅ (manuel) | — |
-
-### Funnel complet
 ```
-CRM seulement                Transition (paie)    Gestion seulement
-─────────────────────────    ─────────────────    ─────────────────
-Lead en_attente
-Lead approuvé (EA 7j trial)
-Call / contacté
-Closed lost
-                         →   is_client=true   →   Gestion → Users
+Flow complet :
+Ads → VSL → Form (join EA) → Early Access 7j trial → Sales Call → Close → Client permanent
+
+Pipeline CRM :
+1. en_attente   — Form soumis, pas encore review
+2. approuvee    — Admin approuve, compte créé, magic link envoyé
+3. contacted    — Closer a pris contact
+4. call_booked  — Call planifié (Cal.com ou manuel)
+5. call_done    — Call effectué
+6. closed_won   — Paiement reçu, accès permanent
+
+Rôles équipe interne :
+- super_admin : tout
+- admin : CRM + Gestion + Config
+- setter : CRM pipeline (pas closing)
+- closer : closing (activer membre payant)
 ```
 
-### Ce qui ne doit PAS se produire
+---
+
+## Séparation CRM / Gestion / Config — Règle architecturale (dans le marbre)
+
+- **CRM** = personnes qui n'ont PAS encore payé (leads, EA trial, no-shows, perdus)
+- **Gestion** = UNIQUEMENT clients ayant payé (`is_client = true`)
+- **Config → Rôles** = UNIQUEMENT l'équipe interne (admin, setter, super_admin) — 3-5 personnes
+
+**L'EA n'est PAS un statut produit. C'est un outil de vente.**
+Le trial 7j reste dans le CRM. Il n'apparaît PAS dans Gestion.
+
+Ce qui ne doit PAS se produire :
 - Afficher un EA dans Gestion → Users : NON
 - Gérer un client payé depuis le pipeline CRM : NON
 - Assigner des rôles staff depuis Gestion : NON
 
 ---
 
-## Structure admin Oracle
+## Fichiers clés
 
-```
-Sidebar Oracle Admin
-────────────────────
-[User]
-  Execution d'Oracle
-  Setup
-  Data Analysis
-  Video Setup
-  Chat / Resultats
-
-[Admin + SuperAdmin]
-  CRM                    ← NOUVEAU (branche crm-integration)
-    ├─ Pipeline
-    ├─ Calendrier (placeholder)
-    └─ Metriques (placeholder)
-
-[Admin]
-  Verifications Admin    ← EXISTANT (9 sub-tabs, ne pas toucher)
-
-[SuperAdmin]
-  Early Access           ← EXISTANT (CRM EA + management, ne pas toucher)
-```
-
----
-
-## Flow lead complet
-
-```
-Ads → VSL → Form (join EA) → Early Access (trial) → Sales Call → Close → Client permanent
-
-Pipeline CRM :
-1. en_attente      — Form soumis, pas encore review
-2. approuvee       — Admin a approuve, compte cree, magic link envoye
-3. contacted       — Closer a pris contact (WhatsApp, email, call)
-4. call_booked     — Call planifie (Cal.com ou manuel)
-5. call_done       — Call effectue
-6. closed/paid     — Paiement recu, acces permanent
-```
-
----
-
-## Fichiers cles
-
-### Oracle (ce repo) — NE PAS MODIFIER sauf mention contraire
-| Fichier | Role | Modifiable ? |
+### Oracle (ce repo)
+| Fichier | Rôle | Modifiable ? |
 |---------|------|-------------|
 | `src/pages/Dashboard.tsx` | Entry point, state-based tabs | ✅ Additions seulement |
 | `src/components/dashboard/DashboardSidebar.tsx` | Sidebar + useSidebarRoles | ✅ Additions seulement |
-| `src/components/dashboard/admin/CRMDashboard.tsx` | Volet CRM pipeline | ✅ Notre fichier |
+| `src/components/dashboard/admin/CRMDashboard.tsx` | CRM pipeline principal | ✅ Notre fichier |
 | `src/components/dashboard/admin/EarlyAccessCRM.tsx` | CRM EA existant | ❌ Ne pas toucher |
 | `src/components/dashboard/AdminVerification.tsx` | Admin tabs | ❌ Ne pas toucher |
 | `src/components/dashboard/EarlyAccessManagement.tsx` | Gestion EA | ❌ Ne pas toucher |
 | `supabase/functions/approve-early-access/` | Approbation EA | ❌ Ne pas toucher |
-| `src/integrations/supabase/types.ts` | Schema DB auto-genere | ❌ Genere par Lovable |
+| `src/integrations/supabase/types.ts` | Schéma DB auto-généré | ❌ Généré par Lovable |
+| `supabase/functions/notify-funnel-lead/index.ts` | Notification Telegram | ✅ Notre fichier |
 
-### Spike-launch (reference CRM — ne pas modifier)
-| Fichier | Ce qu'on peut en tirer |
-|---------|----------------------|
-| `src/components/admin/PipelineView.tsx` | Pattern pipeline table |
-| `src/components/admin/CalendarView.tsx` | Pattern calendrier Cal.com |
-| `src/components/admin/ConversionsTab.tsx` | Pattern metriques |
-| `src/components/admin/CallDetailSheet.tsx` | Pattern detail call closer |
-| `src/hooks/admin/useLeadOperations.ts` | Pattern operations lead |
+### DB Oracle — Tables CRM-relevant
+| Table | Champs clés | Usage CRM |
+|-------|------------|-----------|
+| `early_access_requests` | email, phone, first_name, status, contacted, call_booked, call_done, user_id, setter_name | Source principale du pipeline |
+| `profiles` | user_id, first_name, display_name, status, is_client | Identité user |
+| `user_roles` | user_id, role, early_access_type, expires_at | Accès + type EA |
+| `ea_activity_tracking` | user_id, is_active, active_tab, button_clicks | Activité temps réel |
+| `user_sessions` | user_id, session_token, device_fingerprint | Sessions + sécurité |
+| `ea_lead_notes` | request_id, note, created_by | Notes closer |
+| `lead_events` | request_id, event_type, source, metadata | Timeline événements lead |
 
 ---
 
-## DB Oracle — Tables principales (30 tables)
+## Lovable Cloud — Ce qui est caché (pas dans le repo)
 
-### Tables CRM-relevant (deja existantes)
-| Table | Champs cles | Usage CRM |
-|-------|------------|-----------|
-| `early_access_requests` | email, phone, first_name, status, contacted, call_booked, call_done, user_id | Source principale du pipeline |
-| `profiles` | user_id, first_name, display_name, status, is_client | Identite user |
-| `user_roles` | user_id, role, early_access_type, expires_at | Acces + type EA |
-| `ea_activity_tracking` | user_id, is_active, active_tab, button_clicks | Activite temps reel |
-| `user_sessions` | user_id, session_token, device_fingerprint | Sessions + securite |
-| `ea_lead_notes` | request_id, note, created_by | Notes closer |
+### Secrets backend
+- `SUPABASE_SERVICE_ROLE_KEY` — clé admin DB
+- `SUPABASE_DB_URL` — connection string directe
+- `TELEGRAM_BOT_TOKEN` — ⚠️ à configurer pour activer les notifs
+- `TELEGRAM_NOTIFY_CHAT_ID` — ⚠️ à configurer pour activer les notifs
 
-### Tables produit (ne pas toucher pour le CRM)
-| Table | Usage |
-|-------|-------|
-| `trades`, `user_executions`, `user_personal_trades` | Trading data |
-| `videos`, `bonus_videos`, `user_video_views` | Contenu video |
-| `cycles`, `user_cycles`, `results`, `user_successes` | Cycles + resultats |
-| `custom_setups`, `user_custom_variables` | Config trading |
-| `quest_step_configs`, `user_quest_flags` | Gamification |
-| `verification_requests`, `admin_trade_notes` | Verification admin |
+### Edge Functions
+- `approve-early-access` — deploy auto Lovable
+- `notify-funnel-lead` — **deploy manuel requis** : `supabase functions deploy notify-funnel-lead --project-ref pggkwyhtplxyarctuoze`
+- `subscribe-to-kit` — séquence email Kit
+- `submit-funnel-lead` — fallback lead capture (service_role)
 
 ---
 
 ## Known issues (localhost)
 
 ### Spinner infini sur /dashboard
-- **Cause** : `useSidebarRoles` hook fait des RPC calls qui abort en dev (Vite HMR detruit/recree les channels WebSocket)
-- **Fix applique** : try/catch/finally dans `checkRoles` + safety timeout 3s dans Dashboard.tsx
-- **Ce probleme n'existe pas en production** (Lovable Cloud)
+- **Cause** : `useSidebarRoles` fait des RPC calls qui abort en dev (Vite HMR)
+- **Fix appliqué** : try/catch/finally dans `checkRoles` + safety timeout 3s dans Dashboard.tsx
+- **Ce problème n'existe pas en production**
 
 ### Session token mismatch
-- **Cause** : `oracle_session_token` en localStorage ne matche pas `user_sessions` en DB (session creee sur un autre domaine)
 - **Fix** : `localStorage.removeItem("oracle_session_token")` puis reload
-
-### AbortError: signal is aborted without reason
-- **Cause** : Supabase realtime channels abort quand Vite HMR reload les modules
-- **Impact** : Benin en dev, les requetes sont refaites au remount
-- **Ce probleme n'existe pas en production**
 
 ---
 
-## Workflow de developpement
+## Commandes utiles
 
-### Depuis oracle-funnel-clean (branche funnel-clean) ← contexte actuel
 ```bash
-# Vérifier où on est (réflexe obligatoire)
-git branch --show-current        # doit afficher "funnel-clean"
-
-# Coder la feature
-npm run build                    # Verifier compilation — DOIT passer
-git add <fichiers specifiques>   # PAS git add -A
-git commit -m "feat: description"
-
-# Deployer en prod
-git push origin HEAD:main        # Lovable auto-deploy
-```
-
-### Depuis oracle-truth-forge (branche crm-integration)
-```bash
-git checkout crm-integration
-# Coder la feature
-npm run build
-git add <fichiers specifiques>
-git commit -m "feat: description"
-# Pour deployer :
-git checkout main
-git merge crm-integration
-git push origin main             # Lovable auto-deploy
-```
-
-### Commandes utiles
-```bash
-# Dev servers
-cd /projets/spike-launch && npm run dev -- --port 3002
+# Dev
 cd /projets/oracle-truth-forge && npm run dev -- --port 3003
 cd /projets/oracle-funnel-clean && npm run dev -- --port 3003
 
-# Build check
+# Build check (OBLIGATOIRE avant commit)
 npm run build
 
-# Voir les changements
-git diff --stat
+# Vérifier la branche (OBLIGATOIRE avant push)
+git branch --show-current   # doit afficher "main"
 
-# Vérifier la branche courante (toujours faire avant un push)
-git branch --show-current
+# Deploy edge function notify-funnel-lead (action manuelle requise)
+supabase functions deploy notify-funnel-lead --project-ref pggkwyhtplxyarctuoze
+
+# Voir diff avant commit
+git diff --stat
+git log --oneline -10
 ```
 
 ---
 
 ## SOP Lancement Oracle V2
 Voir `spike-launch/SOP_Lancement_Oracle_V2_complete.pdf`
-- 5 poles (Infra/Charles, Marketing/Clement, Proof/Quentin, Tracking/Mimi, Closing/Saram)
-- Pole 0 : 11 tasks, 49 KRs
+- 5 pôles (Infra/Charles, Marketing/Clément, Proof/Quentin, Tracking/Mimi, Closing/Saram)
+- Pôle 0 : 11 tasks, 49 KRs
