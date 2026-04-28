@@ -61,11 +61,16 @@ export function DatePicker({
   }, [value]);
 
   // Close on outside click
+  // Note: on utilise composedPath() plutôt que contains() car les boutons de navigation
+  // du calendrier (< >) provoquent un re-render qui retire le node du DOM avant que
+  // mousedown soit traité — composedPath() capture le chemin au moment du clic, avant
+  // toute mutation DOM, ce qui évite la fermeture intempestive du calendrier.
   React.useEffect(() => {
     if (!isOpen) return;
     const handler = (e: MouseEvent) => {
-      if (triggerRef.current?.contains(e.target as Node)) return;
-      if (dropRef.current?.contains(e.target as Node)) return;
+      const path = e.composedPath();
+      if (triggerRef.current && path.includes(triggerRef.current)) return;
+      if (dropRef.current && path.includes(dropRef.current)) return;
       setIsOpen(false);
     };
     document.addEventListener("mousedown", handler);
