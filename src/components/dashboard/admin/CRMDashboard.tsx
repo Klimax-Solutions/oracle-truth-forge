@@ -208,10 +208,15 @@ function LeadDetail({ lead, onClose }: { lead: PipelineLead; onClose: () => void
           <button onClick={() => copy(lead.email, "Email")} className="flex items-center gap-2 text-xs hover:text-primary transition-colors w-full text-left">
             <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" /><span className="truncate flex-1">{lead.email}</span><Copy className="w-3 h-3 text-muted-foreground shrink-0" />
           </button>
-          {lead.phone && (
+          {lead.phone ? (
             <button onClick={() => copy(lead.phone, "Tel")} className="flex items-center gap-2 text-xs hover:text-primary transition-colors w-full text-left">
               <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" /><span>{lead.phone}</span><Copy className="w-3 h-3 text-muted-foreground shrink-0" />
             </button>
+          ) : (
+            <div className="flex items-center gap-2 text-xs text-orange-400/80">
+              <Phone className="w-3.5 h-3.5 shrink-0" />
+              <span className="italic">Numéro absent — à récupérer</span>
+            </div>
           )}
         </div>
 
@@ -743,6 +748,7 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
                             <div className="flex items-center gap-1.5">
                               <p className="text-[15px] font-display font-bold text-white">{lead.first_name || "—"}</p>
                               {lead.priorite && <span className={cn("text-[8px] font-display font-bold", lead.priorite === 'P1' ? 'text-emerald-400' : lead.priorite === 'P2' ? 'text-amber-400' : 'text-red-400')}>{lead.priorite}</span>}
+                              {!lead.phone && <span className="text-[8px] font-mono text-orange-400 bg-orange-500/10 px-1 py-0.5 rounded border border-orange-500/20">📵</span>}
                             </div>
                             {lead.setter_name && sc ? (
                               <span className={`text-[10px] font-display ${sc.text}`} onClick={e => { e.stopPropagation(); openLead(lead, "setting"); }}>
