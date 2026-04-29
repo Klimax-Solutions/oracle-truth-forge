@@ -526,20 +526,20 @@ export const PersonalTradeDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="max-w-4xl w-[calc(100vw-2rem)] max-h-[92vh] flex flex-col overflow-hidden p-0 gap-0"
+        className="max-w-4xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[96vh] sm:max-h-[92vh] flex flex-col overflow-hidden p-0 gap-0"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
 
         {/* ── HEADER ── */}
-        <div className="px-6 pt-5 pb-4 border-b border-white/[.07] shrink-0 flex items-center gap-3">
+        <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-white/[.07] shrink-0 flex items-center gap-3">
           <DialogTitle className="text-[15px] font-semibold tracking-tight">
             {editingTrade ? `Trade Perso #${editingTrade.trade_number}` : "Nouveau Trade Perso"}
           </DialogTitle>
         </div>
 
         {/* ── SCROLLABLE BODY ── */}
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
+        <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 sm:py-5 space-y-5 sm:space-y-6">
 
           {/* ── INFORMATIONS ── */}
           <div className="space-y-3">
@@ -909,7 +909,7 @@ export const PersonalTradeDialog = ({
         </div>{/* /scrollable body */}
 
         {/* ── FOOTER ── */}
-        <div className="px-6 py-4 border-t border-white/[.07] flex items-center justify-between shrink-0">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-white/[.07] flex items-center justify-between shrink-0 gap-2">
           {editingTrade ? (
             <AlertDialog>
               <AlertDialogTrigger asChild>
