@@ -452,8 +452,26 @@ export const OracleTradeDialog = ({
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    if (!formData.trade_number || !formData.trade_date || !formData.direction) {
-      toast({ title: "Champs requis manquants", description: "Veuillez remplir tous les champs obligatoires.", variant: "destructive" });
+    // ── Validation champs requis ────────────────────────────────────────────────
+    const missingFields: string[] = [];
+    if (!formData.trade_number)       missingFields.push("N° Trade");
+    if (!formData.trade_date)         missingFields.push("Date Entrée");
+    if (!formData.exit_date)          missingFields.push("Date Sortie");
+    if (!formData.direction)          missingFields.push("Direction");
+    if (!formData.setup_type)         missingFields.push("Type de Config.");
+    if (!formData.direction_structure) missingFields.push("Contexte");
+    if (!formData.entry_model)        missingFields.push("Entry Model");
+    if (!formData.result)             missingFields.push("Résultat");
+    if (!formData.rr)                 missingFields.push("RR");
+    if (!formData.entry_time)         missingFields.push("Heure d'entrée");
+    if (!formData.exit_time)          missingFields.push("Heure de sortie");
+    if (!formData.stop_loss_size)     missingFields.push("Taille du SL");
+    if (missingFields.length > 0) {
+      toast({
+        title: "Champs requis manquants",
+        description: missingFields.join(", "),
+        variant: "destructive",
+      });
       return;
     }
     if (dateBlocked) {
@@ -971,7 +989,14 @@ export const OracleTradeDialog = ({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={saving || uploading || dateBlocked || !((contextFile || existingContextUrl) && (entryFile || existingEntryUrl))}
+              disabled={
+                saving || uploading || dateBlocked ||
+                !formData.trade_number || !formData.trade_date || !formData.exit_date ||
+                !formData.direction || !formData.setup_type || !formData.direction_structure ||
+                !formData.entry_model || !formData.result || !formData.rr ||
+                !formData.entry_time || !formData.exit_time || !formData.stop_loss_size ||
+                !((contextFile || existingContextUrl) && (entryFile || existingEntryUrl))
+              }
               size="sm"
               className="gap-1.5 h-9 px-5"
             >
