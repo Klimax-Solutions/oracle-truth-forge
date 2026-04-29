@@ -164,8 +164,8 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
       <Tabs value={activeSubTab} onValueChange={handleSubTabChange} className="flex-1 flex flex-col">
 
         {/* ── Header sticky ── */}
-        <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-sm px-4 md:px-6 py-3">
-          <div className="flex items-center gap-3">
+        <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-sm px-3 md:px-6 py-3">
+          <div className="flex items-center gap-2 md:gap-3 flex-wrap">
 
             {/* Back chevron */}
             {onBack && (
