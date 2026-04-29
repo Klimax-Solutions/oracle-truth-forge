@@ -60,17 +60,25 @@ export function DatePicker({
     }
   }, [value]);
 
-  // Close on outside click
-  // Note: on utilise composedPath() plutôt que contains() car les boutons de navigation
-  // du calendrier (< >) provoquent un re-render qui retire le node du DOM avant que
-  // mousedown soit traité — composedPath() capture le chemin au moment du clic, avant
-  // toute mutation DOM, ce qui évite la fermeture intempestive du calendrier.
+  // Close on outside click — deux couches :
+  // 1) Listener natif mousedown sur le portal div : stoppe la propagation avant
+  //    d'atteindre le handler document. Cela couvre les clics sur les jours du
+  //    calendrier ET les boutons de navigation (< >) même si react-day-picker
+  //    retire le node du DOM avant que l'event remonte.
+  // 2) Handler document : ne reçoit que les clics hors portal/trigger → ferme.
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const el = dropRef.current;
+    if (!el) return;
+    const stopInside = (e: MouseEvent) => e.stopPropagation();
+    el.addEventListener("mousedown", stopInside);
+    return () => el.removeEventListener("mousedown", stopInside);
+  }, [isOpen]);
+
   React.useEffect(() => {
     if (!isOpen) return;
     const handler = (e: MouseEvent) => {
-      const path = e.composedPath();
-      if (triggerRef.current && path.includes(triggerRef.current)) return;
-      if (dropRef.current && path.includes(dropRef.current)) return;
+      if (triggerRef.current?.contains(e.target as Node)) return;
       setIsOpen(false);
     };
     document.addEventListener("mousedown", handler);
