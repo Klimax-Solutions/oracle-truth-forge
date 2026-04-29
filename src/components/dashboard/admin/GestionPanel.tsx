@@ -143,6 +143,7 @@ interface CrmLeadData {
   callDoneAt: string | null;
   setterName: string | null;
   closerName: string | null;
+  email: string | null;
 }
 
 interface PlatformUser {
@@ -463,7 +464,7 @@ export default function GestionPanel() {
         supabase.from("trades").select("id, trade_number, trade_date, entry_time, direction, rr, screenshot_m15_m5, screenshot_m1").order("trade_number"),
         supabase.from("user_roles").select("user_id").in("role", ["admin", "super_admin"]),
         supabase.from("early_access_requests")
-          .select("id, user_id, created_at, paid_at, paid_amount, offer_amount, call_done_at, setter_name, closer_name")
+          .select("id, user_id, created_at, paid_at, paid_amount, offer_amount, call_done_at, setter_name, closer_name, email")
           .not("user_id", "is", null),
       ]), 12000);
       tlog("Phase A done");
@@ -623,6 +624,7 @@ export default function GestionPanel() {
             callDoneAt: crmLead.call_done_at || null,
             setterName: crmLead.setter_name || null,
             closerName: crmLead.closer_name || null,
+            email: crmLead.email || null,
           } : null,
         };
       }).sort((a, b) => {
@@ -963,7 +965,7 @@ export default function GestionPanel() {
     }
     if (search) {
       const q = search.toLowerCase();
-      list = list.filter((u) => u.displayName.toLowerCase().includes(q) || (u.firstName || "").toLowerCase().includes(q) || u.id.includes(q));
+      list = list.filter((u) => u.displayName.toLowerCase().includes(q) || (u.firstName || "").toLowerCase().includes(q) || u.id.includes(q) || (u.crmLead?.email || "").toLowerCase().includes(q));
     }
     // Sorting
     if (userSort !== "priority") {
@@ -1162,6 +1164,7 @@ export default function GestionPanel() {
                 <IconBox color="white"><Users className="w-3 h-3 text-white/50" /></IconBox>
                 <span className="text-white/70 text-xs font-medium uppercase tracking-wider">Utilisateur</span>
               </div>
+              <div className="w-[180px] shrink-0 text-white/70 text-xs font-medium uppercase tracking-wider">Email</div>
               <div className="w-[80px] shrink-0 text-center text-white/70 text-xs font-medium uppercase tracking-wider">Cycle</div>
               <div className="w-[70px] shrink-0 text-right text-white/70 text-xs font-medium uppercase tracking-wider">Trades</div>
               <div className="w-[80px] shrink-0 text-right flex items-center justify-end gap-1.5">
@@ -1231,6 +1234,14 @@ export default function GestionPanel() {
                       <p className="text-[9px] font-mono text-white/25 mt-0.5 leading-none">
                         {u.crmLead?.paidAt ? "Payé" : "Rejoint"} {fmtDate(u.joinedAt)}
                       </p>
+                    </div>
+
+                    {/* Email */}
+                    <div className="w-[180px] shrink-0 min-w-0">
+                      {u.crmLead?.email
+                        ? <span className="text-xs font-mono text-white/50 truncate block" title={u.crmLead.email}>{u.crmLead.email}</span>
+                        : <span className="text-white/[0.08] select-none text-xs font-mono">—</span>
+                      }
                     </div>
 
                     {/* Current cycle */}
