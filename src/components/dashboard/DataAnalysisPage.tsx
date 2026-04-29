@@ -225,8 +225,8 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
     <div className="h-full flex flex-col overflow-hidden">
 
       {/* ── Header minimaliste — une seule ligne ── */}
-      <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-sm px-4 md:px-6 py-2.5 flex-shrink-0">
-        <div className="flex items-center gap-3">
+      <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-sm px-3 md:px-6 py-2.5 flex-shrink-0">
+        <div className="flex items-center gap-2 md:gap-3 flex-wrap">
           {/* Dataset actif — badge coloré */}
           <span className="text-[11px] font-semibold" style={{
             color: selectedSessionId
@@ -264,8 +264,8 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
           {/* ── Sélecteur hero — central et élégant ── */}
           <div
             className={cn(
-              "relative rounded-xl border border-border/60 bg-gradient-to-br from-card via-card/80 to-card/60 px-6 py-6 md:px-10 md:py-8",
-              "flex flex-col items-center justify-center gap-5 text-center shadow-lg",
+              "relative rounded-xl border border-border/60 bg-gradient-to-br from-card via-card/80 to-card/60 px-4 py-5 sm:px-6 sm:py-6 md:px-10 md:py-8",
+              "flex flex-col items-center justify-center gap-4 sm:gap-5 text-center shadow-lg",
               isEntering && "opacity-0",
             )}
             style={{

@@ -145,7 +145,7 @@ export const ResultsPage = ({ isAdmin = false }: { isAdmin?: boolean }) => {
                   {/* Title + Date on TOP */}
                   <div className="p-2.5 md:p-3 space-y-0.5">
                     {result.title && (
-                      <p className="text-sm md:text-base font-semibold text-foreground leading-tight drop-shadow-[0_0_6px_hsl(var(--primary)/0.4)]">
+                      <p className="text-sm md:text-base font-semibold text-foreground leading-tight line-clamp-2 drop-shadow-[0_0_6px_hsl(var(--primary)/0.4)]">
                         {result.title}
                       </p>
                     )}
