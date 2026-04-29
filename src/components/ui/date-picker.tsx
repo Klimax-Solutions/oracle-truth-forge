@@ -61,18 +61,25 @@ export function DatePicker({
   }, [value]);
 
   // Close on outside click — deux couches :
-  // 1) Listener natif mousedown sur le portal div : stoppe la propagation avant
-  //    d'atteindre le handler document. Cela couvre les clics sur les jours du
-  //    calendrier ET les boutons de navigation (< >) même si react-day-picker
-  //    retire le node du DOM avant que l'event remonte.
+  // 1) Listeners natifs mousedown + pointerdown sur le portal div : stoppe la
+  //    propagation avant d'atteindre le handler document. Cela couvre les clics
+  //    sur les jours du calendrier ET les boutons de navigation (< >) même si
+  //    react-day-picker retire le node du DOM avant que l'event remonte.
+  //    pointerdown est nécessaire car Radix Dialog écoute pointerdown sur document
+  //    pour détecter un clic "hors dialog" — sans ce listener le Dialog se ferme
+  //    dès qu'on interagit avec le calendrier.
   // 2) Handler document : ne reçoit que les clics hors portal/trigger → ferme.
   React.useEffect(() => {
     if (!isOpen) return;
     const el = dropRef.current;
     if (!el) return;
-    const stopInside = (e: MouseEvent) => e.stopPropagation();
+    const stopInside = (e: Event) => e.stopPropagation();
     el.addEventListener("mousedown", stopInside);
-    return () => el.removeEventListener("mousedown", stopInside);
+    el.addEventListener("pointerdown", stopInside);
+    return () => {
+      el.removeEventListener("mousedown", stopInside);
+      el.removeEventListener("pointerdown", stopInside);
+    };
   }, [isOpen]);
 
   React.useEffect(() => {

@@ -70,6 +70,18 @@ export const CustomizableMultiSelect = ({
     return () => document.removeEventListener("mousedown", onDown);
   }, [isOpen]);
 
+  // Bloquer pointerdown sur le portal : Radix Dialog écoute pointerdown sur
+  // document pour détecter un clic "hors dialog". Sans ce listener natif sur
+  // l'élément, le Dialog se ferme dès qu'on ouvre ce dropdown à l'intérieur.
+  useEffect(() => {
+    if (!isOpen) return;
+    const el = dropdownRef.current;
+    if (!el) return;
+    const stop = (e: Event) => e.stopPropagation();
+    el.addEventListener("pointerdown", stop);
+    return () => el.removeEventListener("pointerdown", stop);
+  }, [isOpen]);
+
   // Close on Escape
   useEffect(() => {
     if (!isOpen) return;
