@@ -26,7 +26,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Save, Trash2, X, Image as ImageIcon,
-  Clock, Lock, Calendar as CalendarIcon, AlertTriangle,
+  Clock, Lock, AlertTriangle,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -42,11 +42,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useCustomVariables } from "@/hooks/useCustomVariables";
 import { CustomizableMultiSelect } from "@/components/dashboard/CustomizableMultiSelect";
-import {
-  RecommendedWindow,
-  checkDateInWindow,
-  formatDateShort,
-} from "@/lib/oracle-cycle-windows";
+import { formatDateShort } from "@/lib/oracle-cycle-windows";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 /** Sanitise un champ décimal : remplace la virgule par un point, supprime les non-chiffres/points, interdit plusieurs points */
@@ -99,7 +95,6 @@ interface OracleTradeDialogProps {
   onSaved: () => void;
   editingTrade: OracleExecution | null;
   nextTradeNumber: number;
-  recommendedWindow?: RecommendedWindow | null;
   currentCycleNum?: number | null;
   minTradeDate?: string | null;
 }
@@ -303,7 +298,6 @@ export const OracleTradeDialog = ({
   onSaved,
   editingTrade,
   nextTradeNumber,
-  recommendedWindow,
   currentCycleNum,
   minTradeDate,
 }: OracleTradeDialogProps) => {
@@ -378,31 +372,13 @@ export const OracleTradeDialog = ({
       setExistingContextUrl(editingTrade.screenshot_url || null);
       setExistingEntryUrl(editingTrade.screenshot_entry_url || null);
     } else {
-      // ── RÈGLE GRAVÉE DANS LE MARBRE ────────────────────────────────────────
-      // La date par défaut d'un nouveau trade Oracle suit TOUJOURS cette règle :
-      //
-      //   defaultDate = max(window.start, minTradeDate)
-      //
-      // Priorité :
-      //   1. Si today est dans [window.start ; window.end] ET ≥ minTradeDate
-      //      → on est en trading live, on peut utiliser today (commodité).
-      //   2. Sinon, on prend le maximum entre le début de la fenêtre et la date
-      //      de sortie du trade précédent (minTradeDate).
-      //   3. Si aucun contexte (pas de fenêtre, pas de trade précédent) → today.
-      //
-      // JAMAIS la date du système si le cycle en cours est historique (ex: 2018).
-      // ────────────────────────────────────────────────────────────────────────
+      // Date par défaut : aujourd'hui, ou minTradeDate si elle est dans le futur
+      // (assure l'ordre chronologique entre les trades — seule contrainte conservée)
       const today = new Date().toISOString().split("T")[0];
-      const ws  = recommendedWindow?.start ?? "";
-      const we  = recommendedWindow?.end   ?? "";
-      const min = minTradeDate             ?? "";
+      const min   = minTradeDate ?? "";
 
       const computeDefaultDate = (): string => {
-        // Cas live : today est dans la fenêtre ET après le trade précédent
-        if (ws && we && today >= ws && today <= we && (!min || today >= min)) return today;
-        // Cas historique : prendre le plus tardif entre début de fenêtre et minTradeDate
-        if (ws || min) return ws && min ? (ws > min ? ws : min) : (ws || min);
-        // Fallback
+        if (min && min > today) return min; // edge case : trade précédent dans le futur
         return today;
       };
 
@@ -421,7 +397,7 @@ export const OracleTradeDialog = ({
     }
     setContextFile(null); setContextPreview(null);
     setEntryFile(null);   setEntryPreview(null);
-  }, [isOpen, editingTrade, nextTradeNumber, recommendedWindow]);
+  }, [isOpen, editingTrade, nextTradeNumber, minTradeDate]);
 
   // Auto-save draft to localStorage (create mode only)
   useEffect(() => {
@@ -437,13 +413,9 @@ export const OracleTradeDialog = ({
     }));
   };
 
-  // Oracle window validation
-  const dateWindowStatus = (() => {
-    if (!recommendedWindow || !formData.trade_date) return "unknown" as const;
-    return checkDateInWindow(formData.trade_date, recommendedWindow);
-  })();
+  // Seule contrainte de date conservée : ordre chronologique entre les trades
   const dateBeforeMin = !!minTradeDate && !!formData.trade_date && formData.trade_date < minTradeDate;
-  const dateBlocked   = !editingTrade && (dateWindowStatus === "outside" || dateBeforeMin);
+  const dateBlocked   = !editingTrade && dateBeforeMin;
 
   // File upload helpers
   const handleFileSelect = (
@@ -486,10 +458,8 @@ export const OracleTradeDialog = ({
     }
     if (dateBlocked) {
       toast({
-        title: "Date hors fenêtre Oracle",
-        description: dateBeforeMin
-          ? `La date doit être ≥ ${formatDateShort(minTradeDate!)}.`
-          : `La date doit être entre ${formatDateShort(recommendedWindow!.start)} et ${formatDateShort(recommendedWindow!.end)}.`,
+        title: "Date invalide",
+        description: `La date doit être ≥ ${formatDateShort(minTradeDate!)} (ordre chronologique entre les trades).`,
         variant: "destructive",
       });
       return;
@@ -603,27 +573,11 @@ export const OracleTradeDialog = ({
         {/* ── SCROLLABLE BODY ── */}
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
 
-          {/* Oracle window banner */}
-          {!editingTrade && recommendedWindow && (
-            <div className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-lg text-xs border",
-              dateWindowStatus === "in_window"
-                ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-300"
-                : dateWindowStatus === "outside"
-                ? "bg-destructive/10 border-destructive/30 text-destructive"
-                : dateWindowStatus === "warning"
-                ? "bg-amber-500/10 border-amber-500/25 text-amber-300"
-                : "bg-white/[.04] border-white/[.08] text-foreground/50",
-            )}>
-              <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
-              <span className="font-mono">
-                Fenêtre Oracle : {formatDateShort(recommendedWindow.start)} → {formatDateShort(recommendedWindow.end)}
-              </span>
-              {dateWindowStatus === "outside" && (
-                <span className="ml-auto flex items-center gap-1 font-semibold">
-                  <AlertTriangle className="w-3 h-3" /> Date hors fenêtre
-                </span>
-              )}
+          {/* Avertissement chronologique (seule contrainte conservée) */}
+          {dateBeforeMin && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs border bg-amber-500/10 border-amber-500/25 text-amber-300">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <span>La date doit être ≥ {formatDateShort(minTradeDate!)} (trade précédent)</span>
             </div>
           )}
 

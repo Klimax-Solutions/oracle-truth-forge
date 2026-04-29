@@ -5,9 +5,6 @@ import {
   getMinTradeDate,
   getUserCurrentCycleNum,
   computeUserOffset,
-  getRecommendedWindow,
-  checkDateInWindow,
-  formatDateShort,
   USER_CYCLE_THRESHOLDS,
 } from "@/lib/oracle-cycle-windows";
 import { Button } from "@/components/ui/button";
@@ -428,32 +425,14 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
     return getMinTradeDate(executions);
   }, [executions, editingId, formData.trade_number]);
 
-  // ── R4 — Fenêtre temporelle Oracle et guidage doux ──────────────────────────
+  // ── Numéro de cycle courant (pour l'en-tête du dialog) ──────────────────────
   const temporalGuidance = useMemo(() => {
     if (oracleCycleWindows.length === 0) return null;
     const currentCycleNum = getUserCurrentCycleNum(executions.length);
-    if (currentCycleNum >= USER_CYCLE_THRESHOLDS.length) return null; // tout complété
-
-    const offsetDays = computeUserOffset(
-      currentCycleNum,
-      oracleCycleWindows,
-      executions
-    );
-    const recommendedWindow = getRecommendedWindow(
-      currentCycleNum,
-      oracleCycleWindows,
-      offsetDays
-    );
-    const oracleWindow = oracleCycleWindows.find(w => w.cycleNum === currentCycleNum) ?? null;
-
-    return { currentCycleNum, offsetDays, recommendedWindow, oracleWindow };
+    if (currentCycleNum >= USER_CYCLE_THRESHOLDS.length) return null;
+    const offsetDays = computeUserOffset(currentCycleNum, oracleCycleWindows, executions);
+    return { currentCycleNum, offsetDays };
   }, [executions, oracleCycleWindows]);
-
-  // Statut de la date saisie vis-à-vis de la fenêtre recommandée
-  const dateWindowStatus = useMemo(() => {
-    if (!temporalGuidance?.recommendedWindow || !formData.trade_date) return "unknown";
-    return checkDateInWindow(formData.trade_date, temporalGuidance.recommendedWindow);
-  }, [formData.trade_date, temporalGuidance]);
 
   // Validate entry time (15:20 - 22:00)
   const validateEntryTime = (time: string): boolean => {
@@ -937,7 +916,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
                 take_profit: editingExec.take_profit,
               } : null}
               nextTradeNumber={getNextTradeNumber()}
-              recommendedWindow={temporalGuidance?.recommendedWindow ?? null}
               currentCycleNum={temporalGuidance?.currentCycleNum ?? null}
               minTradeDate={minTradeDate || null}
             />
