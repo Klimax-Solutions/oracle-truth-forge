@@ -275,14 +275,14 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
         {/* ═══ Setup Oracle — HERO ═══ */}
         <section className="mb-12">
           {isEarlyAccess ? (
-            <div className="relative overflow-hidden rounded-2xl p-8 md:p-10" style={{
+            <div className="relative overflow-hidden rounded-2xl p-5 md:p-10" style={{
               border: `1px solid ${TEAL}28`,
               background: `linear-gradient(135deg, ${TEAL}10 0%, transparent 60%)`,
             }}>
               <div className="absolute inset-0 pointer-events-none" style={{
                 backgroundImage: `radial-gradient(circle at 85% 15%, ${TEAL}20, transparent 55%)`
               }} />
-              <div className="relative flex items-center gap-5">
+              <div className="relative flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{
                   background: `${TEAL}18`, border: `1px solid ${TEAL}40`,
                   boxShadow: `0 0 24px ${TEAL}25`,
@@ -302,7 +302,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
               </div>
             </div>
           ) : (
-            <div className="relative overflow-hidden rounded-2xl p-8 md:p-10 cursor-pointer group transition-all" style={{
+            <div className="relative overflow-hidden rounded-2xl p-5 md:p-10 cursor-pointer group transition-all" style={{
               border: `1px solid ${TEAL}35`,
               background: `linear-gradient(135deg, ${TEAL}12 0%, transparent 60%)`,
             }}
@@ -311,7 +311,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
               <div className="absolute inset-0 pointer-events-none transition-opacity duration-300" style={{
                 backgroundImage: `radial-gradient(circle at 85% 15%, ${TEAL}25, transparent 55%)`
               }} />
-              <div className="relative flex items-center gap-5">
+              <div className="relative flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{
                   background: `${TEAL}20`, border: `1px solid ${TEAL}50`,
                   boxShadow: `0 0 28px ${TEAL}30`,
@@ -427,7 +427,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
                         tabIndex={0}
                         onClick={() => renamingId !== s.id && setActiveSessionId(s.id)}
                         onKeyDown={(e) => e.key === "Enter" && renamingId !== s.id && setActiveSessionId(s.id)}
-                        className="group w-full text-left rounded-2xl p-5 border transition-all hover:scale-[1.01] cursor-pointer"
+                        className="group w-full text-left rounded-2xl p-4 md:p-5 border transition-all hover:scale-[1.01] cursor-pointer"
                         style={{ borderColor: `${TEAL}33`, backgroundColor: "rgba(255,255,255,0.02)" }}
                       >
                         <div className="flex items-start gap-3 mb-4">
@@ -506,7 +506,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
                         tabIndex={0}
                         onClick={() => renamingId !== s.id && setActiveSessionId(s.id)}
                         onKeyDown={(e) => e.key === "Enter" && renamingId !== s.id && setActiveSessionId(s.id)}
-                        className="group w-full text-left rounded-2xl p-5 border transition-all hover:scale-[1.01] cursor-pointer"
+                        className="group w-full text-left rounded-2xl p-4 md:p-5 border transition-all hover:scale-[1.01] cursor-pointer"
                         style={{ borderColor: `${ORANGE}33`, backgroundColor: "rgba(255,255,255,0.02)" }}
                       >
                         <div className="flex items-start gap-3 mb-4">
