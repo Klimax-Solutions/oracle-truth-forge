@@ -741,26 +741,37 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
       const zip = new JSZip();
       const screenshotsFolder = zip.folder("screenshots")!;
 
-      // Download one screenshot (Supabase storage path or external URL)
+      // track downloaded files to reference correctly in CSV
+      const downloadedFiles: Record<string, string> = {}; // filename → actual filename with ext
+
+      // Download one screenshot — only Supabase storage paths (external URLs can't be fetched due to CORS)
       const addScreenshot = async (path: string | null | undefined, filename: string) => {
         if (!path) return;
-        let url = path;
-        // If it's a storage path (not an http URL), get a signed URL
-        if (!path.startsWith("http://") && !path.startsWith("https://")) {
-          const { data: urlData } = await supabase.storage
-            .from("trade-screenshots")
-            .createSignedUrl(path, 3600);
-          if (!urlData?.signedUrl) return;
-          url = urlData.signedUrl;
+        // External URL (link mode) → skip download, will be referenced as URL in CSV
+        if (path.startsWith("http://") || path.startsWith("https://")) return;
+        // Supabase storage path → get signed URL
+        const { data: urlData, error: signError } = await supabase.storage
+          .from("trade-screenshots")
+          .createSignedUrl(path, 3600);
+        if (signError || !urlData?.signedUrl) {
+          console.error(`[Export] signed URL failed for ${path}:`, signError);
+          return;
         }
         try {
-          const response = await fetch(url);
-          if (!response.ok) return;
+          const response = await fetch(urlData.signedUrl);
+          if (!response.ok) {
+            console.error(`[Export] fetch failed (${response.status}) for ${path}`);
+            return;
+          }
           const blob = await response.blob();
           const rawExt = path.split(".").pop()?.split("?")[0]?.toLowerCase() || "jpg";
           const ext = ["jpg", "jpeg", "png", "gif", "webp"].includes(rawExt) ? rawExt : "jpg";
-          screenshotsFolder.file(`${filename}.${ext}`, blob);
-        } catch { /* skip undownloadable screenshot */ }
+          const fullName = `${filename}.${ext}`;
+          screenshotsFolder.file(fullName, blob);
+          downloadedFiles[filename] = `screenshots/${fullName}`;
+        } catch (err) {
+          console.error(`[Export] download error for ${path}:`, err);
+        }
       };
 
       // Download all screenshots in parallel
@@ -791,6 +802,12 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
         headers.join(","),
         ...executions.map((e) => {
           const num = String(e.trade_number).padStart(3, "0");
+          const ctxRef = e.screenshot_url
+            ? (downloadedFiles[`trade_${num}_contexte`] ?? e.screenshot_url)
+            : "";
+          const entRef = e.screenshot_entry_url
+            ? (downloadedFiles[`trade_${num}_entree`] ?? e.screenshot_entry_url)
+            : "";
           return [
             e.trade_number,
             e.trade_date,
@@ -808,8 +825,8 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
             e.entry_model || "",
             e.direction_structure || "",
             e.entry_timing || "",
-            e.screenshot_url ? `screenshots/trade_${num}_contexte.*` : "",
-            e.screenshot_entry_url ? `screenshots/trade_${num}_entree.*` : "",
+            ctxRef,
+            entRef,
             escape(e.notes),
           ].map(escape).join(",");
         }),
@@ -825,7 +842,13 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
 
-      toast({ title: "Export réussi", description: `${executions.length} trades exportés avec leurs screenshots.` });
+      const imgCount = Object.keys(downloadedFiles).length;
+      toast({
+        title: "Export réussi",
+        description: imgCount > 0
+          ? `${executions.length} trades exportés avec ${imgCount} screenshot${imgCount > 1 ? "s" : ""}.`
+          : `${executions.length} trades exportés (screenshots en mode lien — non téléchargeables).`,
+      });
     } catch (err) {
       console.error("Export error:", err);
       toast({ title: "Erreur d'export", description: "Une erreur est survenue lors de l'export.", variant: "destructive" });
