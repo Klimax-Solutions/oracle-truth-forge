@@ -549,13 +549,13 @@ export const OracleTradeDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="max-w-6xl w-[calc(100vw-2rem)] max-h-[94vh] flex flex-col overflow-hidden p-0 gap-0 border border-white/[.14] rounded-2xl"
+        className="max-w-6xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[96vh] sm:max-h-[94vh] flex flex-col overflow-hidden p-0 gap-0 border border-white/[.14] rounded-xl sm:rounded-2xl"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
 
         {/* ── HEADER ── */}
-        <div className="px-8 pt-6 pb-5 border-b border-white/[.06] shrink-0 flex items-center gap-3">
+        <div className="px-4 sm:px-8 pt-4 sm:pt-6 pb-3 sm:pb-5 border-b border-white/[.06] shrink-0 flex items-center gap-2 sm:gap-3 flex-wrap">
           <DialogTitle className="text-base font-semibold tracking-tight">
             {editingTrade ? `Trade #${editingTrade.trade_number}` : "Nouveau Trade"}
           </DialogTitle>
@@ -565,17 +565,17 @@ export const OracleTradeDialog = ({
             </span>
           )}
           {setupFieldsLocked && (
-            <span className="ml-auto flex items-center gap-1.5 text-[10px] font-mono text-amber-400/75 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md">
-              <Lock className="w-3 h-3" /> Paramètres setup verrouillés
+            <span className="ml-auto flex items-center gap-1.5 text-[10px] font-mono text-amber-400/75 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-md">
+              <Lock className="w-3 h-3" /> <span className="hidden sm:inline">Paramètres setup verrouillés</span><span className="sm:hidden">Verrouillé</span>
             </span>
           )}
         </div>
 
-        {/* ── TWO-COLUMN BODY ── */}
-        <div className="flex flex-row flex-1 overflow-hidden">
+        {/* ── BODY : single-column < lg, two-column ≥ lg ── */}
+        <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden">
 
           {/* ── LEFT — scrollable form ── */}
-          <div className="overflow-y-auto flex-1 px-8 py-7 space-y-8">
+          <div className="lg:overflow-y-auto lg:flex-1 px-4 sm:px-8 py-5 sm:py-7 space-y-6 sm:space-y-8">
 
             {/* ── INFORMATIONS ── */}
             <div className="space-y-3">
@@ -916,8 +916,8 @@ export const OracleTradeDialog = ({
 
           </div>{/* /left column */}
 
-          {/* ── RIGHT PANEL — screenshots + notes ── */}
-          <div className="w-[360px] shrink-0 border-l border-white/[.06] bg-white/[.012] overflow-y-auto flex flex-col px-7 py-7 gap-7">
+          {/* ── RIGHT PANEL — screenshots + notes (stack en mobile) ── */}
+          <div className="w-full lg:w-[360px] shrink-0 border-t lg:border-t-0 lg:border-l border-white/[.06] bg-white/[.012] lg:overflow-y-auto flex flex-col px-4 sm:px-6 lg:px-7 py-5 sm:py-7 gap-5 sm:gap-7">
 
             <div className="space-y-4">
               <SectionHeader label="Screenshots" />
@@ -958,7 +958,7 @@ export const OracleTradeDialog = ({
         </div>{/* /two-column body */}
 
         {/* ── FOOTER ── */}
-        <div className="px-8 py-5 border-t border-white/[.06] flex items-center justify-between shrink-0 bg-white/[.012]">
+        <div className="px-4 sm:px-8 py-4 sm:py-5 border-t border-white/[.06] flex items-center justify-between shrink-0 bg-white/[.012] gap-2">
           {editingTrade ? (
             <AlertDialog>
               <AlertDialogTrigger asChild>
