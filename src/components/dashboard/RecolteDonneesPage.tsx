@@ -421,10 +421,13 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
                   {backtestingSessions.map(s => {
                     const stats = sessionStats[s.id] || { trades: 0, rr: 0, winRate: 0, avgRR: 0 };
                     return (
-                      <button
+                      <div
                         key={s.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => renamingId !== s.id && setActiveSessionId(s.id)}
-                        className="group w-full text-left rounded-2xl p-5 border transition-all hover:scale-[1.01]"
+                        onKeyDown={(e) => e.key === "Enter" && renamingId !== s.id && setActiveSessionId(s.id)}
+                        className="group w-full text-left rounded-2xl p-5 border transition-all hover:scale-[1.01] cursor-pointer"
                         style={{ borderColor: `${TEAL}33`, backgroundColor: "rgba(255,255,255,0.02)" }}
                       >
                         <div className="flex items-start gap-3 mb-4">
@@ -473,7 +476,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
                         <div className="w-full h-10 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold transition-all group-hover:brightness-110" style={{ backgroundColor: `${TEAL}15`, color: TEAL }}>
                           ▶ Continuer ma récolte
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                   {/* Slot ajouter */}
@@ -497,10 +500,13 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
                   {liveSessions.map(s => {
                     const stats = sessionStats[s.id] || { trades: 0, rr: 0, winRate: 0, avgRR: 0 };
                     return (
-                      <button
+                      <div
                         key={s.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => renamingId !== s.id && setActiveSessionId(s.id)}
-                        className="group w-full text-left rounded-2xl p-5 border transition-all hover:scale-[1.01]"
+                        onKeyDown={(e) => e.key === "Enter" && renamingId !== s.id && setActiveSessionId(s.id)}
+                        className="group w-full text-left rounded-2xl p-5 border transition-all hover:scale-[1.01] cursor-pointer"
                         style={{ borderColor: `${ORANGE}33`, backgroundColor: "rgba(255,255,255,0.02)" }}
                       >
                         <div className="flex items-start gap-3 mb-4">
@@ -549,7 +555,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
                         <div className="w-full h-10 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold transition-all group-hover:brightness-110" style={{ backgroundColor: `${ORANGE}15`, color: ORANGE }}>
                           ▶ Continuer ma récolte
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                   {/* Slot ajouter */}

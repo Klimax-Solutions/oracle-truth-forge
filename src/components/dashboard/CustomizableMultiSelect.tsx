@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, X, Check, ChevronDown } from "lucide-react";
+import { Plus, Trash2, X, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -30,11 +30,8 @@ export const CustomizableMultiSelect = ({
   className,
 }: CustomizableMultiSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const [newValue, setNewValue] = useState("");
   const [isAdding, setIsAdding] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const allOptions = [
@@ -45,55 +42,6 @@ export const CustomizableMultiSelect = ({
   const selectedValues = value
     ? value.split(",").map((v) => v.trim()).filter(Boolean)
     : [];
-
-  // ── Open / close ────────────────────────────────────────────
-  const handleToggle = () => {
-    if (!isOpen && triggerRef.current) {
-      const r = triggerRef.current.getBoundingClientRect();
-      // Compensate for html { zoom } which creates a gap between
-      // getBoundingClientRect (visual/post-zoom) and position:fixed (layout/pre-zoom)
-      const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
-      setDropdownPos({ top: r.bottom / zoom, left: r.left / zoom, width: r.width / zoom });
-    }
-    setIsOpen((v) => !v);
-  };
-
-  // Close on outside click (capture-phase stop above means this only fires for
-  // clicks truly outside trigger + dropdown)
-  useEffect(() => {
-    if (!isOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (triggerRef.current?.contains(e.target as Node)) return;
-      if (dropdownRef.current?.contains(e.target as Node)) return;
-      setIsOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [isOpen]);
-
-  // Capture-phase on document: stop pointerdown/mousedown before Radix Dialog's
-  // bubble-phase handler sees them. Capture fires before any node is removed
-  // from DOM, making this reliable even with dynamic lists.
-  useEffect(() => {
-    if (!isOpen) return;
-    const stop = (e: Event) => {
-      if (dropdownRef.current?.contains(e.target as Node)) e.stopPropagation();
-    };
-    document.addEventListener("pointerdown", stop, { capture: true });
-    document.addEventListener("mousedown", stop, { capture: true });
-    return () => {
-      document.removeEventListener("pointerdown", stop, { capture: true });
-      document.removeEventListener("mousedown", stop, { capture: true });
-    };
-  }, [isOpen]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIsOpen(false); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [isOpen]);
 
   // ── Value helpers ────────────────────────────────────────────
   const toggleValue = (opt: string) => {
@@ -137,54 +85,58 @@ export const CustomizableMultiSelect = ({
 
   // ── Render ───────────────────────────────────────────────────
   return (
-    <>
-      {/* Trigger — looks exactly like an Input */}
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={handleToggle}
-        className={cn(
-          "flex w-full items-center rounded-md border bg-white/[.04] px-3 py-2 text-sm transition-all duration-150",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20",
-          compact ? "h-9" : "h-10",
-          isOpen ? "border-white/40 bg-white/[.07]" : "border-white/25 hover:border-white/35 hover:bg-white/[.06]",
-          selectedValues.length === 0 ? "text-foreground/40" : "text-foreground",
-          className
-        )}
-      >
-        {selectedValues.length > 0 ? (
-          <div className="flex flex-wrap gap-1 flex-1 overflow-hidden min-w-0">
-            {selectedValues.map((v) => (
-              <span key={v} className="inline-flex items-center gap-0.5 bg-primary/20 text-primary text-[11px] px-1.5 py-0.5 rounded font-semibold">
-                <span className="truncate max-w-[100px]">{v}</span>
-                <button type="button" onClick={(e) => removeValue(v, e)} className="shrink-0 ml-0.5 opacity-60 hover:opacity-100 hover:text-destructive">
-                  <X className="w-2.5 h-2.5" />
-                </button>
-              </span>
-            ))}
-          </div>
-        ) : (
-          <span className="flex-1 text-left truncate text-sm">{placeholder}</span>
-        )}
-        <ChevronDown className={cn(
-          "ml-1.5 shrink-0 w-3.5 h-3.5 transition-all duration-200",
-          isOpen ? "rotate-180 text-foreground/70" : "text-foreground/30"
-        )} />
-      </button>
+    <PopoverPrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverPrimitive.Trigger asChild>
+        {/* Trigger — looks exactly like an Input */}
+        <button
+          type="button"
+          className={cn(
+            "flex w-full items-center rounded-md border bg-white/[.04] px-3 py-2 text-sm transition-all duration-150",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20",
+            compact ? "h-9" : "h-10",
+            isOpen ? "border-white/40 bg-white/[.07]" : "border-white/25 hover:border-white/35 hover:bg-white/[.06]",
+            selectedValues.length === 0 ? "text-foreground/40" : "text-foreground",
+            className,
+          )}
+        >
+          {selectedValues.length > 0 ? (
+            <div className="flex flex-wrap gap-1 flex-1 overflow-hidden min-w-0">
+              {selectedValues.map((v) => (
+                <span key={v} className="inline-flex items-center gap-0.5 bg-primary/20 text-primary text-[11px] px-1.5 py-0.5 rounded font-semibold">
+                  <span className="truncate max-w-[100px]">{v}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => removeValue(v, e)}
+                    className="shrink-0 ml-0.5 opacity-60 hover:opacity-100 hover:text-destructive"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="flex-1 text-left truncate text-sm">{placeholder}</span>
+          )}
+          <svg
+            className={cn(
+              "ml-1.5 shrink-0 w-3.5 h-3.5 transition-all duration-200",
+              isOpen ? "rotate-180 text-foreground/70" : "text-foreground/30",
+            )}
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      </PopoverPrimitive.Trigger>
 
-      {/* Dropdown — rendered via portal for perfect positioning */}
-      {isOpen && dropdownPos && createPortal(
-        <div
-          ref={dropdownRef}
-          onPointerDown={(e) => e.stopPropagation()}
-          style={{
-            position: "fixed",
-            top: dropdownPos.top,
-            left: dropdownPos.left,
-            width: dropdownPos.width,
-            zIndex: 9999,
-          }}
-          className="rounded-xl border border-white/[.15] bg-[hsl(var(--card))] shadow-2xl shadow-black/70 overflow-hidden"
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          align="start"
+          sideOffset={4}
+          style={{ width: "var(--radix-popover-trigger-width)" }}
+          className="z-[9999] rounded-xl border border-white/[.15] bg-[hsl(var(--card))] shadow-2xl shadow-black/70 overflow-hidden p-0"
+          onOpenAutoFocus={(e) => e.preventDefault()}
         >
           {/* Add option */}
           <div className="flex gap-1.5 p-2 border-b border-white/[.08]">
@@ -202,7 +154,7 @@ export const CustomizableMultiSelect = ({
               disabled={isAdding || !newValue.trim()}
               className={cn(
                 "h-8 w-8 shrink-0 rounded-md border border-white/[.15] flex items-center justify-center transition-all",
-                newValue.trim() ? "bg-primary/80 hover:bg-primary text-primary-foreground border-primary/60" : "text-foreground/30 cursor-not-allowed"
+                newValue.trim() ? "bg-primary/80 hover:bg-primary text-primary-foreground border-primary/60" : "text-foreground/30 cursor-not-allowed",
               )}
             >
               <Plus className="w-3.5 h-3.5" />
@@ -216,7 +168,7 @@ export const CustomizableMultiSelect = ({
             )}
             {allOptions.map((opt) => {
               const isSelected = selectedValues.includes(opt);
-              const isCustom = !fixedOptions.includes(opt);
+              const isCustom   = !fixedOptions.includes(opt);
               return (
                 <div key={opt} className="flex items-center group px-1">
                   <button
@@ -226,12 +178,12 @@ export const CustomizableMultiSelect = ({
                       "flex-1 flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm transition-all text-left",
                       isSelected
                         ? "bg-primary/15 text-primary"
-                        : "text-foreground/80 hover:bg-white/[.06] hover:text-foreground"
+                        : "text-foreground/80 hover:bg-white/[.06] hover:text-foreground",
                     )}
                   >
                     <div className={cn(
                       "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all",
-                      isSelected ? "bg-primary border-primary" : "border-white/[.25] bg-transparent"
+                      isSelected ? "bg-primary border-primary" : "border-white/[.25] bg-transparent",
                     )}>
                       {isSelected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
                     </div>
@@ -251,9 +203,8 @@ export const CustomizableMultiSelect = ({
               );
             })}
           </div>
-        </div>,
-        document.body
-      )}
-    </>
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
+    </PopoverPrimitive.Root>
   );
 };
