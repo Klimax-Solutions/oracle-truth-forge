@@ -1802,6 +1802,13 @@ export type Database = {
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       disable_import_triggers: { Args: never; Returns: undefined }
       enable_import_triggers: { Args: never; Returns: undefined }
+      get_auth_emails: {
+        Args: { user_ids: string[] }
+        Returns: {
+          email: string
+          user_id: string
+        }[]
+      }
       get_leaderboard_data: {
         Args: never
         Returns: {
