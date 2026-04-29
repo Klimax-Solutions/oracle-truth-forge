@@ -53,16 +53,13 @@ import {
 const sanitizeDecimal = (v: string) =>
   v.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/\.(?=.*\.)/g, "");
 
-// ── Fixed options ──────────────────────────────────────────────────────────────
-const ENTRY_MODEL_FIXED_OPTIONS = [
-  "Englobante M1", "Englobante M3", "Englobante M5",
-  "High-Low 3 bougies", "WICK", "Prise de liquidité",
-];
-const SETUP_TYPE_FIXED_OPTIONS = ["A", "B", "C"];
-const TIMING_FIXED_OPTIONS = ["US Open 15:30", "London Close (16h)"];
-const ENTRY_TIMEFRAME_FIXED_OPTIONS = ["15s", "30s", "M1", "M3", "M5", "M15"];
-const CONTEXT_TIMEFRAME_OPTIONS = ["H4", "H1", "M15"];
-const ENTRY_TF_SCREENSHOT_OPTIONS = ["M15", "M5", "M3", "M1", "30s", "15s", "5s"];
+// ── Options locales non-gérables (sélecteurs internes, pas dans user_custom_variables) ─
+// Les options des dropdowns du formulaire trade (setup_type, entry_model, entry_timing,
+// entry_timeframe, direction_structure, sl_placement, tp_placement) sont entièrement
+// gérées en DB (user_custom_variables) — seul l'admin peut modifier les options partagées.
+// Seed initial → migration 20260429250000_seed_shared_options.sql
+const CONTEXT_TIMEFRAME_OPTIONS    = ["H4", "H1", "M15"];
+const ENTRY_TF_SCREENSHOT_OPTIONS  = ["M15", "M5", "M3", "M1", "30s", "15s", "5s"];
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 export interface OracleExecution {
@@ -326,7 +323,7 @@ export const OracleTradeDialog = ({
   const [existingEntryUrl, setExistingEntryUrl]  = useState<string | null>(null);
 
   const { toast }                       = useToast();
-  const { variables, refetch: refetchVariables } = useCustomVariables();
+  const { globalVariables, personalVariables, refetch: refetchVariables } = useCustomVariables();
 
   const tradeDuration = calculateDuration(
     formData.trade_date, formData.entry_time,
@@ -725,8 +722,8 @@ export const OracleTradeDialog = ({
                     compact singleSelect canManage={isAdmin}
                     value={formData.setup_type}
                     onChange={(v) => set("setup_type", v)}
-                    fixedOptions={SETUP_TYPE_FIXED_OPTIONS}
-                    customOptions={variables.setup_type}
+                    globalOptions={globalVariables.setup_type}
+                    personalOptions={personalVariables.setup_type}
                     variableType="setup_type"
                     placeholder="Sélectionne..."
                     onOptionsChanged={refetchVariables}
@@ -737,7 +734,8 @@ export const OracleTradeDialog = ({
                     compact singleSelect canManage={isAdmin}
                     value={formData.direction_structure}
                     onChange={(v) => set("direction_structure", v)}
-                    customOptions={variables.direction_structure}
+                    globalOptions={globalVariables.direction_structure}
+                    personalOptions={personalVariables.direction_structure}
                     variableType="direction_structure"
                     placeholder="Sélectionne..."
                     onOptionsChanged={refetchVariables}
@@ -748,8 +746,8 @@ export const OracleTradeDialog = ({
                     compact canManage={isAdmin}
                     value={formData.entry_model}
                     onChange={(v) => set("entry_model", v)}
-                    fixedOptions={ENTRY_MODEL_FIXED_OPTIONS}
-                    customOptions={variables.entry_model}
+                    globalOptions={globalVariables.entry_model}
+                    personalOptions={personalVariables.entry_model}
                     variableType="entry_model"
                     placeholder="Sélectionne..."
                     onOptionsChanged={refetchVariables}
@@ -760,8 +758,8 @@ export const OracleTradeDialog = ({
                     compact singleSelect canManage={isAdmin}
                     value={formData.entry_timing}
                     onChange={(v) => set("entry_timing", v)}
-                    fixedOptions={TIMING_FIXED_OPTIONS}
-                    customOptions={variables.entry_timing}
+                    globalOptions={globalVariables.entry_timing}
+                    personalOptions={personalVariables.entry_timing}
                     variableType="entry_timing"
                     placeholder="Sélectionne..."
                     onOptionsChanged={refetchVariables}
@@ -772,8 +770,8 @@ export const OracleTradeDialog = ({
                     compact singleSelect canManage={isAdmin}
                     value={formData.entry_timeframe}
                     onChange={(v) => set("entry_timeframe", v)}
-                    fixedOptions={ENTRY_TIMEFRAME_FIXED_OPTIONS}
-                    customOptions={variables.entry_timeframe}
+                    globalOptions={globalVariables.entry_timeframe}
+                    personalOptions={personalVariables.entry_timeframe}
                     variableType="entry_timeframe"
                     placeholder="Sélectionne..."
                     onOptionsChanged={refetchVariables}
@@ -787,7 +785,8 @@ export const OracleTradeDialog = ({
                     singleSelect canManage={isAdmin}
                     value={formData.sl_placement}
                     onChange={(v) => set("sl_placement", v)}
-                    customOptions={variables.sl_placement || []}
+                    globalOptions={globalVariables.sl_placement || []}
+                    personalOptions={personalVariables.sl_placement || []}
                     variableType="sl_placement"
                     placeholder="Sélectionner..."
                     onOptionsChanged={refetchVariables}
@@ -798,7 +797,8 @@ export const OracleTradeDialog = ({
                     singleSelect canManage={isAdmin}
                     value={formData.tp_placement}
                     onChange={(v) => set("tp_placement", v)}
-                    customOptions={variables.tp_placement || []}
+                    globalOptions={globalVariables.tp_placement || []}
+                    personalOptions={personalVariables.tp_placement || []}
                     variableType="tp_placement"
                     placeholder="Sélectionner..."
                     onOptionsChanged={refetchVariables}

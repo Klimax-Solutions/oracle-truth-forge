@@ -1,12 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// useCustomVariables — options globales des dropdowns de saisie de trades
+// useCustomVariables — options des dropdowns de saisie de trades
 //
-// Règles dans le marbre (2026-04-29) :
-//   - Les options sont globales (user_id IS NULL en DB)
-//   - Tous les membres voient la même liste
-//   - Seuls les admins peuvent ajouter / supprimer des options
-//   - Supprimer une option n'affecte PAS rétrospectivement les trades
-//     (valeurs stockées en texte brut dans user_executions, pas en FK)
+// Architecture 3 couches (dans le marbre — 2026-04-29) :
+//   1. Options hardcodées  : constantes TSX (fixedOptions), jamais en DB
+//   2. Options partagées   : user_id IS NULL — gérées par l'admin, vues par TOUS
+//   3. Options personnelles: user_id = user.id — gérées par le user, vues par LUI SEUL
+//
+// Supprimer une option n'affecte PAS rétrospectivement les trades
+// (valeurs stockées en texte brut dans user_executions, pas en FK)
+//
+// Slice D — Learning Cycles
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect } from "react";
@@ -16,6 +19,7 @@ interface CustomVariable {
   id: string;
   variable_type: string;
   variable_value: string;
+  user_id: string | null;
 }
 
 interface CustomVariableType {
@@ -41,69 +45,69 @@ export interface CustomVariableTypes {
   isCustom: boolean;
 }
 
-export const useCustomVariables = () => {
-  const [variables, setVariables] = useState<CustomVariables>({
-    direction_structure: [],
-    setup_type: [],
-    entry_model: [],
-    entry_timing: [],
-    entry_timeframe: [],
-    sl_placement: [],
-    tp_placement: [],
+const makeEmptyGrouped = (extraKeys: string[] = []): CustomVariables => ({
+  direction_structure: [],
+  setup_type: [],
+  entry_model: [],
+  entry_timing: [],
+  entry_timeframe: [],
+  sl_placement: [],
+  tp_placement: [],
+  ...Object.fromEntries(extraKeys.map(k => [k, []])),
+});
+
+const groupByType = (rows: CustomVariable[], keys: string[]): CustomVariables => {
+  const grouped = makeEmptyGrouped(keys);
+  rows.forEach((v) => {
+    if (v.variable_type in grouped) {
+      grouped[v.variable_type].push(v.variable_value);
+    } else {
+      grouped[v.variable_type] = [v.variable_value];
+    }
   });
-  const [customTypes, setCustomTypes] = useState<CustomVariableTypes[]>([]);
-  const [loading, setLoading] = useState(true);
+  return grouped;
+};
+
+export const useCustomVariables = () => {
+  const [globalVariables, setGlobalVariables]     = useState<CustomVariables>(makeEmptyGrouped());
+  const [personalVariables, setPersonalVariables] = useState<CustomVariables>(makeEmptyGrouped());
+  const [customTypes, setCustomTypes]             = useState<CustomVariableTypes[]>([]);
+  const [loading, setLoading]                     = useState(true);
 
   const fetchVariables = async () => {
-    // Les options sont globales (user_id IS NULL) — pas besoin de l'uid pour les valeurs
-    // On garde le user check uniquement pour user_variable_types (types custom par admin)
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Fetch custom types (colonnes additionnelles définies par l'admin)
+    // ── Types custom définis par l'admin ──────────────────────────────────────
     const { data: typesData } = await supabase
       .from("user_variable_types")
       .select("*")
       .eq("user_id", user?.id ?? "");
 
-    const userCustomTypes = typesData?.map(t => ({
+    const userCustomTypes: CustomVariableTypes[] = typesData?.map(t => ({
       key: t.type_key,
       label: t.type_label,
       isCustom: true,
     })) || [];
-
     setCustomTypes(userCustomTypes);
 
-    // Fetch options globales (user_id IS NULL)
-    const { data } = await supabase
+    const extraKeys = userCustomTypes.map(t => t.key);
+
+    // ── Options partagées (user_id IS NULL) ───────────────────────────────────
+    const { data: globalData } = await supabase
       .from("user_custom_variables")
       .select("*")
-      .is("user_id", null);   // ← options globales uniquement
+      .is("user_id", null);
 
-    if (data) {
-      const grouped: CustomVariables = {
-        direction_structure: [],
-        setup_type: [],
-        entry_model: [],
-        entry_timing: [],
-        entry_timeframe: [],
-        sl_placement: [],
-        tp_placement: [],
-      };
+    // ── Options personnelles (user_id = auth.uid()) ───────────────────────────
+    const { data: personalData } = user?.id
+      ? await supabase
+          .from("user_custom_variables")
+          .select("*")
+          .eq("user_id", user.id)
+      : { data: [] };
 
-      userCustomTypes.forEach(t => { grouped[t.key] = []; });
-
-      data.forEach((v: CustomVariable) => {
-        if (v.variable_type in grouped) {
-          grouped[v.variable_type].push(v.variable_value);
-        } else {
-          grouped[v.variable_type] = grouped[v.variable_type] || [];
-          grouped[v.variable_type].push(v.variable_value);
-        }
-      });
-
-      setVariables(grouped);
-    }
-
+    setGlobalVariables(groupByType(globalData || [], extraKeys));
+    setPersonalVariables(groupByType(personalData || [], extraKeys));
     setLoading(false);
   };
 
@@ -111,7 +115,7 @@ export const useCustomVariables = () => {
     fetchVariables();
 
     const channel = supabase
-      .channel("global_custom_variables_changes")
+      .channel("custom_variables_changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "user_custom_variables" }, () => {
         fetchVariables();
       })
@@ -123,5 +127,14 @@ export const useCustomVariables = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  return { variables, customTypes, loading, refetch: fetchVariables };
+  return {
+    // Nouvelles clés séparées
+    globalVariables,
+    personalVariables,
+    // Backward-compat : variables = globalVariables (utilisé dans certains anciens composants)
+    variables: globalVariables,
+    customTypes,
+    loading,
+    refetch: fetchVariables,
+  };
 };

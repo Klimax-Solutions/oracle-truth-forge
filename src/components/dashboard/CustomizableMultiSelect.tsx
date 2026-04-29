@@ -1,4 +1,21 @@
-import { useState } from "react";
+// ─────────────────────────────────────────────────────────────────────────────
+// CustomizableMultiSelect — dropdown multi/mono sélection avec options gérables
+//
+// Architecture 3 couches (dans le marbre — 2026-04-29) :
+//   fixedOptions   : hardcodées dans le code, non modifiables
+//   globalOptions  : user_id IS NULL — admin gère, tous les users voient
+//   personalOptions: user_id = auth.uid() — user gère, lui seul voit
+//
+// Comportement add :
+//   - canManage=true  → insère en global  (user_id NULL)
+//   - canManage=false → insère en perso   (user_id = auth.uid())
+//
+// Comportement delete :
+//   - option globale  → canManage requis
+//   - option perso    → le user qui la possède peut la supprimer
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { useState, useEffect } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -10,18 +27,22 @@ interface CustomizableMultiSelectProps {
   value: string;
   onChange: (value: string) => void;
   fixedOptions?: string[];
-  customOptions: string[];
+  /** Options partagées — admin gère, tous voient */
+  globalOptions?: string[];
+  /** Options personnelles — user gère, lui seul voit */
+  personalOptions?: string[];
+  /** @deprecated Alias de globalOptions (backward compat) */
+  customOptions?: string[];
   variableType: string;
   placeholder?: string;
   onOptionsChanged: () => void;
   compact?: boolean;
   className?: string;
-  /** Si true : choix unique, ferme automatiquement après sélection, affiche le texte plat */
+  /** Si true : choix unique, ferme automatiquement après sélection */
   singleSelect?: boolean;
   /**
-   * Si true : l'utilisateur peut ajouter / supprimer des options.
-   * Réservé aux admins — les membres voient les options mais ne peuvent pas les modifier.
-   * Règle dans le marbre : supprimer une option n'affecte pas rétrospectivement les trades.
+   * Si true : l'utilisateur peut gérer les options PARTAGÉES (admin uniquement).
+   * Tous les users authentifiés peuvent toujours gérer leurs options personnelles.
    */
   canManage?: boolean;
 }
@@ -30,7 +51,9 @@ export const CustomizableMultiSelect = ({
   value,
   onChange,
   fixedOptions = [],
-  customOptions,
+  globalOptions,
+  personalOptions = [],
+  customOptions,         // backward compat
   variableType,
   placeholder = "Sélectionner…",
   onOptionsChanged,
@@ -39,24 +62,41 @@ export const CustomizableMultiSelect = ({
   singleSelect = false,
   canManage = false,
 }: CustomizableMultiSelectProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [newValue, setNewValue] = useState("");
-  const [isAdding, setIsAdding] = useState(false);
+  const [isOpen, setIsOpen]         = useState(false);
+  const [newValue, setNewValue]     = useState("");
+  const [isAdding, setIsAdding]     = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const allOptions = [
-    ...fixedOptions,
-    ...customOptions.filter((o) => !fixedOptions.includes(o)),
-  ];
+  // Résoudre globalOptions (backward compat avec customOptions)
+  const resolvedGlobalOptions = globalOptions ?? customOptions ?? [];
+
+  // Récupérer l'uid une seule fois au montage
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUserId(user?.id ?? null);
+    });
+  }, []);
+
+  // ── Construire la liste complète ─────────────────────────────────────────────
+  // Ordre : fixes → partagées → personnelles (sans doublons)
+  const globalUniq   = resolvedGlobalOptions.filter(o => !fixedOptions.includes(o));
+  const personalUniq = personalOptions.filter(
+    o => !fixedOptions.includes(o) && !resolvedGlobalOptions.includes(o),
+  );
+  const allOptions = [...fixedOptions, ...globalUniq, ...personalUniq];
 
   const selectedValues = value
     ? value.split(",").map((v) => v.trim()).filter(Boolean)
     : [];
 
-  // ── Value helpers ────────────────────────────────────────────
+  // ── Catégoriser chaque option ──────────────────────────────────────────────
+  const isPersonal = (opt: string) => personalOptions.includes(opt) && !fixedOptions.includes(opt);
+  const isGlobal   = (opt: string) => resolvedGlobalOptions.includes(opt) && !fixedOptions.includes(opt);
+
+  // ── Sélection ─────────────────────────────────────────────────────────────
   const handleSelect = (opt: string) => {
     if (singleSelect) {
-      // Toggle : si déjà sélectionné → désélectionner, sinon sélectionner et fermer
       const next = selectedValues.includes(opt) ? "" : opt;
       onChange(next);
       if (!selectedValues.includes(opt)) setIsOpen(false);
@@ -73,27 +113,35 @@ export const CustomizableMultiSelect = ({
     onChange(selectedValues.filter((v) => v !== opt).join(", "));
   };
 
-  // ── CRUD (admin uniquement — canManage doit être true) ───────
+  // ── Ajout ─────────────────────────────────────────────────────────────────
   const handleAdd = async () => {
-    if (!canManage) return;
     const trimmed = newValue.trim();
     if (!trimmed || allOptions.includes(trimmed)) return;
     setIsAdding(true);
-    // Options globales : pas de user_id (NULL en DB)
-    const { error } = await supabase.from("user_custom_variables").insert({
-      variable_type: variableType,
-      variable_value: trimmed,
-    } as any);
+
+    // Admin → global (pas de user_id) ; user → personnel (user_id = auth.uid())
+    const insertData = canManage
+      ? { variable_type: variableType, variable_value: trimmed }
+      : { variable_type: variableType, variable_value: trimmed, user_id: currentUserId };
+
+    const { error } = await supabase
+      .from("user_custom_variables")
+      .insert(insertData as any);
+
     setIsAdding(false);
-    if (!error) { setNewValue(""); onOptionsChanged(); }
-    else toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    if (!error) {
+      setNewValue("");
+      onOptionsChanged();
+    } else {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    }
   };
 
-  const handleDelete = async (opt: string) => {
+  // ── Suppression option partagée (admin requis) ─────────────────────────────
+  const handleDeleteGlobal = async (opt: string) => {
     if (!canManage) return;
-    // Supprime l'option globale (user_id IS NULL)
-    // Règle : ne pas toucher aux trades existants — les valeurs restent dans user_executions
-    await supabase.from("user_custom_variables")
+    await supabase
+      .from("user_custom_variables")
       .delete()
       .is("user_id", null)
       .eq("variable_type", variableType)
@@ -103,11 +151,24 @@ export const CustomizableMultiSelect = ({
     onOptionsChanged();
   };
 
-  // ── Render ───────────────────────────────────────────────────
+  // ── Suppression option personnelle (user requis) ───────────────────────────
+  const handleDeletePersonal = async (opt: string) => {
+    if (!currentUserId) return;
+    await supabase
+      .from("user_custom_variables")
+      .delete()
+      .eq("user_id", currentUserId)
+      .eq("variable_type", variableType)
+      .eq("variable_value", opt);
+    if (selectedValues.includes(opt))
+      onChange(selectedValues.filter((v) => v !== opt).join(", "));
+    onOptionsChanged();
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <PopoverPrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
       <PopoverPrimitive.Trigger asChild>
-        {/* Trigger — looks exactly like an Input */}
         <button
           type="button"
           className={cn(
@@ -121,12 +182,10 @@ export const CustomizableMultiSelect = ({
         >
           {selectedValues.length > 0 ? (
             singleSelect ? (
-              /* Choix unique : texte plat, pas de badge */
               <span className="flex-1 text-left truncate text-sm font-medium">
                 {selectedValues[0]}
               </span>
             ) : (
-              /* Multi : badges avec X */
               <div className="flex flex-wrap gap-1 flex-1 overflow-hidden min-w-0">
                 {selectedValues.map((v) => (
                   <span key={v} className="inline-flex items-center gap-0.5 bg-primary/20 text-primary text-[11px] px-1.5 py-0.5 rounded font-semibold">
@@ -163,52 +222,50 @@ export const CustomizableMultiSelect = ({
           align="start"
           sideOffset={4}
           style={{
-            // minWidth = au moins aussi large que le trigger
-            // sans width fixe = s'étend pour afficher tout le texte
             minWidth: "var(--radix-popover-trigger-width)",
             maxWidth: "260px",
           }}
           className="z-[9999] rounded-xl border border-white/[.15] bg-[hsl(var(--card))] shadow-2xl shadow-black/70 overflow-hidden p-0"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          {/* Add option — admins uniquement */}
-          {canManage ? (
-            <div className="flex gap-1.5 p-2 border-b border-white/[.08]">
-              <Input
-                value={newValue}
-                onChange={(e) => setNewValue(e.target.value)}
-                placeholder="Ajouter une option…"
-                className="h-8 text-xs border-white/[.15] bg-white/[.05] placeholder:text-foreground/30"
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={handleAdd}
-                disabled={isAdding || !newValue.trim()}
-                className={cn(
-                  "h-8 w-8 shrink-0 rounded-md border border-white/[.15] flex items-center justify-center transition-all",
-                  newValue.trim() ? "bg-primary/80 hover:bg-primary text-primary-foreground border-primary/60" : "text-foreground/30 cursor-not-allowed",
-                )}
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ) : (
-            /* Membres : indicateur lecture seule discret */
-            <div className="px-3 py-1.5 border-b border-white/[.06]">
-              <span className="text-[10px] text-foreground/25 italic">Options définies par l'admin</span>
-            </div>
-          )}
+          {/* ── Champ d'ajout — visible par tous ── */}
+          <div className="flex gap-1.5 p-2 border-b border-white/[.08]">
+            <Input
+              value={newValue}
+              onChange={(e) => setNewValue(e.target.value)}
+              placeholder={canManage ? "Ajouter une option partagée…" : "Ajouter une option perso…"}
+              className="h-8 text-xs border-white/[.15] bg-white/[.05] placeholder:text-foreground/30"
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={isAdding || !newValue.trim()}
+              className={cn(
+                "h-8 w-8 shrink-0 rounded-md border border-white/[.15] flex items-center justify-center transition-all",
+                newValue.trim() ? "bg-primary/80 hover:bg-primary text-primary-foreground border-primary/60" : "text-foreground/30 cursor-not-allowed",
+              )}
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
-          {/* Options */}
+          {/* ── Liste des options ── */}
           <div className="max-h-56 overflow-y-auto py-1">
             {allOptions.length === 0 && (
-              <p className="text-xs text-foreground/30 text-center py-4 italic">Tapez ci-dessus pour ajouter une option</p>
+              <p className="text-xs text-foreground/30 text-center py-4 italic">
+                Tapez ci-dessus pour ajouter une option
+              </p>
             )}
             {allOptions.map((opt) => {
-              const isSelected = selectedValues.includes(opt);
-              const isCustom   = !fixedOptions.includes(opt);
+              const isSelected  = selectedValues.includes(opt);
+              const optIsGlobal = isGlobal(opt);
+              const optIsPersonal = isPersonal(opt);
+
+              // Afficher le bouton supprimer ?
+              const canDeleteThis = (optIsGlobal && canManage) || optIsPersonal;
+
               return (
                 <div key={opt} className="flex items-center group px-1">
                   <button
@@ -222,7 +279,6 @@ export const CustomizableMultiSelect = ({
                     )}
                   >
                     {singleSelect ? (
-                      /* Radio visuel */
                       <div className={cn(
                         "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all",
                         isSelected ? "bg-primary border-primary" : "border-white/[.25] bg-transparent",
@@ -230,7 +286,6 @@ export const CustomizableMultiSelect = ({
                         {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />}
                       </div>
                     ) : (
-                      /* Checkbox visuel */
                       <div className={cn(
                         "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all",
                         isSelected ? "bg-primary border-primary" : "border-white/[.25] bg-transparent",
@@ -238,12 +293,25 @@ export const CustomizableMultiSelect = ({
                         {isSelected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
                       </div>
                     )}
-                    <span className="truncate flex-1 font-medium text-[13px] whitespace-nowrap">{opt}</span>
+                    <span className="truncate flex-1 font-medium text-[13px] whitespace-nowrap">
+                      {opt}
+                    </span>
+                    {/* Badge "perso" pour les options personnelles */}
+                    {optIsPersonal && (
+                      <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-400/80 border border-violet-500/20">
+                        perso
+                      </span>
+                    )}
                   </button>
-                  {isCustom && canManage && (
+
+                  {/* Bouton supprimer */}
+                  {canDeleteThis && (
                     <button
                       type="button"
-                      onClick={() => handleDelete(opt)}
+                      onClick={() => optIsGlobal
+                        ? handleDeleteGlobal(opt)
+                        : handleDeletePersonal(opt)
+                      }
                       className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
                     >
                       <Trash2 className="w-3 h-3" />
