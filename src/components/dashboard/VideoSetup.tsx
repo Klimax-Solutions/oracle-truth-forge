@@ -334,10 +334,10 @@ const OraclePlayer = ({
   const pct        = totalCount > 0 ? Math.round((viewedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="h-full flex flex-col lg:flex-row overflow-hidden">
+    <div className="h-full flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
 
       {/* ── Colonne principale : header + player ── */}
-      <div className="flex-1 flex flex-col overflow-auto" style={{ scrollbarWidth: "none" }}>
+      <div className="flex-1 flex flex-col lg:overflow-auto" style={{ scrollbarWidth: "none" }}>
         <div className="px-3 md:px-10 pt-4 md:pt-5 pb-4 md:pb-6 flex flex-col gap-4">
 
           {/*
@@ -496,10 +496,9 @@ const OraclePlayer = ({
         </div>
       </div>
 
-      {/* ── Sidebar playlist ── */}
+      {/* ── Sidebar playlist (full-width sous le player en mobile) ── */}
       <div
-        className="lg:w-72 xl:w-80 shrink-0 flex flex-col"
-        style={{ borderLeft: "1px solid rgba(255,255,255,0.048)" }}
+        className="w-full lg:w-72 xl:w-80 shrink-0 flex flex-col border-t lg:border-t-0 lg:border-l border-white/[.048]"
       >
         {/* Header sidebar */}
         <div className="px-5 py-4 shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.048)" }}>
@@ -509,7 +508,7 @@ const OraclePlayer = ({
         </div>
 
         {/* Liste */}
-        <div className="flex-1 overflow-auto" style={{ scrollbarWidth: "none" }}>
+        <div className="lg:flex-1 lg:overflow-auto" style={{ scrollbarWidth: "none" }}>
           {videos.map((video, i) => {
             const isActive  = selectedVideo?.id === video.id;
             const isViewed  = viewedIds.has(video.id);
