@@ -394,7 +394,10 @@ export const CustomizableMultiSelect = ({
           </div>
 
           {/* ── Liste scrollable ── */}
-          <div className="overflow-y-auto min-h-0 flex-1 p-1.5 space-y-1.5">
+          <div
+            className="overflow-y-auto min-h-0 flex-1 p-1.5 space-y-1.5"
+            onWheel={(e) => e.stopPropagation()}
+          >
             {allOptions.length === 0 && (
               <p className="text-xs text-foreground/30 text-center py-4 italic">
                 Tapez ci-dessus pour ajouter une option
