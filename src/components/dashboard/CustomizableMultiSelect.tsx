@@ -239,7 +239,6 @@ export const CustomizableMultiSelect = ({
                       </div>
                     )}
                     <span className="truncate flex-1 font-medium text-[13px] whitespace-nowrap">{opt}</span>
-                    {isCustom && <span className="text-[10px] text-foreground/20 shrink-0 italic">perso</span>}
                   </button>
                   {isCustom && canManage && (
                     <button

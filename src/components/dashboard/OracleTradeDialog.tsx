@@ -335,7 +335,13 @@ export const OracleTradeDialog = ({
 
   // Admin check (pour verrouillage des paramètres setup en édition)
   useEffect(() => {
-    supabase.rpc("is_admin").then(({ data }) => setIsAdmin(!!data));
+    // super_admin inclus : is_admin() ne couvre que le rôle 'admin'
+    Promise.all([
+      supabase.rpc("is_admin"),
+      supabase.rpc("is_super_admin"),
+    ]).then(([{ data: admin }, { data: superAdmin }]) => {
+      setIsAdmin(!!admin || !!superAdmin);
+    });
   }, []);
 
   // En mode édition, les paramètres setup sont verrouillés pour les non-admins

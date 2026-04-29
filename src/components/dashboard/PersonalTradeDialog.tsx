@@ -307,7 +307,12 @@ export const PersonalTradeDialog = ({
 
   // Admin check — détermine si l'utilisateur peut gérer les options des dropdowns
   useEffect(() => {
-    supabase.rpc("is_admin").then(({ data }) => setIsAdmin(!!data));
+    Promise.all([
+      supabase.rpc("is_admin"),
+      supabase.rpc("is_super_admin"),
+    ]).then(([{ data: admin }, { data: superAdmin }]) => {
+      setIsAdmin(!!admin || !!superAdmin);
+    });
   }, []);
 
   const tradeDuration = calculateDuration(
