@@ -820,13 +820,13 @@ const SuccessPage = () => {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* ─── Discord Top Bar ─── */}
-      <div className="flex items-center h-12 px-3 sm:px-4 border-b border-border bg-card/80 flex-shrink-0 gap-2 backdrop-blur-sm">
-        <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-        <div className="flex items-center gap-0.5 min-w-0">
+      <div className="flex items-center h-12 px-2 sm:px-4 border-b border-border bg-card/80 flex-shrink-0 gap-2 backdrop-blur-sm">
+        <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0 hidden sm:block" />
+        <div className="flex items-center gap-0.5 min-w-0 overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setActiveView("discussion")}
             className={cn(
-              "px-2.5 py-1 rounded-md text-sm font-semibold transition-all",
+              "px-2 sm:px-2.5 py-1 rounded-md text-xs sm:text-sm font-semibold transition-all whitespace-nowrap",
               activeView === "discussion"
                 ? "text-foreground bg-muted/50"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
@@ -837,7 +837,7 @@ const SuccessPage = () => {
           <button
             onClick={() => setActiveView("leaderboard")}
             className={cn(
-              "px-2.5 py-1 rounded-md text-sm font-semibold transition-all",
+              "px-2 sm:px-2.5 py-1 rounded-md text-xs sm:text-sm font-semibold transition-all whitespace-nowrap",
               activeView === "leaderboard"
                 ? "text-foreground bg-muted/50"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
@@ -848,7 +848,7 @@ const SuccessPage = () => {
           <button
             onClick={() => setActiveView("m_vision")}
             className={cn(
-              "px-2.5 py-1 rounded-md text-sm font-semibold transition-all",
+              "px-2 sm:px-2.5 py-1 rounded-md text-xs sm:text-sm font-semibold transition-all whitespace-nowrap",
               activeView === "m_vision"
                 ? "text-foreground bg-muted/50"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
@@ -859,7 +859,7 @@ const SuccessPage = () => {
           <button
             onClick={() => setActiveView("jk_vision")}
             className={cn(
-              "px-2.5 py-1 rounded-md text-sm font-semibold transition-all",
+              "px-2 sm:px-2.5 py-1 rounded-md text-xs sm:text-sm font-semibold transition-all whitespace-nowrap",
               activeView === "jk_vision"
                 ? "text-foreground bg-muted/50"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
@@ -1003,11 +1003,21 @@ const SuccessPage = () => {
           )}
         </div>
 
-        {/* ─── Right sidebar — full height, Discord L3 ─── */}
+        {/* ─── Right sidebar — desktop pinned, mobile drawer overlay ─── */}
         {showMembers && (
-          <div className="hidden md:flex w-56 lg:w-60 border-l border-border bg-secondary/30 flex-col overflow-hidden flex-shrink-0">
-            <MemberSidebar myCount={myCount} onlineUsers={onlineUsers} allUsers={allUsers} isAdmin={isAdmin} />
-          </div>
+          <>
+            {/* Desktop : pinned right column */}
+            <div className="hidden md:flex w-56 lg:w-60 border-l border-border bg-secondary/30 flex-col overflow-hidden flex-shrink-0">
+              <MemberSidebar myCount={myCount} onlineUsers={onlineUsers} allUsers={allUsers} isAdmin={isAdmin} />
+            </div>
+            {/* Mobile : overlay drawer côté droit */}
+            <div className="md:hidden fixed inset-0 z-50 flex" onClick={() => setShowMembers(false)}>
+              <div className="flex-1 bg-black/50 backdrop-blur-[2px]" />
+              <div className="w-72 max-w-[85vw] bg-card border-l border-border flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                <MemberSidebar myCount={myCount} onlineUsers={onlineUsers} allUsers={allUsers} isAdmin={isAdmin} />
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
