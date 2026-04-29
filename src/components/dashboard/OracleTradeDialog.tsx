@@ -465,6 +465,17 @@ export const OracleTradeDialog = ({
       return;
     }
 
+    const hasContextScreenshot  = !!contextFile || !!existingContextUrl;
+    const hasEntryScreenshot    = !!entryFile   || !!existingEntryUrl;
+    if (!hasContextScreenshot || !hasEntryScreenshot) {
+      toast({
+        title: "Action requise",
+        description: "Vous devez fournir 2 screenshots (Contexte + Entrée) pour enregistrer ce trade.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSaving(true); setUploading(true);
     const tradeNum = parseInt(formData.trade_number);
     const [contextUrl, entryUrl] = await Promise.all([
@@ -960,7 +971,7 @@ export const OracleTradeDialog = ({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={saving || uploading || dateBlocked}
+              disabled={saving || uploading || dateBlocked || !((contextFile || existingContextUrl) && (entryFile || existingEntryUrl))}
               size="sm"
               className="gap-1.5 h-9 px-5"
             >
