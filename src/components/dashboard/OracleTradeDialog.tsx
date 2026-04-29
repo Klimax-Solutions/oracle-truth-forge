@@ -12,13 +12,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogTitle,
@@ -577,7 +570,7 @@ export const OracleTradeDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="max-w-4xl w-[calc(100vw-2rem)] max-h-[92vh] flex flex-col overflow-hidden p-0 gap-0 border border-white/[.18]"
+        className="max-w-5xl w-[calc(100vw-2rem)] max-h-[92vh] flex flex-col overflow-hidden p-0 gap-0 border border-white/[.18]"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
@@ -599,173 +592,285 @@ export const OracleTradeDialog = ({
           )}
         </div>
 
-        {/* ── SCROLLABLE BODY ── */}
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
+        {/* ── TWO-COLUMN BODY ── */}
+        <div className="flex flex-row flex-1 overflow-hidden">
 
-          {/* Avertissement chronologique (seule contrainte conservée) */}
-          {dateBeforeMin && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs border bg-amber-500/10 border-amber-500/25 text-amber-300">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              <span>La date doit être ≥ {formatDateShort(minTradeDate!)} (trade précédent)</span>
-            </div>
-          )}
+          {/* ── LEFT — scrollable form ── */}
+          <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
 
-          {/* ── INFORMATIONS ── */}
-          <div className="space-y-3">
-            <SectionHeader label="Informations" />
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <Field label="N° Trade" required>
-                <div className="flex items-center h-9 rounded-md border border-white/25 bg-white/[.03] px-3 text-sm font-mono text-foreground/60 gap-1.5">
-                  <Lock className="w-3 h-3 shrink-0 text-foreground/25" />
-                  {formData.trade_number}
-                </div>
-              </Field>
-              <Field label="Date Entrée" required>
-                <DatePicker
-                  value={formData.trade_date}
-                  onChange={handleEntryDateChange}
-                  error={dateBeforeMin}
-                />
-                {dateBeforeMin && (
-                  <p className="text-[10px] text-destructive font-mono mt-0.5">
-                    ≥ {formatDateShort(minTradeDate!)}
-                  </p>
-                )}
-              </Field>
-              <Field label="Date Sortie" required>
-                <DatePicker
-                  value={formData.exit_date}
-                  onChange={(v) => set("exit_date", v)}
-                />
-              </Field>
-              <Field label="Direction" required>
-                <div className="relative flex h-9 rounded-md border border-white/25 bg-white/[.03] p-0.5 overflow-hidden">
-                  {/* sliding pill */}
-                  <div
-                    className={cn(
-                      "absolute inset-y-0.5 w-[calc(50%-2px)] rounded-[5px] transition-all duration-300 ease-[cubic-bezier(.4,0,.2,1)]",
-                      formData.direction === "Long"
-                        ? "left-0.5 bg-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
-                        : "left-[calc(50%+1px)] bg-rose-500/25 shadow-[0_0_12px_rgba(244,63,94,0.25)]",
-                    )}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => set("direction", "Long")}
-                    className={cn(
-                      "relative flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold rounded-[5px] transition-colors duration-200 z-10",
-                      formData.direction === "Long"
-                        ? "text-emerald-400"
-                        : "text-foreground/35 hover:text-foreground/60",
-                    )}
-                  >
-                    <span className={cn(
-                      "w-1.5 h-1.5 rounded-full transition-all duration-300",
-                      formData.direction === "Long" ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-foreground/20",
-                    )} />
-                    Long
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => set("direction", "Short")}
-                    className={cn(
-                      "relative flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold rounded-[5px] transition-colors duration-200 z-10",
-                      formData.direction === "Short"
-                        ? "text-rose-400"
-                        : "text-foreground/35 hover:text-foreground/60",
-                    )}
-                  >
-                    <span className={cn(
-                      "w-1.5 h-1.5 rounded-full transition-all duration-300",
-                      formData.direction === "Short" ? "bg-rose-400 shadow-[0_0_6px_rgba(251,113,133,0.8)]" : "bg-foreground/20",
-                    )} />
-                    Short
-                  </button>
-                </div>
-              </Field>
-            </div>
-          </div>
+            {/* Avertissement chronologique (seule contrainte conservée) */}
+            {dateBeforeMin && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs border bg-amber-500/10 border-amber-500/25 text-amber-300">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>La date doit être ≥ {formatDateShort(minTradeDate!)} (trade précédent)</span>
+              </div>
+            )}
 
-          {/* ── PARAMÈTRES DU SETUP ── */}
-          <div className="space-y-3">
-            <SectionHeader
-              label="Paramètres du Setup"
-              extra={setupFieldsLocked
-                ? <span className="flex items-center gap-1 text-[10px] text-amber-400/55 font-mono shrink-0">
-                    <Lock className="w-3 h-3" /> admin requis pour modifier
-                  </span>
-                : undefined
-              }
-            />
-            <div className={cn(setupFieldsLocked && "opacity-50 pointer-events-none select-none")}>
-              {/* 5 colonnes */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                <Field label="Type de Config." required>
-                  <CustomizableMultiSelect
-                    compact singleSelect canManage={isAdmin}
-                    value={formData.setup_type}
-                    onChange={(v) => set("setup_type", v)}
-                    globalOptions={globalVariables.setup_type}
-                    personalOptions={personalVariables.setup_type}
-                    variableType="setup_type"
-                    placeholder="Sélectionne..."
-                    onOptionsChanged={refetchVariables}
+            {/* ── INFORMATIONS ── */}
+            <div className="space-y-3">
+              <SectionHeader label="Informations" />
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <Field label="N° Trade" required>
+                  <div className="flex items-center h-9 rounded-md border border-white/25 bg-white/[.03] px-3 text-sm font-mono text-foreground/60 gap-1.5">
+                    <Lock className="w-3 h-3 shrink-0 text-foreground/25" />
+                    {formData.trade_number}
+                  </div>
+                </Field>
+                <Field label="Date Entrée" required>
+                  <DatePicker
+                    value={formData.trade_date}
+                    onChange={handleEntryDateChange}
+                    error={dateBeforeMin}
+                  />
+                  {dateBeforeMin && (
+                    <p className="text-[10px] text-destructive font-mono mt-0.5">
+                      ≥ {formatDateShort(minTradeDate!)}
+                    </p>
+                  )}
+                </Field>
+                <Field label="Date Sortie" required>
+                  <DatePicker
+                    value={formData.exit_date}
+                    onChange={(v) => set("exit_date", v)}
                   />
                 </Field>
-                <Field label="Contexte" required>
-                  <CustomizableMultiSelect
-                    compact singleSelect canManage={isAdmin}
-                    value={formData.direction_structure}
-                    onChange={(v) => set("direction_structure", v)}
-                    globalOptions={globalVariables.direction_structure}
-                    personalOptions={personalVariables.direction_structure}
-                    variableType="direction_structure"
-                    placeholder="Sélectionne..."
-                    onOptionsChanged={refetchVariables}
-                  />
-                </Field>
-                <Field label="Entry Model" required>
-                  <CustomizableMultiSelect
-                    compact canManage={isAdmin}
-                    value={formData.entry_model}
-                    onChange={(v) => set("entry_model", v)}
-                    globalOptions={globalVariables.entry_model}
-                    personalOptions={personalVariables.entry_model}
-                    variableType="entry_model"
-                    placeholder="Sélectionne..."
-                    onOptionsChanged={refetchVariables}
-                  />
-                </Field>
-                <Field label="Timing">
-                  <CustomizableMultiSelect
-                    compact singleSelect canManage={isAdmin}
-                    value={formData.entry_timing}
-                    onChange={(v) => set("entry_timing", v)}
-                    globalOptions={globalVariables.entry_timing}
-                    personalOptions={personalVariables.entry_timing}
-                    variableType="entry_timing"
-                    placeholder="Sélectionne..."
-                    onOptionsChanged={refetchVariables}
-                  />
-                </Field>
-                <Field label="Time Frame d'entrée">
-                  <CustomizableMultiSelect
-                    compact singleSelect canManage={isAdmin}
-                    value={formData.entry_timeframe}
-                    onChange={(v) => set("entry_timeframe", v)}
-                    globalOptions={globalVariables.entry_timeframe}
-                    personalOptions={personalVariables.entry_timeframe}
-                    variableType="entry_timeframe"
-                    placeholder="Sélectionne..."
-                    onOptionsChanged={refetchVariables}
-                  />
+                <Field label="Direction" required>
+                  <div className="relative flex h-9 rounded-md border border-white/25 bg-white/[.03] p-0.5 overflow-hidden">
+                    <div
+                      className={cn(
+                        "absolute inset-y-0.5 w-[calc(50%-2px)] rounded-[5px] transition-all duration-300 ease-[cubic-bezier(.4,0,.2,1)]",
+                        formData.direction === "Long"
+                          ? "left-0.5 bg-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                          : "left-[calc(50%+1px)] bg-rose-500/25 shadow-[0_0_12px_rgba(244,63,94,0.25)]",
+                      )}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => set("direction", "Long")}
+                      className={cn(
+                        "relative flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold rounded-[5px] transition-colors duration-200 z-10",
+                        formData.direction === "Long" ? "text-emerald-400" : "text-foreground/35 hover:text-foreground/60",
+                      )}
+                    >
+                      <span className={cn(
+                        "w-1.5 h-1.5 rounded-full transition-all duration-300",
+                        formData.direction === "Long" ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-foreground/20",
+                      )} />
+                      Long
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => set("direction", "Short")}
+                      className={cn(
+                        "relative flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold rounded-[5px] transition-colors duration-200 z-10",
+                        formData.direction === "Short" ? "text-rose-400" : "text-foreground/35 hover:text-foreground/60",
+                      )}
+                    >
+                      <span className={cn(
+                        "w-1.5 h-1.5 rounded-full transition-all duration-300",
+                        formData.direction === "Short" ? "bg-rose-400 shadow-[0_0_6px_rgba(251,113,133,0.8)]" : "bg-foreground/20",
+                      )} />
+                      Short
+                    </button>
+                  </div>
                 </Field>
               </div>
-              {/* Placement SL/TP */}
-              <div className="grid grid-cols-2 gap-3 mt-3">
+            </div>
+
+            {/* ── PARAMÈTRES DU SETUP ── */}
+            <div className="space-y-3">
+              <SectionHeader
+                label="Paramètres du Setup"
+                extra={setupFieldsLocked
+                  ? <span className="flex items-center gap-1 text-[10px] text-amber-400/55 font-mono shrink-0">
+                      <Lock className="w-3 h-3" /> admin requis pour modifier
+                    </span>
+                  : undefined
+                }
+              />
+              <div className={cn(setupFieldsLocked && "opacity-50 pointer-events-none select-none")}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  <Field label="Type de Config." required>
+                    <CustomizableMultiSelect
+                      compact singleSelect canManage={isAdmin}
+                      value={formData.setup_type}
+                      onChange={(v) => set("setup_type", v)}
+                      globalOptions={globalVariables.setup_type}
+                      personalOptions={personalVariables.setup_type}
+                      variableType="setup_type"
+                      placeholder="Sélectionne..."
+                      onOptionsChanged={refetchVariables}
+                    />
+                  </Field>
+                  <Field label="Contexte" required>
+                    <CustomizableMultiSelect
+                      compact singleSelect canManage={isAdmin}
+                      value={formData.direction_structure}
+                      onChange={(v) => set("direction_structure", v)}
+                      globalOptions={globalVariables.direction_structure}
+                      personalOptions={personalVariables.direction_structure}
+                      variableType="direction_structure"
+                      placeholder="Sélectionne..."
+                      onOptionsChanged={refetchVariables}
+                    />
+                  </Field>
+                  <Field label="Entry Model" required>
+                    <CustomizableMultiSelect
+                      compact canManage={isAdmin}
+                      value={formData.entry_model}
+                      onChange={(v) => set("entry_model", v)}
+                      globalOptions={globalVariables.entry_model}
+                      personalOptions={personalVariables.entry_model}
+                      variableType="entry_model"
+                      placeholder="Sélectionne..."
+                      onOptionsChanged={refetchVariables}
+                    />
+                  </Field>
+                  <Field label="Timing">
+                    <CustomizableMultiSelect
+                      compact singleSelect canManage={isAdmin}
+                      value={formData.entry_timing}
+                      onChange={(v) => set("entry_timing", v)}
+                      globalOptions={globalVariables.entry_timing}
+                      personalOptions={personalVariables.entry_timing}
+                      variableType="entry_timing"
+                      placeholder="Sélectionne..."
+                      onOptionsChanged={refetchVariables}
+                    />
+                  </Field>
+                  <Field label="Time Frame d'entrée">
+                    <CustomizableMultiSelect
+                      compact singleSelect canManage={isAdmin}
+                      value={formData.entry_timeframe}
+                      onChange={(v) => set("entry_timeframe", v)}
+                      globalOptions={globalVariables.entry_timeframe}
+                      personalOptions={personalVariables.entry_timeframe}
+                      variableType="entry_timeframe"
+                      placeholder="Sélectionne..."
+                      onOptionsChanged={refetchVariables}
+                    />
+                  </Field>
+                </div>
+              </div>
+            </div>
+
+            {/* ── EXÉCUTION ── */}
+            <div className="space-y-3">
+              <SectionHeader label="Exécution" />
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+
+                {/* Résultat — toggle 3 états dopaminergique */}
+                <Field label="Résultat" required>
+                  <div className="relative flex h-9 rounded-md border border-white/25 bg-white/[.03] p-0.5 overflow-hidden">
+                    {/* sliding pill */}
+                    {formData.result && (
+                      <div className={cn(
+                        "absolute inset-y-0.5 w-[calc(33.33%-1.5px)] rounded-[5px] transition-all duration-300 ease-[cubic-bezier(.4,0,.2,1)]",
+                        formData.result === "Win"  && "left-[1.5px]  bg-emerald-500/25 shadow-[0_0_14px_rgba(16,185,129,0.3)]",
+                        formData.result === "BE"   && "left-[calc(33.33%+0.5px)] bg-amber-500/25  shadow-[0_0_14px_rgba(245,158,11,0.3)]",
+                        formData.result === "Loss" && "left-[calc(66.67%+0.5px)] bg-rose-500/25   shadow-[0_0_14px_rgba(244,63,94,0.3)]",
+                      )} />
+                    )}
+                    {/* Win */}
+                    <button
+                      type="button"
+                      onClick={() => set("result", formData.result === "Win" ? "" : "Win")}
+                      className={cn(
+                        "relative flex-1 flex items-center justify-center gap-1 text-xs font-semibold rounded-[5px] transition-colors duration-200 z-10",
+                        formData.result === "Win" ? "text-emerald-400" : "text-foreground/35 hover:text-foreground/60",
+                      )}
+                    >
+                      <span className={cn(
+                        "w-1.5 h-1.5 rounded-full transition-all duration-300",
+                        formData.result === "Win" ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]" : "bg-foreground/20",
+                      )} />
+                      Win
+                    </button>
+                    {/* BE */}
+                    <button
+                      type="button"
+                      onClick={() => set("result", formData.result === "BE" ? "" : "BE")}
+                      className={cn(
+                        "relative flex-1 flex items-center justify-center gap-1 text-xs font-semibold rounded-[5px] transition-colors duration-200 z-10",
+                        formData.result === "BE" ? "text-amber-400" : "text-foreground/35 hover:text-foreground/60",
+                      )}
+                    >
+                      <span className={cn(
+                        "w-1.5 h-1.5 rounded-full transition-all duration-300",
+                        formData.result === "BE" ? "bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.9)]" : "bg-foreground/20",
+                      )} />
+                      BE
+                    </button>
+                    {/* Loss */}
+                    <button
+                      type="button"
+                      onClick={() => set("result", formData.result === "Loss" ? "" : "Loss")}
+                      className={cn(
+                        "relative flex-1 flex items-center justify-center gap-1 text-xs font-semibold rounded-[5px] transition-colors duration-200 z-10",
+                        formData.result === "Loss" ? "text-rose-400" : "text-foreground/35 hover:text-foreground/60",
+                      )}
+                    >
+                      <span className={cn(
+                        "w-1.5 h-1.5 rounded-full transition-all duration-300",
+                        formData.result === "Loss" ? "bg-rose-400 shadow-[0_0_6px_rgba(251,113,133,0.9)]" : "bg-foreground/20",
+                      )} />
+                      Loss
+                    </button>
+                  </div>
+                </Field>
+
+                <Field label="RR" required>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={formData.rr}
+                    onChange={(e) => {
+                      const sanitized = e.target.value
+                        .replace(/,/g, ".")
+                        .replace(/[^0-9.]/g, "")
+                        .replace(/\.(?=.*\.)/g, "");
+                      set("rr", sanitized);
+                    }}
+                    onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
+                    placeholder="Ex: 2.5"
+                    className="h-9"
+                  />
+                </Field>
+                <Field label="Heure d'entrée" required>
+                  <TimePicker value={formData.entry_time} onChange={(v) => set("entry_time", v)} />
+                </Field>
+                <Field label="Heure de sortie" required>
+                  <TimePicker value={formData.exit_time} onChange={(v) => set("exit_time", v)} />
+                </Field>
+              </div>
+              {/* Durée auto-calculée */}
+              <div className={cn(
+                "flex items-center gap-2 text-xs font-mono transition-colors",
+                tradeDuration ? "text-foreground/50" : "text-foreground/25",
+              )}>
+                <Clock className="w-3.5 h-3.5 shrink-0" />
+                <span>Durée : <span className={tradeDuration ? "text-foreground/70 font-semibold" : ""}>{tradeDuration || "—"}</span></span>
+              </div>
+            </div>
+
+            {/* ── COMPLÉMENT — 4 champs en ligne ── */}
+            <div className="space-y-3">
+              <SectionHeader label="Complément" />
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 items-start">
+                <Field label="Taille du SL" required>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={formData.stop_loss_size}
+                    onChange={(e) => set("stop_loss_size", sanitizeDecimal(e.target.value))}
+                    onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
+                    placeholder="Ex: 12.5"
+                    className="h-9 border-white/25 bg-white/[.04]"
+                  />
+                </Field>
                 <Field label="Placement du SL">
                   <CustomizableMultiSelect
-                    singleSelect canManage={isAdmin}
+                    compact singleSelect canManage={isAdmin}
                     value={formData.sl_placement}
                     onChange={(v) => set("sl_placement", v)}
                     globalOptions={globalVariables.sl_placement || []}
@@ -777,7 +882,7 @@ export const OracleTradeDialog = ({
                 </Field>
                 <Field label="Placement du TP">
                   <CustomizableMultiSelect
-                    singleSelect canManage={isAdmin}
+                    compact singleSelect canManage={isAdmin}
                     value={formData.tp_placement}
                     onChange={(v) => set("tp_placement", v)}
                     globalOptions={globalVariables.tp_placement || []}
@@ -787,143 +892,70 @@ export const OracleTradeDialog = ({
                     onOptionsChanged={refetchVariables}
                   />
                 </Field>
-              </div>
-            </div>
-          </div>
-
-          {/* ── EXÉCUTION ── */}
-          <div className="space-y-3">
-            <SectionHeader label="Exécution" />
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <Field label="Résultat" required>
-                <Select
-                  value={formData.result}
-                  onValueChange={(v: "Win" | "Loss" | "BE" | "") => set("result", v)}
-                >
-                  <SelectTrigger className="h-9 border-white/25 bg-white/[.04]">
-                    <SelectValue placeholder="Sélectionner..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Win">Win</SelectItem>
-                    <SelectItem value="Loss">Loss</SelectItem>
-                    <SelectItem value="BE">BE (Break Even)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="RR" required>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={formData.rr}
-                  onChange={(e) => {
-                    // Remplace la virgule par un point, filtre les caractères non numériques
-                    const sanitized = e.target.value
-                      .replace(/,/g, ".")
-                      .replace(/[^0-9.]/g, "")
-                      // Interdit plusieurs points
-                      .replace(/\.(?=.*\.)/g, "");
-                    set("rr", sanitized);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === ",") e.preventDefault();
-                  }}
-                  placeholder="Ex: 2.5"
-                  className="h-9"
-                />
-              </Field>
-              <Field label="Heure d'entrée" required>
-                <TimePicker value={formData.entry_time} onChange={(v) => set("entry_time", v)} />
-              </Field>
-              <Field label="Heure de sortie" required>
-                <TimePicker value={formData.exit_time}  onChange={(v) => set("exit_time", v)} />
-              </Field>
-            </div>
-            {/* Durée auto-calculée */}
-            <div className={cn(
-              "flex items-center gap-2 text-xs font-mono transition-colors",
-              tradeDuration ? "text-foreground/50" : "text-foreground/25",
-            )}>
-              <Clock className="w-3.5 h-3.5 shrink-0" />
-              <span>Durée : <span className={tradeDuration ? "text-foreground/70 font-semibold" : ""}>{tradeDuration || "—"}</span></span>
-            </div>
-          </div>
-
-          {/* ── COMPLÉMENT ── */}
-          <div className="space-y-3">
-            <SectionHeader label="Complément" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-              <Field label="Taille du SL" required>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={formData.stop_loss_size}
-                  onChange={(e) => set("stop_loss_size", sanitizeDecimal(e.target.value))}
-                  onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
-                  placeholder="Ex: 12.5"
-                  className="h-9 border-white/25 bg-white/[.04]"
-                />
-              </Field>
-              <div className="space-y-2 pt-[22px]">
-                <div className="flex items-center gap-2.5">
-                  <Checkbox
-                    id="news_day"
-                    checked={formData.news_day}
-                    onCheckedChange={(checked) => setFormData(prev => ({
-                      ...prev, news_day: !!checked, news_label: !!checked ? prev.news_label : "",
-                    }))}
-                  />
-                  <Label htmlFor="news_day" className="text-sm cursor-pointer">Jour de news</Label>
+                <div className="space-y-2 pt-[22px]">
+                  <div className="flex items-center gap-2.5">
+                    <Checkbox
+                      id="news_day"
+                      checked={formData.news_day}
+                      onCheckedChange={(checked) => setFormData(prev => ({
+                        ...prev, news_day: !!checked, news_label: !!checked ? prev.news_label : "",
+                      }))}
+                    />
+                    <Label htmlFor="news_day" className="text-sm cursor-pointer">Jour de news</Label>
+                  </div>
+                  {formData.news_day && (
+                    <Input
+                      value={formData.news_label}
+                      onChange={(e) => set("news_label", e.target.value)}
+                      placeholder="Ex: NFP, CPI, FOMC..."
+                      className="h-9 border-white/25 bg-white/[.04]"
+                    />
+                  )}
                 </div>
-                {formData.news_day && (
-                  <Input
-                    value={formData.news_label}
-                    onChange={(e) => set("news_label", e.target.value)}
-                    placeholder="Ex: NFP, CPI, FOMC..."
-                    className="h-9 border-white/25 bg-white/[.04]"
-                  />
-                )}
               </div>
             </div>
-          </div>
 
-          {/* ── DONNÉES MANUELLES (optionnel) ── */}
-          <div className="space-y-3">
-            <SectionHeader
-              label="Données Manuelles"
-              extra={<span className="text-[10px] text-foreground/25 font-mono shrink-0">optionnel</span>}
-            />
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <Field label="Prix Entrée">
-                <Input type="text" inputMode="decimal" value={formData.entry_price}
-                  onChange={(e) => set("entry_price", sanitizeDecimal(e.target.value))}
-                  onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
-                  placeholder="Ex: 1.08542" className="h-9 border-white/25 bg-white/[.04]" />
-              </Field>
-              <Field label="Prix Sortie">
-                <Input type="text" inputMode="decimal" value={formData.exit_price}
-                  onChange={(e) => set("exit_price", sanitizeDecimal(e.target.value))}
-                  onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
-                  placeholder="Ex: 1.08650" className="h-9 border-white/25 bg-white/[.04]" />
-              </Field>
-              <Field label="Stop Loss">
-                <Input type="text" inputMode="decimal" value={formData.stop_loss}
-                  onChange={(e) => set("stop_loss", sanitizeDecimal(e.target.value))}
-                  onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
-                  placeholder="Ex: 1.08500" className="h-9 border-white/25 bg-white/[.04]" />
-              </Field>
-              <Field label="Take Profit">
-                <Input type="text" inputMode="decimal" value={formData.take_profit}
-                  onChange={(e) => set("take_profit", sanitizeDecimal(e.target.value))}
-                  onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
-                  placeholder="Ex: 1.08700" className="h-9 border-white/25 bg-white/[.04]" />
-              </Field>
+            {/* ── DONNÉES MANUELLES (optionnel) ── */}
+            <div className="space-y-3">
+              <SectionHeader
+                label="Données Manuelles"
+                extra={<span className="text-[10px] text-foreground/25 font-mono shrink-0">optionnel</span>}
+              />
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <Field label="Prix Entrée">
+                  <Input type="text" inputMode="decimal" value={formData.entry_price}
+                    onChange={(e) => set("entry_price", sanitizeDecimal(e.target.value))}
+                    onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
+                    placeholder="Ex: 1.08542" className="h-9 border-white/25 bg-white/[.04]" />
+                </Field>
+                <Field label="Prix Sortie">
+                  <Input type="text" inputMode="decimal" value={formData.exit_price}
+                    onChange={(e) => set("exit_price", sanitizeDecimal(e.target.value))}
+                    onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
+                    placeholder="Ex: 1.08650" className="h-9 border-white/25 bg-white/[.04]" />
+                </Field>
+                <Field label="Stop Loss">
+                  <Input type="text" inputMode="decimal" value={formData.stop_loss}
+                    onChange={(e) => set("stop_loss", sanitizeDecimal(e.target.value))}
+                    onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
+                    placeholder="Ex: 1.08500" className="h-9 border-white/25 bg-white/[.04]" />
+                </Field>
+                <Field label="Take Profit">
+                  <Input type="text" inputMode="decimal" value={formData.take_profit}
+                    onChange={(e) => set("take_profit", sanitizeDecimal(e.target.value))}
+                    onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
+                    placeholder="Ex: 1.08700" className="h-9 border-white/25 bg-white/[.04]" />
+                </Field>
+              </div>
             </div>
-          </div>
 
-          {/* ── SCREENSHOTS ── */}
-          <div className="space-y-3">
-            <SectionHeader label="Screenshots" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          </div>{/* /left column */}
+
+          {/* ── RIGHT PANEL — screenshots + notes ── */}
+          <div className="w-72 shrink-0 border-l border-white/[.07] overflow-y-auto flex flex-col px-5 py-5 gap-5">
+
+            <div className="space-y-3">
+              <SectionHeader label="Screenshots" />
               <ScreenshotUploadField
                 label="Contexte (M15)"
                 file={contextFile}
@@ -945,21 +977,20 @@ export const OracleTradeDialog = ({
                 onClear={() => { setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }}
               />
             </div>
-          </div>
 
-          {/* ── NOTES ── */}
-          <div className="space-y-1.5">
-            <label className="block text-[11px] font-medium text-foreground/55 leading-none">Notes</label>
-            <Textarea
-              value={formData.notes}
-              onChange={(e) => set("notes", e.target.value)}
-              placeholder="Observations, contexte du trade..."
-              rows={3}
-              className="resize-y min-h-[80px] border-white/25 bg-white/[.04]"
-            />
-          </div>
+            <div className="space-y-1.5 flex-1 flex flex-col">
+              <label className="block text-[11px] font-medium text-foreground/55 leading-none">Notes</label>
+              <Textarea
+                value={formData.notes}
+                onChange={(e) => set("notes", e.target.value)}
+                placeholder="Observations, contexte du trade..."
+                className="resize-none flex-1 min-h-[120px] border-white/25 bg-white/[.04]"
+              />
+            </div>
 
-        </div>{/* /scrollable body */}
+          </div>{/* /right panel */}
+
+        </div>{/* /two-column body */}
 
         {/* ── FOOTER ── */}
         <div className="px-6 py-4 border-t border-white/[.07] flex items-center justify-between shrink-0">
