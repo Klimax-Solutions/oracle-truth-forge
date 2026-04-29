@@ -46,21 +46,23 @@ Fichiers source : `supabase/migrations/`
 | 23 | `20260426140000_custom_access_token_hook.sql` | JWT hook — rôles dans les claims | ✅ | `custom_access_token_hook` function présente. **⚠️ Activation manuelle requise dans Auth → Hooks** |
 | 24 | `20260427120000_last_login_tracking.sql` | last_login_at + user_login_history | ✅ | Table `user_login_history` + function `record_login` présentes |
 | 25 | `20260429100000_fix_verification_unique_and_email_rpc.sql` | Index unique partiel verification_requests + RPC get_auth_emails | ✅ **Appliqué manuellement 2026-04-29** | `get_auth_emails` présente. Audit pré-migration : 0 doublons pending |
+| 26 | `20260429200000_fix_user_logic_rls_and_closer.sql` | `is_closer()` + policies closers sur early_access_requests + fix policies user_executions | ✅ **Appliqué manuellement 2026-04-29 17:11** | Lovable n'avait pas auto-déployé (~20min après push). CSV vérifié : "Setters and closers can view crm lead executions" présente, orphelines supprimées. |
 
-## ⚠️ Point critique : `is_closer()` manquante
+## ✅ is_closer() — CORRIGÉ (2026-04-29)
 
-La function `is_closer()` n'apparaît pas dans l'audit des routines prod (2026-04-29).
+`is_closer()` est maintenant présente en prod (migration #26 appliquée manuellement).
+Les policies RLS closers sur `early_access_requests` sont actives.
 
-**Impact** : si le code appelle `is_closer()` directement, il échouera silencieusement.
+## ⚠️ custom_access_token_hook — activation BLOQUÉE (Lovable ownership)
 
-**Vérification** : le code utilise peut-être `has_role('closer')` à la place (qui, lui, existe).
+La fonction `custom_access_token_hook` est déployée en prod **mais ne peut pas être activée** depuis le dashboard Supabase — Lovable Cloud détient les droits admin sur le projet `pggkwyhtplxyarctuoze`.
 
-**Fix si nécessaire** :
-```sql
-CREATE OR REPLACE FUNCTION public.is_closer()
-RETURNS boolean
-LANGUAGE sql
-STABLE SECURITY DEFINER
+**Options :**
+1. **Lovable support** — demander à l'équipe Lovable d'activer Auth → Hooks → Custom Access Token
+2. **Supabase Management API** — si un PAT est disponible : `PATCH /v1/projects/pggkwyhtplxyarctuoze/config/auth` avec `hook_custom_access_token_enabled: true`
+3. **Accepter le fallback RPC** — `useSidebarRoles` a déjà un fallback 3 couches (JWT → cache localStorage → RPCs individuels). Le produit fonctionne, juste légèrement plus lent sur le chargement des rôles.
+
+**Impact sans hook** : spinner potentiel de ~1-2s sur le dashboard au premier chargement (couvert par le safety timeout 3s déjà en place). Pas bloquant pour le launch.
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.user_roles
@@ -69,16 +71,7 @@ AS $$
   )
 $$;
 ```
-
-## ⚠️ custom_access_token_hook — activation manuelle requise
-
-La fonction `custom_access_token_hook` est déployée en prod mais doit être **activée manuellement** :
-
-1. Ouvrir `https://supabase.com/dashboard/project/pggkwyhtplxyarctuoze/auth/hooks`
-2. Authentication → Hooks → Custom Access Token
-3. Enable + sélectionner `public.custom_access_token_hook`
-
-Sans cette activation, le hook est dormant et les rôles ne sont pas injectés dans le JWT.
+> **OBSOLÈTE** — is_closer() est maintenant présente (migration #26, 2026-04-29).
 
 ## Procédure pour créer et appliquer une migration
 
