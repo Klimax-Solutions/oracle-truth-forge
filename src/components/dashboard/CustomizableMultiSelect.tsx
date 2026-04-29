@@ -317,17 +317,15 @@ export const CustomizableMultiSelect = ({
               </p>
             )}
 
-            {/* Groupe 1 — options fixes + partagées (admin) */}
+            {/* Groupe 1 — options partagées (admin) */}
             {(fixedOptions.length > 0 || globalUniq.length > 0) && (
               <>
-                {personalUniq.length > 0 && (
-                  <div className="flex items-center gap-2 px-3 pt-1.5 pb-1">
-                    <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-foreground/30">
-                      Options
-                    </span>
-                    <div className="flex-1 h-px bg-white/[.06]" />
-                  </div>
-                )}
+                <div className="flex items-center gap-2 px-3 pt-1.5 pb-1">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-foreground/30">
+                    Options partagées
+                  </span>
+                  <div className="flex-1 h-px bg-white/[.06]" />
+                </div>
                 {[...fixedOptions, ...globalUniq].map((opt) => renderOption(opt, false, false))}
               </>
             )}
