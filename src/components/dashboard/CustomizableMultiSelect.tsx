@@ -6,9 +6,9 @@
 //   globalOptions  : user_id IS NULL — admin gère, tous les users voient
 //   personalOptions: user_id = auth.uid() — user gère, lui seul voit
 //
-// Comportement add :
-//   - canManage=true  → confirmation inline → insère en global (user_id NULL)
-//   - canManage=false → insère en perso (user_id = auth.uid()) sans confirmation
+// Champ d'ajout du haut → TOUJOURS personnel (pour tous, admin inclus)
+// Admin add-on → petit "+" dans la card "Options partagées" → mini-input inline
+//               avec confirmation avant insertion globale
 //
 // Comportement delete :
 //   - option globale  → canManage requis + confirmation inline
@@ -19,7 +19,7 @@ import { useState, useEffect } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, X, Check, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, X, Check, AlertTriangle, Settings2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -63,15 +63,20 @@ export const CustomizableMultiSelect = ({
   canManage = false,
 }: CustomizableMultiSelectProps) => {
   const [isOpen, setIsOpen]         = useState(false);
-  const [newValue, setNewValue]     = useState("");
-  const [isAdding, setIsAdding]     = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // ── États de confirmation (friction admin) ────────────────────────────────
-  /** Option globale en attente de confirmation de suppression */
+  // ── Ajout personnel (champ du haut — tout le monde) ──────────────────────
+  const [newPersonalValue, setNewPersonalValue] = useState("");
+  const [isAddingPersonal, setIsAddingPersonal] = useState(false);
+
+  // ── Ajout partagé (admin add-on — dans la card "Options partagées") ───────
+  const [showSharedInput, setShowSharedInput]   = useState(false);
+  const [newSharedValue, setNewSharedValue]     = useState("");
+  const [pendingAddShared, setPendingAddShared] = useState<string | null>(null);
+  const [isAddingShared, setIsAddingShared]     = useState(false);
+
+  // ── Confirmation suppression globale ─────────────────────────────────────
   const [pendingDeleteGlobal, setPendingDeleteGlobal] = useState<string | null>(null);
-  /** Valeur en attente de confirmation d'ajout partagé */
-  const [pendingAdd, setPendingAdd] = useState<string | null>(null);
 
   const { toast } = useToast();
 
@@ -83,12 +88,14 @@ export const CustomizableMultiSelect = ({
     });
   }, []);
 
-  // Reset confirmations quand on ferme
+  // Reset tout quand on ferme
   useEffect(() => {
     if (!isOpen) {
+      setNewPersonalValue("");
+      setNewSharedValue("");
+      setShowSharedInput(false);
+      setPendingAddShared(null);
       setPendingDeleteGlobal(null);
-      setPendingAdd(null);
-      setNewValue("");
     }
   }, [isOpen]);
 
@@ -125,40 +132,48 @@ export const CustomizableMultiSelect = ({
     onChange(selectedValues.filter((v) => v !== opt).join(", "));
   };
 
-  // ── Ajout ─────────────────────────────────────────────────────────────────
-  const handleAddIntent = () => {
-    const trimmed = newValue.trim();
+  // ── Ajout personnel — pour tous (admin inclus) ────────────────────────────
+  const handleAddPersonal = async () => {
+    const trimmed = newPersonalValue.trim();
     if (!trimmed || allOptions.includes(trimmed)) return;
-    if (canManage) {
-      // Admin : demander confirmation avant d'ajouter en partagé
-      setPendingAdd(trimmed);
-    } else {
-      // User : ajout perso direct, sans friction
-      commitAdd(trimmed);
-    }
-  };
-
-  const commitAdd = async (val: string) => {
-    setIsAdding(true);
-    const insertData = canManage
-      ? { variable_type: variableType, variable_value: val }
-      : { variable_type: variableType, variable_value: val, user_id: currentUserId };
-
+    setIsAddingPersonal(true);
     const { error } = await supabase
       .from("user_custom_variables")
-      .insert(insertData as any);
-
-    setIsAdding(false);
-    setPendingAdd(null);
+      .insert({ variable_type: variableType, variable_value: trimmed, user_id: currentUserId } as any);
+    setIsAddingPersonal(false);
     if (!error) {
-      setNewValue("");
+      setNewPersonalValue("");
       onOptionsChanged();
     } else {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
     }
   };
 
-  // ── Suppression option partagée — avec confirmation ────────────────────────
+  // ── Ajout partagé — admin seulement, avec confirmation ────────────────────
+  const handleSharedAddIntent = () => {
+    const trimmed = newSharedValue.trim();
+    if (!trimmed || allOptions.includes(trimmed)) return;
+    setPendingAddShared(trimmed);
+  };
+
+  const commitAddShared = async () => {
+    if (!pendingAddShared || !canManage) return;
+    setIsAddingShared(true);
+    const { error } = await supabase
+      .from("user_custom_variables")
+      .insert({ variable_type: variableType, variable_value: pendingAddShared } as any);
+    setIsAddingShared(false);
+    setPendingAddShared(null);
+    if (!error) {
+      setNewSharedValue("");
+      setShowSharedInput(false);
+      onOptionsChanged();
+    } else {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // ── Suppression option partagée — avec confirmation ───────────────────────
   const handleDeleteGlobalConfirmed = async (opt: string) => {
     if (!canManage) return;
     await supabase
@@ -187,7 +202,7 @@ export const CustomizableMultiSelect = ({
     onOptionsChanged();
   };
 
-  // ── Render option ────────────────────────────────────────────────────────
+  // ── Render option ─────────────────────────────────────────────────────────
   const renderOption = (opt: string, optIsPersonal: boolean) => {
     const isSelected          = selectedValues.includes(opt);
     const optIsActuallyGlobal = isGlobal(opt);
@@ -261,8 +276,8 @@ export const CustomizableMultiSelect = ({
             type="button"
             onClick={() =>
               optIsActuallyGlobal
-                ? setPendingDeleteGlobal(opt)   // demande confirmation
-                : handleDeletePersonal(opt)      // perso : direct
+                ? setPendingDeleteGlobal(opt)
+                : handleDeletePersonal(opt)
             }
             className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all shrink-0 mr-1"
           >
@@ -332,65 +347,36 @@ export const CustomizableMultiSelect = ({
           style={{
             minWidth: "var(--radix-popover-trigger-width)",
             maxWidth: "280px",
-            maxHeight: "340px",
+            maxHeight: "360px",
           }}
           className="z-[9999] flex flex-col rounded-xl border border-white/[.15] bg-[hsl(var(--card))] shadow-2xl shadow-black/70 p-0"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          {/* ── Champ d'ajout (fixe en haut) ── */}
+          {/* ── Champ d'ajout personnel — identique pour tous (admin inclus) ── */}
           <div className="shrink-0 p-2 border-b border-white/[.08]">
-            {pendingAdd ? (
-              /* Confirmation ajout partagé */
-              <div className="flex flex-col gap-2 px-1 py-1">
-                <div className="flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-400/80 shrink-0" />
-                  <span className="text-[11px] text-foreground/70 leading-snug">
-                    Ajouter <span className="font-semibold text-foreground">"{pendingAdd}"</span> pour tous les utilisateurs ?
-                  </span>
-                </div>
-                <div className="flex gap-1.5 justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setPendingAdd(null)}
-                    className="text-[11px] px-2.5 py-1 rounded-md border border-white/[.12] text-foreground/50 hover:text-foreground hover:bg-white/[.05] transition-all"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => commitAdd(pendingAdd)}
-                    disabled={isAdding}
-                    className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-primary/80 hover:bg-primary text-primary-foreground transition-all disabled:opacity-50"
-                  >
-                    Confirmer
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex gap-1.5">
-                <Input
-                  value={newValue}
-                  onChange={(e) => setNewValue(e.target.value)}
-                  placeholder={canManage ? "Ajouter une option partagée…" : "Ajouter une option perso…"}
-                  className="h-8 text-xs border-white/[.15] bg-white/[.05] placeholder:text-foreground/30"
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddIntent(); } }}
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={handleAddIntent}
-                  disabled={isAdding || !newValue.trim()}
-                  className={cn(
-                    "h-8 w-8 shrink-0 rounded-md border border-white/[.15] flex items-center justify-center transition-all",
-                    newValue.trim()
-                      ? "bg-primary/80 hover:bg-primary text-primary-foreground border-primary/60"
-                      : "text-foreground/30 cursor-not-allowed",
-                  )}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
+            <div className="flex gap-1.5">
+              <Input
+                value={newPersonalValue}
+                onChange={(e) => setNewPersonalValue(e.target.value)}
+                placeholder="Ajouter une option perso…"
+                className="h-8 text-xs border-white/[.15] bg-white/[.05] placeholder:text-foreground/30"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddPersonal(); } }}
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleAddPersonal}
+                disabled={isAddingPersonal || !newPersonalValue.trim()}
+                className={cn(
+                  "h-8 w-8 shrink-0 rounded-md border border-white/[.15] flex items-center justify-center transition-all",
+                  newPersonalValue.trim()
+                    ? "bg-primary/80 hover:bg-primary text-primary-foreground border-primary/60"
+                    : "text-foreground/30 cursor-not-allowed",
+                )}
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* ── Liste scrollable ── */}
@@ -407,11 +393,78 @@ export const CustomizableMultiSelect = ({
             {/* Groupe 1 — options partagées */}
             {(fixedOptions.length > 0 || globalUniq.length > 0) && (
               <div className="rounded-lg border border-white/[.07] bg-white/[.025] overflow-hidden">
-                <div className="px-2.5 pt-2 pb-1">
+                {/* Header card — admin add-on : icône Settings2 */}
+                <div className="px-2.5 pt-2 pb-1 flex items-center justify-between">
                   <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-foreground/35">
                     Options partagées
                   </span>
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() => { setShowSharedInput(v => !v); setPendingAddShared(null); setNewSharedValue(""); }}
+                      title="Gérer les options partagées (admin)"
+                      className={cn(
+                        "p-1 rounded transition-all",
+                        showSharedInput
+                          ? "text-primary bg-primary/10"
+                          : "text-foreground/25 hover:text-foreground/60 hover:bg-white/[.06]",
+                      )}
+                    >
+                      <Settings2 className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
+
+                {/* Mini-input admin — visible uniquement si showSharedInput */}
+                {canManage && showSharedInput && (
+                  <div className="px-1.5 pb-1.5">
+                    {pendingAddShared ? (
+                      /* Confirmation */
+                      <div className="flex flex-col gap-1.5 px-2 py-1.5 rounded-lg bg-amber-500/[.07] border border-amber-500/20">
+                        <div className="flex items-center gap-1.5">
+                          <AlertTriangle className="w-3 h-3 text-amber-400/80 shrink-0" />
+                          <span className="text-[10px] text-foreground/70 leading-snug">
+                            Ajouter <span className="font-semibold text-foreground">"{pendingAddShared}"</span> pour tous ?
+                          </span>
+                        </div>
+                        <div className="flex gap-1 justify-end">
+                          <button type="button" onClick={() => setPendingAddShared(null)}
+                            className="text-[10px] px-2 py-0.5 rounded border border-white/[.12] text-foreground/50 hover:text-foreground transition-all">
+                            Annuler
+                          </button>
+                          <button type="button" onClick={commitAddShared} disabled={isAddingShared}
+                            className="text-[10px] font-semibold px-2 py-0.5 rounded bg-primary/80 hover:bg-primary text-primary-foreground transition-all disabled:opacity-50">
+                            Confirmer
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-1">
+                        <Input
+                          value={newSharedValue}
+                          onChange={(e) => setNewSharedValue(e.target.value)}
+                          placeholder="Nouvelle option partagée…"
+                          className="h-7 text-[11px] border-white/[.12] bg-white/[.04] placeholder:text-foreground/25"
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSharedAddIntent(); } }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSharedAddIntent}
+                          disabled={!newSharedValue.trim()}
+                          className={cn(
+                            "h-7 w-7 shrink-0 rounded border flex items-center justify-center transition-all",
+                            newSharedValue.trim()
+                              ? "bg-primary/70 hover:bg-primary text-primary-foreground border-primary/50"
+                              : "text-foreground/25 border-white/[.10] cursor-not-allowed",
+                          )}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="pb-1">
                   {[...fixedOptions, ...globalUniq].map((opt) => renderOption(opt, false))}
                 </div>
