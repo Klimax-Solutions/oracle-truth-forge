@@ -27,6 +27,7 @@ Fichiers source : `supabase/migrations/`
 | 11 | `20260414100000_add_form_answers.sql` | form_answers jsonb | ✅ | ❌ |
 | — | Seed test env | 5 vidéos + 8 leads réalistes | ✅ | N/A |
 | 12 | `20260414200000_add_setting_spec_fields.sql` | 20 colonnes spec CRM | ✅ | ❌ |
+| 13 | `20260429100000_fix_verification_unique_and_email_rpc.sql` | Index unique partiel `verification_requests` (WHERE status='pending') + RPC `get_auth_emails` | ❌ **À appliquer** | ❌ **À appliquer** |
 
 ## Procédure pour appliquer une migration
 
