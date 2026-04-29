@@ -181,10 +181,10 @@ const SectionHeader = ({
   extra?: React.ReactNode;
 }) => (
   <div className="flex items-center gap-3">
-    <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-foreground/35 shrink-0 select-none">
+    <span className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-foreground/45 shrink-0 select-none">
       {label}
     </span>
-    <div className="flex-1 h-px bg-white/[.07]" />
+    <div className="flex-1 h-px bg-gradient-to-r from-white/[.10] via-white/[.04] to-transparent" />
     {extra}
   </div>
 );
@@ -197,8 +197,8 @@ const Field = ({
   children: React.ReactNode;
   className?: string;
 }) => (
-  <div className={cn("space-y-1.5 min-w-0", className)}>
-    <label className="block text-[11px] font-medium text-foreground/55 leading-none">
+  <div className={cn("space-y-2 min-w-0", className)}>
+    <label className="block text-xs font-medium text-foreground/60 leading-none">
       {label}
       {required && <span className="text-destructive/80 ml-0.5">*</span>}
     </label>
@@ -223,8 +223,8 @@ const ScreenshotUploadField = ({
   const current = preview || existingUrl;
 
   return (
-    <div className="space-y-1.5">
-      <label className="block text-[11px] font-medium text-foreground/55 leading-none">
+    <div className="space-y-2">
+      <label className="block text-xs font-medium text-foreground/60 leading-none">
         {label}
         {required && <span className="text-destructive/80 ml-0.5">*</span>}
       </label>
@@ -236,14 +236,14 @@ const ScreenshotUploadField = ({
         className="hidden"
       />
       {current ? (
-        <div className="relative border border-white/[.12] rounded-lg p-2 bg-white/[.02]">
-          <img src={current} alt={label} className="max-h-36 object-contain mx-auto rounded" />
+        <div className="relative border border-white/[.12] rounded-xl p-2.5 bg-white/[.02]">
+          <img src={current} alt={label} className="max-h-48 w-full object-contain rounded-lg" />
           <button
             type="button"
             onClick={onClear}
-            className="absolute top-1.5 right-1.5 h-6 w-6 rounded-md bg-destructive/80 hover:bg-destructive flex items-center justify-center transition-colors"
+            className="absolute top-2 right-2 h-7 w-7 rounded-md bg-destructive/85 hover:bg-destructive flex items-center justify-center transition-colors shadow-lg"
           >
-            <X className="w-3 h-3 text-white" />
+            <X className="w-3.5 h-3.5 text-white" />
           </button>
         </div>
       ) : (
@@ -252,15 +252,15 @@ const ScreenshotUploadField = ({
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
           className={cn(
-            "w-full h-24 rounded-lg border border-dashed border-white/[.15] bg-white/[.02]",
-            "flex flex-col items-center justify-center gap-2 text-foreground/35",
-            "hover:border-white/25 hover:bg-white/[.04] hover:text-foreground/50 transition-all",
+            "w-full h-32 rounded-xl border border-dashed border-white/[.15] bg-white/[.02]",
+            "flex flex-col items-center justify-center gap-2.5 text-foreground/40",
+            "hover:border-white/30 hover:bg-white/[.05] hover:text-foreground/60 transition-all",
             "text-xs font-medium",
           )}
         >
           {uploading
-            ? <Loader2 className="w-5 h-5 animate-spin" />
-            : <ImageIcon className="w-5 h-5" />
+            ? <Loader2 className="w-6 h-6 animate-spin" />
+            : <ImageIcon className="w-6 h-6" />
           }
           <span>{label}</span>
         </button>
@@ -570,23 +570,23 @@ export const OracleTradeDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="max-w-5xl w-[calc(100vw-2rem)] max-h-[92vh] flex flex-col overflow-hidden p-0 gap-0 border border-white/[.18]"
+        className="max-w-6xl w-[calc(100vw-2rem)] max-h-[94vh] flex flex-col overflow-hidden p-0 gap-0 border border-white/[.14] rounded-2xl"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
 
         {/* ── HEADER ── */}
-        <div className="px-6 pt-5 pb-4 border-b border-white/[.07] shrink-0 flex items-center gap-3">
-          <DialogTitle className="text-[15px] font-semibold tracking-tight">
+        <div className="px-8 pt-6 pb-5 border-b border-white/[.06] shrink-0 flex items-center gap-3">
+          <DialogTitle className="text-base font-semibold tracking-tight">
             {editingTrade ? `Trade #${editingTrade.trade_number}` : "Nouveau Trade"}
           </DialogTitle>
           {currentCycleNum != null && (
-            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30">
+            <span className="text-[10px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/30">
               Cycle {currentCycleNum}
             </span>
           )}
           {setupFieldsLocked && (
-            <span className="ml-auto flex items-center gap-1.5 text-[10px] font-mono text-amber-400/75 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-md">
+            <span className="ml-auto flex items-center gap-1.5 text-[10px] font-mono text-amber-400/75 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md">
               <Lock className="w-3 h-3" /> Paramètres setup verrouillés
             </span>
           )}
@@ -596,7 +596,7 @@ export const OracleTradeDialog = ({
         <div className="flex flex-row flex-1 overflow-hidden">
 
           {/* ── LEFT — scrollable form ── */}
-          <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
+          <div className="overflow-y-auto flex-1 px-8 py-7 space-y-8">
 
             {/* Avertissement chronologique (seule contrainte conservée) */}
             {dateBeforeMin && (
@@ -609,9 +609,9 @@ export const OracleTradeDialog = ({
             {/* ── INFORMATIONS ── */}
             <div className="space-y-3">
               <SectionHeader label="Informations" />
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <Field label="N° Trade" required>
-                  <div className="flex items-center h-9 rounded-md border border-white/25 bg-white/[.03] px-3 text-sm font-mono text-foreground/60 gap-1.5">
+                  <div className="flex items-center h-10 rounded-md border border-white/[.18] bg-white/[.03] px-3 text-sm font-mono text-foreground/60 gap-1.5">
                     <Lock className="w-3 h-3 shrink-0 text-foreground/25" />
                     {formData.trade_number}
                   </div>
@@ -635,7 +635,7 @@ export const OracleTradeDialog = ({
                   />
                 </Field>
                 <Field label="Direction" required>
-                  <div className="relative flex h-9 rounded-md border border-white/25 bg-white/[.03] p-0.5 overflow-hidden">
+                  <div className="relative flex h-10 rounded-md border border-white/[.18] bg-white/[.03] p-0.5 overflow-hidden">
                     <div
                       className={cn(
                         "absolute inset-y-0.5 w-[calc(50%-2px)] rounded-[5px] transition-all duration-300 ease-[cubic-bezier(.4,0,.2,1)]",
@@ -689,7 +689,7 @@ export const OracleTradeDialog = ({
                 }
               />
               <div className={cn(setupFieldsLocked && "opacity-50 pointer-events-none select-none")}>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                   <Field label="Type de Config." required>
                     <CustomizableMultiSelect
                       compact singleSelect canManage={isAdmin}
@@ -757,11 +757,11 @@ export const OracleTradeDialog = ({
             {/* ── EXÉCUTION ── */}
             <div className="space-y-3">
               <SectionHeader label="Exécution" />
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
                 {/* Résultat — toggle 3 états dopaminergique */}
                 <Field label="Résultat" required>
-                  <div className="relative flex h-9 rounded-md border border-white/25 bg-white/[.03] p-0.5 overflow-hidden">
+                  <div className="relative flex h-10 rounded-md border border-white/[.18] bg-white/[.03] p-0.5 overflow-hidden">
                     {/* sliding pill */}
                     {formData.result && (
                       <div className={cn(
@@ -833,7 +833,7 @@ export const OracleTradeDialog = ({
                     }}
                     onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
                     placeholder="Ex: 2.5"
-                    className="h-9"
+                    className="h-10"
                   />
                 </Field>
                 <Field label="Heure d'entrée" required>
@@ -856,7 +856,7 @@ export const OracleTradeDialog = ({
             {/* ── COMPLÉMENT — 4 champs en ligne ── */}
             <div className="space-y-3">
               <SectionHeader label="Complément" />
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 items-start">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-start">
                 <Field label="Taille du SL" required>
                   <Input
                     type="text"
@@ -865,7 +865,7 @@ export const OracleTradeDialog = ({
                     onChange={(e) => set("stop_loss_size", sanitizeDecimal(e.target.value))}
                     onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
                     placeholder="Ex: 12.5"
-                    className="h-9 border-white/25 bg-white/[.04]"
+                    className="h-10 border-white/[.18] bg-white/[.04]"
                   />
                 </Field>
                 <Field label="Placement du SL">
@@ -892,8 +892,8 @@ export const OracleTradeDialog = ({
                     onOptionsChanged={refetchVariables}
                   />
                 </Field>
-                <div className="space-y-2 pt-[22px]">
-                  <div className="flex items-center gap-2.5">
+                <div className="space-y-2.5 pt-[28px]">
+                  <div className="flex items-center gap-2.5 h-10">
                     <Checkbox
                       id="news_day"
                       checked={formData.news_day}
@@ -908,7 +908,7 @@ export const OracleTradeDialog = ({
                       value={formData.news_label}
                       onChange={(e) => set("news_label", e.target.value)}
                       placeholder="Ex: NFP, CPI, FOMC..."
-                      className="h-9 border-white/25 bg-white/[.04]"
+                      className="h-10 border-white/[.18] bg-white/[.04]"
                     />
                   )}
                 </div>
@@ -921,30 +921,30 @@ export const OracleTradeDialog = ({
                 label="Données Manuelles"
                 extra={<span className="text-[10px] text-foreground/25 font-mono shrink-0">optionnel</span>}
               />
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <Field label="Prix Entrée">
                   <Input type="text" inputMode="decimal" value={formData.entry_price}
                     onChange={(e) => set("entry_price", sanitizeDecimal(e.target.value))}
                     onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
-                    placeholder="Ex: 1.08542" className="h-9 border-white/25 bg-white/[.04]" />
+                    placeholder="Ex: 1.08542" className="h-10 border-white/[.18] bg-white/[.04]" />
                 </Field>
                 <Field label="Prix Sortie">
                   <Input type="text" inputMode="decimal" value={formData.exit_price}
                     onChange={(e) => set("exit_price", sanitizeDecimal(e.target.value))}
                     onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
-                    placeholder="Ex: 1.08650" className="h-9 border-white/25 bg-white/[.04]" />
+                    placeholder="Ex: 1.08650" className="h-10 border-white/[.18] bg-white/[.04]" />
                 </Field>
                 <Field label="Stop Loss">
                   <Input type="text" inputMode="decimal" value={formData.stop_loss}
                     onChange={(e) => set("stop_loss", sanitizeDecimal(e.target.value))}
                     onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
-                    placeholder="Ex: 1.08500" className="h-9 border-white/25 bg-white/[.04]" />
+                    placeholder="Ex: 1.08500" className="h-10 border-white/[.18] bg-white/[.04]" />
                 </Field>
                 <Field label="Take Profit">
                   <Input type="text" inputMode="decimal" value={formData.take_profit}
                     onChange={(e) => set("take_profit", sanitizeDecimal(e.target.value))}
                     onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
-                    placeholder="Ex: 1.08700" className="h-9 border-white/25 bg-white/[.04]" />
+                    placeholder="Ex: 1.08700" className="h-10 border-white/[.18] bg-white/[.04]" />
                 </Field>
               </div>
             </div>
@@ -952,9 +952,9 @@ export const OracleTradeDialog = ({
           </div>{/* /left column */}
 
           {/* ── RIGHT PANEL — screenshots + notes ── */}
-          <div className="w-72 shrink-0 border-l border-white/[.07] overflow-y-auto flex flex-col px-5 py-5 gap-5">
+          <div className="w-[360px] shrink-0 border-l border-white/[.06] bg-white/[.012] overflow-y-auto flex flex-col px-7 py-7 gap-7">
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <SectionHeader label="Screenshots" />
               <ScreenshotUploadField
                 label="Contexte (M15)"
@@ -978,13 +978,13 @@ export const OracleTradeDialog = ({
               />
             </div>
 
-            <div className="space-y-1.5 flex-1 flex flex-col">
-              <label className="block text-[11px] font-medium text-foreground/55 leading-none">Notes</label>
+            <div className="space-y-2 flex-1 flex flex-col min-h-0">
+              <label className="block text-xs font-medium text-foreground/60 leading-none">Notes</label>
               <Textarea
                 value={formData.notes}
                 onChange={(e) => set("notes", e.target.value)}
                 placeholder="Observations, contexte du trade..."
-                className="resize-none flex-1 min-h-[120px] border-white/25 bg-white/[.04]"
+                className="resize-none flex-1 min-h-[200px] border-white/[.18] bg-white/[.03] focus-visible:bg-white/[.05] rounded-xl text-sm leading-relaxed"
               />
             </div>
 
@@ -993,7 +993,7 @@ export const OracleTradeDialog = ({
         </div>{/* /two-column body */}
 
         {/* ── FOOTER ── */}
-        <div className="px-6 py-4 border-t border-white/[.07] flex items-center justify-between shrink-0">
+        <div className="px-8 py-5 border-t border-white/[.06] flex items-center justify-between shrink-0 bg-white/[.012]">
           {editingTrade ? (
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -1014,8 +1014,8 @@ export const OracleTradeDialog = ({
             </AlertDialog>
           ) : <div />}
 
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose} className="gap-1.5 h-9 px-4">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" onClick={onClose} className="gap-1.5 h-10 px-5">
               <X className="w-3.5 h-3.5" /> Annuler
             </Button>
             <Button
@@ -1028,12 +1028,11 @@ export const OracleTradeDialog = ({
                 !formData.entry_time || !formData.exit_time || !formData.stop_loss_size ||
                 !((contextFile || existingContextUrl) && (entryFile || existingEntryUrl))
               }
-              size="sm"
-              className="gap-1.5 h-9 px-5"
+              className="gap-2 h-10 px-6 font-semibold"
             >
               {saving
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : <Save className="w-3.5 h-3.5" />
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <Save className="w-4 h-4" />
               }
               Enregistrer
             </Button>
