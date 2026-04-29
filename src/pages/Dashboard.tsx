@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { LogOut, ExternalLink } from "lucide-react";
 import { EAApprovalNotification } from "@/components/dashboard/EAApprovalNotification";
 import { DashboardSidebar, useSidebarRoles } from "@/components/dashboard/DashboardSidebar";
+import { getAllowedTabs, getDefaultTab } from "@/lib/permissions";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DataSourceSelector, DataSource } from "@/components/dashboard/DataSourceSelector";
@@ -130,33 +131,8 @@ const readDashboardState = (): {
   }
 };
 
-// ─── Access control ──────────────────────────────────────────────────────────
-// Single source of truth for which tabs each role can access.
-// Used both for redirection (useEffect) and render guard (renderContent).
-const getAllowedTabs = (opts: {
-  isAdmin: boolean; isSuperAdmin: boolean;
-  isSetter: boolean; isCloser: boolean;
-  isEarlyAccess: boolean; isSetterOnly: boolean;
-}): Set<string> => {
-  const { isAdmin, isSuperAdmin, isEarlyAccess, isSetterOnly } = opts;
-
-  // Setter / Closer sans admin → uniquement CRM
-  if (isSetterOnly) return new Set(["crm"]);
-
-  // Tabs produit accessibles à tous (membres, EA, admins)
-  const t = new Set([
-    "execution", "videos", "recolte-donnees", "data-analysis",
-    "successes", "results", "setup", "batch-import",
-  ]);
-
-  // Tabs admin
-  if (isAdmin || isSuperAdmin) {
-    ["crm", "gestion", "config", "video-admin", "admin", "roles",
-     "funnel-editor", "early-access-mgmt"].forEach(id => t.add(id));
-  }
-
-  return t;
-};
+// getAllowedTabs et getDefaultTab sont importés depuis src/lib/permissions.ts
+// (source de vérité unique pour les capabilities — Slice A)
 
 const Dashboard = () => {
   const persistedState = useMemo(() => readDashboardState(), []);
@@ -164,7 +140,21 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || persistedState.activeTab || DASHBOARD_DEFAULT_TAB);
+
+  // ── Tab initialization — anti race condition ─────────────────────────────
+  // On ne lit jamais le tab depuis l'URL ou localStorage au mount.
+  // Ces valeurs sont des "requêtes" non validées : un membre pourrait avoir
+  // ?tab=crm dans son URL (lien copié, ancien admin, manipulation).
+  // Le tab réel est résolu UNE SEULE FOIS après que les rôles sont connus,
+  // via l'effet "Tab access enforcement" ci-dessous.
+  // Pendant le chargement : activeTab = DASHBOARD_DEFAULT_TAB (tab sûr pour tous).
+  const _requestedTab = useMemo(
+    () => searchParams.get('tab') || persistedState.activeTab || null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [] // intentionnellement vide : on capture la valeur au mount seulement
+  );
+  const [activeTab, setActiveTab] = useState(DASHBOARD_DEFAULT_TAB);
+  const tabInitialized = useRef(false); // true dès que les rôles ont validé le 1er tab
   const [databaseFilters, setDatabaseFilters] = useState<any>(() => persistedState.databaseFilters ?? null);
   const [dataSource, setDataSource] = useState<DataSource>(() => persistedState.dataSource || "oracle");
   const [displayName, setDisplayName] = useState<string>("");
@@ -227,30 +217,53 @@ const Dashboard = () => {
   const { dataGenerale } = useDataGenerale(trades, needsDataGenerale);
 
   // ── Tab access enforcement ──────────────────────────────────────────────────
-  // Runs when roles load (loadingRoles→false) and on any role/tab change.
-  // Covers both role-based redirects and direct URL access (?tab=admin for a member).
+  // Runs when roles load (loadingRoles → false) and on any role/tab change.
+  //
+  // Deux phases :
+  //   1. Initialisation (tabInitialized.current = false) :
+  //      Valide la "requête" initiale (_requestedTab depuis URL/localStorage).
+  //      Si autorisée → l'utilise. Sinon → tab par défaut.
+  //   2. Enforcement continu :
+  //      Si le tab actif n'est plus dans les tabs autorisés (ex: changement de rôle
+  //      simulé, expiration EA) → redirection vers le tab par défaut.
   useEffect(() => {
-    if (loadingRoles) return; // Wait until roles are known before enforcing
+    if (loadingRoles) return; // Toujours attendre que les rôles soient connus
 
-    const allowed = getAllowedTabs({ isAdmin, isSuperAdmin, isSetter, isCloser, isEarlyAccess, isSetterOnly });
+    const allowed = getAllowedTabs({ isAdmin, isSuperAdmin, isSetter, isCloser });
+    const defaultTab = getDefaultTab({ isAdmin, isSuperAdmin, isSetter, isCloser });
 
-    // Setter/Closer sans admin → force CRM
-    if (isSetterOnly) {
-      if (activeTab !== "crm") setActiveTab("crm");
+    // ── Phase 1 : résolution initiale du tab ──────────────────────────────
+    if (!tabInitialized.current) {
+      tabInitialized.current = true;
+
+      // Role simulation : override immédiat
+      if (simulatedRole !== "none") {
+        const isSalesRole = ["setter","closer","setter+closer"].includes(simulatedRole);
+        setActiveTab(isSalesRole ? "crm" : "execution");
+        return;
+      }
+
+      // Valider la requête initiale contre les tabs autorisés
+      const target =
+        _requestedTab && allowed.has(_requestedTab)
+          ? _requestedTab
+          : defaultTab;
+
+      setActiveTab(target);
       return;
     }
 
-    // Role simulation → force a sensible default
+    // ── Phase 2 : enforcement continu ─────────────────────────────────────
+    // Role simulation → override si tab actif n'est plus valide
     if (simulatedRole !== "none") {
-      const isSalesRole = simulatedRole === "setter" || simulatedRole === "closer" || simulatedRole === "setter+closer";
-      const target = isSalesRole ? "crm" : "execution";
-      if (!allowed.has(activeTab)) setActiveTab(target);
+      const isSalesRole = ["setter","closer","setter+closer"].includes(simulatedRole);
+      if (!allowed.has(activeTab)) setActiveTab(isSalesRole ? "crm" : "execution");
       return;
     }
 
-    // URL access control: if the tab is not in allowed set, redirect to default
+    // Tab actif hors scope (rôle changé, EA expiré, etc.) → défaut
     if (!allowed.has(activeTab)) {
-      setActiveTab("execution");
+      setActiveTab(defaultTab);
     }
   }, [loadingRoles, isSetterOnly, simulatedRole, isAdmin, isSuperAdmin, isSetter, isCloser, isEarlyAccess, activeTab]);
 
@@ -260,6 +273,9 @@ const Dashboard = () => {
   }, [activeTab]);
 
   useEffect(() => {
+    // Ne persister que les tabs validés (après initialisation des rôles).
+    // Évite de sauvegarder un tab "interdit" avant que les rôles soient connus.
+    if (!tabInitialized.current) return;
     try {
       localStorage.setItem(
         getDashboardStateStorageKey(),
@@ -544,17 +560,29 @@ const Dashboard = () => {
   const showDataSourceSelector = false && ["data-analysis"].includes(activeTab) && !isEarlyAccess && !isSetterOnly && (isAdmin || isSuperAdmin);
 
   const renderContent = () => {
-    // Setter / Closer sans admin → uniquement CRM
+    // ── LOADING GATE — CRITIQUE ──────────────────────────────────────────────
+    // Ne rien rendre tant que les rôles ne sont pas connus ET que le tab initial
+    // n'a pas été validé. Élimine tout flash de contenu non autorisé.
+    // Avec le cache localStorage : durée ~0ms (cache hit synchrone).
+    // Sans cache (1er load, session effacée) : durée ~200-500ms (JWT + RPC).
+    if (loadingRoles || !tabInitialized.current) {
+      return (
+        <div className="flex items-center justify-center h-full min-h-[400px]">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
+
+    // ── GUARD DB (ceinture + bretelles) ──────────────────────────────────────
+    // Bloque toute manipulation d'URL qui aurait passé l'useEffect de redirection.
+    const allowed = getAllowedTabs({ isAdmin, isSuperAdmin, isSetter, isCloser });
+    if (!allowed.has(activeTab)) {
+      return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} />;
+    }
+
+    // ── Setter / Closer sans admin → uniquement CRM ──────────────────────────
     if (isSetterOnly) return <CRMDashboard overrideRoles={{ isAdmin, isSuperAdmin, isSetter, isCloser }} />;
 
-    // Belt-and-suspenders: block any tab that is not in the allowed set
-    // (catches URL manipulation that bypasses the useEffect redirect)
-    if (!loadingRoles) {
-      const allowed = getAllowedTabs({ isAdmin, isSuperAdmin, isSetter, isCloser, isEarlyAccess, isSetterOnly });
-      if (!allowed.has(activeTab)) {
-        return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} />;
-      }
-    }
     switch (activeTab) {
       case "execution":
         return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} />;
