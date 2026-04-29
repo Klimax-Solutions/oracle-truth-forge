@@ -165,6 +165,64 @@ export const CustomizableMultiSelect = ({
     onOptionsChanged();
   };
 
+  // ── Render helpers ────────────────────────────────────────────────────────
+  const renderOption = (opt: string, _optIsGlobal: boolean, optIsPersonal: boolean) => {
+    const isSelected    = selectedValues.includes(opt);
+    const optIsFixed    = fixedOptions.includes(opt);
+    const optIsActuallyGlobal = isGlobal(opt);
+    const canDeleteThis = (optIsActuallyGlobal && canManage) || optIsPersonal;
+
+    return (
+      <div key={opt} className="flex items-center group px-1">
+        <button
+          type="button"
+          onClick={() => handleSelect(opt)}
+          className={cn(
+            "flex-1 flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-sm transition-all text-left",
+            isSelected
+              ? "bg-primary/15 text-primary"
+              : "text-foreground/80 hover:bg-white/[.06] hover:text-foreground",
+          )}
+        >
+          {singleSelect ? (
+            <div className={cn(
+              "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all",
+              isSelected ? "bg-primary border-primary" : "border-white/[.25] bg-transparent",
+            )}>
+              {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />}
+            </div>
+          ) : (
+            <div className={cn(
+              "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all",
+              isSelected ? "bg-primary border-primary" : "border-white/[.25] bg-transparent",
+            )}>
+              {isSelected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+            </div>
+          )}
+          <span className={cn(
+            "truncate flex-1 font-medium text-[13px] whitespace-nowrap",
+            optIsPersonal && "text-violet-300/90",
+          )}>
+            {opt}
+          </span>
+        </button>
+
+        {canDeleteThis && (
+          <button
+            type="button"
+            onClick={() => optIsActuallyGlobal
+              ? handleDeleteGlobal(opt)
+              : handleDeletePersonal(opt)
+            }
+            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        )}
+      </div>
+    );
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <PopoverPrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
@@ -258,68 +316,34 @@ export const CustomizableMultiSelect = ({
                 Tapez ci-dessus pour ajouter une option
               </p>
             )}
-            {allOptions.map((opt) => {
-              const isSelected  = selectedValues.includes(opt);
-              const optIsGlobal = isGlobal(opt);
-              const optIsPersonal = isPersonal(opt);
 
-              // Afficher le bouton supprimer ?
-              const canDeleteThis = (optIsGlobal && canManage) || optIsPersonal;
-
-              return (
-                <div key={opt} className="flex items-center group px-1">
-                  <button
-                    type="button"
-                    onClick={() => handleSelect(opt)}
-                    className={cn(
-                      "flex-1 flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm transition-all text-left",
-                      isSelected
-                        ? "bg-primary/15 text-primary"
-                        : "text-foreground/80 hover:bg-white/[.06] hover:text-foreground",
-                    )}
-                  >
-                    {singleSelect ? (
-                      <div className={cn(
-                        "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all",
-                        isSelected ? "bg-primary border-primary" : "border-white/[.25] bg-transparent",
-                      )}>
-                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />}
-                      </div>
-                    ) : (
-                      <div className={cn(
-                        "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all",
-                        isSelected ? "bg-primary border-primary" : "border-white/[.25] bg-transparent",
-                      )}>
-                        {isSelected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-                      </div>
-                    )}
-                    <span className="truncate flex-1 font-medium text-[13px] whitespace-nowrap">
-                      {opt}
+            {/* Groupe 1 — options fixes + partagées (admin) */}
+            {(fixedOptions.length > 0 || globalUniq.length > 0) && (
+              <>
+                {personalUniq.length > 0 && (
+                  <div className="flex items-center gap-2 px-3 pt-1.5 pb-1">
+                    <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-foreground/30">
+                      Options
                     </span>
-                    {/* Badge "perso" pour les options personnelles */}
-                    {optIsPersonal && (
-                      <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-400/80 border border-violet-500/20">
-                        perso
-                      </span>
-                    )}
-                  </button>
+                    <div className="flex-1 h-px bg-white/[.06]" />
+                  </div>
+                )}
+                {[...fixedOptions, ...globalUniq].map((opt) => renderOption(opt, false, false))}
+              </>
+            )}
 
-                  {/* Bouton supprimer */}
-                  {canDeleteThis && (
-                    <button
-                      type="button"
-                      onClick={() => optIsGlobal
-                        ? handleDeleteGlobal(opt)
-                        : handleDeletePersonal(opt)
-                      }
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  )}
+            {/* Groupe 2 — options personnelles */}
+            {personalUniq.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 px-3 pt-2 pb-1">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-violet-400/60">
+                    Mes options
+                  </span>
+                  <div className="flex-1 h-px bg-violet-500/[.12]" />
                 </div>
-              );
-            })}
+                {personalUniq.map((opt) => renderOption(opt, false, true))}
+              </>
+            )}
           </div>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
