@@ -407,8 +407,30 @@ export const PersonalTradeDialog = ({
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    if (!formData.trade_number || !formData.trade_date || !formData.direction) {
-      toast({ title: "Champs requis manquants", description: "Remplissez les champs obligatoires.", variant: "destructive" });
+    // ── Validation champs requis ────────────────────────────────────────────────
+    const missingFields: string[] = [];
+    if (!formData.trade_number)        missingFields.push("N° Trade");
+    if (!formData.trade_date)          missingFields.push("Date Entrée");
+    if (!formData.exit_date)           missingFields.push("Date Sortie");
+    if (!formData.direction)           missingFields.push("Direction");
+    if (!formData.asset)               missingFields.push("Actif concerné");
+    if (!formData.setup_type)          missingFields.push("Type de Config.");
+    if (!formData.direction_structure) missingFields.push("Contexte");
+    if (!formData.entry_model)         missingFields.push("Entry Model");
+    if (!formData.result)              missingFields.push("Résultat");
+    if (!formData.rr)                  missingFields.push("RR");
+    if (!formData.entry_time)          missingFields.push("Heure Entrée");
+    if (!formData.exit_time)           missingFields.push("Heure Sortie");
+    if (!formData.stop_loss_size)      missingFields.push("Taille du SL");
+    const hasContextScreenshot = !!contextFile || !!existingContextUrl;
+    const hasEntryScreenshot   = !!entryFile   || !!existingEntryUrl;
+    if (!hasContextScreenshot || !hasEntryScreenshot) missingFields.push("Screenshots (Contexte + Entrée)");
+    if (missingFields.length > 0) {
+      toast({
+        title: "Champs requis manquants",
+        description: missingFields.join(", "),
+        variant: "destructive",
+      });
       return;
     }
 
@@ -914,7 +936,15 @@ export const PersonalTradeDialog = ({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={saving || uploading}
+              disabled={
+                saving || uploading ||
+                !formData.trade_number || !formData.trade_date || !formData.exit_date ||
+                !formData.direction || !formData.asset || !formData.setup_type ||
+                !formData.direction_structure || !formData.entry_model ||
+                !formData.result || !formData.rr || !formData.entry_time ||
+                !formData.exit_time || !formData.stop_loss_size ||
+                !((contextFile || existingContextUrl) && (entryFile || existingEntryUrl))
+              }
               size="sm"
               className="gap-1.5 h-9 px-5"
             >
