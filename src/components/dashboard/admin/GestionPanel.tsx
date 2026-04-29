@@ -168,6 +168,7 @@ interface PlatformUser {
   hasEarlyAccess: boolean;        // row exists in user_roles
   eaInfo: EaInfo | null;          // null if no EA role
   isInstitute: boolean;           // has 'institute' role
+  authEmail?: string;             // email depuis auth.users (fallback si pas de crmLead)
   importedFromProd: boolean;      // imported via migration pggk → mkog
   importedAt: string | null;      // timestamp d'import (NULL si fake/test user)
   followups: FollowupEntry[];
@@ -638,6 +639,31 @@ export default function GestionPanel() {
         if (pa !== pb) return pa - pb;
         return b.totalTrades - a.totalTrades;
       });
+      // ── Compléter les emails manquants depuis auth.users (via RPC) ──
+      // Pour les users sans CRM lead (Institut, staff, comptes directs)
+      const missingEmailIds = platformUsers
+        .filter(u => !u.crmLead?.email)
+        .map(u => u.id);
+
+      if (missingEmailIds.length > 0) {
+        try {
+          const { data: authEmails } = await supabase.rpc("get_auth_emails", { user_ids: missingEmailIds });
+          if (authEmails) {
+            const emailMap: Record<string, string> = {};
+            (authEmails as { user_id: string; email: string }[]).forEach(e => { emailMap[e.user_id] = e.email; });
+            platformUsers.forEach(u => {
+              if (!u.crmLead?.email && emailMap[u.id]) {
+                if (!u.crmLead) {
+                  (u as any).authEmail = emailMap[u.id];
+                } else {
+                  u.crmLead.email = emailMap[u.id];
+                }
+              }
+            });
+          }
+        } catch { /* RPC pas encore déployée sur cet env — skip silencieux */ }
+      }
+
       setUsers(platformUsers);
 
       // Build pending requests
@@ -965,7 +991,7 @@ export default function GestionPanel() {
     }
     if (search) {
       const q = search.toLowerCase();
-      list = list.filter((u) => u.displayName.toLowerCase().includes(q) || (u.firstName || "").toLowerCase().includes(q) || u.id.includes(q) || (u.crmLead?.email || "").toLowerCase().includes(q));
+      list = list.filter((u) => u.displayName.toLowerCase().includes(q) || (u.firstName || "").toLowerCase().includes(q) || u.id.includes(q) || (u.crmLead?.email || u.authEmail || "").toLowerCase().includes(q));
     }
     // Sorting
     if (userSort !== "priority") {
@@ -1238,8 +1264,8 @@ export default function GestionPanel() {
 
                     {/* Email */}
                     <div className="w-[180px] shrink-0 min-w-0">
-                      {u.crmLead?.email
-                        ? <span className="text-xs font-mono text-white/50 truncate block" title={u.crmLead.email}>{u.crmLead.email}</span>
+                      {(u.crmLead?.email || u.authEmail)
+                        ? <span className="text-xs font-mono text-white/50 truncate block" title={u.crmLead?.email || u.authEmail}>{u.crmLead?.email || u.authEmail}</span>
                         : <span className="text-white/[0.08] select-none text-xs font-mono">—</span>
                       }
                     </div>

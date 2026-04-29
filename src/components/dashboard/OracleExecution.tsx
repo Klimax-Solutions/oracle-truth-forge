@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle,
@@ -114,6 +114,8 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   const [loading, setLoading] = useState(true);
   const [expandedCycle, setExpandedCycle] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Ref immédiat pour bloquer les double-clics avant le re-render React
+  const submittingRef = useRef(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [globalStats, setGlobalStats] = useState<{ totalData: number; totalRR: number; avgRR: number; totalUsers: number } | null>(null);
   const [requestedCycleIds, setRequestedCycleIds] = useState<Set<string>>(new Set());
@@ -314,13 +316,15 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   const handleRequestVerification = async (cycleData: CycleWithProgress) => {
     if (!cycleData.userCycle) return;
 
+    // ── COUCHE 1 : guard React state (vérifications déjà connues) ──
     if (requestedCycleIds.has(cycleData.id)) {
-      toast({
-        title: "Déjà demandé",
-        description: "Votre demande de vérification est déjà enregistrée pour ce cycle.",
-      });
+      toast({ title: "Déjà envoyé", description: "Ta demande de vérification est déjà en attente pour ce cycle." });
       return;
     }
+
+    // ── COUCHE 2 : guard ref immédiat (bloque avant re-render React) ──
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     // For ebauche (cycle 0), check trade analyses instead of user executions
     if (cycleData.cycle_number === 0) {
       const analyzedCount = questData?.ebaucheTradesAnalyzed || 0;
@@ -351,7 +355,23 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      // Create verification request
+      // ── COUCHE 3 : vérification DB — existe déjà une pending ? ──
+      const { data: existing } = await supabase
+        .from("verification_requests")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("cycle_id", cycleData.id)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (existing) {
+        // Mettre à jour l'état local pour refléter la réalité DB
+        setRequestedCycleIds(prev => new Set([...prev, cycleData.id]));
+        toast({ title: "Déjà en attente", description: "Ta demande est déjà enregistrée. L'équipe va la traiter." });
+        return;
+      }
+
+      // Créer la demande (la contrainte unique DB bloque toute race condition résiduelle)
       const { error: requestError } = await supabase
         .from("verification_requests")
         .insert({
@@ -361,7 +381,15 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
           status: "pending",
         });
 
-      if (requestError) throw requestError;
+      if (requestError) {
+        // Code 23505 = violation contrainte unique → doublon intercepté par la DB
+        if (requestError.code === "23505") {
+          setRequestedCycleIds(prev => new Set([...prev, cycleData.id]));
+          toast({ title: "Déjà en attente", description: "Ta demande est déjà enregistrée. L'équipe va la traiter." });
+          return;
+        }
+        throw requestError;
+      }
 
       // Dès qu'une demande existe, on masque le pop-up obligatoire
       setRequestedCycleIds((prev) => {
@@ -450,8 +478,8 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
         }
 
         toast({
-          title: "Demande envoyée !",
-          description: "Votre demande de vérification a été soumise. Vous serez notifié dès validation.",
+          title: "✅ Demande envoyée !",
+          description: "Ta demande est unique et enregistrée. L'équipe Oracle va examiner tes trades et te donner un retour détaillé.",
         });
       }
     } catch (error) {
@@ -463,6 +491,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
       });
     } finally {
       setSubmitting(false);
+      submittingRef.current = false;
     }
   };
 
@@ -977,13 +1006,25 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                         <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onNavigateToVideos?.(); }}>
                           <Play className="w-4 h-4 mr-2" /> Voir les vidéos
                         </Button>
-                        {ebauche.userCycle?.status === 'in_progress' && (
+                        {requestedCycleIds.has(ebauche.id) || ebauche.userCycle?.status === 'pending_review' ? (
+                          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/25">
+                            <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <div>
+                              <span className="text-xs font-medium text-amber-300">Vérification en attente</span>
+                              {verificationRequestDates[ebauche.id] && (
+                                <span className="block text-[10px] text-amber-400/60 font-mono">
+                                  Envoyée le {new Date(verificationRequestDates[ebauche.id]).toLocaleDateString("fr-FR")}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ) : ebauche.userCycle?.status === 'in_progress' ? (
                           <Button size="sm" onClick={(e) => { e.stopPropagation(); handleRequestVerification(ebauche); }}
-                            disabled={(questData?.ebaucheTradesAnalyzed || 0) < ebauche.total_trades || submitting}>
+                            disabled={(questData?.ebaucheTradesAnalyzed || 0) < ebauche.total_trades || submitting || submittingRef.current}>
                             {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                             Demander la vérification
                           </Button>
-                        )}
+                        ) : null}
                       </div>
                       {ebauche.userCycle?.status === 'rejected' && ebauche.userCycle.admin_feedback && (
                         <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-md">
@@ -1096,18 +1137,34 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                       )}
                     </div>
                     
-                    {/* Verification request button */}
-                    {!isEbauche && (cycle.userCycle?.status === 'in_progress' || cycle.userCycle?.status === 'rejected') && cycle.userExecutions.length >= cycle.total_trades && (
+                    {/* Verification request button / status */}
+                    {!isEbauche && cycle.userExecutions.length >= cycle.total_trades && (
                       <div className="ml-10 mt-2 mb-1">
-                        <Button
-                          size="sm"
-                          onClick={(e) => { e.stopPropagation(); handleRequestVerification(cycle); }}
-                          disabled={submitting}
-                          className="gap-1.5"
-                        >
-                          {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                          Demander ma vérification
-                        </Button>
+                        {requestedCycleIds.has(cycle.id) || cycle.userCycle?.status === 'pending_review' ? (
+                          // ── Demande déjà envoyée — statut visible ──
+                          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/25 w-fit">
+                            <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <div>
+                              <span className="text-xs font-medium text-amber-300">Vérification en attente</span>
+                              {verificationRequestDates[cycle.id] && (
+                                <span className="block text-[10px] text-amber-400/60 font-mono">
+                                  Envoyée le {new Date(verificationRequestDates[cycle.id]).toLocaleDateString("fr-FR")}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ) : (cycle.userCycle?.status === 'in_progress' || cycle.userCycle?.status === 'rejected') ? (
+                          // ── Peut envoyer une demande ──
+                          <Button
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); handleRequestVerification(cycle); }}
+                            disabled={submitting || submittingRef.current}
+                            className="gap-1.5"
+                          >
+                            {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                            Demander ma vérification
+                          </Button>
+                        ) : null}
                       </div>
                     )}
 
