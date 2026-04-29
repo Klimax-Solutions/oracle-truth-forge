@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   OracleCycleWindow,
-  getMinTradeDate,
   getUserCurrentCycleNum,
   computeUserOffset,
   USER_CYCLE_THRESHOLDS,
@@ -412,19 +411,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
     return Math.max(...executions.map(e => e.trade_number)) + 1;
   };
 
-  // ── R2 + R3 — Date minimale pour un nouveau trade ───────────────────────────
-  // Chaque trade doit être ≥ au trade précédent (trade_date ET exit_date).
-  const minTradeDate = useMemo(() => {
-    if (editingId) {
-      // En édition : min = max des dates des trades avec trade_number inférieur
-      const editingNum = parseInt(formData.trade_number);
-      const prevTrades = executions.filter(e => e.trade_number < editingNum);
-      return getMinTradeDate(prevTrades);
-    }
-    // Nouveau trade : min = max de toutes les dates existantes
-    return getMinTradeDate(executions);
-  }, [executions, editingId, formData.trade_number]);
-
   // ── Numéro de cycle courant (pour l'en-tête du dialog) ──────────────────────
   const temporalGuidance = useMemo(() => {
     if (oracleCycleWindows.length === 0) return null;
@@ -519,24 +505,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
   const handleSave = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
-    // R2 + R3 — Validation chronologique stricte
-    if (minTradeDate && formData.trade_date && formData.trade_date < minTradeDate) {
-      toast({
-        title: "Date invalide",
-        description: `La date d'entrée doit être le ${new Date(minTradeDate).toLocaleDateString("fr-FR")} ou plus tard (ordre chronologique strict).`,
-        variant: "destructive",
-      });
-      return;
-    }
-    if (minTradeDate && formData.exit_date && formData.exit_date < minTradeDate) {
-      toast({
-        title: "Date de sortie invalide",
-        description: `La date de sortie doit être le ${new Date(minTradeDate).toLocaleDateString("fr-FR")} ou plus tard.`,
-        variant: "destructive",
-      });
-      return;
-    }
 
     // Validate times
     if (formData.entry_time && !validateEntryTime(formData.entry_time)) {
@@ -917,7 +885,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
               } : null}
               nextTradeNumber={getNextTradeNumber()}
               currentCycleNum={temporalGuidance?.currentCycleNum ?? null}
-              minTradeDate={minTradeDate || null}
             />
         </div>
         </div>

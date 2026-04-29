@@ -19,7 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Save, Trash2, X, Image as ImageIcon,
-  Clock, Lock, AlertTriangle,
+  Clock, Lock,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -35,7 +35,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useCustomVariables } from "@/hooks/useCustomVariables";
 import { CustomizableMultiSelect } from "@/components/dashboard/CustomizableMultiSelect";
-import { formatDateShort } from "@/lib/oracle-cycle-windows";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 /** Sanitise un champ décimal : remplace la virgule par un point, supprime les non-chiffres/points, interdit plusieurs points */
@@ -89,6 +88,7 @@ interface OracleTradeDialogProps {
   editingTrade: OracleExecution | null;
   nextTradeNumber: number;
   currentCycleNum?: number | null;
+  /** @deprecated Plus aucune contrainte de date — saisie libre dans n'importe quel ordre. */
   minTradeDate?: string | null;
 }
 
@@ -292,7 +292,6 @@ export const OracleTradeDialog = ({
   editingTrade,
   nextTradeNumber,
   currentCycleNum,
-  minTradeDate,
 }: OracleTradeDialogProps) => {
   const [formData, setFormData]   = useState<FormData>(initialFormData);
   const [saving,   setSaving]     = useState(false);
@@ -365,15 +364,8 @@ export const OracleTradeDialog = ({
       setExistingContextUrl(editingTrade.screenshot_url || null);
       setExistingEntryUrl(editingTrade.screenshot_entry_url || null);
     } else {
-      // Date par défaut : aujourd'hui, ou minTradeDate si elle est dans le futur
-      // (assure l'ordre chronologique entre les trades — seule contrainte conservée)
+      // Date par défaut : aujourd'hui. Aucune contrainte chronologique — saisie libre.
       const today = new Date().toISOString().split("T")[0];
-      const min   = minTradeDate ?? "";
-
-      const computeDefaultDate = (): string => {
-        if (min && min > today) return min; // edge case : trade précédent dans le futur
-        return today;
-      };
 
       // ── DRAFT RECOVERY ─────────────────────────────────────────────────────
       // Si un brouillon existe (ex: page rechargée pendant la saisie), le recharger.
@@ -382,15 +374,14 @@ export const OracleTradeDialog = ({
       if (draft) {
         setFormData({ ...draft, trade_number: nextTradeNumber.toString() });
       } else {
-        const defaultDate = computeDefaultDate();
-        setFormData({ ...initialFormData, trade_number: nextTradeNumber.toString(), trade_date: defaultDate, exit_date: defaultDate });
+        setFormData({ ...initialFormData, trade_number: nextTradeNumber.toString(), trade_date: today, exit_date: today });
       }
       setExistingContextUrl(null);
       setExistingEntryUrl(null);
     }
     setContextFile(null); setContextPreview(null);
     setEntryFile(null);   setEntryPreview(null);
-  }, [isOpen, editingTrade, nextTradeNumber, minTradeDate]);
+  }, [isOpen, editingTrade, nextTradeNumber]);
 
   // Auto-save draft to localStorage (create mode only)
   useEffect(() => {
@@ -405,10 +396,6 @@ export const OracleTradeDialog = ({
       exit_date: (!prev.exit_date || prev.exit_date === prev.trade_date) ? newDate : prev.exit_date,
     }));
   };
-
-  // Seule contrainte de date conservée : ordre chronologique entre les trades
-  const dateBeforeMin = !!minTradeDate && !!formData.trade_date && formData.trade_date < minTradeDate;
-  const dateBlocked   = !editingTrade && dateBeforeMin;
 
   // File upload helpers
   const handleFileSelect = (
@@ -463,14 +450,6 @@ export const OracleTradeDialog = ({
       toast({
         title: "Champs requis manquants",
         description: missingFields.join(", "),
-        variant: "destructive",
-      });
-      return;
-    }
-    if (dateBlocked) {
-      toast({
-        title: "Date invalide",
-        description: `La date doit être ≥ ${formatDateShort(minTradeDate!)} (ordre chronologique entre les trades).`,
         variant: "destructive",
       });
       return;
@@ -598,14 +577,6 @@ export const OracleTradeDialog = ({
           {/* ── LEFT — scrollable form ── */}
           <div className="overflow-y-auto flex-1 px-8 py-7 space-y-8">
 
-            {/* Avertissement chronologique (seule contrainte conservée) */}
-            {dateBeforeMin && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs border bg-amber-500/10 border-amber-500/25 text-amber-300">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                <span>La date doit être ≥ {formatDateShort(minTradeDate!)} (trade précédent)</span>
-              </div>
-            )}
-
             {/* ── INFORMATIONS ── */}
             <div className="space-y-3">
               <SectionHeader label="Informations" />
@@ -620,13 +591,7 @@ export const OracleTradeDialog = ({
                   <DatePicker
                     value={formData.trade_date}
                     onChange={handleEntryDateChange}
-                    error={dateBeforeMin}
                   />
-                  {dateBeforeMin && (
-                    <p className="text-[10px] text-destructive font-mono mt-0.5">
-                      ≥ {formatDateShort(minTradeDate!)}
-                    </p>
-                  )}
                 </Field>
                 <Field label="Date Sortie" required>
                   <DatePicker
@@ -1021,7 +986,7 @@ export const OracleTradeDialog = ({
             <Button
               onClick={handleSave}
               disabled={
-                saving || uploading || dateBlocked ||
+                saving || uploading ||
                 !formData.trade_number || !formData.trade_date || !formData.exit_date ||
                 !formData.direction || !formData.setup_type || !formData.direction_structure ||
                 !formData.entry_model || !formData.result || !formData.rr ||
