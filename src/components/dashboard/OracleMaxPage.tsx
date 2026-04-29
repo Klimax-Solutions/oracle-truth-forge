@@ -121,7 +121,7 @@ export const OracleMaxPage = ({ trades, isAdmin, onBack }: OracleMaxPageProps) =
           </div>
 
           {/* Mobile stats row */}
-          <div className="flex md:hidden items-center gap-2 mt-4">
+          <div className="flex md:hidden flex-wrap items-center gap-2 mt-4">
             <StatPill icon={<Database className="w-3 h-3" />} label="Oracle" value={stats.oracleCount} color={TEAL} compact />
             <StatPill icon={<Users className="w-3 h-3" />} label="Compl." value={stats.complementCount} color={EMERALD} compact />
             <StatPill icon={<Sparkles className="w-3 h-3" />} label="Total" value={stats.total} color={AMBER} compact emphasis />
