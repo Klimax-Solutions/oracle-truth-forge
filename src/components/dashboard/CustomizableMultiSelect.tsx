@@ -7,19 +7,19 @@
 //   personalOptions: user_id = auth.uid() — user gère, lui seul voit
 //
 // Comportement add :
-//   - canManage=true  → insère en global  (user_id NULL)
-//   - canManage=false → insère en perso   (user_id = auth.uid())
+//   - canManage=true  → confirmation inline → insère en global (user_id NULL)
+//   - canManage=false → insère en perso (user_id = auth.uid()) sans confirmation
 //
 // Comportement delete :
-//   - option globale  → canManage requis
-//   - option perso    → le user qui la possède peut la supprimer
+//   - option globale  → canManage requis + confirmation inline
+//   - option perso    → le user qui la possède peut la supprimer (pas de confirmation)
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, X, Check } from "lucide-react";
+import { Plus, Trash2, X, Check, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -53,7 +53,7 @@ export const CustomizableMultiSelect = ({
   fixedOptions = [],
   globalOptions,
   personalOptions = [],
-  customOptions,         // backward compat
+  customOptions,
   variableType,
   placeholder = "Sélectionner…",
   onOptionsChanged,
@@ -66,20 +66,33 @@ export const CustomizableMultiSelect = ({
   const [newValue, setNewValue]     = useState("");
   const [isAdding, setIsAdding]     = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // ── États de confirmation (friction admin) ────────────────────────────────
+  /** Option globale en attente de confirmation de suppression */
+  const [pendingDeleteGlobal, setPendingDeleteGlobal] = useState<string | null>(null);
+  /** Valeur en attente de confirmation d'ajout partagé */
+  const [pendingAdd, setPendingAdd] = useState<string | null>(null);
+
   const { toast } = useToast();
 
-  // Résoudre globalOptions (backward compat avec customOptions)
   const resolvedGlobalOptions = globalOptions ?? customOptions ?? [];
 
-  // Récupérer l'uid une seule fois au montage
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setCurrentUserId(user?.id ?? null);
     });
   }, []);
 
-  // ── Construire la liste complète ─────────────────────────────────────────────
-  // Ordre : fixes → partagées → personnelles (sans doublons)
+  // Reset confirmations quand on ferme
+  useEffect(() => {
+    if (!isOpen) {
+      setPendingDeleteGlobal(null);
+      setPendingAdd(null);
+      setNewValue("");
+    }
+  }, [isOpen]);
+
+  // ── Construire la liste ───────────────────────────────────────────────────
   const globalUniq   = resolvedGlobalOptions.filter(o => !fixedOptions.includes(o));
   const personalUniq = personalOptions.filter(
     o => !fixedOptions.includes(o) && !resolvedGlobalOptions.includes(o),
@@ -90,9 +103,8 @@ export const CustomizableMultiSelect = ({
     ? value.split(",").map((v) => v.trim()).filter(Boolean)
     : [];
 
-  // ── Catégoriser chaque option ──────────────────────────────────────────────
-  const isPersonal = (opt: string) => personalOptions.includes(opt) && !fixedOptions.includes(opt);
-  const isGlobal   = (opt: string) => resolvedGlobalOptions.includes(opt) && !fixedOptions.includes(opt);
+  const isGlobal = (opt: string) =>
+    resolvedGlobalOptions.includes(opt) && !fixedOptions.includes(opt);
 
   // ── Sélection ─────────────────────────────────────────────────────────────
   const handleSelect = (opt: string) => {
@@ -114,21 +126,30 @@ export const CustomizableMultiSelect = ({
   };
 
   // ── Ajout ─────────────────────────────────────────────────────────────────
-  const handleAdd = async () => {
+  const handleAddIntent = () => {
     const trimmed = newValue.trim();
     if (!trimmed || allOptions.includes(trimmed)) return;
-    setIsAdding(true);
+    if (canManage) {
+      // Admin : demander confirmation avant d'ajouter en partagé
+      setPendingAdd(trimmed);
+    } else {
+      // User : ajout perso direct, sans friction
+      commitAdd(trimmed);
+    }
+  };
 
-    // Admin → global (pas de user_id) ; user → personnel (user_id = auth.uid())
+  const commitAdd = async (val: string) => {
+    setIsAdding(true);
     const insertData = canManage
-      ? { variable_type: variableType, variable_value: trimmed }
-      : { variable_type: variableType, variable_value: trimmed, user_id: currentUserId };
+      ? { variable_type: variableType, variable_value: val }
+      : { variable_type: variableType, variable_value: val, user_id: currentUserId };
 
     const { error } = await supabase
       .from("user_custom_variables")
       .insert(insertData as any);
 
     setIsAdding(false);
+    setPendingAdd(null);
     if (!error) {
       setNewValue("");
       onOptionsChanged();
@@ -137,8 +158,8 @@ export const CustomizableMultiSelect = ({
     }
   };
 
-  // ── Suppression option partagée (admin requis) ─────────────────────────────
-  const handleDeleteGlobal = async (opt: string) => {
+  // ── Suppression option partagée — avec confirmation ────────────────────────
+  const handleDeleteGlobalConfirmed = async (opt: string) => {
     if (!canManage) return;
     await supabase
       .from("user_custom_variables")
@@ -148,10 +169,11 @@ export const CustomizableMultiSelect = ({
       .eq("variable_value", opt);
     if (selectedValues.includes(opt))
       onChange(selectedValues.filter((v) => v !== opt).join(", "));
+    setPendingDeleteGlobal(null);
     onOptionsChanged();
   };
 
-  // ── Suppression option personnelle (user requis) ───────────────────────────
+  // ── Suppression option personnelle ────────────────────────────────────────
   const handleDeletePersonal = async (opt: string) => {
     if (!currentUserId) return;
     await supabase
@@ -165,36 +187,63 @@ export const CustomizableMultiSelect = ({
     onOptionsChanged();
   };
 
-  // ── Render helpers ────────────────────────────────────────────────────────
-  const renderOption = (opt: string, _optIsGlobal: boolean, optIsPersonal: boolean) => {
-    const isSelected    = selectedValues.includes(opt);
-    const optIsFixed    = fixedOptions.includes(opt);
+  // ── Render option ────────────────────────────────────────────────────────
+  const renderOption = (opt: string, optIsPersonal: boolean) => {
+    const isSelected          = selectedValues.includes(opt);
     const optIsActuallyGlobal = isGlobal(opt);
-    const canDeleteThis = (optIsActuallyGlobal && canManage) || optIsPersonal;
+    const canDeleteThis       = (optIsActuallyGlobal && canManage) || optIsPersonal;
+
+    // Confirmation suppression globale — inline dans la row
+    if (pendingDeleteGlobal === opt) {
+      return (
+        <div key={opt} className="mx-1 mb-0.5 flex items-center gap-1.5 px-2 py-2 rounded-lg bg-destructive/10 border border-destructive/20">
+          <AlertTriangle className="w-3 h-3 text-destructive/70 shrink-0" />
+          <span className="text-[11px] text-destructive/80 flex-1 truncate">Supprimer "{opt}" ?</span>
+          <button
+            type="button"
+            onClick={() => handleDeleteGlobalConfirmed(opt)}
+            className="text-[10px] font-bold text-destructive px-2 py-0.5 rounded bg-destructive/20 hover:bg-destructive/35 transition-colors shrink-0"
+          >
+            Oui
+          </button>
+          <button
+            type="button"
+            onClick={() => setPendingDeleteGlobal(null)}
+            className="text-[10px] text-foreground/40 px-2 py-0.5 rounded hover:bg-white/[.06] transition-colors shrink-0"
+          >
+            Non
+          </button>
+        </div>
+      );
+    }
 
     return (
-      <div key={opt} className="flex items-center group px-1">
+      <div key={opt} className="flex items-center group">
         <button
           type="button"
           onClick={() => handleSelect(opt)}
           className={cn(
             "flex-1 flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-sm transition-all text-left",
             isSelected
-              ? "bg-primary/15 text-primary"
+              ? optIsPersonal ? "bg-violet-500/15 text-violet-300" : "bg-primary/15 text-primary"
               : "text-foreground/80 hover:bg-white/[.06] hover:text-foreground",
           )}
         >
           {singleSelect ? (
             <div className={cn(
               "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all",
-              isSelected ? "bg-primary border-primary" : "border-white/[.25] bg-transparent",
+              isSelected
+                ? optIsPersonal ? "bg-violet-500 border-violet-500" : "bg-primary border-primary"
+                : "border-white/[.25] bg-transparent",
             )}>
               {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />}
             </div>
           ) : (
             <div className={cn(
               "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all",
-              isSelected ? "bg-primary border-primary" : "border-white/[.25] bg-transparent",
+              isSelected
+                ? optIsPersonal ? "bg-violet-500 border-violet-500" : "bg-primary border-primary"
+                : "border-white/[.25] bg-transparent",
             )}>
               {isSelected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
             </div>
@@ -210,11 +259,12 @@ export const CustomizableMultiSelect = ({
         {canDeleteThis && (
           <button
             type="button"
-            onClick={() => optIsActuallyGlobal
-              ? handleDeleteGlobal(opt)
-              : handleDeletePersonal(opt)
+            onClick={() =>
+              optIsActuallyGlobal
+                ? setPendingDeleteGlobal(opt)   // demande confirmation
+                : handleDeletePersonal(opt)      // perso : direct
             }
-            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
+            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all shrink-0 mr-1"
           >
             <Trash2 className="w-3 h-3" />
           </button>
@@ -223,7 +273,7 @@ export const CustomizableMultiSelect = ({
     );
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <PopoverPrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
       <PopoverPrimitive.Trigger asChild>
@@ -281,66 +331,101 @@ export const CustomizableMultiSelect = ({
           sideOffset={4}
           style={{
             minWidth: "var(--radix-popover-trigger-width)",
-            maxWidth: "260px",
+            maxWidth: "280px",
           }}
-          className="z-[9999] rounded-xl border border-white/[.15] bg-[hsl(var(--card))] shadow-2xl shadow-black/70 overflow-hidden p-0"
+          className="z-[9999] flex flex-col rounded-xl border border-white/[.15] bg-[hsl(var(--card))] shadow-2xl shadow-black/70 p-0"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          {/* ── Champ d'ajout — visible par tous ── */}
-          <div className="flex gap-1.5 p-2 border-b border-white/[.08]">
-            <Input
-              value={newValue}
-              onChange={(e) => setNewValue(e.target.value)}
-              placeholder={canManage ? "Ajouter une option partagée…" : "Ajouter une option perso…"}
-              className="h-8 text-xs border-white/[.15] bg-white/[.05] placeholder:text-foreground/30"
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
-              autoFocus
-            />
-            <button
-              type="button"
-              onClick={handleAdd}
-              disabled={isAdding || !newValue.trim()}
-              className={cn(
-                "h-8 w-8 shrink-0 rounded-md border border-white/[.15] flex items-center justify-center transition-all",
-                newValue.trim() ? "bg-primary/80 hover:bg-primary text-primary-foreground border-primary/60" : "text-foreground/30 cursor-not-allowed",
-              )}
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
+          {/* ── Champ d'ajout (fixe en haut) ── */}
+          <div className="shrink-0 p-2 border-b border-white/[.08]">
+            {pendingAdd ? (
+              /* Confirmation ajout partagé */
+              <div className="flex flex-col gap-2 px-1 py-1">
+                <div className="flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-400/80 shrink-0" />
+                  <span className="text-[11px] text-foreground/70 leading-snug">
+                    Ajouter <span className="font-semibold text-foreground">"{pendingAdd}"</span> pour tous les utilisateurs ?
+                  </span>
+                </div>
+                <div className="flex gap-1.5 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setPendingAdd(null)}
+                    className="text-[11px] px-2.5 py-1 rounded-md border border-white/[.12] text-foreground/50 hover:text-foreground hover:bg-white/[.05] transition-all"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => commitAdd(pendingAdd)}
+                    disabled={isAdding}
+                    className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-primary/80 hover:bg-primary text-primary-foreground transition-all disabled:opacity-50"
+                  >
+                    Confirmer
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-1.5">
+                <Input
+                  value={newValue}
+                  onChange={(e) => setNewValue(e.target.value)}
+                  placeholder={canManage ? "Ajouter une option partagée…" : "Ajouter une option perso…"}
+                  className="h-8 text-xs border-white/[.15] bg-white/[.05] placeholder:text-foreground/30"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddIntent(); } }}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={handleAddIntent}
+                  disabled={isAdding || !newValue.trim()}
+                  className={cn(
+                    "h-8 w-8 shrink-0 rounded-md border border-white/[.15] flex items-center justify-center transition-all",
+                    newValue.trim()
+                      ? "bg-primary/80 hover:bg-primary text-primary-foreground border-primary/60"
+                      : "text-foreground/30 cursor-not-allowed",
+                  )}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* ── Liste des options ── */}
-          <div className="max-h-56 overflow-y-auto py-1">
+          {/* ── Liste scrollable ── */}
+          <div className="overflow-y-auto flex-1 p-1.5 space-y-1.5" style={{ maxHeight: "240px" }}>
             {allOptions.length === 0 && (
               <p className="text-xs text-foreground/30 text-center py-4 italic">
                 Tapez ci-dessus pour ajouter une option
               </p>
             )}
 
-            {/* Groupe 1 — options partagées (admin) */}
+            {/* Groupe 1 — options partagées */}
             {(fixedOptions.length > 0 || globalUniq.length > 0) && (
-              <>
-                <div className="flex items-center gap-2 px-3 pt-1.5 pb-1">
-                  <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-foreground/30">
+              <div className="rounded-lg border border-white/[.07] bg-white/[.025] overflow-hidden">
+                <div className="px-2.5 pt-2 pb-1">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-foreground/35">
                     Options partagées
                   </span>
-                  <div className="flex-1 h-px bg-white/[.06]" />
                 </div>
-                {[...fixedOptions, ...globalUniq].map((opt) => renderOption(opt, false, false))}
-              </>
+                <div className="pb-1">
+                  {[...fixedOptions, ...globalUniq].map((opt) => renderOption(opt, false))}
+                </div>
+              </div>
             )}
 
             {/* Groupe 2 — options personnelles */}
             {personalUniq.length > 0 && (
-              <>
-                <div className="flex items-center gap-2 px-3 pt-2 pb-1">
-                  <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-violet-400/60">
+              <div className="rounded-lg border border-violet-500/[.18] bg-violet-500/[.04] overflow-hidden">
+                <div className="px-2.5 pt-2 pb-1">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-violet-400/70">
                     Mes options
                   </span>
-                  <div className="flex-1 h-px bg-violet-500/[.12]" />
                 </div>
-                {personalUniq.map((opt) => renderOption(opt, false, true))}
-              </>
+                <div className="pb-1">
+                  {personalUniq.map((opt) => renderOption(opt, true))}
+                </div>
+              </div>
             )}
           </div>
         </PopoverPrimitive.Content>
