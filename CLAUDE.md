@@ -1,7 +1,8 @@
 # Oracle Truth Forge — Instructions Claude
 
-> **Mis à jour : 2026-04-28**
-> Toujours lire ce fichier en entier avant d'écrire du code.
+> **Mis à jour : 2026-04-29**
+> ⚠️ Lire d'abord le **[master CLAUDE.md](../CLAUDE.md)** à la racine `/projets/oracle/` — il prime sur ce fichier.
+> Ce fichier contient uniquement les règles **spécifiques** à oracle-truth-forge.
 
 ---
 
@@ -11,8 +12,8 @@
 
 | Dossier local | Branche active | Push prod |
 |--------------|---------------|-----------|
-| `/projets/oracle-truth-forge/` | **`main`** | `git push origin main` |
-| `/projets/oracle-funnel-clean/` | `funnel-clean` | `git push origin HEAD:main` |
+| `/projets/oracle/truth-forge/` | **`main`** | `git push origin main` |
+| `/projets/oracle/funnel-clean/` | `funnel-clean` | `git push origin HEAD:main` |
 
 > **⚠️ IMPORTANT — changement de stratégie (2026-04-28)**
 > La branche `crm-integration` est **ABANDONNÉE** — 271 commits de retard sur `origin/main`, impossiblee à merger sans régressions.
@@ -73,7 +74,7 @@ Ne jamais pointer Vercel vers la DB prod (`pggkwyhtplxyarctuoze`).
 | Projet | Rôle | DB Supabase |
 |--------|------|-------------|
 | **oracle-truth-forge** (ce repo) | Plateforme trading + Admin unifié | `pggkwyhtplxyarctuoze` (Lovable Cloud) |
-| **oracle-funnel-clean** (`/projets/oracle-funnel-clean/`) | Funnel acquisition (Landing/Apply/Discovery/Final) | même DB |
+| **oracle-funnel-clean** (`/projets/oracle/funnel-clean/`) | Funnel acquisition (Landing/Apply/Discovery/Final) | même DB |
 | **spike-launch** (`/projets/spike-launch/`) | CRM/Funnel référence (ne pas modifier) | `lcisptkyzgzvzsdkiihj` |
 
 ### Branches
@@ -96,7 +97,7 @@ Ne jamais pointer Vercel vers la DB prod (`pggkwyhtplxyarctuoze`).
 
 | Date | Feature | Commit | Repo |
 |------|---------|--------|------|
-| 2026-04-28 | **Notification Telegram nouveaux leads** — edge function `notify-funnel-lead`, appelée depuis `funnelLeadQueue.ts` path direct + `submit-funnel-lead` fallback | `60fc72f` | oracle-funnel-clean |
+| 2026-04-28 | **Notification Slack nouveaux leads** — edge function `notify-funnel-lead`, appelée depuis `funnelLeadQueue.ts` path direct + `submit-funnel-lead` fallback. En attente config `SLACK_WEBHOOK_URL`. | `60fc72f` | oracle-funnel-clean |
 | 2026-04-28 | **Badge 📵 "No tel"** — leads sans numéro de téléphone (rouge dans pipeline) | `8285432` | oracle-truth-forge |
 | 2026-04-28 | **Setter quick-assign inline** — select natif dans chaque card pipeline, chargé depuis `user_roles` + `profiles`, visible admin/setter uniquement | `8285432` | oracle-truth-forge |
 | 2026-04-28 | **staffSetters dynamiques** — chargé depuis `user_roles WHERE role='setter'` + `profiles.display_name/first_name`, merge avec setters déjà sur les leads | `8285432` | oracle-truth-forge |
@@ -108,8 +109,8 @@ Ne jamais pointer Vercel vers la DB prod (`pggkwyhtplxyarctuoze`).
 
 | # | Feature | Statut | Notes |
 |---|---------|--------|-------|
-| 🔴 | **Deploy `notify-funnel-lead` edge function** sur PROD (pggk) | **Bloquant** | `supabase functions deploy notify-funnel-lead --project-ref pggkwyhtplxyarctuoze` |
-| 🔴 | **Secrets Telegram** dans Supabase pggk | **Bloquant** | `TELEGRAM_BOT_TOKEN` + `TELEGRAM_NOTIFY_CHAT_ID` via dashboard Supabase |
+| 🔴 | **`SLACK_WEBHOOK_URL`** dans Supabase pggk | **Bloquant** | Settings → Secrets → SLACK_WEBHOOK_URL |
+| 🔴 | **12 migrations SQL** sur PROD (pggk) | **Bloquant** | Voir master CLAUDE.md §9 |
 | 🟡 | Badge 📵 dans le **detail panel** du lead (champ "Numéro absent") | Nice-to-have | Déjà fait sur crm-integration (stale), à re-appliquer sur main |
 | 🟡 | **Agenda tab** — Cal.com webhook sync (CASSÉ — P0 sales pipeline) | Important | Voir `oracle_sales_pipeline_audit.md` |
 | 🟡 | **Stripe** — paiement (ABSENT) | Important | Décision : manuel pour l'instant |
@@ -199,8 +200,7 @@ Ce qui ne doit PAS se produire :
 ### Secrets backend
 - `SUPABASE_SERVICE_ROLE_KEY` — clé admin DB
 - `SUPABASE_DB_URL` — connection string directe
-- `TELEGRAM_BOT_TOKEN` — ⚠️ à configurer pour activer les notifs
-- `TELEGRAM_NOTIFY_CHAT_ID` — ⚠️ à configurer pour activer les notifs
+- `SLACK_WEBHOOK_URL` — ⚠️ à configurer pour activer les notifs leads (remplace Telegram)
 
 ### Edge Functions
 - `approve-early-access` — deploy auto Lovable
@@ -226,8 +226,8 @@ Ce qui ne doit PAS se produire :
 
 ```bash
 # Dev
-cd /projets/oracle-truth-forge && npm run dev -- --port 3003
-cd /projets/oracle-funnel-clean && npm run dev -- --port 3003
+cd /projets/oracle/truth-forge && npm run dev -- --port 3003
+cd /projets/oracle/funnel-clean && npm run dev -- --port 3003
 
 # Build check (OBLIGATOIRE avant commit)
 npm run build
@@ -242,6 +242,61 @@ supabase functions deploy notify-funnel-lead --project-ref pggkwyhtplxyarctuoze
 git diff --stat
 git log --oneline -10
 ```
+
+---
+
+## Export des données membre — Règles d'implémentation (dans le marbre)
+
+> Fichier concerné : `src/components/dashboard/UserDataEntry.tsx` → fonction `handleExport`
+
+### Format : ZIP (pas CSV seul)
+
+Le bouton "Export" génère un fichier `.zip` contenant :
+```
+oracle_trades_YYYY-MM-DD.zip
+├── trades.csv              ← toutes les données tabulaires
+└── screenshots/
+    ├── trade_001_contexte.jpg
+    ├── trade_001_entree.png
+    ├── trade_002_contexte.jpg
+    └── ...
+```
+
+**Jamais un CSV seul** — un CSV sans images est inutilisable pour l'analyse.
+
+### Formats d'image supportés
+
+| Extension | Inclus dans ZIP |
+|-----------|----------------|
+| `.png`    | ✅ |
+| `.jpg` / `.jpeg` | ✅ |
+| `.webp`   | ✅ |
+| `.gif`    | ✅ |
+| Autre     | ✅ (inclus, renommé `.jpg` en fallback) |
+
+### Comportement selon le mode de stockage
+
+| Mode screenshot | Comportement dans l'export |
+|----------------|---------------------------|
+| **Fichier uploadé** (Supabase Storage) | Téléchargé via signed URL (1h) et ajouté dans `screenshots/` |
+| **Lien externe** (URL TradingView, etc.) | Impossible à télécharger (CORS navigateur) → URL référencée dans `trades.csv` uniquement |
+
+### Architecture technique
+
+- **JSZip** chargé en import dynamique (lazy) → pas dans le bundle principal
+- **`Promise.all`** pour télécharger tous les screenshots en parallèle
+- **Signed URLs Supabase** : `supabase.storage.from("trade-screenshots").createSignedUrl(path, 3600)`
+- Les erreurs de download sont loguées en `console.error("[Export] ...")` mais ne bloquent pas l'export (les autres images continuent)
+- Le **toast** indique le nombre de screenshots réellement inclus dans le ZIP
+
+### Toast de confirmation
+
+- Succès avec images : `"X trades exportés avec Y screenshots."`
+- Succès sans images (liens externes) : `"X trades exportés (screenshots en mode lien — non téléchargeables)."`
+
+### Limitation connue à surveiller
+
+`Promise.all` lance tous les téléchargements en parallèle. Jusqu'à ~150 trades (300 images), c'est parfaitement stable. Au-delà, si des lenteurs apparaissent, passer à des batches de 20 (`Promise.all` par tranches de 20 avec une boucle).
 
 ---
 
