@@ -290,6 +290,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
   // Screenshot validation state
   const [screenshotError, setScreenshotError] = useState(false);
   const [selectedExecution, setSelectedExecution] = useState<UserExecution | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const contextFileRef = useRef<HTMLInputElement>(null);
   const entryFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -728,74 +729,109 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
     }
   };
 
-  // Export to CSV
-  const handleExportCSV = () => {
+  // Export — ZIP (CSV + screenshots)
+  const handleExport = async () => {
     if (executions.length === 0) {
-      toast({
-        title: "Aucune donnée",
-        description: "Aucun trade à exporter.",
-        variant: "destructive",
-      });
+      toast({ title: "Aucune donnée", description: "Aucun trade à exporter.", variant: "destructive" });
       return;
     }
+    setIsExporting(true);
+    try {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      const screenshotsFolder = zip.folder("screenshots")!;
 
-    const headers = [
-      "Trade #",
-      "Date Entrée",
-      "Date Sortie",
-      "Direction",
-      "Heure Entrée",
-      "Heure Sortie",
-      "Prix Entrée",
-      "Prix Sortie",
-      "Stop Loss",
-      "Take Profit",
-      "RR",
-      "Résultat",
-      "Setup",
-      "Entry Model",
-      "Structure",
-      "Timing",
-      "Notes",
-    ];
+      // Download one screenshot (Supabase storage path or external URL)
+      const addScreenshot = async (path: string | null | undefined, filename: string) => {
+        if (!path) return;
+        let url = path;
+        // If it's a storage path (not an http URL), get a signed URL
+        if (!path.startsWith("http://") && !path.startsWith("https://")) {
+          const { data: urlData } = await supabase.storage
+            .from("trade-screenshots")
+            .createSignedUrl(path, 3600);
+          if (!urlData?.signedUrl) return;
+          url = urlData.signedUrl;
+        }
+        try {
+          const response = await fetch(url);
+          if (!response.ok) return;
+          const blob = await response.blob();
+          const rawExt = path.split(".").pop()?.split("?")[0]?.toLowerCase() || "jpg";
+          const ext = ["jpg", "jpeg", "png", "gif", "webp"].includes(rawExt) ? rawExt : "jpg";
+          screenshotsFolder.file(`${filename}.${ext}`, blob);
+        } catch { /* skip undownloadable screenshot */ }
+      };
 
-    const csvRows = [
-      headers.join(","),
-      ...executions.map((e) =>
-        [
-          e.trade_number,
-          e.trade_date,
-          e.exit_date || "",
-          e.direction,
-          e.entry_time || "",
-          e.exit_time || "",
-          e.entry_price || "",
-          e.exit_price || "",
-          e.stop_loss || "",
-          e.take_profit || "",
-          e.rr || "",
-          e.result || "",
-          e.setup_type || "",
-          e.entry_model || "",
-          e.direction_structure || "",
-          e.entry_timing || "",
-          `"${(e.notes || "").replace(/"/g, '""')}"`,
-        ].join(",")
-      ),
-    ];
+      // Download all screenshots in parallel
+      await Promise.all(
+        executions.flatMap((e) => {
+          const num = String(e.trade_number).padStart(3, "0");
+          return [
+            addScreenshot(e.screenshot_url, `trade_${num}_contexte`),
+            addScreenshot(e.screenshot_entry_url, `trade_${num}_entree`),
+          ];
+        })
+      );
 
-    const csvContent = csvRows.join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `oracle_executions_${new Date().toISOString().split("T")[0]}.csv`);
-    link.click();
+      // Build CSV
+      const headers = [
+        "Trade #", "Date Entrée", "Date Sortie", "Direction",
+        "Heure Entrée", "Heure Sortie", "Prix Entrée", "Prix Sortie",
+        "Stop Loss", "Take Profit", "RR", "Résultat",
+        "Setup", "Entry Model", "Structure", "Timing",
+        "Screenshot Contexte", "Screenshot Entrée", "Notes",
+      ];
+      const escape = (v: string | number | null | undefined) => {
+        const s = String(v ?? "");
+        return s.includes(",") || s.includes('"') || s.includes("\n")
+          ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const csvRows = [
+        headers.join(","),
+        ...executions.map((e) => {
+          const num = String(e.trade_number).padStart(3, "0");
+          return [
+            e.trade_number,
+            e.trade_date,
+            e.exit_date || "",
+            e.direction,
+            e.entry_time || "",
+            e.exit_time || "",
+            e.entry_price || "",
+            e.exit_price || "",
+            e.stop_loss || "",
+            e.take_profit || "",
+            e.rr || "",
+            e.result || "",
+            e.setup_type || "",
+            e.entry_model || "",
+            e.direction_structure || "",
+            e.entry_timing || "",
+            e.screenshot_url ? `screenshots/trade_${num}_contexte.*` : "",
+            e.screenshot_entry_url ? `screenshots/trade_${num}_entree.*` : "",
+            escape(e.notes),
+          ].map(escape).join(",");
+        }),
+      ];
+      zip.file("trades.csv", csvRows.join("\n"));
 
-    toast({
-      title: "Export réussi",
-      description: `${executions.length} trades exportés en CSV.`,
-    });
+      // Generate and download ZIP
+      const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `oracle_trades_${new Date().toISOString().split("T")[0]}.zip`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+      toast({ title: "Export réussi", description: `${executions.length} trades exportés avec leurs screenshots.` });
+    } catch (err) {
+      console.error("Export error:", err);
+      toast({ title: "Erreur d'export", description: "Une erreur est survenue lors de l'export.", variant: "destructive" });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   // Calculate stats
@@ -835,9 +871,9 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
             </p>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
-            <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1.5 flex-1 md:flex-none">
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Export</span>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting} className="gap-1.5 flex-1 md:flex-none">
+              {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              <span className="hidden sm:inline">{isExporting ? "Export..." : "Export"}</span>
             </Button>
             <Button size="sm" onClick={handleNewEntry} className="gap-1.5 flex-1 md:flex-none">
               <Plus className="w-4 h-4" />

@@ -279,6 +279,21 @@ const ScreenshotUploadField = ({
   );
 };
 
+// ── Draft persistence helpers ──────────────────────────────────────────────────
+const DRAFT_KEY = "oracle_trade_draft";
+const saveDraft = (data: FormData) => {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch {}
+};
+const loadDraft = (): FormData | null => {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as FormData) : null;
+  } catch { return null; }
+};
+const clearDraft = () => {
+  try { localStorage.removeItem(DRAFT_KEY); } catch {}
+};
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 export const OracleTradeDialog = ({
   isOpen,
@@ -383,14 +398,28 @@ export const OracleTradeDialog = ({
         return today;
       };
 
-      const defaultDate = computeDefaultDate();
-      setFormData({ ...initialFormData, trade_number: nextTradeNumber.toString(), trade_date: defaultDate, exit_date: defaultDate });
+      // ── DRAFT RECOVERY ─────────────────────────────────────────────────────
+      // Si un brouillon existe (ex: page rechargée pendant la saisie), le recharger.
+      // Le numéro de trade est toujours remis à jour pour rester cohérent.
+      const draft = loadDraft();
+      if (draft) {
+        setFormData({ ...draft, trade_number: nextTradeNumber.toString() });
+      } else {
+        const defaultDate = computeDefaultDate();
+        setFormData({ ...initialFormData, trade_number: nextTradeNumber.toString(), trade_date: defaultDate, exit_date: defaultDate });
+      }
       setExistingContextUrl(null);
       setExistingEntryUrl(null);
     }
     setContextFile(null); setContextPreview(null);
     setEntryFile(null);   setEntryPreview(null);
   }, [isOpen, editingTrade, nextTradeNumber, recommendedWindow]);
+
+  // Auto-save draft to localStorage (create mode only)
+  useEffect(() => {
+    if (!isOpen || editingTrade) return;
+    saveDraft(formData);
+  }, [formData, isOpen, editingTrade]);
 
   const handleEntryDateChange = (newDate: string) => {
     setFormData(prev => ({
@@ -512,6 +541,7 @@ export const OracleTradeDialog = ({
           throw error;
         }
         toast({ title: "Trade créé", description: `Trade #${formData.trade_number} ajouté.` });
+        clearDraft();
       }
       onSaved();
     } catch (err: any) {
