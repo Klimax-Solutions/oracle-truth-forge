@@ -332,6 +332,7 @@ export const CustomizableMultiSelect = ({
           style={{
             minWidth: "var(--radix-popover-trigger-width)",
             maxWidth: "280px",
+            maxHeight: "340px",
           }}
           className="z-[9999] flex flex-col rounded-xl border border-white/[.15] bg-[hsl(var(--card))] shadow-2xl shadow-black/70 p-0"
           onOpenAutoFocus={(e) => e.preventDefault()}
@@ -393,7 +394,7 @@ export const CustomizableMultiSelect = ({
           </div>
 
           {/* ── Liste scrollable ── */}
-          <div className="overflow-y-auto flex-1 p-1.5 space-y-1.5" style={{ maxHeight: "240px" }}>
+          <div className="overflow-y-auto min-h-0 flex-1 p-1.5 space-y-1.5">
             {allOptions.length === 0 && (
               <p className="text-xs text-foreground/30 text-center py-4 italic">
                 Tapez ci-dessus pour ajouter une option
