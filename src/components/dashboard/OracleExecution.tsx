@@ -122,6 +122,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   const [verificationAttempts, setVerificationAttempts] = useState<Record<string, number>>({});
   const [verificationDismissed, setVerificationDismissed] = useState(false);
   const [verificationRequestDates, setVerificationRequestDates] = useState<Record<string, string>>({});
+  const [retractingCycleId, setRetractingCycleId] = useState<string | null>(null);
   const { toast } = useToast();
   const { isEarlyAccess, expiresAt, earlyAccessType } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
@@ -492,6 +493,54 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
     } finally {
       setSubmitting(false);
       submittingRef.current = false;
+    }
+  };
+
+  // Rétracter une demande de vérification pending (atomique via RPC)
+  const handleRetractVerification = async (cycleId: string) => {
+    if (retractingCycleId) return; // une rétractation à la fois
+    setRetractingCycleId(cycleId);
+    try {
+      const { error } = await supabase.rpc("retract_verification_request" as any, {
+        p_cycle_id: cycleId,
+      });
+      if (error) throw error;
+
+      // Mise à jour locale : on retire le cycle des demandes en attente
+      setRequestedCycleIds((prev) => {
+        const next = new Set(prev);
+        next.delete(cycleId);
+        return next;
+      });
+      setVerificationRequestDates((prev) => {
+        const next = { ...prev };
+        delete next[cycleId];
+        return next;
+      });
+
+      // Rafraîchir user_cycles pour refléter le retour en in_progress côté UI
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: updatedUserCycles } = await supabase
+          .from("user_cycles")
+          .select("*")
+          .eq("user_id", user.id);
+        if (updatedUserCycles) setUserCycles(updatedUserCycles as UserCycle[]);
+      }
+
+      toast({
+        title: "Demande retirée",
+        description: "Ta demande de vérification a été annulée. Tu peux en soumettre une nouvelle quand tu es prêt.",
+      });
+    } catch (error) {
+      console.error("Error retracting verification:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'annuler la demande. Réessaie dans un instant.",
+        variant: "destructive",
+      });
+    } finally {
+      setRetractingCycleId(null);
     }
   };
 
@@ -1007,16 +1056,27 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                           <Play className="w-4 h-4 mr-2" /> Voir les vidéos
                         </Button>
                         {requestedCycleIds.has(ebauche.id) || ebauche.userCycle?.status === 'pending_review' ? (
-                          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/25">
-                            <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                            <div>
-                              <span className="text-xs font-medium text-amber-300">Vérification en attente</span>
-                              {verificationRequestDates[ebauche.id] && (
-                                <span className="block text-[10px] text-amber-400/60 font-mono">
-                                  Envoyée le {new Date(verificationRequestDates[ebauche.id]).toLocaleDateString("fr-FR")}
-                                </span>
-                              )}
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/25">
+                              <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              <div>
+                                <span className="text-xs font-medium text-amber-300">Vérification en attente</span>
+                                {verificationRequestDates[ebauche.id] && (
+                                  <span className="block text-[10px] text-amber-400/60 font-mono">
+                                    Envoyée le {new Date(verificationRequestDates[ebauche.id]).toLocaleDateString("fr-FR")}
+                                  </span>
+                                )}
+                              </div>
                             </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); handleRetractVerification(ebauche.id); }}
+                              disabled={retractingCycleId === ebauche.id}
+                              className="text-xs text-muted-foreground hover:text-destructive h-auto px-2 py-1"
+                            >
+                              {retractingCycleId === ebauche.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Retirer"}
+                            </Button>
                           </div>
                         ) : ebauche.userCycle?.status === 'in_progress' ? (
                           <Button size="sm" onClick={(e) => { e.stopPropagation(); handleRequestVerification(ebauche); }}
@@ -1141,17 +1201,28 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                     {!isEbauche && cycle.userExecutions.length >= cycle.total_trades && (
                       <div className="ml-10 mt-2 mb-1">
                         {requestedCycleIds.has(cycle.id) || cycle.userCycle?.status === 'pending_review' ? (
-                          // ── Demande déjà envoyée — statut visible ──
-                          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/25 w-fit">
-                            <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                            <div>
-                              <span className="text-xs font-medium text-amber-300">Vérification en attente</span>
-                              {verificationRequestDates[cycle.id] && (
-                                <span className="block text-[10px] text-amber-400/60 font-mono">
-                                  Envoyée le {new Date(verificationRequestDates[cycle.id]).toLocaleDateString("fr-FR")}
-                                </span>
-                              )}
+                          // ── Demande déjà envoyée — statut visible + bouton retrait ──
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/25 w-fit">
+                              <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              <div>
+                                <span className="text-xs font-medium text-amber-300">Vérification en attente</span>
+                                {verificationRequestDates[cycle.id] && (
+                                  <span className="block text-[10px] text-amber-400/60 font-mono">
+                                    Envoyée le {new Date(verificationRequestDates[cycle.id]).toLocaleDateString("fr-FR")}
+                                  </span>
+                                )}
+                              </div>
                             </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); handleRetractVerification(cycle.id); }}
+                              disabled={retractingCycleId === cycle.id}
+                              className="text-xs text-muted-foreground hover:text-destructive h-auto px-2 py-1"
+                            >
+                              {retractingCycleId === cycle.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Retirer"}
+                            </Button>
                           </div>
                         ) : (cycle.userCycle?.status === 'in_progress' || cycle.userCycle?.status === 'rejected') ? (
                           // ── Peut envoyer une demande ──
