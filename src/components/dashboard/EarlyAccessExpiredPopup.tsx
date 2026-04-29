@@ -40,7 +40,7 @@ export const EarlyAccessExpiredPopup = () => {
   return (
     <Dialog open modal>
       <DialogContent
-        className="max-w-2xl p-0 gap-0 overflow-hidden [&>button]:hidden"
+        className="max-w-2xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[92vh] overflow-y-auto p-0 gap-0 [&>button]:hidden"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}

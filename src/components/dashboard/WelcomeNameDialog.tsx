@@ -57,7 +57,7 @@ export const WelcomeNameDialog = ({ userId, onComplete }: WelcomeNameDialogProps
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-sm">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md mx-4 bg-card border border-border rounded-2xl shadow-2xl p-8 space-y-6"
+        className="w-full max-w-md mx-4 bg-card border border-border rounded-2xl shadow-2xl p-6 sm:p-8 space-y-5 sm:space-y-6"
       >
         <div className="flex flex-col items-center text-center space-y-3">
           <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center">

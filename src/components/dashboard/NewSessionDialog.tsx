@@ -83,7 +83,7 @@ export default function NewSessionDialog({ open, type, onClose, onCreated }: New
       onClick={handleClose}
     >
       <div
-        className="bg-[#0F1116] border border-white/[0.08] rounded-2xl w-full max-w-md p-6 shadow-2xl"
+        className="bg-[#0F1116] border border-white/[0.08] rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
