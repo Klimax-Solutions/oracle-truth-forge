@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { Database, BarChart3, Crosshair, Video, ShieldCheck, Crown, FileUp, Trophy, Film, Award, Users, Settings, Layers } from "lucide-react";
+import { BarChart3, Crosshair, Video, ShieldCheck, Trophy, Award, Users as UsersIcon, Settings, TrendingUp, LineChart } from "lucide-react";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 import { useEarlyAccessSettings } from "@/hooks/useEarlyAccessSettings";
 
@@ -20,26 +20,28 @@ interface MobileHeaderProps {
   overrideIsEarlyAccess?: boolean;
 }
 
+// ⚠️ STRICTEMENT identique à DashboardSidebar.tsx — ordre, labels, icônes.
+// Toute modification doit être miroir entre les deux fichiers.
 const tabs = [
   { id: "execution", label: "Exécution d'Oracle", icon: Crosshair },
-  { id: "setup", label: "Setup", icon: Database },
+  { id: "videos", label: "Vidéo du Setup Oracle", icon: Video },
+  { id: "recolte-donnees", label: "Récolte de données", icon: LineChart },
   { id: "data-analysis", label: "Data Analysis", icon: BarChart3 },
-  { id: "videos", label: "Vidéo du Setup", icon: Video },
   { id: "successes", label: "Chat", icon: Trophy },
   { id: "results", label: "Résultats", icon: Award },
 ];
 
-// Admin tabs V2 — synchronisés avec DashboardSidebar (CRM, Gestion, Config + legacy)
+// Admin tabs V2 — strictement synchronisés avec DashboardSidebar (CRM, Gestion, Config + legacy)
 const adminTabs = [
-  { id: "crm", label: "CRM", icon: Users, section: "admin" },
-  { id: "gestion", label: "Gestion", icon: Crown, section: "admin" },
+  { id: "crm", label: "CRM", icon: TrendingUp, section: "admin" },
+  { id: "gestion", label: "Gestion", icon: UsersIcon, section: "admin" },
   { id: "config", label: "Configuration", icon: Settings, section: "admin" },
-  { id: "video-admin", label: "Vidéos (Admin)", icon: Film, section: "admin" },
+  { id: "video-admin", label: "Médiathèque", icon: Video, section: "admin" },
   { id: "admin", label: "Vérif. Admin", icon: ShieldCheck, section: "admin", deprecated: true },
-  { id: "early-access-mgmt", label: "Early Access", icon: Users, section: "admin", deprecated: true },
+  { id: "early-access-mgmt", label: "Early Access", icon: UsersIcon, section: "admin", deprecated: true },
 ];
 
-const setterOnlyTabs = [{ id: "crm", label: "CRM", icon: Users }];
+const setterOnlyTabs = [{ id: "crm", label: "CRM", icon: TrendingUp }];
 
 export const MobileHeader = ({
   userEmail,
