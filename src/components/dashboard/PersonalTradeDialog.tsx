@@ -292,6 +292,7 @@ export const PersonalTradeDialog = ({
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [saving, setSaving]     = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [isAdmin, setIsAdmin]   = useState(false);
 
   const [contextFile, setContextFile]     = useState<File | null>(null);
   const [contextPreview, setContextPreview] = useState<string | null>(null);
@@ -303,6 +304,11 @@ export const PersonalTradeDialog = ({
 
   const { toast } = useToast();
   const { variables, refetch: refetchVariables } = useCustomVariables();
+
+  // Admin check — détermine si l'utilisateur peut gérer les options des dropdowns
+  useEffect(() => {
+    supabase.rpc("is_admin").then(({ data }) => setIsAdmin(!!data));
+  }, []);
 
   const tradeDuration = calculateDuration(
     formData.trade_date, formData.entry_time,
@@ -593,7 +599,7 @@ export const PersonalTradeDialog = ({
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               <Field label="Type de Config.">
                 <CustomizableMultiSelect
-                  compact
+                  compact singleSelect canManage={isAdmin}
                   value={formData.setup_type}
                   onChange={(v) => set("setup_type", v)}
                   fixedOptions={SETUP_TYPE_FIXED_OPTIONS}
@@ -605,7 +611,7 @@ export const PersonalTradeDialog = ({
               </Field>
               <Field label="Contexte">
                 <CustomizableMultiSelect
-                  compact
+                  compact singleSelect canManage={isAdmin}
                   value={formData.direction_structure}
                   onChange={(v) => set("direction_structure", v)}
                   customOptions={variables.direction_structure}
@@ -616,7 +622,7 @@ export const PersonalTradeDialog = ({
               </Field>
               <Field label="Entry Model">
                 <CustomizableMultiSelect
-                  compact
+                  compact canManage={isAdmin}
                   value={formData.entry_model}
                   onChange={(v) => set("entry_model", v)}
                   fixedOptions={ENTRY_MODEL_FIXED_OPTIONS}
@@ -628,7 +634,7 @@ export const PersonalTradeDialog = ({
               </Field>
               <Field label="Timing">
                 <CustomizableMultiSelect
-                  compact
+                  compact singleSelect canManage={isAdmin}
                   value={formData.entry_timing}
                   onChange={(v) => set("entry_timing", v)}
                   fixedOptions={TIMING_FIXED_OPTIONS}
@@ -638,9 +644,9 @@ export const PersonalTradeDialog = ({
                   onOptionsChanged={refetchVariables}
                 />
               </Field>
-              <Field label="Time Frame">
+              <Field label="Time Frame d'entrée">
                 <CustomizableMultiSelect
-                  compact
+                  compact singleSelect canManage={isAdmin}
                   value={formData.entry_timeframe}
                   onChange={(v) => set("entry_timeframe", v)}
                   fixedOptions={ENTRY_TIMEFRAME_FIXED_OPTIONS}
@@ -655,6 +661,7 @@ export const PersonalTradeDialog = ({
             <div className="grid grid-cols-2 gap-3">
               <Field label="Placement du SL">
                 <CustomizableMultiSelect
+                  singleSelect canManage={isAdmin}
                   value={formData.sl_placement}
                   onChange={(v) => set("sl_placement", v)}
                   customOptions={variables.sl_placement || []}
@@ -665,6 +672,7 @@ export const PersonalTradeDialog = ({
               </Field>
               <Field label="Placement du TP">
                 <CustomizableMultiSelect
+                  singleSelect canManage={isAdmin}
                   value={formData.tp_placement}
                   onChange={(v) => set("tp_placement", v)}
                   customOptions={variables.tp_placement || []}

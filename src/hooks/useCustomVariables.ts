@@ -1,3 +1,14 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// useCustomVariables — options globales des dropdowns de saisie de trades
+//
+// Règles dans le marbre (2026-04-29) :
+//   - Les options sont globales (user_id IS NULL en DB)
+//   - Tous les membres voient la même liste
+//   - Seuls les admins peuvent ajouter / supprimer des options
+//   - Supprimer une option n'affecte PAS rétrospectivement les trades
+//     (valeurs stockées en texte brut dans user_executions, pas en FK)
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -19,7 +30,9 @@ export interface CustomVariables {
   entry_model: string[];
   entry_timing: string[];
   entry_timeframe: string[];
-  [key: string]: string[]; // Allow dynamic keys for custom types
+  sl_placement: string[];
+  tp_placement: string[];
+  [key: string]: string[];
 }
 
 export interface CustomVariableTypes {
@@ -42,34 +55,32 @@ export const useCustomVariables = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchVariables = async () => {
+    // Les options sont globales (user_id IS NULL) — pas besoin de l'uid pour les valeurs
+    // On garde le user check uniquement pour user_variable_types (types custom par admin)
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setLoading(false);
-      return;
-    }
 
-    // Fetch custom types
+    // Fetch custom types (colonnes additionnelles définies par l'admin)
     const { data: typesData } = await supabase
       .from("user_variable_types")
       .select("*")
-      .eq("user_id", user.id);
+      .eq("user_id", user?.id ?? "");
 
     const userCustomTypes = typesData?.map(t => ({
       key: t.type_key,
       label: t.type_label,
-      isCustom: true
+      isCustom: true,
     })) || [];
 
     setCustomTypes(userCustomTypes);
 
-    // Fetch variables
-    const { data, error } = await supabase
+    // Fetch options globales (user_id IS NULL)
+    const { data } = await supabase
       .from("user_custom_variables")
       .select("*")
-      .eq("user_id", user.id);
+      .is("user_id", null);   // ← options globales uniquement
 
     if (data) {
-    const grouped: CustomVariables = {
+      const grouped: CustomVariables = {
         direction_structure: [],
         setup_type: [],
         entry_model: [],
@@ -79,16 +90,12 @@ export const useCustomVariables = () => {
         tp_placement: [],
       };
 
-      // Initialize custom types in grouped
-      userCustomTypes.forEach(t => {
-        grouped[t.key] = [];
-      });
+      userCustomTypes.forEach(t => { grouped[t.key] = []; });
 
       data.forEach((v: CustomVariable) => {
         if (v.variable_type in grouped) {
           grouped[v.variable_type].push(v.variable_value);
         } else {
-          // Handle unknown types (create array if needed)
           grouped[v.variable_type] = grouped[v.variable_type] || [];
           grouped[v.variable_type].push(v.variable_value);
         }
@@ -96,26 +103,24 @@ export const useCustomVariables = () => {
 
       setVariables(grouped);
     }
+
     setLoading(false);
   };
 
   useEffect(() => {
     fetchVariables();
 
-    // Subscribe to changes
     const channel = supabase
-      .channel('custom_variables_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_custom_variables' }, () => {
+      .channel("global_custom_variables_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_custom_variables" }, () => {
         fetchVariables();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_variable_types' }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_variable_types" }, () => {
         fetchVariables();
       })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   return { variables, customTypes, loading, refetch: fetchVariables };

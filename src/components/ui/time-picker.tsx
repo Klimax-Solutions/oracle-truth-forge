@@ -184,52 +184,41 @@ export function TimePicker({
     }
   };
 
+  const hasValue = !!inputValue;
+
   return (
     <div
       className={cn(
-        "relative flex items-center w-full h-10 rounded-md border bg-background transition-colors",
-        "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-0",
-        error ? "border-red-500" : "border-input",
+        "relative flex items-center w-full h-9 rounded-md border bg-white/[.04] transition-all duration-150 overflow-hidden",
+        "focus-within:border-white/40 focus-within:bg-white/[.07]",
+        error ? "border-red-500" : "border-white/25 hover:border-white/35 hover:bg-white/[.06]",
         className,
       )}
     >
-      {/* Native-like input (keyboard-first) */}
-      <input
-        ref={inputRef}
-        type="text"
-        inputMode="numeric"
-        autoComplete="off"
-        spellCheck={false}
-        value={inputValue}
-        onChange={handleInputChange}
-        onBlur={handleInputBlur}
-        onKeyDown={handleInputKeyDown}
-        onPaste={handleInputPaste}
-        placeholder={placeholder}
-        maxLength={5}
-        className={cn(
-          "flex-1 h-full px-3 bg-transparent text-sm font-mono",
-          "placeholder:text-muted-foreground/50 text-foreground",
-          "outline-none focus:outline-none",
-        )}
-      />
-      {/* Clock icon — click to open popover */}
+      {/* Clock icon — LEFT — prominent trigger for the picker */}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
             tabIndex={-1}
-            className="h-full px-2 rounded-l-none rounded-r-md hover:bg-accent/60 focus:outline-none"
             aria-label="Ouvrir le sélecteur d'heure"
+            className={cn(
+              "flex items-center justify-center h-full px-2.5 shrink-0 transition-all duration-150",
+              "border-r border-white/[.08]",
+              "hover:bg-white/[.08] active:bg-white/[.12]",
+              open
+                ? "text-primary bg-primary/10 border-primary/20"
+                : hasValue
+                  ? "text-primary/70"
+                  : "text-foreground/35 hover:text-foreground/60",
+            )}
           >
-            <Clock className="h-4 w-4 opacity-60" />
-          </Button>
+            <Clock className="h-4 w-4" />
+          </button>
         </PopoverTrigger>
         <PopoverContent
           className="w-[220px] p-0 bg-popover border border-border shadow-xl pointer-events-auto"
-          align="end"
+          align="start"
           sideOffset={4}
           onWheel={(e) => e.stopPropagation()}
         >
@@ -332,6 +321,27 @@ export function TimePicker({
           </div>
         </PopoverContent>
       </Popover>
+
+      {/* Text input — keyboard entry */}
+      <input
+        ref={inputRef}
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        spellCheck={false}
+        value={inputValue}
+        onChange={handleInputChange}
+        onBlur={handleInputBlur}
+        onKeyDown={handleInputKeyDown}
+        onPaste={handleInputPaste}
+        placeholder={placeholder}
+        maxLength={5}
+        className={cn(
+          "flex-1 h-full px-2.5 bg-transparent text-sm font-mono",
+          "placeholder:text-foreground/30 text-foreground",
+          "outline-none focus:outline-none",
+        )}
+      />
     </div>
   );
 }

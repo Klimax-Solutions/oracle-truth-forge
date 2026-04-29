@@ -48,6 +48,11 @@ import {
   formatDateShort,
 } from "@/lib/oracle-cycle-windows";
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
+/** Sanitise un champ décimal : remplace la virgule par un point, supprime les non-chiffres/points, interdit plusieurs points */
+const sanitizeDecimal = (v: string) =>
+  v.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/\.(?=.*\.)/g, "");
+
 // ── Fixed options ──────────────────────────────────────────────────────────────
 const ENTRY_MODEL_FIXED_OPTIONS = [
   "Englobante M1", "Englobante M3", "Englobante M5",
@@ -570,7 +575,7 @@ export const OracleTradeDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="max-w-4xl w-[calc(100vw-2rem)] max-h-[92vh] flex flex-col overflow-hidden p-0 gap-0"
+        className="max-w-4xl w-[calc(100vw-2rem)] max-h-[92vh] flex flex-col overflow-hidden p-0 gap-0 border border-white/[.18]"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
@@ -624,7 +629,7 @@ export const OracleTradeDialog = ({
             <SectionHeader label="Informations" />
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <Field label="N° Trade" required>
-                <div className="flex items-center h-9 rounded-md border border-white/[.12] bg-white/[.03] px-3 text-sm font-mono text-foreground/60 gap-1.5">
+                <div className="flex items-center h-9 rounded-md border border-white/25 bg-white/[.03] px-3 text-sm font-mono text-foreground/60 gap-1.5">
                   <Lock className="w-3 h-3 shrink-0 text-foreground/25" />
                   {formData.trade_number}
                 </div>
@@ -648,7 +653,7 @@ export const OracleTradeDialog = ({
                 />
               </Field>
               <Field label="Direction" required>
-                <div className="relative flex h-9 rounded-md border border-white/[.12] bg-white/[.03] p-0.5 overflow-hidden">
+                <div className="relative flex h-9 rounded-md border border-white/25 bg-white/[.03] p-0.5 overflow-hidden">
                   {/* sliding pill */}
                   <div
                     className={cn(
@@ -711,7 +716,7 @@ export const OracleTradeDialog = ({
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 <Field label="Type de Config." required>
                   <CustomizableMultiSelect
-                    compact
+                    compact singleSelect canManage={isAdmin}
                     value={formData.setup_type}
                     onChange={(v) => set("setup_type", v)}
                     fixedOptions={SETUP_TYPE_FIXED_OPTIONS}
@@ -723,7 +728,7 @@ export const OracleTradeDialog = ({
                 </Field>
                 <Field label="Contexte" required>
                   <CustomizableMultiSelect
-                    compact
+                    compact singleSelect canManage={isAdmin}
                     value={formData.direction_structure}
                     onChange={(v) => set("direction_structure", v)}
                     customOptions={variables.direction_structure}
@@ -734,7 +739,7 @@ export const OracleTradeDialog = ({
                 </Field>
                 <Field label="Entry Model" required>
                   <CustomizableMultiSelect
-                    compact
+                    compact canManage={isAdmin}
                     value={formData.entry_model}
                     onChange={(v) => set("entry_model", v)}
                     fixedOptions={ENTRY_MODEL_FIXED_OPTIONS}
@@ -746,7 +751,7 @@ export const OracleTradeDialog = ({
                 </Field>
                 <Field label="Timing">
                   <CustomizableMultiSelect
-                    compact
+                    compact singleSelect canManage={isAdmin}
                     value={formData.entry_timing}
                     onChange={(v) => set("entry_timing", v)}
                     fixedOptions={TIMING_FIXED_OPTIONS}
@@ -756,9 +761,9 @@ export const OracleTradeDialog = ({
                     onOptionsChanged={refetchVariables}
                   />
                 </Field>
-                <Field label="Time Frame">
+                <Field label="Time Frame d'entrée">
                   <CustomizableMultiSelect
-                    compact
+                    compact singleSelect canManage={isAdmin}
                     value={formData.entry_timeframe}
                     onChange={(v) => set("entry_timeframe", v)}
                     fixedOptions={ENTRY_TIMEFRAME_FIXED_OPTIONS}
@@ -773,6 +778,7 @@ export const OracleTradeDialog = ({
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <Field label="Placement du SL">
                   <CustomizableMultiSelect
+                    singleSelect canManage={isAdmin}
                     value={formData.sl_placement}
                     onChange={(v) => set("sl_placement", v)}
                     customOptions={variables.sl_placement || []}
@@ -783,6 +789,7 @@ export const OracleTradeDialog = ({
                 </Field>
                 <Field label="Placement du TP">
                   <CustomizableMultiSelect
+                    singleSelect canManage={isAdmin}
                     value={formData.tp_placement}
                     onChange={(v) => set("tp_placement", v)}
                     customOptions={variables.tp_placement || []}
@@ -799,18 +806,12 @@ export const OracleTradeDialog = ({
           <div className="space-y-3">
             <SectionHeader label="Exécution" />
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <Field label="Heure Entrée" required>
-                <TimePicker value={formData.entry_time} onChange={(v) => set("entry_time", v)} />
-              </Field>
-              <Field label="Heure Sortie" required>
-                <TimePicker value={formData.exit_time}  onChange={(v) => set("exit_time", v)} />
-              </Field>
               <Field label="Résultat" required>
                 <Select
                   value={formData.result}
                   onValueChange={(v: "Win" | "Loss" | "BE" | "") => set("result", v)}
                 >
-                  <SelectTrigger className="h-9">
+                  <SelectTrigger className="h-9 border-white/25 bg-white/[.04]">
                     <SelectValue placeholder="Sélectionner..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -822,12 +823,30 @@ export const OracleTradeDialog = ({
               </Field>
               <Field label="RR" required>
                 <Input
-                  type="number" step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={formData.rr}
-                  onChange={(e) => set("rr", e.target.value)}
+                  onChange={(e) => {
+                    // Remplace la virgule par un point, filtre les caractères non numériques
+                    const sanitized = e.target.value
+                      .replace(/,/g, ".")
+                      .replace(/[^0-9.]/g, "")
+                      // Interdit plusieurs points
+                      .replace(/\.(?=.*\.)/g, "");
+                    set("rr", sanitized);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === ",") e.preventDefault();
+                  }}
                   placeholder="Ex: 2.5"
                   className="h-9"
                 />
+              </Field>
+              <Field label="Heure d'entrée" required>
+                <TimePicker value={formData.entry_time} onChange={(v) => set("entry_time", v)} />
+              </Field>
+              <Field label="Heure de sortie" required>
+                <TimePicker value={formData.exit_time}  onChange={(v) => set("exit_time", v)} />
               </Field>
             </div>
             {/* Durée auto-calculée */}
@@ -846,10 +865,13 @@ export const OracleTradeDialog = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
               <Field label="Taille du SL" required>
                 <Input
+                  type="text"
+                  inputMode="decimal"
                   value={formData.stop_loss_size}
-                  onChange={(e) => set("stop_loss_size", e.target.value)}
-                  placeholder="Taille du stop loss en points/pips"
-                  className="h-9"
+                  onChange={(e) => set("stop_loss_size", sanitizeDecimal(e.target.value))}
+                  onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
+                  placeholder="Ex: 12.5"
+                  className="h-9 border-white/25 bg-white/[.04]"
                 />
               </Field>
               <div className="space-y-2 pt-[22px]">
@@ -868,7 +890,7 @@ export const OracleTradeDialog = ({
                     value={formData.news_label}
                     onChange={(e) => set("news_label", e.target.value)}
                     placeholder="Ex: NFP, CPI, FOMC..."
-                    className="h-9"
+                    className="h-9 border-white/25 bg-white/[.04]"
                   />
                 )}
               </div>
@@ -883,24 +905,28 @@ export const OracleTradeDialog = ({
             />
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <Field label="Prix Entrée">
-                <Input type="number" step="0.00001" value={formData.entry_price}
-                  onChange={(e) => set("entry_price", e.target.value)}
-                  placeholder="Ex: 1.08542" className="h-9" />
+                <Input type="text" inputMode="decimal" value={formData.entry_price}
+                  onChange={(e) => set("entry_price", sanitizeDecimal(e.target.value))}
+                  onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
+                  placeholder="Ex: 1.08542" className="h-9 border-white/25 bg-white/[.04]" />
               </Field>
               <Field label="Prix Sortie">
-                <Input type="number" step="0.00001" value={formData.exit_price}
-                  onChange={(e) => set("exit_price", e.target.value)}
-                  placeholder="Ex: 1.08650" className="h-9" />
+                <Input type="text" inputMode="decimal" value={formData.exit_price}
+                  onChange={(e) => set("exit_price", sanitizeDecimal(e.target.value))}
+                  onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
+                  placeholder="Ex: 1.08650" className="h-9 border-white/25 bg-white/[.04]" />
               </Field>
               <Field label="Stop Loss">
-                <Input type="number" step="0.00001" value={formData.stop_loss}
-                  onChange={(e) => set("stop_loss", e.target.value)}
-                  placeholder="Ex: 1.08500" className="h-9" />
+                <Input type="text" inputMode="decimal" value={formData.stop_loss}
+                  onChange={(e) => set("stop_loss", sanitizeDecimal(e.target.value))}
+                  onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
+                  placeholder="Ex: 1.08500" className="h-9 border-white/25 bg-white/[.04]" />
               </Field>
               <Field label="Take Profit">
-                <Input type="number" step="0.00001" value={formData.take_profit}
-                  onChange={(e) => set("take_profit", e.target.value)}
-                  placeholder="Ex: 1.08700" className="h-9" />
+                <Input type="text" inputMode="decimal" value={formData.take_profit}
+                  onChange={(e) => set("take_profit", sanitizeDecimal(e.target.value))}
+                  onKeyDown={(e) => { if (e.key === ",") e.preventDefault(); }}
+                  placeholder="Ex: 1.08700" className="h-9 border-white/25 bg-white/[.04]" />
               </Field>
             </div>
           </div>
@@ -940,7 +966,7 @@ export const OracleTradeDialog = ({
               onChange={(e) => set("notes", e.target.value)}
               placeholder="Observations, contexte du trade..."
               rows={3}
-              className="resize-y min-h-[80px]"
+              className="resize-y min-h-[80px] border-white/25 bg-white/[.04]"
             />
           </div>
 
