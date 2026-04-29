@@ -60,25 +60,22 @@ export function DatePicker({
     }
   }, [value]);
 
-  // Close on outside click — deux couches :
-  // 1) Listeners natifs mousedown + pointerdown sur le portal div : stoppe la
-  //    propagation avant d'atteindre le handler document. Cela couvre les clics
-  //    sur les jours du calendrier ET les boutons de navigation (< >) même si
-  //    react-day-picker retire le node du DOM avant que l'event remonte.
-  //    pointerdown est nécessaire car Radix Dialog écoute pointerdown sur document
-  //    pour détecter un clic "hors dialog" — sans ce listener le Dialog se ferme
-  //    dès qu'on interagit avec le calendrier.
-  // 2) Handler document : ne reçoit que les clics hors portal/trigger → ferme.
+  // Radix Dialog uses a bubble-phase pointerdown listener on document to detect
+  // outside clicks. Capture-phase fires first — we stop propagation here when
+  // the target is inside our portal, so Radix never sees the event.
+  // We also check mousedown for the DatePicker's own outside-click detection.
+  // Capture phase is essential because react-day-picker can remove the clicked
+  // node from the DOM mid-bubble, which would let the event escape our portal div.
   React.useEffect(() => {
     if (!isOpen) return;
-    const el = dropRef.current;
-    if (!el) return;
-    const stopInside = (e: Event) => e.stopPropagation();
-    el.addEventListener("mousedown", stopInside);
-    el.addEventListener("pointerdown", stopInside);
+    const stop = (e: Event) => {
+      if (dropRef.current?.contains(e.target as Node)) e.stopPropagation();
+    };
+    document.addEventListener("pointerdown", stop, { capture: true });
+    document.addEventListener("mousedown", stop, { capture: true });
     return () => {
-      el.removeEventListener("mousedown", stopInside);
-      el.removeEventListener("pointerdown", stopInside);
+      document.removeEventListener("pointerdown", stop, { capture: true });
+      document.removeEventListener("mousedown", stop, { capture: true });
     };
   }, [isOpen]);
 
@@ -86,6 +83,7 @@ export function DatePicker({
     if (!isOpen) return;
     const handler = (e: MouseEvent) => {
       if (triggerRef.current?.contains(e.target as Node)) return;
+      if (dropRef.current?.contains(e.target as Node)) return;
       setIsOpen(false);
     };
     document.addEventListener("mousedown", handler);

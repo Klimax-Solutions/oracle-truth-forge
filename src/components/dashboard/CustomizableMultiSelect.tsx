@@ -58,7 +58,8 @@ export const CustomizableMultiSelect = ({
     setIsOpen((v) => !v);
   };
 
-  // Close on outside click
+  // Close on outside click (capture-phase stop above means this only fires for
+  // clicks truly outside trigger + dropdown)
   useEffect(() => {
     if (!isOpen) return;
     const onDown = (e: MouseEvent) => {
@@ -70,16 +71,20 @@ export const CustomizableMultiSelect = ({
     return () => document.removeEventListener("mousedown", onDown);
   }, [isOpen]);
 
-  // Bloquer pointerdown sur le portal : Radix Dialog écoute pointerdown sur
-  // document pour détecter un clic "hors dialog". Sans ce listener natif sur
-  // l'élément, le Dialog se ferme dès qu'on ouvre ce dropdown à l'intérieur.
+  // Capture-phase on document: stop pointerdown/mousedown before Radix Dialog's
+  // bubble-phase handler sees them. Capture fires before any node is removed
+  // from DOM, making this reliable even with dynamic lists.
   useEffect(() => {
     if (!isOpen) return;
-    const el = dropdownRef.current;
-    if (!el) return;
-    const stop = (e: Event) => e.stopPropagation();
-    el.addEventListener("pointerdown", stop);
-    return () => el.removeEventListener("pointerdown", stop);
+    const stop = (e: Event) => {
+      if (dropdownRef.current?.contains(e.target as Node)) e.stopPropagation();
+    };
+    document.addEventListener("pointerdown", stop, { capture: true });
+    document.addEventListener("mousedown", stop, { capture: true });
+    return () => {
+      document.removeEventListener("pointerdown", stop, { capture: true });
+      document.removeEventListener("mousedown", stop, { capture: true });
+    };
   }, [isOpen]);
 
   // Close on Escape
