@@ -56,6 +56,7 @@ import {
   AlertTriangle,
   Link as LinkIcon,
   ExternalLink,
+  Lock,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScreenshotLink } from "./ScreenshotLink";
@@ -291,6 +292,9 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
   const entryFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  // Phase 1.B — trades verrouillés pendant vérification en cours
+  const [lockedCycleTradeNumbers, setLockedCycleTradeNumbers] = useState<Set<number>>(new Set());
+
   const { variables, refetch: refetchVariables } = useCustomVariables();
 
   // Timer state for gamification
@@ -385,6 +389,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
   // Fetch user executions
   useEffect(() => {
     fetchExecutions();
+    fetchLockedCycles();
   }, []);
 
   const fetchExecutions = async () => {
@@ -403,6 +408,35 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
       setExecutions((data || []) as UserExecution[]);
     }
     setLoading(false);
+  };
+
+  // Phase 1.B — Récupère les cycles verrouillés (vérification en cours)
+  // et construit un Set des numéros de trade non modifiables
+  const fetchLockedCycles = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("user_cycles")
+      .select("cycle_id, status, cycles(range_start, range_end)")
+      .eq("user_id", user.id)
+      .in("status", ["pending_review", "in_review", "on_hold"]);
+
+    if (error) {
+      console.error("[Phase1B] Error fetching locked cycles:", error);
+      return;
+    }
+
+    const locked = new Set<number>();
+    (data || []).forEach((row: any) => {
+      const c = row.cycles;
+      if (c && c.range_start != null && c.range_end != null) {
+        for (let n = c.range_start; n <= c.range_end; n++) {
+          locked.add(n);
+        }
+      }
+    });
+    setLockedCycleTradeNumbers(locked);
   };
 
   // Get next trade number
@@ -853,6 +887,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
               isOpen={isDialogOpen}
               onClose={() => { setIsDialogOpen(false); setEditingExec(null); setEditingId(null); }}
               onSaved={() => { setIsDialogOpen(false); setEditingExec(null); setEditingId(null); fetchExecutions(); }}
+              readOnly={editingExec != null && lockedCycleTradeNumbers.has(editingExec.trade_number)}
               editingTrade={editingExec ? {
                 id: editingExec.id,
                 trade_number: editingExec.trade_number,
@@ -1107,28 +1142,46 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
                       </div>
                       
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 md:h-8 md:w-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(execution);
-                          }}
-                        >
-                          <Edit2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 md:h-8 md:w-8 text-red-400 hover:text-red-300"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(execution.id, execution.trade_number);
-                          }}
-                        >
-                          <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                        </Button>
+                        {lockedCycleTradeNumbers.has(execution.trade_number) ? (
+                          // Phase 1.B — trade verrouillé : vérification en cours
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 md:h-8 md:w-8 text-orange-400/70"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(execution); // ouvre le dialog en mode readOnly
+                            }}
+                            title="Vérification en cours — lecture seule"
+                          >
+                            <Lock className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 md:h-8 md:w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(execution);
+                              }}
+                            >
+                              <Edit2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 md:h-8 md:w-8 text-red-400 hover:text-red-300"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(execution.id, execution.trade_number);
+                              }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

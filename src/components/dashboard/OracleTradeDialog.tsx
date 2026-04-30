@@ -91,6 +91,8 @@ interface OracleTradeDialogProps {
   currentCycleNum?: number | null;
   /** @deprecated Plus aucune contrainte de date — saisie libre dans n'importe quel ordre. */
   minTradeDate?: string | null;
+  /** Phase 1.B — Verrouillage vérification en cours. Quand true : dialog lecture seule, aucune modification possible. */
+  readOnly?: boolean;
 }
 
 interface FormData {
@@ -293,6 +295,7 @@ export const OracleTradeDialog = ({
   editingTrade,
   nextTradeNumber,
   currentCycleNum,
+  readOnly = false,
 }: OracleTradeDialogProps) => {
   const { state } = useUserRoles();
   const isAdmin = state.status === "ready" && (state.data.isAdmin || state.data.isSuperAdmin);
@@ -558,7 +561,12 @@ export const OracleTradeDialog = ({
               Cycle {currentCycleNum}
             </span>
           )}
-          {setupFieldsLocked && (
+          {readOnly && (
+            <span className="ml-auto flex items-center gap-1.5 text-[10px] font-mono text-orange-400/90 bg-orange-500/10 border border-orange-500/25 px-2.5 py-1 rounded-md">
+              <Lock className="w-3 h-3" /> Vérification en cours — lecture seule
+            </span>
+          )}
+          {!readOnly && setupFieldsLocked && (
             <span className="ml-auto flex items-center gap-1.5 text-[10px] font-mono text-amber-400/75 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-md">
               <Lock className="w-3 h-3" /> <span className="hidden sm:inline">Paramètres setup verrouillés</span><span className="sm:hidden">Verrouillé</span>
             </span>
@@ -566,7 +574,7 @@ export const OracleTradeDialog = ({
         </div>
 
         {/* ── BODY : single-column < lg, two-column ≥ lg ── */}
-        <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden">
+        <div className={cn("flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden", readOnly && "pointer-events-none select-none opacity-60")}>
 
           {/* ── LEFT — scrollable form ── */}
           <div className="lg:overflow-y-auto lg:flex-1 px-4 sm:px-8 py-5 sm:py-7 space-y-6 sm:space-y-8">
@@ -953,7 +961,7 @@ export const OracleTradeDialog = ({
 
         {/* ── FOOTER ── */}
         <div className="px-4 sm:px-8 py-4 sm:py-5 border-t border-white/[.06] flex items-center justify-between shrink-0 bg-white/[.012] gap-2">
-          {editingTrade ? (
+          {editingTrade && !readOnly ? (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm" className="gap-1.5 h-8 text-xs">
@@ -975,26 +983,28 @@ export const OracleTradeDialog = ({
 
           <div className="flex items-center gap-3">
             <Button variant="ghost" onClick={onClose} className="gap-1.5 h-10 px-5">
-              <X className="w-3.5 h-3.5" /> Annuler
+              <X className="w-3.5 h-3.5" /> Fermer
             </Button>
-            <Button
-              onClick={handleSave}
-              disabled={
-                saving || uploading ||
-                !formData.trade_number || !formData.trade_date || !formData.exit_date ||
-                !formData.direction || !formData.setup_type || !formData.direction_structure ||
-                !formData.entry_model || !formData.result || !formData.rr ||
-                !formData.entry_time || !formData.exit_time || !formData.stop_loss_size ||
-                !((contextFile || existingContextUrl) && (entryFile || existingEntryUrl))
-              }
-              className="gap-2 h-10 px-6 font-semibold"
-            >
-              {saving
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : <Save className="w-4 h-4" />
-              }
-              Enregistrer
-            </Button>
+            {!readOnly && (
+              <Button
+                onClick={handleSave}
+                disabled={
+                  saving || uploading ||
+                  !formData.trade_number || !formData.trade_date || !formData.exit_date ||
+                  !formData.direction || !formData.setup_type || !formData.direction_structure ||
+                  !formData.entry_model || !formData.result || !formData.rr ||
+                  !formData.entry_time || !formData.exit_time || !formData.stop_loss_size ||
+                  !((contextFile || existingContextUrl) && (entryFile || existingEntryUrl))
+                }
+                className="gap-2 h-10 px-6 font-semibold"
+              >
+                {saving
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Save className="w-4 h-4" />
+                }
+                Enregistrer
+              </Button>
+            )}
           </div>
         </div>
 
