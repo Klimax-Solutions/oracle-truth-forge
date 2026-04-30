@@ -1130,20 +1130,18 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                             {(() => {
                               const vrs = vrStatusByCycle[ebauche.id] ?? 'pending';
                               const isPending = vrs === 'pending';
-                              const badgeColor = isPending
-                                ? "bg-amber-500/10 border-amber-500/25"
-                                : vrs === 'in_review'
-                                ? "bg-sky-500/10 border-sky-500/25"
-                                : "bg-purple-500/10 border-purple-500/25";
-                              const iconColor = isPending ? "text-amber-400" : vrs === 'in_review' ? "text-sky-400" : "text-purple-400";
-                              const textColor = isPending ? "text-amber-300" : vrs === 'in_review' ? "text-sky-300" : "text-purple-300";
-                              const subColor = isPending ? "text-amber-400/60" : vrs === 'in_review' ? "text-sky-400/60" : "text-purple-400/60";
-                              const Icon = isPending ? Clock : vrs === 'in_review' ? Eye : PauseCircle;
+                              // in_review et on_hold → même badge pour l'user (détail admin non pertinent)
+                              const badgeColor = isPending ? "bg-amber-500/10 border-amber-500/25" : "bg-sky-500/10 border-sky-500/25";
+                              const iconColor  = isPending ? "text-amber-400" : "text-sky-400";
+                              const textColor  = isPending ? "text-amber-300" : "text-sky-300";
+                              const subColor   = isPending ? "text-amber-400/60" : "text-sky-400/60";
+                              const Icon = isPending ? Clock : Eye;
+                              const label = isPending ? "Vérification en attente" : "Examen en cours";
                               return (
                                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md border ${badgeColor}`}>
                                   <Icon className={`w-3.5 h-3.5 ${iconColor} shrink-0`} />
                                   <div>
-                                    <span className={`text-xs font-medium ${textColor}`}>{getVrStatusLabel(vrs)}</span>
+                                    <span className={`text-xs font-medium ${textColor}`}>{label}</span>
                                     {verificationRequestDates[ebauche.id] && (
                                       <span className={`block text-[10px] ${subColor} font-mono`}>
                                         Envoyée le {new Date(verificationRequestDates[ebauche.id]).toLocaleDateString("fr-FR")}
@@ -1151,7 +1149,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                                     )}
                                     {!isPending && (
                                       <span className={`block text-[10px] ${subColor} font-mono`}>
-                                        Retrait impossible — attends le verdict
+                                        L'admin a commencé — attends le verdict
                                       </span>
                                     )}
                                   </div>
@@ -1300,25 +1298,23 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                     {!isEbauche && cycle.userExecutions.length >= cycle.total_trades && (
                       <div className="ml-10 mt-2 mb-1">
                         {requestedCycleIds.has(cycle.id) || cycle.userCycle?.status === 'pending_review' ? (
-                          // ── Demande active — badge adapté au statut VR + retrait conditionnel ──
+                          // ── Demande active — badge simplifié côté user ──
                           <div className="flex items-center gap-2">
                             {(() => {
                               const vrs = vrStatusByCycle[cycle.id] ?? 'pending';
                               const isPending = vrs === 'pending';
-                              const badgeColor = isPending
-                                ? "bg-amber-500/10 border-amber-500/25"
-                                : vrs === 'in_review'
-                                ? "bg-sky-500/10 border-sky-500/25"
-                                : "bg-purple-500/10 border-purple-500/25";
-                              const iconColor = isPending ? "text-amber-400" : vrs === 'in_review' ? "text-sky-400" : "text-purple-400";
-                              const textColor = isPending ? "text-amber-300" : vrs === 'in_review' ? "text-sky-300" : "text-purple-300";
-                              const subColor  = isPending ? "text-amber-400/60" : vrs === 'in_review' ? "text-sky-400/60" : "text-purple-400/60";
-                              const Icon = isPending ? Clock : vrs === 'in_review' ? Eye : PauseCircle;
+                              // in_review et on_hold → même badge pour l'user
+                              const badgeColor = isPending ? "bg-amber-500/10 border-amber-500/25" : "bg-sky-500/10 border-sky-500/25";
+                              const iconColor  = isPending ? "text-amber-400" : "text-sky-400";
+                              const textColor  = isPending ? "text-amber-300" : "text-sky-300";
+                              const subColor   = isPending ? "text-amber-400/60" : "text-sky-400/60";
+                              const Icon = isPending ? Clock : Eye;
+                              const label = isPending ? "Vérification en attente" : "Examen en cours";
                               return (
                                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md border w-fit ${badgeColor}`}>
                                   <Icon className={`w-3.5 h-3.5 ${iconColor} shrink-0`} />
                                   <div>
-                                    <span className={`text-xs font-medium ${textColor}`}>{getVrStatusLabel(vrs)}</span>
+                                    <span className={`text-xs font-medium ${textColor}`}>{label}</span>
                                     {verificationRequestDates[cycle.id] && (
                                       <span className={`block text-[10px] ${subColor} font-mono`}>
                                         Envoyée le {new Date(verificationRequestDates[cycle.id]).toLocaleDateString("fr-FR")}
@@ -1326,7 +1322,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                                     )}
                                     {!isPending && (
                                       <span className={`block text-[10px] ${subColor} font-mono`}>
-                                        Retrait impossible — attends le verdict
+                                        L'admin a commencé — attends le verdict
                                       </span>
                                     )}
                                   </div>

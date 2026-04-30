@@ -372,7 +372,8 @@ export default function GestionPanel() {
   const [savingComment, setSavingComment] = useState(false);
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [tradeNotes, setTradeNotes] = useState<Record<string, string>>({});
-  const [tradeValidity, setTradeValidity] = useState<Record<string, boolean>>({});
+  // Verdict 3 états : true = validé, false = refusé, null = neutre (non encore évalué)
+  const [tradeValidity, setTradeValidity] = useState<Record<string, boolean | null>>({});
   const [savingNote, setSavingNote] = useState<string | null>(null);
   const [assigningRequest, setAssigningRequest] = useState<string | null>(null);
   const [verificationAssigneeFilter, setVerificationAssigneeFilter] = useState("all");
@@ -765,13 +766,14 @@ export default function GestionPanel() {
     if (data) {
       const notes: Record<string, string> = {};
       const validity: Record<string, boolean> = {};
-      data.forEach((n: any) => { const k = `${requestId}_${n.execution_id}`; notes[k] = n.note || ""; validity[k] = n.is_valid !== false; });
+      // is_valid en DB peut être null (neutre), true (validé) ou false (refusé)
+      data.forEach((n: any) => { const k = `${requestId}_${n.execution_id}`; notes[k] = n.note || ""; validity[k] = n.is_valid ?? null; });
       setTradeNotes((prev) => ({ ...prev, ...notes }));
       setTradeValidity((prev) => ({ ...prev, ...validity }));
     }
   };
 
-  const saveTradeNote = async (requestId: string, executionId: string, note: string, isValid: boolean, supplementaryNote?: string) => {
+  const saveTradeNote = async (requestId: string, executionId: string, note: string, isValid: boolean | null, supplementaryNote?: string) => {
     const key = `${requestId}_${executionId}`;
     setSavingNote(key);
     try {
@@ -787,11 +789,11 @@ export default function GestionPanel() {
     }
   };
 
-  const toggleTradeValidity = (requestId: string, executionId: string) => {
+  // Sélection directe du verdict (3 états) — pas un toggle cyclique
+  const setTradeVerdict = (requestId: string, executionId: string, verdict: boolean | null) => {
     const key = `${requestId}_${executionId}`;
-    const newVal = !(tradeValidity[key] !== false);
-    setTradeValidity((prev) => ({ ...prev, [key]: newVal }));
-    saveTradeNote(requestId, executionId, tradeNotes[key] || "", newVal);
+    setTradeValidity((prev) => ({ ...prev, [key]: verdict }));
+    saveTradeNote(requestId, executionId, tradeNotes[key] || "", verdict);
   };
 
   // ── Approve / Reject ──
@@ -815,10 +817,15 @@ export default function GestionPanel() {
         return;
       }
 
-      const trades = request.executions.map((e) => { const k = `${request.id}_${e.id}`; return { trade_number: e.trade_number, is_valid: tradeValidity[k] !== false, note: tradeNotes[k] || "" }; });
-      const rej = trades.filter((t) => !t.is_valid);
-      const val = trades.filter((t) => t.is_valid);
-      let msg = `✅ ${request.cycle.name} validé !\n${val.length} validé(s), ${rej.length} refusé(s).\n`;
+      const trades = request.executions.map((e) => {
+        const k = `${request.id}_${e.id}`;
+        const verdict = tradeValidity[k] ?? null; // null = neutre (non évalué)
+        return { trade_number: e.trade_number, verdict, note: tradeNotes[k] || "" };
+      });
+      const val     = trades.filter((t) => t.verdict === true);
+      const rej     = trades.filter((t) => t.verdict === false);
+      const neutral = trades.filter((t) => t.verdict === null);
+      let msg = `✅ ${request.cycle.name} validé !\n${val.length} validé(s), ${rej.length} refusé(s)${neutral.length > 0 ? `, ${neutral.length} non noté(s)` : ""}.\n`;
       if (rej.length > 0) { msg += "\nTrades refusés :\n"; rej.forEach((t) => { msg += `• Trade #${t.trade_number}${t.note ? ` — ${t.note}` : ""}\n`; }); }
       if (fb) msg += `\nCommentaire : ${fb}`;
       await supabase.from("verification_requests").update({ status: "approved", reviewed_at: new Date().toISOString(), reviewed_by: user.id, admin_comments: fb }).eq("id", request.id);
@@ -840,10 +847,15 @@ export default function GestionPanel() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
-      const trades = request.executions.map((e) => { const k = `${request.id}_${e.id}`; return { trade_number: e.trade_number, is_valid: tradeValidity[k] !== false, note: tradeNotes[k] || "" }; });
-      const rej = trades.filter((t) => !t.is_valid);
-      const val = trades.filter((t) => t.is_valid);
-      let msg = `❌ ${request.cycle.name} refusé.\n${val.length} validé(s), ${rej.length} refusé(s).\n`;
+      const trades = request.executions.map((e) => {
+        const k = `${request.id}_${e.id}`;
+        const verdict = tradeValidity[k] ?? null;
+        return { trade_number: e.trade_number, verdict, note: tradeNotes[k] || "" };
+      });
+      const val     = trades.filter((t) => t.verdict === true);
+      const rej     = trades.filter((t) => t.verdict === false);
+      const neutral = trades.filter((t) => t.verdict === null);
+      let msg = `❌ ${request.cycle.name} refusé.\n${val.length} validé(s), ${rej.length} refusé(s)${neutral.length > 0 ? `, ${neutral.length} non noté(s)` : ""}.\n`;
       if (rej.length > 0) { msg += "\nTrades refusés :\n"; rej.forEach((t) => { msg += `• Trade #${t.trade_number}${t.note ? ` — ${t.note}` : ""}\n`; }); }
       msg += `\nCommentaire : ${fb}`;
       await supabase.from("verification_requests").update({ status: "rejected", reviewed_at: new Date().toISOString(), reviewed_by: user.id, admin_comments: fb }).eq("id", request.id);
@@ -1909,7 +1921,7 @@ export default function GestionPanel() {
                                 <div className="w-px h-4 bg-border" />
                                 <span className="text-xs font-mono"><span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1" />{request.comparisons.filter((c) => tradeValidity[`${request.id}_${c.execution.id}`] === true).length} Validés</span>
                                 <span className="text-xs font-mono"><span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 mr-1" />{request.comparisons.filter((c) => tradeValidity[`${request.id}_${c.execution.id}`] === false).length} Refusés</span>
-                                <span className="text-xs font-mono"><span className="inline-block w-2.5 h-2.5 rounded-full bg-muted-foreground/30 mr-1" />{request.comparisons.filter((c) => tradeValidity[`${request.id}_${c.execution.id}`] === undefined).length} Non corrigés</span>
+                                <span className="text-xs font-mono"><span className="inline-block w-2.5 h-2.5 rounded-full bg-muted-foreground/30 mr-1" />{request.comparisons.filter((c) => (tradeValidity[`${request.id}_${c.execution.id}`] ?? null) === null).length} Neutres</span>
                               </div>
                             );
                           })()}
@@ -1931,17 +1943,18 @@ export default function GestionPanel() {
                                     const exec = comp.execution;
                                     const oracle = comp.oracleTrade;
                                     const nk = `${request.id}_${exec.id}`;
-                                    const isValid = tradeValidity[nk] !== false;
-                                    const reviewed = tradeValidity[nk] !== undefined;
+                                    const verdict = tradeValidity[nk] ?? null; // null = neutre
+                                    const isNeutral = verdict === null;
 
                                     return (
                                       <TableRow key={exec.id}
                                         className={cn("hover:bg-muted/30 cursor-pointer",
-                                          reviewed && isValid && "bg-emerald-500/10",
-                                          reviewed && !isValid && "bg-red-500/10",
-                                          !reviewed && exec.trade_number <= 15 && comp.status === "match" && "bg-emerald-500/5",
-                                          !reviewed && exec.trade_number <= 15 && comp.status === "warning" && "bg-orange-500/5",
-                                          !reviewed && exec.trade_number <= 15 && (comp.status === "error" || comp.status === "no-match") && "bg-red-500/5",
+                                          verdict === true  && "bg-emerald-500/10",
+                                          verdict === false && "bg-red-500/10",
+                                          // Neutre : conserver la couleur auto de la comparaison Oracle
+                                          isNeutral && exec.trade_number <= 15 && comp.status === "match"   && "bg-emerald-500/5",
+                                          isNeutral && exec.trade_number <= 15 && comp.status === "warning" && "bg-orange-500/5",
+                                          isNeutral && exec.trade_number <= 15 && (comp.status === "error" || comp.status === "no-match") && "bg-red-500/5",
                                         )}
                                         onClick={() => {
                                           const idx = request.executions.findIndex((x) => x.id === exec.id);
@@ -1979,19 +1992,47 @@ export default function GestionPanel() {
                                             {exec.screenshot_entry_url && <button className="text-[9px] font-mono text-primary hover:underline" onClick={(e) => { e.stopPropagation(); const idx = request.executions.findIndex((x) => x.id === exec.id); openGallery(request.executions, idx >= 0 ? idx : 0, "m5", request.id); }}>M5</button>}
                                           </div>
                                         </TableCell>
-                                        {/* INLINE validation toggle */}
+                                        {/* Pilule verdict 3 états : ✗ Refusé | — Neutre | ✓ Validé */}
                                         <TableCell className="py-1.5">
-                                          <Button variant={reviewed && !isValid ? "destructive" : "outline"} size="sm" className="h-6 text-[9px] px-2"
-                                            onClick={(e) => { e.stopPropagation(); toggleTradeValidity(request.id, exec.id); }}>
-                                            {reviewed ? (isValid ? "✓ Validé" : "✗ Invalidé") : "— Corriger"}
-                                          </Button>
+                                          <div className="inline-flex items-center h-6 rounded-full border border-white/[.12] bg-white/[.03] overflow-hidden select-none">
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); setTradeVerdict(request.id, exec.id, false); }}
+                                              title="Refuser"
+                                              className={cn(
+                                                "h-full px-2 text-[9px] font-semibold transition-colors leading-none",
+                                                verdict === false
+                                                  ? "bg-red-500/30 text-red-300"
+                                                  : "text-muted-foreground/40 hover:text-red-400/70 hover:bg-red-500/10"
+                                              )}
+                                            >✗</button>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); setTradeVerdict(request.id, exec.id, null); }}
+                                              title="Neutre"
+                                              className={cn(
+                                                "h-full px-2 text-[9px] font-semibold transition-colors leading-none border-x border-white/[.08]",
+                                                isNeutral
+                                                  ? "bg-white/[.08] text-white/70"
+                                                  : "text-muted-foreground/30 hover:text-white/50 hover:bg-white/[.04]"
+                                              )}
+                                            >—</button>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); setTradeVerdict(request.id, exec.id, true); }}
+                                              title="Valider"
+                                              className={cn(
+                                                "h-full px-2 text-[9px] font-semibold transition-colors leading-none",
+                                                verdict === true
+                                                  ? "bg-emerald-500/30 text-emerald-300"
+                                                  : "text-muted-foreground/40 hover:text-emerald-400/70 hover:bg-emerald-500/10"
+                                              )}
+                                            >✓</button>
+                                          </div>
                                         </TableCell>
                                         {/* INLINE note */}
                                         <TableCell className="py-1.5">
                                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                             <Input value={tradeNotes[nk] || ""} onChange={(e) => setTradeNotes((prev) => ({ ...prev, [nk]: e.target.value }))} placeholder="Note..." className="h-6 text-[9px] bg-card w-32" />
                                             <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" disabled={savingNote === nk}
-                                              onClick={() => saveTradeNote(request.id, exec.id, tradeNotes[nk] || "", tradeValidity[nk] !== false)}>
+                                              onClick={() => saveTradeNote(request.id, exec.id, tradeNotes[nk] || "", verdict)}>
                                               {savingNote === nk ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                                             </Button>
                                           </div>
@@ -2190,7 +2231,7 @@ export default function GestionPanel() {
           }
         } : undefined}
         onSupplementaryNote={galleryRequestId ? (executionId, note) => {
-          saveTradeNote(galleryRequestId!, executionId, tradeNotes[`${galleryRequestId}_${executionId}`] || "", tradeValidity[`${galleryRequestId}_${executionId}`] !== false, note);
+          saveTradeNote(galleryRequestId!, executionId, tradeNotes[`${galleryRequestId}_${executionId}`] || "", tradeValidity[`${galleryRequestId}_${executionId}`] ?? null, note);
         } : undefined}
         validationState={galleryRequestId ? Object.fromEntries(
           Object.entries(tradeValidity).filter(([k]) => k.startsWith(`${galleryRequestId}_`)).map(([k, v]) => [k.replace(`${galleryRequestId}_`, ""), { isValid: v, note: tradeNotes[k] || "" }])
