@@ -1,21 +1,8 @@
 import { cn } from "@/lib/utils";
 import { Database, BarChart3, ChevronRight, Crosshair, Video, ShieldCheck, Trophy, Award, TrendingUp, Settings, Users as UsersIcon, AlertTriangle, LineChart } from "lucide-react";
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 import { useEarlyAccess } from "@/hooks/useEarlyAccess";
 import { useUserRoles } from "@/hooks/useUserRoles";
-
-const useHasInstitute = () => {
-  const [hasInstitute, setHasInstitute] = useState(false);
-  useEffect(() => {
-    const check = async () => {
-      const { data } = await supabase.rpc("is_institute" as any);
-      if (data) setHasInstitute(true);
-    };
-    check();
-  }, []);
-  return hasInstitute;
-};
 
 interface SidebarTab {
   id: string;
@@ -51,9 +38,11 @@ const adminTab: SidebarTab = { id: "admin", label: "Vérif. Admin", icon: Shield
 const eaMgmtTab: SidebarTab = { id: "early-access-mgmt", label: "Early Access", icon: UsersIcon, deprecated: true, section: "admin" };
 
 export const DashboardSidebar = ({ activeTab, onTabChange, overrideRoles }: DashboardSidebarProps) => {
+  const { state: rolesState } = useUserRoles();
   const [isExpanded, setIsExpanded] = useState(false);
   const { isEarlyAccess: _isEarlyAccess } = useEarlyAccess();
-  const hasInstitute = useHasInstitute();
+  // isInstitute lu depuis le contexte partagé — plus de RPC is_institute() séparée
+  const hasInstitute = rolesState.status === "ready" && rolesState.data.isInstitute;
 
   // Source unique de rôles : `overrideRoles` (passé par Dashboard via useSidebarRoles).
   // Si absent → tout false (membre par défaut). On a supprimé l'ancien système
