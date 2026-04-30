@@ -123,6 +123,13 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   const [verificationDismissed, setVerificationDismissed] = useState(false);
   const [verificationRequestDates, setVerificationRequestDates] = useState<Record<string, string>>({});
   const [retractingCycleId, setRetractingCycleId] = useState<string | null>(null);
+  // Notes admin par trade, groupées par cycle_id — affichées côté user (P4)
+  const [adminTradeNotesByCycle, setAdminTradeNotesByCycle] = useState<Record<string, Array<{
+    execution_id: string;
+    trade_number: number;
+    is_valid: boolean | null;
+    note: string | null;
+  }>>>({});
   const { toast } = useToast();
   const { isEarlyAccess, expiresAt, earlyAccessType } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
@@ -161,10 +168,10 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
           setUserCycles(userCyclesData as UserCycle[]);
         }
 
-        // Fetch existing verification requests for this user
+        // Fetch existing verification requests for this user (with id for trade notes lookup)
         const { data: verificationRequestsData } = await supabase
           .from("verification_requests")
-          .select("cycle_id, status, created_at")
+          .select("id, cycle_id, status, created_at")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
@@ -189,6 +196,58 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
             attempts[request.cycle_id] = (attempts[request.cycle_id] || 0) + 1;
           });
           setVerificationAttempts(attempts);
+
+          // Fetch admin_trade_notes for the most recent reviewed VR per cycle (P4 — user voit les notes)
+          // On prend la VR la plus récente avec statut approved ou rejected (déjà triées par created_at desc)
+          const vrByCycle: Record<string, string> = {}; // cycle_id → vr_id
+          for (const vr of verificationRequestsData) {
+            if ((vr.status === "approved" || vr.status === "rejected") && !vrByCycle[vr.cycle_id]) {
+              vrByCycle[vr.cycle_id] = vr.id;
+            }
+          }
+          const vrIds = Object.values(vrByCycle);
+          if (vrIds.length > 0) {
+            const { data: notesData } = await supabase
+              .from("admin_trade_notes")
+              .select("execution_id, is_valid, note, verification_request_id")
+              .in("verification_request_id", vrIds);
+
+            if (notesData && notesData.length > 0) {
+              // Map vr_id → cycle_id (inverse de vrByCycle)
+              const vrToCycle: Record<string, string> = Object.fromEntries(
+                Object.entries(vrByCycle).map(([cycleId, vrId]) => [vrId, cycleId])
+              );
+              // Groupe les notes par cycle_id + enrichit avec trade_number depuis userExecutions
+              const execById: Record<string, number> = {};
+              if (userExecsData) {
+                for (const e of userExecsData) {
+                  execById[(e as any).id] = (e as any).trade_number;
+                }
+              }
+              const notesByCycle: Record<string, Array<{
+                execution_id: string;
+                trade_number: number;
+                is_valid: boolean | null;
+                note: string | null;
+              }>> = {};
+              for (const n of notesData) {
+                const cycleId = vrToCycle[(n as any).verification_request_id];
+                if (!cycleId) continue;
+                if (!notesByCycle[cycleId]) notesByCycle[cycleId] = [];
+                notesByCycle[cycleId].push({
+                  execution_id: (n as any).execution_id,
+                  trade_number: execById[(n as any).execution_id] ?? 0,
+                  is_valid: (n as any).is_valid,
+                  note: (n as any).note,
+                });
+              }
+              // Trier par trade_number dans chaque cycle
+              for (const cycleId in notesByCycle) {
+                notesByCycle[cycleId].sort((a, b) => a.trade_number - b.trade_number);
+              }
+              setAdminTradeNotesByCycle(notesByCycle);
+            }
+          }
         } else {
           setRequestedCycleIds(new Set());
         }
@@ -1087,7 +1146,8 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                 const displayProgress = isEbauche 
                   ? Math.min((ebaucheAnalyzed / cycle.total_trades) * 100, 100)
                   : cycle.progress;
-                const hasFeedback = cycle.userCycle?.admin_feedback && 
+                const cycleTradeNotes = adminTradeNotesByCycle[cycle.id] ?? [];
+                const hasFeedback = (cycle.userCycle?.admin_feedback || cycleTradeNotes.length > 0) &&
                   (cycle.userCycle?.status === 'validated' || cycle.userCycle?.status === 'rejected');
                 const isExpanded = expandedCycle === cycle.cycle_number;
 
@@ -1214,28 +1274,55 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                     {/* Expandable report */}
                     {isExpanded && hasFeedback && (
                       <div className={cn(
-                        "ml-10 mt-1 mb-3 p-3 rounded-md border text-sm space-y-1",
-                        cycle.userCycle?.status === 'validated' 
-                          ? "bg-emerald-500/5 border-emerald-500/30" 
+                        "ml-10 mt-1 mb-3 p-3 rounded-md border text-sm space-y-2",
+                        cycle.userCycle?.status === 'validated'
+                          ? "bg-emerald-500/5 border-emerald-500/30"
                           : "bg-red-500/5 border-red-500/30"
                       )}>
-                        <p className="text-[10px] font-mono uppercase text-muted-foreground mb-2">
+                        <p className="text-[10px] font-mono uppercase text-muted-foreground">
                           Rapport de vérification
                         </p>
-                        {cycle.userCycle?.admin_feedback?.split("\n").filter(Boolean).map((line, i) => {
-                          if (line.startsWith("•")) {
-                            return (
-                              <div key={i} className="flex items-start gap-1.5 pl-1">
-                                <XCircle className="w-3 h-3 text-red-400 mt-0.5 flex-shrink-0" />
-                                <span className="text-xs text-foreground">{line.replace("• ", "")}</span>
+
+                        {/* Notes admin trade par trade (P4) */}
+                        {cycleTradeNotes.length > 0 && (
+                          <div className="space-y-1.5">
+                            {cycleTradeNotes.map((n) => (
+                              <div key={n.execution_id} className={cn(
+                                "flex items-start gap-2 rounded px-2 py-1.5 text-xs",
+                                n.is_valid === true
+                                  ? "bg-emerald-500/10"
+                                  : n.is_valid === false
+                                  ? "bg-red-500/10"
+                                  : "bg-muted/30"
+                              )}>
+                                {n.is_valid === true
+                                  ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                                  : n.is_valid === false
+                                  ? <XCircle className="w-3.5 h-3.5 text-red-400 mt-0.5 flex-shrink-0" />
+                                  : <Circle className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                }
+                                <div className="flex-1 min-w-0">
+                                  <span className="font-mono font-bold text-foreground">
+                                    Trade #{n.trade_number}
+                                  </span>
+                                  {n.note && (
+                                    <span className="ml-1.5 text-muted-foreground">— {n.note}</span>
+                                  )}
+                                </div>
                               </div>
-                            );
-                          }
-                          if (line.startsWith("Commentaire")) {
-                            return <p key={i} className="text-xs text-muted-foreground mt-1 italic">{line}</p>;
-                          }
-                          return <p key={i} className="text-xs text-foreground">{line}</p>;
-                        })}
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Commentaire global admin (admin_feedback) */}
+                        {cycle.userCycle?.admin_feedback && (() => {
+                          const commentLine = cycle.userCycle!.admin_feedback!
+                            .split("\n")
+                            .find(l => l.startsWith("Commentaire"));
+                          return commentLine
+                            ? <p className="text-xs text-muted-foreground italic border-t border-border/50 pt-2">{commentLine}</p>
+                            : null;
+                        })()}
                       </div>
                     )}
                   </div>
