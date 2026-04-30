@@ -60,15 +60,12 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScreenshotLink } from "./ScreenshotLink";
-import { SignedImageCard } from "./SignedImageCard";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
-import { OracleTradeDialog } from "./OracleTradeDialog";
 import { TradeExpandCard } from "./TradeExpandCard";
+import { TradeEntryDialog } from "./TradeEntryDialog";
 import {
   OracleExecution as OracleExecutionData,
   TradeCardData,
   toOracleTradeCard,
-  isOracleTrade,
 } from "@/lib/trade/types";
 
 interface UserExecution {
@@ -368,31 +365,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
     };
   };
 
-  // Get trade context for charts - ISOLATED 10 last trades (like OracleDatabase)
-  const getTradeContext = useMemo(() => (execution: UserExecution) => {
-    const executionIndex = executions.findIndex(e => e.id === execution.id);
-    const tradesUpToNow = executions.slice(0, executionIndex + 1);
-    const cumulativeRR = tradesUpToNow.reduce((sum, e) => sum + (e.rr || 0), 0);
-    
-    // Get last 10 trades and show ISOLATED cumul (as if trades 1-10)
-    const recentTrades = executions.slice(Math.max(0, executionIndex - 9), executionIndex + 1);
-    let isolatedCumul = 0;
-    const chartData = recentTrades.map((e, idx) => {
-      isolatedCumul += e.rr || 0;
-      return {
-        trade: idx + 1, // Trades 1-10 isolated
-        tradeNum: e.trade_number,
-        rr: parseFloat(isolatedCumul.toFixed(2)),
-        individual: e.rr || 0,
-        current: e.id === execution.id
-      };
-    });
-    
-    const isolatedTotal = recentTrades.reduce((sum, e) => sum + (e.rr || 0), 0);
-
-    return { cumulativeRR, chartData, executionIndex, isolatedTotal };
-  }, [executions]);
-
   // Fetch user executions
   useEffect(() => {
     fetchExecutions();
@@ -535,9 +507,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
 
   // Called by TradeExpandCard onEdit — receives TradeCardData, forwards to handleEdit
   const handleEditFromCard = (trade: TradeCardData) => {
-    if (isOracleTrade(trade)) {
-      handleEdit(trade as unknown as UserExecution);
-    }
+    handleEdit(trade as unknown as UserExecution);
   };
 
   // Auto-sync exit_date when trade_date changes
@@ -897,41 +867,13 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Nouveau</span> Trade
             </Button>
-            <OracleTradeDialog
+            <TradeEntryDialog
+              mode="oracle"
               isOpen={isDialogOpen}
               onClose={() => { setIsDialogOpen(false); setEditingExec(null); setEditingId(null); }}
               onSaved={() => { setIsDialogOpen(false); setEditingExec(null); setEditingId(null); fetchExecutions(); }}
               readOnly={editingExec != null && lockedCycleTradeNumbers.has(editingExec.trade_number)}
-              editingTrade={editingExec ? {
-                id: editingExec.id,
-                trade_number: editingExec.trade_number,
-                trade_date: editingExec.trade_date,
-                exit_date: editingExec.exit_date,
-                direction: editingExec.direction,
-                direction_structure: (editingExec as any).direction_structure ?? null,
-                entry_time: editingExec.entry_time,
-                exit_time: editingExec.exit_time,
-                trade_duration: (editingExec as any).trade_duration ?? null,
-                rr: editingExec.rr,
-                stop_loss_size: (editingExec as any).stop_loss_size ?? null,
-                setup_type: editingExec.setup_type,
-                entry_timing: editingExec.entry_timing,
-                entry_model: editingExec.entry_model,
-                entry_timeframe: (editingExec as any).entry_timeframe ?? null,
-                context_timeframe: (editingExec as any).context_timeframe ?? null,
-                sl_placement: (editingExec as any).sl_placement ?? null,
-                tp_placement: (editingExec as any).tp_placement ?? null,
-                screenshot_url: editingExec.screenshot_url,
-                screenshot_entry_url: (editingExec as any).screenshot_entry_url ?? null,
-                result: editingExec.result,
-                notes: editingExec.notes,
-                news_day: (editingExec as any).news_day ?? null,
-                news_label: (editingExec as any).news_label ?? null,
-                entry_price: editingExec.entry_price,
-                exit_price: editingExec.exit_price,
-                stop_loss: editingExec.stop_loss,
-                take_profit: editingExec.take_profit,
-              } : null}
+              editingTrade={editingExec ? toOracleTradeCard(editingExec as unknown as OracleExecutionData) : null}
               nextTradeNumber={getNextTradeNumber()}
               currentCycleNum={temporalGuidance?.currentCycleNum ?? null}
             />
