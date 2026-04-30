@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Trophy, X, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSuccessConfetti } from "./SuccessConfetti";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 interface Notification {
   id: string;
@@ -16,10 +17,20 @@ const SUCCESS_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2018/2018
 const AUTHENTICATED_ROUTES = ["/dashboard", "/setup", "/oracle-m"];
 
 const SuccessNotification = forwardRef<HTMLDivElement>((_, ref) => {
+  const { state } = useUserRoles();
+  // hasAccess : null = encore en chargement, true/false = connu
+  const hasAccess = state.status === "ready"
+    ? (state.data.isEarlyAccess || state.data.isAdmin || state.data.isSuperAdmin)
+    : null;
+  // Ref pour le check admin dans les callbacks realtime (évite les stale closures)
+  const isAdminRef = useRef(false);
+  useEffect(() => {
+    isAdminRef.current = state.status === "ready" && (state.data.isAdmin || state.data.isSuperAdmin);
+  }, [state]);
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { fireConfetti } = useSuccessConfetti();
   const initialLoadDone = useRef(false);
@@ -31,46 +42,18 @@ const SuccessNotification = forwardRef<HTMLDivElement>((_, ref) => {
   useEffect(() => {
     if (!shouldMount) {
       setUserId(null);
-      setHasAccess(false);
       setNotifications([]);
       setIsOpen(false);
       return;
     }
 
-    let mounted = true;
     audioRef.current = new Audio(SUCCESS_SOUND_URL);
     audioRef.current.volume = 0.5;
 
-    const getUser = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!mounted) return;
-
-        if (!user) {
-          setUserId(null);
-          setHasAccess(false);
-          return;
-        }
-
-        setUserId(user.id);
-        const [{ data: isEA }, { data: isAdminResult }] = await Promise.all([
-          supabase.rpc("is_early_access"),
-          supabase.rpc("is_admin"),
-        ]);
-        if (mounted) setHasAccess(!!isEA || !!isAdminResult);
-      } catch {
-        if (mounted) {
-          setUserId(null);
-          setHasAccess(false);
-        }
-      }
-    };
-
-    getUser();
-
-    return () => {
-      mounted = false;
-    };
+    // getSession = synchrone (localStorage) — juste pour récupérer l'userId
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user.id ?? null);
+    });
   }, [shouldMount]);
 
   const playSound = useCallback(() => {
@@ -146,9 +129,8 @@ const SuccessNotification = forwardRef<HTMLDivElement>((_, ref) => {
         table: "verification_requests",
       }, async (payload) => {
         if (!initialLoadDone.current) return;
-        const { data: isAdminResult } = await supabase.rpc("is_admin");
-        const { data: isSuperAdminResult } = await supabase.rpc("is_super_admin");
-        if (!isAdminResult && !isSuperAdminResult) return;
+        // Lecture via ref pour éviter stale closure — mis à jour par useEffect sur state
+        if (!isAdminRef.current) return;
 
         const newReq = payload.new as any;
         const { data: profile } = await supabase
