@@ -19,6 +19,8 @@ import {
   ArrowDownRight,
   XCircle,
   Shield,
+  Eye,
+  PauseCircle,
 } from "lucide-react";
 import { deriveOracleCycleWindows } from "@/lib/oracle-cycle-windows";
 import { TradeRulesDoc } from "./admin/TradeRulesDoc";
@@ -72,7 +74,9 @@ interface UserCycle {
   id: string;
   user_id: string;
   cycle_id: string;
-  status: 'locked' | 'in_progress' | 'pending_review' | 'validated' | 'rejected';
+  // Décision design : 'in_review' et 'on_hold' vivent uniquement sur verification_requests.status.
+  // user_cycles ne passe jamais à ces statuts — ils sont listés ici à titre défensif uniquement.
+  status: 'locked' | 'in_progress' | 'pending_review' | 'validated' | 'rejected' | 'in_review' | 'on_hold';
   completed_trades: number;
   total_rr: number;
   started_at: string | null;
@@ -123,6 +127,9 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   const [verificationDismissed, setVerificationDismissed] = useState(false);
   const [verificationRequestDates, setVerificationRequestDates] = useState<Record<string, string>>({});
   const [retractingCycleId, setRetractingCycleId] = useState<string | null>(null);
+  // Statut VR actif par cycle (source de vérité pour les états admin intermédiaires)
+  // Décision design : ces états (in_review, on_hold) vivent sur verification_requests, PAS sur user_cycles.
+  const [vrStatusByCycle, setVrStatusByCycle] = useState<Record<string, 'pending' | 'in_review' | 'on_hold'>>({});
   // Notes admin par trade, groupées par cycle_id — affichées côté user (P4)
   const [adminTradeNotesByCycle, setAdminTradeNotesByCycle] = useState<Record<string, Array<{
     execution_id: string;
@@ -176,19 +183,33 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
           .order("created_at", { ascending: false });
 
         if (verificationRequestsData) {
+          // Statuts "actifs" : la VR n'est pas encore tranchée (approved/rejected/cancelled)
+          const activeStatuses = ["pending", "in_review", "on_hold"];
+
           const requestedIds = new Set(
             verificationRequestsData
-              .filter((request: any) => request.status === "pending")
+              .filter((request: any) => activeStatuses.includes(request.status))
               .map((request: any) => request.cycle_id)
           );
           setRequestedCycleIds(requestedIds);
 
-          // Store the date of the most recent pending request per cycle
+          // Store the date of the most recent active request per cycle
           const dates: Record<string, string> = {};
           verificationRequestsData
-            .filter((r: any) => r.status === "pending")
+            .filter((r: any) => activeStatuses.includes(r.status))
             .forEach((r: any) => { if (!dates[r.cycle_id]) dates[r.cycle_id] = r.created_at; });
           setVerificationRequestDates(dates);
+
+          // Statut VR actif par cycle (pour différencier pending / in_review / on_hold côté UX)
+          const vrStatus: Record<string, 'pending' | 'in_review' | 'on_hold'> = {};
+          verificationRequestsData
+            .filter((r: any) => activeStatuses.includes(r.status))
+            .forEach((r: any) => {
+              if (!vrStatus[r.cycle_id]) {
+                vrStatus[r.cycle_id] = r.status as 'pending' | 'in_review' | 'on_hold';
+              }
+            });
+          setVrStatusByCycle(vrStatus);
 
           // Count attempts per cycle
           const attempts: Record<string, number> = {};
@@ -575,44 +596,62 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
     }
   };
 
-  // Get status icon
+  // Get status icon — basé sur user_cycles.status (progression) et non sur VR status
   const getStatusIcon = (status: string | undefined) => {
     switch (status) {
-      case 'locked': return <Lock className="w-4 h-4 text-muted-foreground" />;
-      case 'in_progress': return <Clock className="w-4 h-4 text-blue-400" />;
+      case 'locked':       return <Lock className="w-4 h-4 text-muted-foreground" />;
+      case 'in_progress':  return <Clock className="w-4 h-4 text-blue-400" />;
       case 'pending_review': return <Send className="w-4 h-4 text-orange-400" />;
-      case 'validated': return <CheckCircle className="w-4 h-4 text-emerald-400" />;
-      case 'rejected': return <AlertCircle className="w-4 h-4 text-red-400" />;
-      default: return <Circle className="w-4 h-4 text-muted-foreground" />;
+      case 'in_review':    return <Eye className="w-4 h-4 text-sky-400" />;
+      case 'on_hold':      return <PauseCircle className="w-4 h-4 text-purple-400" />;
+      case 'validated':    return <CheckCircle className="w-4 h-4 text-emerald-400" />;
+      case 'rejected':     return <AlertCircle className="w-4 h-4 text-red-400" />;
+      default:             return <Circle className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
-  // Get status label
+  // Get status label — labels français, cohérents côté user
   const getStatusLabel = (status: string | undefined) => {
     switch (status) {
-      case 'locked': return 'Verrouillé';
-      case 'in_progress': return 'En cours';
+      case 'locked':         return 'Verrouillé';
+      case 'in_progress':    return 'En cours';
       case 'pending_review': return 'En attente';
-      case 'validated': return 'Validé';
-      case 'rejected': return 'À corriger';
-      default: return 'Verrouillé';
+      case 'in_review':      return 'Review en cours';
+      case 'on_hold':        return 'En pause';
+      case 'validated':      return 'Validé';
+      case 'rejected':       return 'À corriger';
+      default:               return 'Verrouillé';
+    }
+  };
+
+  // Get VR status label (pour les badges dans l'UI)
+  const getVrStatusLabel = (vrStatus: 'pending' | 'in_review' | 'on_hold' | undefined) => {
+    switch (vrStatus) {
+      case 'pending':   return 'Vérification en attente';
+      case 'in_review': return 'Review en cours';
+      case 'on_hold':   return 'Review suspendue';
+      default:          return 'Vérification en attente';
     }
   };
 
   // Get cycle card styles
   const getCycleStyles = (status: string | undefined) => {
     switch (status) {
-      case 'locked': 
+      case 'locked':
         return "bg-card border-border opacity-60";
-      case 'in_progress': 
+      case 'in_progress':
         return "bg-blue-500/10 border-blue-500/40";
-      case 'pending_review': 
+      case 'pending_review':
         return "bg-orange-500/10 border-orange-500/40";
-      case 'validated': 
+      case 'in_review':
+        return "bg-sky-500/10 border-sky-500/40";
+      case 'on_hold':
+        return "bg-purple-500/10 border-purple-500/40";
+      case 'validated':
         return "bg-emerald-500/10 border-emerald-500/40";
-      case 'rejected': 
+      case 'rejected':
         return "bg-red-500/10 border-red-500/40";
-      default: 
+      default:
         return "bg-card border-border";
     }
   };
@@ -1088,26 +1127,48 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                         </Button>
                         {requestedCycleIds.has(ebauche.id) || ebauche.userCycle?.status === 'pending_review' ? (
                           <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/25">
-                              <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                              <div>
-                                <span className="text-xs font-medium text-amber-300">Vérification en attente</span>
-                                {verificationRequestDates[ebauche.id] && (
-                                  <span className="block text-[10px] text-amber-400/60 font-mono">
-                                    Envoyée le {new Date(verificationRequestDates[ebauche.id]).toLocaleDateString("fr-FR")}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); handleRetractVerification(ebauche.id); }}
-                              disabled={retractingCycleId === ebauche.id}
-                              className="text-xs text-muted-foreground hover:text-destructive h-auto px-2 py-1"
-                            >
-                              {retractingCycleId === ebauche.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Retirer"}
-                            </Button>
+                            {(() => {
+                              const vrs = vrStatusByCycle[ebauche.id] ?? 'pending';
+                              const isPending = vrs === 'pending';
+                              const badgeColor = isPending
+                                ? "bg-amber-500/10 border-amber-500/25"
+                                : vrs === 'in_review'
+                                ? "bg-sky-500/10 border-sky-500/25"
+                                : "bg-purple-500/10 border-purple-500/25";
+                              const iconColor = isPending ? "text-amber-400" : vrs === 'in_review' ? "text-sky-400" : "text-purple-400";
+                              const textColor = isPending ? "text-amber-300" : vrs === 'in_review' ? "text-sky-300" : "text-purple-300";
+                              const subColor = isPending ? "text-amber-400/60" : vrs === 'in_review' ? "text-sky-400/60" : "text-purple-400/60";
+                              const Icon = isPending ? Clock : vrs === 'in_review' ? Eye : PauseCircle;
+                              return (
+                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md border ${badgeColor}`}>
+                                  <Icon className={`w-3.5 h-3.5 ${iconColor} shrink-0`} />
+                                  <div>
+                                    <span className={`text-xs font-medium ${textColor}`}>{getVrStatusLabel(vrs)}</span>
+                                    {verificationRequestDates[ebauche.id] && (
+                                      <span className={`block text-[10px] ${subColor} font-mono`}>
+                                        Envoyée le {new Date(verificationRequestDates[ebauche.id]).toLocaleDateString("fr-FR")}
+                                      </span>
+                                    )}
+                                    {!isPending && (
+                                      <span className={`block text-[10px] ${subColor} font-mono`}>
+                                        Retrait impossible — attends le verdict
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                            {vrStatusByCycle[ebauche.id] === 'pending' || !vrStatusByCycle[ebauche.id] ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); handleRetractVerification(ebauche.id); }}
+                                disabled={retractingCycleId === ebauche.id}
+                                className="text-xs text-muted-foreground hover:text-destructive h-auto px-2 py-1"
+                              >
+                                {retractingCycleId === ebauche.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Retirer"}
+                              </Button>
+                            ) : null}
                           </div>
                         ) : ebauche.userCycle?.status === 'in_progress' ? (
                           <Button size="sm" onClick={(e) => { e.stopPropagation(); handleRequestVerification(ebauche); }}
@@ -1169,6 +1230,10 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                             ? "bg-blue-500/20 text-blue-400"
                             : cycle.userCycle?.status === 'pending_review'
                             ? "bg-orange-500/20 text-orange-400"
+                            : cycle.userCycle?.status === 'in_review'
+                            ? "bg-sky-500/20 text-sky-400"
+                            : cycle.userCycle?.status === 'on_hold'
+                            ? "bg-purple-500/20 text-purple-400"
                             : cycle.userCycle?.status === 'rejected'
                             ? "bg-red-500/20 text-red-400"
                             : "bg-muted text-muted-foreground"
@@ -1203,10 +1268,12 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                           <div 
                             className={cn(
                               "h-full rounded-full",
-                              cycle.userCycle?.status === 'validated' ? "bg-emerald-500" 
-                              : cycle.userCycle?.status === 'in_progress' ? "bg-blue-500"
+                              cycle.userCycle?.status === 'validated'     ? "bg-emerald-500"
+                              : cycle.userCycle?.status === 'in_progress'  ? "bg-blue-500"
                               : cycle.userCycle?.status === 'pending_review' ? "bg-orange-500"
-                              : cycle.userCycle?.status === 'rejected' ? "bg-red-500"
+                              : cycle.userCycle?.status === 'in_review'   ? "bg-sky-500"
+                              : cycle.userCycle?.status === 'on_hold'     ? "bg-purple-500"
+                              : cycle.userCycle?.status === 'rejected'    ? "bg-red-500"
                               : "bg-foreground/30"
                             )}
                             style={{ width: `${displayProgress}%` }}
@@ -1233,28 +1300,50 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
                     {!isEbauche && cycle.userExecutions.length >= cycle.total_trades && (
                       <div className="ml-10 mt-2 mb-1">
                         {requestedCycleIds.has(cycle.id) || cycle.userCycle?.status === 'pending_review' ? (
-                          // ── Demande déjà envoyée — statut visible + bouton retrait ──
+                          // ── Demande active — badge adapté au statut VR + retrait conditionnel ──
                           <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/25 w-fit">
-                              <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                              <div>
-                                <span className="text-xs font-medium text-amber-300">Vérification en attente</span>
-                                {verificationRequestDates[cycle.id] && (
-                                  <span className="block text-[10px] text-amber-400/60 font-mono">
-                                    Envoyée le {new Date(verificationRequestDates[cycle.id]).toLocaleDateString("fr-FR")}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); handleRetractVerification(cycle.id); }}
-                              disabled={retractingCycleId === cycle.id}
-                              className="text-xs text-muted-foreground hover:text-destructive h-auto px-2 py-1"
-                            >
-                              {retractingCycleId === cycle.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Retirer"}
-                            </Button>
+                            {(() => {
+                              const vrs = vrStatusByCycle[cycle.id] ?? 'pending';
+                              const isPending = vrs === 'pending';
+                              const badgeColor = isPending
+                                ? "bg-amber-500/10 border-amber-500/25"
+                                : vrs === 'in_review'
+                                ? "bg-sky-500/10 border-sky-500/25"
+                                : "bg-purple-500/10 border-purple-500/25";
+                              const iconColor = isPending ? "text-amber-400" : vrs === 'in_review' ? "text-sky-400" : "text-purple-400";
+                              const textColor = isPending ? "text-amber-300" : vrs === 'in_review' ? "text-sky-300" : "text-purple-300";
+                              const subColor  = isPending ? "text-amber-400/60" : vrs === 'in_review' ? "text-sky-400/60" : "text-purple-400/60";
+                              const Icon = isPending ? Clock : vrs === 'in_review' ? Eye : PauseCircle;
+                              return (
+                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md border w-fit ${badgeColor}`}>
+                                  <Icon className={`w-3.5 h-3.5 ${iconColor} shrink-0`} />
+                                  <div>
+                                    <span className={`text-xs font-medium ${textColor}`}>{getVrStatusLabel(vrs)}</span>
+                                    {verificationRequestDates[cycle.id] && (
+                                      <span className={`block text-[10px] ${subColor} font-mono`}>
+                                        Envoyée le {new Date(verificationRequestDates[cycle.id]).toLocaleDateString("fr-FR")}
+                                      </span>
+                                    )}
+                                    {!isPending && (
+                                      <span className={`block text-[10px] ${subColor} font-mono`}>
+                                        Retrait impossible — attends le verdict
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                            {vrStatusByCycle[cycle.id] === 'pending' || !vrStatusByCycle[cycle.id] ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); handleRetractVerification(cycle.id); }}
+                                disabled={retractingCycleId === cycle.id}
+                                className="text-xs text-muted-foreground hover:text-destructive h-auto px-2 py-1"
+                              >
+                                {retractingCycleId === cycle.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Retirer"}
+                              </Button>
+                            ) : null}
                           </div>
                         ) : (cycle.userCycle?.status === 'in_progress' || cycle.userCycle?.status === 'rejected') ? (
                           // ── Peut envoyer une demande ──
