@@ -35,6 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useCustomVariables } from "@/hooks/useCustomVariables";
 import { CustomizableMultiSelect } from "@/components/dashboard/CustomizableMultiSelect";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 /** Sanitise un champ décimal : remplace la virgule par un point, supprime les non-chiffres/points, interdit plusieurs points */
@@ -293,10 +294,12 @@ export const OracleTradeDialog = ({
   nextTradeNumber,
   currentCycleNum,
 }: OracleTradeDialogProps) => {
+  const { state } = useUserRoles();
+  const isAdmin = state.status === "ready" && (state.data.isAdmin || state.data.isSuperAdmin);
+
   const [formData, setFormData]   = useState<FormData>(initialFormData);
   const [saving,   setSaving]     = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [isAdmin,  setIsAdmin]    = useState(false);
 
   // Context screenshot
   const [contextFile,        setContextFile]        = useState<File | null>(null);
@@ -316,16 +319,7 @@ export const OracleTradeDialog = ({
     formData.exit_date,  formData.exit_time,
   );
 
-  // Admin check (pour verrouillage des paramètres setup en édition)
-  useEffect(() => {
-    // super_admin inclus : is_admin() ne couvre que le rôle 'admin'
-    Promise.all([
-      supabase.rpc("is_admin"),
-      supabase.rpc("is_super_admin"),
-    ]).then(([{ data: admin }, { data: superAdmin }]) => {
-      setIsAdmin(!!admin || !!superAdmin);
-    });
-  }, []);
+  // isAdmin dérivé du contexte useUserRoles — pas de RPC ici
 
   // En mode édition, les paramètres setup sont verrouillés pour les non-admins
   const setupFieldsLocked = !!editingTrade && !isAdmin;

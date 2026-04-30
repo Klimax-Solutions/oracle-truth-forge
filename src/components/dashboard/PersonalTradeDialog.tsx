@@ -42,6 +42,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useCustomVariables } from "@/hooks/useCustomVariables";
 import { CustomizableMultiSelect } from "@/components/dashboard/CustomizableMultiSelect";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 // ── Options locales non-gérables (sélecteurs internes) ────────────────────────
 // Les options des dropdowns trade (setup_type, entry_model, etc.) sont entièrement
@@ -284,10 +285,12 @@ export const PersonalTradeDialog = ({
   customSetupId,
   sessionId,
 }: PersonalTradeDialogProps) => {
+  const { state } = useUserRoles();
+  const isAdmin = state.status === "ready" && (state.data.isAdmin || state.data.isSuperAdmin);
+
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [saving, setSaving]     = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [isAdmin, setIsAdmin]   = useState(false);
 
   const [contextFile, setContextFile]     = useState<File | null>(null);
   const [contextPreview, setContextPreview] = useState<string | null>(null);
@@ -300,15 +303,7 @@ export const PersonalTradeDialog = ({
   const { toast } = useToast();
   const { globalVariables, personalVariables, refetch: refetchVariables } = useCustomVariables();
 
-  // Admin check — détermine si l'utilisateur peut gérer les options des dropdowns
-  useEffect(() => {
-    Promise.all([
-      supabase.rpc("is_admin"),
-      supabase.rpc("is_super_admin"),
-    ]).then(([{ data: admin }, { data: superAdmin }]) => {
-      setIsAdmin(!!admin || !!superAdmin);
-    });
-  }, []);
+  // isAdmin dérivé du contexte useUserRoles — pas de RPC ici
 
   const tradeDuration = calculateDuration(
     formData.trade_date, formData.entry_time,
