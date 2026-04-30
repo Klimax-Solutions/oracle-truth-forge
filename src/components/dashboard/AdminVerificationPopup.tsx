@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import { Shield, Clock, ChevronRight, X, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,31 +27,22 @@ const buildPopupSeenKey = (userId: string) => {
 };
 
 export const AdminVerificationPopup = ({ onNavigateToAdmin }: AdminVerificationPopupProps) => {
+  const { state } = useUserRoles();
+  const isAdmin = state.status === "ready" && (state.data.isAdmin || state.data.isSuperAdmin);
+
   const [pendingItems, setPendingItems] = useState<PendingVerification[]>([]);
   const [dismissed, setDismissed] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [animateIn, setAnimateIn] = useState(false);
 
   useEffect(() => {
-    const check = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLoaded(true);
-        return;
-      }
+    if (!isAdmin) return;
 
-      // Check admin role
-      const { data: adminCheck } = await supabase.rpc("is_admin");
-      const { data: superAdminCheck } = await supabase.rpc("is_super_admin");
+    const fetchData = async () => {
+      // getSession = synchronous localStorage read (pas de réseau)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-      if (!adminCheck && !superAdminCheck) {
-        setLoaded(true);
-        return;
-      }
-      setIsAdmin(true);
-
-      const popupSeenKey = buildPopupSeenKey(user.id);
+      const popupSeenKey = buildPopupSeenKey(session.user.id);
       let popupAlreadyShown = false;
       try {
         popupAlreadyShown = localStorage.getItem(popupSeenKey) === "1";
@@ -65,10 +57,7 @@ export const AdminVerificationPopup = ({ onNavigateToAdmin }: AdminVerificationP
         .eq("status", "pending")
         .order("requested_at", { ascending: false });
 
-      if (!requests || requests.length === 0) {
-        setLoaded(true);
-        return;
-      }
+      if (!requests || requests.length === 0) return;
 
       // Get cycle names and user names
       const cycleIds = [...new Set(requests.map(r => r.cycle_id))];
@@ -88,7 +77,6 @@ export const AdminVerificationPopup = ({ onNavigateToAdmin }: AdminVerificationP
       }));
 
       setPendingItems(items);
-      setLoaded(true);
 
       if (popupAlreadyShown) {
         setDismissed(true);
@@ -101,13 +89,12 @@ export const AdminVerificationPopup = ({ onNavigateToAdmin }: AdminVerificationP
         // Ignore storage issues and keep popup visible for current runtime
       }
 
-      // Trigger animation
       setTimeout(() => setAnimateIn(true), 100);
     };
-    check();
-  }, []);
+    fetchData();
+  }, [isAdmin]);
 
-  if (!loaded || !isAdmin || pendingItems.length === 0 || dismissed) return null;
+  if (!isAdmin || pendingItems.length === 0 || dismissed) return null;
 
   return (
     <div className={cn(
