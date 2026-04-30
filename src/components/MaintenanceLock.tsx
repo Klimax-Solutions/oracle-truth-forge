@@ -25,6 +25,12 @@ export const MaintenanceLock = () => {
     let mounted = true;
 
     const check = async () => {
+      // Maintenance désactivée — ne jamais bloquer les membres.
+      // Pour réactiver : passer MAINTENANCE_MODE à true (ligne 10).
+      if (!MAINTENANCE_MODE) {
+        if (mounted) setShouldBlock(false);
+        return;
+      }
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) {
