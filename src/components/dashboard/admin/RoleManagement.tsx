@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -69,9 +70,13 @@ interface UserWithRole {
 }
 
 export const RoleManagement = () => {
+  // Source unique des rôles (Phase 4 — singleton useUserRoles)
+  // Avant : RPC `is_super_admin` au mount → remplacé par lecture du context
+  const { state } = useUserRoles();
+  const isSuperAdmin = state.status === "ready" && state.data.isSuperAdmin;
+
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<"freeze" | "ban" | "remove" | "unfreeze" | "unban" | null>(null);
@@ -99,16 +104,8 @@ export const RoleManagement = () => {
   const [roleChangeProcessing, setRoleChangeProcessing] = useState(false);
 
   useEffect(() => {
-    checkSuperAdmin();
     fetchUsersWithRoles();
   }, []);
-
-  const checkSuperAdmin = async () => {
-    const { data, error } = await supabase.rpc('is_super_admin');
-    if (!error && data) {
-      setIsSuperAdmin(true);
-    }
-  };
 
   const fetchUsersWithRoles = async () => {
     setLoading(true);
