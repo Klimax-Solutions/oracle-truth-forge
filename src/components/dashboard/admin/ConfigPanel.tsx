@@ -32,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { AdminUserDataViewer } from "./AdminUserDataViewer";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 const FunnelEditorPage = lazy(() => import("@/components/dashboard/admin/FunnelEditorPage"));
 const QuestStepManager = lazy(() => import("@/components/dashboard/admin/QuestStepManager").then(m => ({ default: m.QuestStepManager })));
@@ -282,10 +283,12 @@ function PermissionsTab() {
 // ============================================
 
 export default function ConfigPanel() {
+  const { state } = useUserRoles();
+  const isSuperAdmin = state.status === "ready" && state.data.isSuperAdmin;
+  const isAdmin = state.status === "ready" && (state.data.isAdmin || state.data.isSuperAdmin);
+
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("roles");
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   // Roles data
   const [users, setUsers] = useState<RoleUser[]>([]);
@@ -317,12 +320,7 @@ export default function ConfigPanel() {
   const [dataViewerUserId, setDataViewerUserId] = useState<string | null>(null);
   const [dataViewerUserName, setDataViewerUserName] = useState("");
 
-  // ── Check admin / super admin ──
-  // Le pannel Config est accessible aux admins ET super_admins (pas seulement super).
-  useEffect(() => {
-    supabase.rpc("is_super_admin").then(({ data }) => { if (data) setIsSuperAdmin(true); });
-    supabase.rpc("is_admin").then(({ data }) => { if (data) setIsAdmin(true); });
-  }, []);
+  // isSuperAdmin / isAdmin dérivés du contexte useUserRoles — pas de RPC ici
 
   const canAccessConfig = isAdmin || isSuperAdmin;
 
