@@ -558,10 +558,10 @@ export default function GestionPanel() {
         }
       };
 
-      // Build users — source: profiles is_client=true + rôle 'institute'
+      // Build users — source: profiles is_client=true + rôle 'institute' + frozen/banned (toujours visibles pour l'admin)
       // profileMap contains ALL profiles (for reviewer name lookups)
       const clientProfiles = profiles.filter((p: any) =>
-        p.is_client === true || instituteIds.has(p.user_id)
+        p.is_client === true || instituteIds.has(p.user_id) || p.status === "frozen" || p.status === "banned"
       );
       const uniqueUserIds = clientProfiles.map((p: any) => p.user_id);
       const platformUsers: PlatformUser[] = uniqueUserIds.map((userId: string) => {
