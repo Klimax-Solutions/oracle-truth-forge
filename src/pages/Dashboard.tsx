@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { LogOut, ExternalLink } from "lucide-react";
 import { EAApprovalNotification } from "@/components/dashboard/EAApprovalNotification";
-import { DashboardSidebar, useSidebarRoles } from "@/components/dashboard/DashboardSidebar";
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import { getAllowedTabs, getDefaultTab } from "@/lib/permissions";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -160,7 +161,16 @@ const Dashboard = () => {
   const [displayName, setDisplayName] = useState<string>("");
   const [needsName, setNeedsName] = useState<boolean>(false);
   const { trades: personalTrades } = usePersonalTrades();
-  const { isAdmin: realIsAdmin, isSuperAdmin: realIsSuperAdmin, isSetter: realIsSetter, isCloser: realIsCloser, loadingRoles } = useSidebarRoles();
+  // ── Auth/rôles : machine d'état explicite (Option B, Phase 3) ─────────────
+  // 4 états possibles : loading | ready | error | unauthenticated.
+  // Pas de safety timeout, pas de fallback render avec valeurs par défaut.
+  // Voir docs/audit-roles-architecture.md
+  const { state: rolesState, retry: retryRoles } = useUserRoles();
+  const realIsAdmin      = rolesState.status === "ready" ? rolesState.data.isAdmin      : false;
+  const realIsSuperAdmin = rolesState.status === "ready" ? rolesState.data.isSuperAdmin : false;
+  const realIsSetter     = rolesState.status === "ready" ? rolesState.data.isSetter     : false;
+  const realIsCloser     = rolesState.status === "ready" ? rolesState.data.isCloser     : false;
+  const loadingRoles     = rolesState.status === "loading";
   const questData = useQuestData();
   const { isEarlyAccess: realIsEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
@@ -560,12 +570,44 @@ const Dashboard = () => {
   const showDataSourceSelector = false && ["data-analysis"].includes(activeTab) && !isEarlyAccess && !isSetterOnly && (isAdmin || isSuperAdmin);
 
   const renderContent = () => {
-    // ── LOADING GATE — CRITIQUE ──────────────────────────────────────────────
-    // Ne rien rendre tant que les rôles ne sont pas connus ET que le tab initial
-    // n'a pas été validé. Élimine tout flash de contenu non autorisé.
-    // Avec le cache localStorage : durée ~0ms (cache hit synchrone).
-    // Sans cache (1er load, session effacée) : durée ~200-500ms (JWT + RPC).
-    if (loadingRoles || !tabInitialized.current) {
+    // ── GATE EXPLICITE — 4 ÉTATS (Option B, Phase 3) ─────────────────────────
+    // Aucun render UI tant que l'état d'auth n'est pas confirmé. Pas de
+    // fallback silencieux, pas de valeurs par défaut.
+
+    // Erreur réseau/RPC : écran retry explicite, pas de UI fantôme.
+    if (rolesState.status === "error") {
+      return (
+        <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4 px-6 text-center">
+          <div className="w-12 h-12 rounded-full bg-destructive/10 border border-destructive/30 flex items-center justify-center">
+            <span className="text-destructive text-xl">⚠</span>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-sm font-semibold text-foreground">Connexion impossible</p>
+            <p className="text-xs text-muted-foreground max-w-sm">
+              Impossible de récupérer tes rôles. Vérifie ta connexion puis réessaye.
+            </p>
+          </div>
+          <button
+            onClick={retryRoles}
+            className="px-4 py-2 rounded-md text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Réessayer
+          </button>
+        </div>
+      );
+    }
+
+    // Session morte : redirect géré par onAuthStateChange. Splash en attendant.
+    if (rolesState.status === "unauthenticated") {
+      return (
+        <div className="flex items-center justify-center h-full min-h-[400px]">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
+
+    // Loading des rôles ou validation initiale du tab : splash neutre.
+    if (rolesState.status === "loading" || !tabInitialized.current) {
       return (
         <div className="flex items-center justify-center h-full min-h-[400px]">
           <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
