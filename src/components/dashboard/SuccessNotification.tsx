@@ -18,10 +18,16 @@ const AUTHENTICATED_ROUTES = ["/dashboard", "/setup", "/oracle-m"];
 
 const SuccessNotification = forwardRef<HTMLDivElement>((_, ref) => {
   const { state } = useUserRoles();
-  // hasAccess : null = encore en chargement, true/false = connu
-  const hasAccess = state.status === "ready"
-    ? (state.data.isEarlyAccess || state.data.isAdmin || state.data.isSuperAdmin)
-    : null;
+  // hasAccess :
+  //   null  = encore en chargement → cloche visible (même comportement que l'original pendant la RPC)
+  //   true  = accès confirmé (EA, admin, super_admin)
+  //   false = accès refusé (membre, error réseau, non-authentifié) → cloche cachée
+  const hasAccess =
+    state.status === "ready"
+      ? (state.data.isEarlyAccess || state.data.isAdmin || state.data.isSuperAdmin)
+      : state.status === "loading"
+        ? null   // pendant le chargement : on attend
+        : false; // error ou unauthenticated : pas d'accès
   // Ref pour le check admin dans les callbacks realtime (évite les stale closures)
   const isAdminRef = useRef(false);
   useEffect(() => {

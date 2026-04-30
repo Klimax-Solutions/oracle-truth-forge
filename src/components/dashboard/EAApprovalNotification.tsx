@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { Bell, CheckCircle, XCircle, User, Mail, Phone, Clock, Loader2 } from "lucide-react";
@@ -27,11 +27,21 @@ export const EAApprovalNotification = () => {
   const { toast } = useToast();
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Mémoïsée : setPending est stable, supabase est stable → fetchPending ne change jamais
+  const fetchPending = useCallback(async () => {
+    const { data } = await supabase
+      .from("early_access_requests" as any)
+      .select("*")
+      .eq("status", "en_attente")
+      .order("created_at", { ascending: false });
+    if (data) setPending(data as any as EANotif[]);
+  }, []);
+
   // Initial fetch when roles are ready
   useEffect(() => {
     if (!isSuperAdmin) return;
     fetchPending();
-  }, [isSuperAdmin]);
+  }, [isSuperAdmin, fetchPending]);
 
   // Realtime for new requests
   useEffect(() => {
@@ -54,7 +64,7 @@ export const EAApprovalNotification = () => {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [isSuperAdmin]);
+  }, [isSuperAdmin, fetchPending]);
 
   // Close on outside click
   useEffect(() => {
@@ -66,15 +76,6 @@ export const EAApprovalNotification = () => {
     if (isOpen) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [isOpen]);
-
-  const fetchPending = async () => {
-    const { data } = await supabase
-      .from("early_access_requests" as any)
-      .select("*")
-      .eq("status", "en_attente")
-      .order("created_at", { ascending: false });
-    if (data) setPending(data as any as EANotif[]);
-  };
 
   const handleApprove = async (req: EANotif) => {
     setProcessing(req.id);
