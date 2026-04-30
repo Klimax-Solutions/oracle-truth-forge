@@ -120,29 +120,39 @@ const Auth = () => {
             .from("user_sessions")
             .select("id, device_fingerprint")
             .eq("user_id", data.user.id);
-          
+
+          // Admins et super_admins sont exemptés de la politique anti-partage —
+          // ils se connectent légitimement depuis plusieurs environnements (localhost, Lovable Preview, prod).
+          const { data: userRolesData } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", data.user.id);
+          const isStaff = (userRolesData || []).some(
+            (r: any) => r.role === "admin" || r.role === "super_admin"
+          );
+
           const knownFingerprints = (existingSessions || []).map(s => (s as any).device_fingerprint).filter(Boolean);
           const isNewDevice = !knownFingerprints.includes(deviceFingerprint);
-          
-          if (isNewDevice && knownFingerprints.length >= 5) {
-            // 3rd device detected — freeze account + create security alert
+
+          // Gel si nouveau device ET déjà 5 devices connus ET pas admin/super_admin
+          if (!isStaff && isNewDevice && knownFingerprints.length >= 5) {
             await supabase
               .from("profiles")
-              .update({ status: "frozen", frozen_at: new Date().toISOString(), status_reason: "Connexion depuis un 3ème appareil détectée" })
+              .update({ status: "frozen", frozen_at: new Date().toISOString(), frozen_by: null, status_reason: "Connexion depuis un 6ème appareil détectée" })
               .eq("user_id", data.user.id);
-            
+
             await supabase
               .from("security_alerts")
               .insert({
                 user_id: data.user.id,
-                alert_type: "third_device",
+                alert_type: "multi_device",
                 device_info: `${navigator.userAgent} | Fingerprint: ${deviceFingerprint}`,
               });
-            
+
             await supabase.auth.signOut();
             toast({
               title: "Sécurité — Compte gelé",
-              description: "Une connexion depuis un 3ème appareil a été détectée. Votre compte a été temporairement gelé. Contactez un administrateur.",
+              description: "Une connexion depuis un nouvel appareil a été détectée (limite atteinte). Votre compte a été temporairement gelé. Contactez un administrateur.",
               variant: "destructive",
             });
             setIsLoading(false);
