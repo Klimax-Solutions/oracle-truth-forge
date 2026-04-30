@@ -428,6 +428,13 @@ export default function GestionPanel() {
     const t0 = performance.now();
     const tlog = (label: string) => console.log(`[Gestion] ${label}: ${Math.round(performance.now() - t0)}ms`);
     try {
+      // ── trades : lancé immédiatement en parallèle avec Phase A + B ──
+      // 314 rows avec URLs screenshots — pas nécessaire avant que l'admin ouvre une vérif.
+      // En lançant ici, il sera résolu bien avant qu'on en ait besoin (~200ms vs ~2500ms d'attente).
+      const tradesPromise = supabase
+        .from("trades")
+        .select("id, trade_number, trade_date, entry_time, direction, rr, screenshot_m15_m5, screenshot_m1")
+        .order("trade_number");
       // Helper : Supabase plafonne à 1000 rows par requête. Pour les tables
       // qui dépassent ce seuil avec les imports prod, on pagine.
       const fetchAll = async <T = any,>(
@@ -456,7 +463,7 @@ export default function GestionPanel() {
       // aux seuls users pertinents (clients + soumetteurs de vérif).
       const [
         profilesRes, cyclesRes, sessionsRes, activityRes,
-        rolesRes, vrsRes, allVrsData, processedVrsRes, alertsRes, oracleRes, adminRolesRes,
+        rolesRes, vrsRes, allVrsData, processedVrsRes, alertsRes, adminRolesRes,
         crmLeadsRes,
       ] = await withTimeout(Promise.all([
         supabase.from("profiles").select("*"),
@@ -468,7 +475,6 @@ export default function GestionPanel() {
         fetchAll(() => supabase.from("verification_requests").select("user_id, cycle_id").order("requested_at")),
         supabase.from("verification_requests").select("*").neq("status", "pending").order("reviewed_at", { ascending: false }).limit(50),
         supabase.from("security_alerts").select("*").eq("resolved", false).order("created_at", { ascending: false }),
-        supabase.from("trades").select("id, trade_number, trade_date, entry_time, direction, rr, screenshot_m15_m5, screenshot_m1").order("trade_number"),
         supabase.from("user_roles").select("user_id").in("role", ["admin", "super_admin"]),
         supabase.from("early_access_requests")
           .select("id, user_id, created_at, paid_at, paid_amount, offer_amount, call_done_at, setter_name, closer_name, email")
@@ -503,12 +509,18 @@ export default function GestionPanel() {
       const userCycles = (userCyclesData || []) as UserCycleData[];
       const allExecutions = (executionsData || []) as UserExecution[];
       tlog(`Phase B done (cycles: ${userCycles.length}, execs: ${allExecutions.length})`);
+
+      // trades : démarré en parallèle avec Phase A+B, devrait être résolu depuis longtemps
+      const { data: tradesData } = await tradesPromise;
+      const oracleData = (tradesData || []) as OracleTrade[];
+      setOracleTrades(oracleData);
+      tlog("Trades resolved");
+
       const sessions = sessionsRes.data || [];
       const activity = activityRes.data || [];
       const allRoles = rolesRes.data || [];
       const allVrs = allVrsData || [];
       const alertsData = alertsRes.data || [];
-      const oracleData = (oracleRes.data || []) as OracleTrade[];
       const adminRoles = adminRolesRes.data || [];
       const crmLeads = (crmLeadsRes.data || []) as any[];
 
@@ -645,32 +657,31 @@ export default function GestionPanel() {
         if (pa !== pb) return pa - pb;
         return b.totalTrades - a.totalTrades;
       });
-      // ── Compléter les emails manquants depuis auth.users (via RPC) ──
-      // Pour les users sans CRM lead (Institut, staff, comptes directs)
+      // Affiche la liste immédiatement — sans attendre les emails des users institut
+      setUsers(platformUsers);
+
+      // ── Compléter les emails manquants en arrière-plan (non-bloquant) ──
+      // Pour les users sans CRM lead (Institut, staff, comptes directs).
+      // setUsers() est déjà appelé — les emails se rempliront 300ms plus tard.
       const missingEmailIds = platformUsers
         .filter(u => !u.crmLead?.email)
         .map(u => u.id);
 
       if (missingEmailIds.length > 0) {
-        try {
-          const { data: authEmails } = await supabase.rpc("get_auth_emails", { user_ids: missingEmailIds });
-          if (authEmails) {
+        supabase.rpc("get_auth_emails", { user_ids: missingEmailIds })
+          .then(({ data: authEmails }) => {
+            if (!authEmails) return;
             const emailMap: Record<string, string> = {};
             (authEmails as { user_id: string; email: string }[]).forEach(e => { emailMap[e.user_id] = e.email; });
-            platformUsers.forEach(u => {
-              if (!u.crmLead?.email && emailMap[u.id]) {
-                if (!u.crmLead) {
-                  (u as any).authEmail = emailMap[u.id];
-                } else {
-                  u.crmLead.email = emailMap[u.id];
-                }
-              }
-            });
-          }
-        } catch { /* RPC pas encore déployée sur cet env — skip silencieux */ }
+            setUsers(prev => prev.map(u => {
+              const email = emailMap[u.id];
+              if (!email || u.crmLead?.email) return u;
+              if (!u.crmLead) return { ...u, authEmail: email } as PlatformUser;
+              return { ...u, crmLead: { ...u.crmLead, email } };
+            }));
+          })
+          .catch(() => { /* RPC pas encore déployée sur cet env — skip silencieux */ });
       }
-
-      setUsers(platformUsers);
 
       // Build pending requests
       const attemptCounts: Record<string, number> = {};
@@ -1049,7 +1060,44 @@ export default function GestionPanel() {
     return map[actionType || "freeze"];
   }, [actionType, actionUserId, users]);
 
-  if (loading) return <LoadingFallback onRetry={loadData} message="Chargement de la gestion utilisateurs..." />;
+  // ── Skeleton — visible immédiatement, remplace le LoadingFallback pleine page ──
+  if (loading) return (
+    <div className="h-full flex flex-col overflow-hidden bg-background">
+      {/* Header skeleton — même structure que le vrai header */}
+      <div className="shrink-0 border-b border-white/[0.10]">
+        <div className="px-3 md:px-6 flex items-center justify-between h-14 gap-2">
+          <div className="flex items-center gap-2">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="h-8 w-20 rounded-lg bg-white/[0.06] animate-pulse" />
+            ))}
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-white/[0.06] animate-pulse" />
+        </div>
+        <div className="px-3 md:px-6 pb-3 space-y-3">
+          <div className="h-10 w-full md:max-w-lg rounded-xl bg-white/[0.04] animate-pulse" />
+          <div className="h-10 w-full rounded-xl bg-white/[0.03] animate-pulse" />
+        </div>
+      </div>
+      {/* Liste skeleton — 8 cartes placeholder */}
+      <div className="flex-1 overflow-hidden p-3 md:p-4 space-y-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 flex items-center gap-4 animate-pulse" style={{ opacity: 1 - i * 0.08 }}>
+            <div className="w-7 h-7 rounded-full bg-white/[0.08] shrink-0" />
+            <div className="flex-1 space-y-2 min-w-0">
+              <div className="h-3.5 w-32 rounded bg-white/[0.08]" />
+              <div className="h-2.5 w-20 rounded bg-white/[0.05]" />
+            </div>
+            <div className="hidden md:flex gap-6">
+              <div className="h-3 w-16 rounded bg-white/[0.06]" />
+              <div className="h-3 w-16 rounded bg-white/[0.06]" />
+              <div className="h-3 w-20 rounded bg-white/[0.06]" />
+            </div>
+            <div className="w-24 h-2 rounded-full bg-white/[0.06]" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
