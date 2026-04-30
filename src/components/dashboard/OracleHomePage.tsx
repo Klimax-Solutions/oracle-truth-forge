@@ -427,11 +427,90 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
               fontFamily: "'Inter', system-ui, sans-serif",
-              marginBottom: "28px",
+              marginBottom: isMobile ? "22px" : "28px",
               display: "block",
             }}>
               {meta.heading}
             </h2>
+
+            {/* ── Embed preview — MOBILE ONLY ──
+                Carte 16:9 élégante affichant la même scène que le panneau 3D desktop.
+                Pas de tilt, juste une "fenêtre" propre avec glow accent et bordure subtile.
+                Réutilise Slide{0,1,2}Scene tels quels. */}
+            {isMobile && (
+              <div
+                style={{
+                  ...fadeIn(60),
+                  position: "relative",
+                  marginBottom: "26px",
+                }}
+              >
+                {/* Soft ambient glow behind the card */}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: "-24px",
+                    background: `radial-gradient(ellipse 80% 70% at 50% 50%, ${meta.glow}, transparent 75%)`,
+                    pointerEvents: "none",
+                    zIndex: 0,
+                  }}
+                />
+                {/* The card */}
+                <div
+                  style={{
+                    position: "relative",
+                    aspectRatio: "16 / 9",
+                    width: "100%",
+                    borderRadius: "14px",
+                    overflow: "hidden",
+                    background: "#000",
+                    border: `1px solid ${meta.accent}26`,
+                    boxShadow: [
+                      `0 0 0 1px rgba(255,255,255,0.03)`,
+                      `0 8px 28px -10px ${meta.accent}55`,
+                      `0 24px 60px -16px rgba(0,0,0,0.7)`,
+                    ].join(", "),
+                    zIndex: 1,
+                  }}
+                >
+                  {/* Top edge neon line — discret */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 0, left: 0, right: 0,
+                      height: "1px",
+                      background: `linear-gradient(to right, transparent 12%, ${meta.accent}aa 50%, transparent 88%)`,
+                      zIndex: 5,
+                    }}
+                  />
+                  {/* Scene fills absolutely */}
+                  <div className="absolute inset-0">
+                    {slide === 0 && (
+                      <Slide0Scene firstVideo={firstVideo} accent={meta.accent} glow={meta.glow} />
+                    )}
+                    {slide === 1 && (
+                      <Slide1Scene
+                        screenshotUrl={screenshotUrl}
+                        lastExec={lastExec}
+                        totalExecs={totalExecs}
+                        accent={meta.accent}
+                        glow={meta.glow}
+                      />
+                    )}
+                    {slide === 2 && (
+                      <Slide2Scene
+                        allCycles={allCycles}
+                        currentCycle={currentCycle}
+                        accent={meta.accent}
+                        glow={meta.glow}
+                        isValidated={isValidated}
+                        isRejected={isRejected}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Metric — si pertinente */}
             {bigMetric !== "—" && bigMetric !== "0" && bigMetric !== "0%" && (
