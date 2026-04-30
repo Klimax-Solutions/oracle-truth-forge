@@ -399,9 +399,14 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
         return next;
       });
 
-      // For cycles 1+, check accuracy for auto-validation (90%+ = auto-approve)
+      // P6 — AUCUN AUTO-VALIDATE : tout cycle passe par un admin, sans exception
+      // Le RPC check_cycle_accuracy_and_auto_validate est appelé en lecture seule
+      // pour obtenir l'accuracy affichée dans le toast, mais ne change plus aucun statut.
+
+      // Calcul de l'accuracy (informatif uniquement — cycles 1+)
+      let accuracyValue = 0;
       if (cycleData.cycle_number > 0) {
-        const { data: accuracy, error: accError } = await supabase.rpc(
+        const { data: accuracy } = await supabase.rpc(
           "check_cycle_accuracy_and_auto_validate",
           {
             p_user_id: user.id,
@@ -409,78 +414,45 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
             p_user_cycle_id: cycleData.userCycle.id,
           }
         );
+        accuracyValue = Number(accuracy) || 0;
+      }
 
-        if (accError) throw accError;
+      // Toujours passer en pending_review — l'admin valide manuellement (P6)
+      const isEbauche = cycleData.cycle_number === 0;
+      const { error: updateError } = await supabase
+        .from("user_cycles")
+        .update({
+          status: "pending_review",
+          completed_at: new Date().toISOString(),
+          completed_trades: isEbauche
+            ? cycleData.currentTrades.length
+            : cycleData.userExecutions.length,
+          total_rr: isEbauche ? cycleData.currentRR : cycleData.userRR,
+        })
+        .eq("id", cycleData.userCycle.id);
 
-        const accuracyValue = Number(accuracy) || 0;
+      if (updateError) throw updateError;
 
-        // Refresh user cycles
-        const { data: updatedUserCycles } = await supabase
-          .from("user_cycles")
-          .select("*")
-          .eq("user_id", user.id);
+      // Refresh user cycles
+      const { data: updatedUserCycles } = await supabase
+        .from("user_cycles")
+        .select("*")
+        .eq("user_id", user.id);
+      if (updatedUserCycles) {
+        setUserCycles(updatedUserCycles as UserCycle[]);
+      }
 
-        if (updatedUserCycles) {
-          setUserCycles(updatedUserCycles as UserCycle[]);
-        }
-
-        if (accuracyValue >= 90) {
-          toast({
-            title: "🎉 Cycle validé automatiquement !",
-            description: `Précision de ${accuracyValue.toFixed(1)}% — Le palier suivant est débloqué !`,
-          });
-        } else {
-          // Below 90%: set to pending_review for admin
-          const { error: updateError } = await supabase
-            .from("user_cycles")
-            .update({
-              status: "pending_review",
-              completed_at: new Date().toISOString(),
-              completed_trades: cycleData.userExecutions.length,
-              total_rr: cycleData.userRR,
-            })
-            .eq("id", cycleData.userCycle.id);
-
-          if (updateError) throw updateError;
-
-          // Re-refresh after update
-          const { data: reUpdated } = await supabase
-            .from("user_cycles")
-            .select("*")
-            .eq("user_id", user.id);
-          if (reUpdated) setUserCycles(reUpdated as UserCycle[]);
-
-          toast({
-            title: "Demande envoyée !",
-            description: `Précision de ${accuracyValue.toFixed(1)}% — Un administrateur doit valider votre cycle.`,
-          });
-        }
-      } else {
-        // Ébauche (cycle 0): always needs admin review
-        const { error: updateError } = await supabase
-          .from("user_cycles")
-          .update({
-            status: "pending_review",
-            completed_at: new Date().toISOString(),
-            completed_trades: cycleData.currentTrades.length,
-            total_rr: cycleData.currentRR,
-          })
-          .eq("id", cycleData.userCycle.id);
-
-        if (updateError) throw updateError;
-
-        const { data: updatedUserCycles } = await supabase
-          .from("user_cycles")
-          .select("*")
-          .eq("user_id", user.id);
-
-        if (updatedUserCycles) {
-          setUserCycles(updatedUserCycles as UserCycle[]);
-        }
-
+      if (isEbauche) {
         toast({
           title: "✅ Demande envoyée !",
-          description: "Ta demande est unique et enregistrée. L'équipe Oracle va examiner tes trades et te donner un retour détaillé.",
+          description: "Ta demande est enregistrée. L'équipe Oracle va examiner tes trades et te donner un retour détaillé.",
+        });
+      } else {
+        toast({
+          title: "✅ Demande envoyée !",
+          description: accuracyValue > 0
+            ? `Précision estimée : ${accuracyValue.toFixed(1)}% — Un administrateur va valider ton cycle.`
+            : "Un administrateur va valider ton cycle.",
         });
       }
     } catch (error) {

@@ -802,6 +802,19 @@ export default function GestionPanel() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
+
+      // BUG-01 guard : vérifier que le cycle n'est pas déjà validé (double approbation impossible)
+      const { data: currentCycle } = await supabase
+        .from("user_cycles")
+        .select("status")
+        .eq("id", request.userCycle.id)
+        .single();
+      if (currentCycle?.status === "validated") {
+        toast({ title: "Déjà validé", description: "Ce cycle est déjà validé. Aucune action nécessaire.", variant: "destructive" });
+        loadData();
+        return;
+      }
+
       const trades = request.executions.map((e) => { const k = `${request.id}_${e.id}`; return { trade_number: e.trade_number, is_valid: tradeValidity[k] !== false, note: tradeNotes[k] || "" }; });
       const rej = trades.filter((t) => !t.is_valid);
       const val = trades.filter((t) => t.is_valid);
