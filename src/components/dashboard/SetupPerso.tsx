@@ -40,7 +40,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { PersonalTradeDialog } from "./PersonalTradeDialog";
+// PersonalTradeDialog déprécié après Phase 4 — remplacé par TradeEntryDialog
+// import { PersonalTradeDialog } from "./PersonalTradeDialog";
+import { TradeExpandCard } from "./TradeExpandCard";
+import { TradeEntryDialog } from "./TradeEntryDialog";
+import {
+  PersonalTrade as PersonalTradeData,
+  TradeCardData,
+  toPersonalTradeCard,
+} from "@/lib/trade/types";
 import { CustomVariablesDialog } from "./CustomVariablesDialog";
 
 interface PersonalTrade {
@@ -96,7 +104,8 @@ export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupP
   const [importResult, setImportResult] = useState<{ success: number; errors: number } | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isVariablesDialogOpen, setIsVariablesDialogOpen] = useState(false);
-  const [editingTrade, setEditingTrade] = useState<PersonalTrade | null>(null);
+  const [editingTrade, setEditingTrade] = useState<TradeCardData | null>(null);
+  const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
   const [suggestedVariables, setSuggestedVariables] = useState<{ type: string; values: string[] }[]>([]);
   const [targetTrades, setTargetTrades] = useState(DEFAULT_TARGET_TRADES);
   const [showTargetInput, setShowTargetInput] = useState(false);
@@ -547,9 +556,27 @@ export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupP
     setIsDialogOpen(true);
   };
 
-  const handleEditTrade = (trade: PersonalTrade) => {
+  // Expand/collapse inline card
+  const handleToggleExpand = (tradeId: string) => {
+    setExpandedTradeId(prev => prev === tradeId ? null : tradeId);
+  };
+
+  // Opens TradeEntryDialog for editing (called by TradeExpandCard onEdit)
+  const handleEditTrade = (trade: TradeCardData) => {
     setEditingTrade(trade);
     setIsDialogOpen(true);
+  };
+
+  // Delete trade directly (called by TradeExpandCard onDelete)
+  const handleDeleteTrade = async (id: string, tradeNumber: number) => {
+    const { error } = await supabase.from("user_personal_trades").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Erreur", description: "Impossible de supprimer ce trade.", variant: "destructive" });
+    } else {
+      toast({ title: "Trade supprimé", description: `Trade #${tradeNumber} supprimé.` });
+      setExpandedTradeId(null);
+      fetchTrades();
+    }
   };
 
   const handleDialogClose = () => {
@@ -936,75 +963,35 @@ export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupP
             </div>
           </div>
         ) : (
-          <Table>
-            <TableHeader className="sticky top-0 bg-card z-10">
-              <TableRow>
-                <TableHead className="w-16">#</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Jour</TableHead>
-                <TableHead>Direction</TableHead>
-                <TableHead>Structure</TableHead>
-                <TableHead>Entrée</TableHead>
-                <TableHead>Type de Setup</TableHead>
-                <TableHead className="text-right">RR</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTrades.map((trade) => (
-                <TableRow 
-                  key={trade.id} 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleEditTrade(trade)}
-                >
-                  <TableCell className="font-mono text-muted-foreground">
-                    {trade.trade_number}
-                  </TableCell>
-                  <TableCell>{trade.trade_date}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {trade.day_of_week}
-                  </TableCell>
-                  <TableCell>
-                    <span className={cn(
-                      "text-xs font-mono uppercase px-2 py-0.5 rounded",
-                      trade.direction === "Long"
-                        ? "text-emerald-500 bg-emerald-500/10"
-                        : "text-red-500 bg-red-500/10"
-                    )}>
-                      {trade.direction}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {trade.direction_structure || "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {trade.entry_time || "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {trade.setup_type || "—"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span className={cn(
-                      "font-mono font-bold",
-                      (trade.rr || 0) >= 0 ? "text-emerald-400" : "text-red-400"
-                    )}>
-                      {trade.rr !== null ? `${trade.rr >= 0 ? '+' : ''}${trade.rr.toFixed(2)}` : "—"}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="space-y-2 p-3 md:p-4">
+            {filteredTrades.map((trade) => {
+              const tradeCard = toPersonalTradeCard(trade as unknown as PersonalTradeData);
+              // scopeTrades = tous les trades de la session (pour mini-charts)
+              const scopeTrades = (trades as unknown as PersonalTradeData[]).map(toPersonalTradeCard);
+              return (
+                <TradeExpandCard
+                  key={trade.id}
+                  trade={tradeCard}
+                  isExpanded={expandedTradeId === trade.id}
+                  onToggle={() => handleToggleExpand(trade.id)}
+                  onEdit={handleEditTrade}
+                  onDelete={handleDeleteTrade}
+                  scopeTrades={scopeTrades}
+                />
+              );
+            })}
+          </div>
         )}
       </div>
 
       {/* Trade Dialog */}
-      <PersonalTradeDialog
+      <TradeEntryDialog
+        mode="personal"
         isOpen={isDialogOpen}
         onClose={handleDialogClose}
         onSaved={handleTradeSaved}
         editingTrade={editingTrade}
         nextTradeNumber={getNextTradeNumber()}
-        customSetupId={customSetupId}
         sessionId={sessionId}
       />
 
