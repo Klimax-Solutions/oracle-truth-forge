@@ -1,60 +1,45 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+/**
+ * useEarlyAccess — wrapper léger de useUserRoles (Phase 5, 2026-04-30)
+ *
+ * AVANT (Phase 4 et avant) :
+ *   - 1 RPC `is_early_access()` au mount
+ *   - 1 query manuelle `user_roles` pour récupérer expires_at + early_access_type
+ *   - 1 channel realtime `ea-role-sync` dédié (postgres_changes user_roles)
+ *   → 15 composants consommateurs × 2 fetchs = jusqu'à 30 RPCs redondants par page
+ *
+ * APRÈS (Phase 5) :
+ *   - 0 fetch propre — lecture du singleton useUserRoles (1 seul fetch pour toute la session)
+ *   - Le channel realtime user_roles est déjà géré par UserRolesProvider, pas besoin de doublon
+ *   - L'API publique du hook est strictement préservée → aucun consommateur à modifier
+ *
+ * Slice A — frontend uniquement, aucun impact data.
+ */
+
+import { useUserRoles } from "./useUserRoles";
 
 export const useEarlyAccess = () => {
-  const [isEarlyAccess, setIsEarlyAccess] = useState(false);
-  const [expiresAt, setExpiresAt] = useState<string | null>(null);
-  const [earlyAccessType, setEarlyAccessType] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { state } = useUserRoles();
 
-  const check = async () => {
-    try {
-      const { data } = await supabase.rpc("is_early_access");
-      setIsEarlyAccess(!!data);
-
-      if (data) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          // activate_ea_timer() supprimé — expires_at est posé à l'approbation (J+7 déterministe)
-          const { data: roleData } = await supabase
-            .from("user_roles")
-            .select("expires_at, early_access_type" as any)
-            .eq("user_id", user.id)
-            .eq("role", "early_access")
-            .maybeSingle();
-          if (roleData) {
-            const rd = roleData as any;
-            if (rd.expires_at) setExpiresAt(rd.expires_at);
-            setEarlyAccessType(rd.early_access_type || null);
-          }
-        }
-      } else {
-        setExpiresAt(null);
-        setEarlyAccessType(null);
-      }
-    } catch (err) {
-      console.warn('[useEarlyAccess] check error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    check();
-
-    const channel = supabase
-      .channel('ea-role-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => {
-        check();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
+  if (state.status === "ready") {
+    const { isEarlyAccess, eaExpiresAt, eaType } = state.data;
+    const expiresAt = eaExpiresAt ? eaExpiresAt.toISOString() : null;
+    const isExpired = !!(isEarlyAccess && eaExpiresAt && eaExpiresAt <= new Date());
+    return {
+      isEarlyAccess,
+      isExpired,
+      expiresAt,
+      earlyAccessType: eaType,
+      loading: false,
     };
-  }, []);
+  }
 
-  const isExpired = !!(isEarlyAccess && expiresAt && new Date(expiresAt) <= new Date());
-
-  return { isEarlyAccess, isExpired, expiresAt, earlyAccessType, loading };
+  // status === "loading" → on attend la résolution du singleton
+  // status === "error" | "unauthenticated" → valeurs sûres par défaut
+  return {
+    isEarlyAccess: false,
+    isExpired: false,
+    expiresAt: null,
+    earlyAccessType: null,
+    loading: state.status === "loading",
+  };
 };
