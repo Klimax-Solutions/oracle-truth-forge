@@ -3,6 +3,13 @@
 //
 // Slice : A — IDENTITY
 //
+// Architecture (Phase 3.5 — singleton via React Context, 2026-04-30) :
+//   - Un seul `<UserRolesProvider>` monté à la racine de l'app appelle la
+//     logique de fetch UNE SEULE FOIS et expose le state via Context.
+//   - Tous les consumers (`useUserRoles()`) lisent le contexte partagé.
+//   - 1 seule RPC `get_user_roles()` au mount initial, peu importe combien
+//     de composants l'utilisent. 1 seul realtime channel. 1 seul auth listener.
+//
 // Pattern :
 //   Une seule RPC `get_user_roles()` retourne tous les flags + le timer EA.
 //   Machine d'état explicite : loading | ready | error | unauthenticated.
@@ -23,15 +30,15 @@
 //     fallback silencieux.
 //
 // Migration prévue (séparée) :
-//   Phase 3 — usePermissions consomme useUserRoles au lieu de useSidebarRoles.
 //   Phase 4 — élimination des 22 appels RPC redondants dans les composants.
 //   Phase 5 — useEarlyAccess simplifié (lit depuis useUserRoles).
 //
 // Audit : voir docs/audit-roles-architecture.md
 // Décision Option B actée : 2026-04-30
+// Décision Phase 3.5 (singleton Context) actée : 2026-04-30
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, createContext, useContext, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 // ─── Types publics ───────────────────────────────────────────────────────────
@@ -108,9 +115,11 @@ const fetchRolesViaRpc = async (): Promise<UserRolesData> => {
   };
 };
 
-// ─── Hook ────────────────────────────────────────────────────────────────────
+// ─── Hook interne (logique de fetch + state machine) ─────────────────────────
+// Privé — utilisé UNIQUEMENT par UserRolesProvider. Ne pas appeler directement.
+// Pour consommer les rôles, utiliser le hook `useUserRoles()` exporté.
 
-export const useUserRoles = (): UseUserRolesReturn => {
+const _useUserRolesInternal = (): UseUserRolesReturn => {
   const [state, setState] = useState<UserRolesState>({ status: "loading" });
 
   // Refs pour éviter les races et les setStates post-unmount
@@ -199,11 +208,48 @@ export const useUserRoles = (): UseUserRolesReturn => {
   return { state, retry };
 };
 
-// ─── Helpers d'introspection (utilisés par usePermissions en Phase 3) ─────────
+// ─── Context + Provider singleton ────────────────────────────────────────────
+// Une seule instance de la logique de fetch dans toute l'app.
+// Tous les consumers lisent le même état partagé.
+
+const UserRolesContext = createContext<UseUserRolesReturn | null>(null);
 
 /**
- * Retourne un objet "RolesInput" plat (compatible avec permissions.ts) ou null
- * si l'état n'est pas ready. Conçu pour faciliter la migration de usePermissions.
+ * Provider singleton — à monter UNE SEULE FOIS au plus haut niveau de l'app
+ * (typiquement dans App.tsx, à l'intérieur de BrowserRouter pour que les
+ * éléments globaux comme SuccessNotification/MaintenanceLock soient inclus).
+ *
+ * Tout composant qui appelle `useUserRoles()` doit être un descendant.
+ */
+export const UserRolesProvider = ({ children }: { children: ReactNode }) => {
+  const value = _useUserRolesInternal();
+  return (
+    <UserRolesContext.Provider value={value}>
+      {children}
+    </UserRolesContext.Provider>
+  );
+};
+
+/**
+ * Hook public — lit le state depuis le contexte partagé.
+ * Throw explicitement si appelé hors du Provider (garde-fou).
+ */
+export const useUserRoles = (): UseUserRolesReturn => {
+  const ctx = useContext(UserRolesContext);
+  if (ctx === null) {
+    throw new Error(
+      "useUserRoles must be used within a <UserRolesProvider>. " +
+      "Wrap your app (typically in App.tsx) with <UserRolesProvider> at the root."
+    );
+  }
+  return ctx;
+};
+
+// ─── Helpers d'introspection ─────────────────────────────────────────────────
+
+/**
+ * Retourne un objet "RolesInput" plat (compatible avec permissions.ts).
+ * Conçu pour faciliter l'usage avec permissions.ts.
  */
 export const rolesDataToInput = (data: UserRolesData) => ({
   isAdmin: data.isAdmin,

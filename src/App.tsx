@@ -19,6 +19,7 @@ import FunnelDiscovery from "./pages/funnel/FunnelDiscovery";
 import FunnelFinal from "./pages/funnel/FunnelFinal";
 import { SuccessNotification } from "./components/dashboard/SuccessNotification";
 import { MaintenanceLock } from "./components/MaintenanceLock";
+import { UserRolesProvider } from "./hooks/useUserRoles";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,23 +37,29 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/setup/:setupId" element={<SetupDetail />} />
-          <Route path="/oracle-m" element={<OracleM />} />
-          
-          <Route path="/setup-password" element={<SetupPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/:slug/landing" element={<FunnelLanding />} />
-          <Route path="/:slug/apply" element={<FunnelApply />} />
-          <Route path="/:slug/discovery" element={<FunnelDiscovery />} />
-          <Route path="/:slug/final" element={<FunnelFinal />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <SuccessNotification />
-        <MaintenanceLock />
+        {/* UserRolesProvider — singleton (Phase 3.5, 2026-04-30).
+            Tous les consumers `useUserRoles()` doivent être à l'intérieur.
+            Une seule fetch get_user_roles() partagée dans toute l'app.
+            Doc : /projets/oracle/docs/refacto-roles-tracking.md */}
+        <UserRolesProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/setup/:setupId" element={<SetupDetail />} />
+            <Route path="/oracle-m" element={<OracleM />} />
+
+            <Route path="/setup-password" element={<SetupPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/:slug/landing" element={<FunnelLanding />} />
+            <Route path="/:slug/apply" element={<FunnelApply />} />
+            <Route path="/:slug/discovery" element={<FunnelDiscovery />} />
+            <Route path="/:slug/final" element={<FunnelFinal />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <SuccessNotification />
+          <MaintenanceLock />
+        </UserRolesProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
