@@ -434,15 +434,22 @@ export default function GestionPanel() {
         builder: () => any,
       ): Promise<T[]> => {
         const PAGE = 1000;
-        const out: T[] = [];
-        for (let from = 0; ; from += PAGE) {
-          const { data, error } = await builder().range(from, from + PAGE - 1);
-          if (error) throw error;
-          if (!data || data.length === 0) break;
-          out.push(...(data as T[]));
-          if (data.length < PAGE) break;
-        }
-        return out;
+        // Page 1 — toujours nécessaire
+        const { data: firstPage, error } = await builder().range(0, PAGE - 1);
+        if (error) throw error;
+        if (!firstPage || firstPage.length < PAGE) return (firstPage || []) as T[];
+        // Données > 1000 rows — estimer les pages restantes depuis le count
+        const { count } = await builder().select("*", { count: "exact", head: true });
+        const totalPages = Math.ceil((count || PAGE) / PAGE);
+        if (totalPages <= 1) return firstPage as T[];
+        // Fetcher toutes les pages restantes en parallèle
+        const rest = await Promise.all(
+          Array.from({ length: totalPages - 1 }, (_, i) =>
+            builder().range((i + 1) * PAGE, (i + 2) * PAGE - 1)
+          )
+        );
+        const restData = rest.flatMap((r) => (r.data || []) as T[]);
+        return [...(firstPage as T[]), ...restData];
       };
 
       // ── Phase A : metadata légère (parallèle, payloads petits) ──
