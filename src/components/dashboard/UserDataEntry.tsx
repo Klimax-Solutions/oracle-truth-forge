@@ -57,6 +57,8 @@ import {
   Link as LinkIcon,
   ExternalLink,
   Lock,
+  Send,
+  CheckCircle2,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScreenshotLink } from "./ScreenshotLink";
@@ -299,6 +301,21 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
   // Phase 1.B — trades verrouillés pendant vérification en cours
   const [lockedCycleTradeNumbers, setLockedCycleTradeNumbers] = useState<Set<number>>(new Set());
 
+  // Verification state — Slice D (cycles 1-8 uniquement, jamais l'Ébauche §0.3a)
+  const [currentCycleDb, setCurrentCycleDb] = useState<{
+    cycleId: string;
+    userCycleId: string;
+    cycleNumber: number;
+    cycleName: string;
+  } | null>(null);
+  const [pendingVerif, setPendingVerif] = useState<{
+    id: string;
+    requestedAt: string;
+  } | null>(null);
+  const [submittingVerif, setSubmittingVerif] = useState(false);
+  const [retractingVerif, setRetractingVerif] = useState(false);
+  const submittingVerifRef = useRef(false);
+
   const { variables, refetch: refetchVariables } = useCustomVariables();
 
   // Timer state for gamification
@@ -369,6 +386,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
   useEffect(() => {
     fetchExecutions();
     fetchLockedCycles();
+    fetchCurrentCycleState();
   }, []);
 
   const fetchExecutions = async () => {
@@ -416,6 +434,148 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
       }
     });
     setLockedCycleTradeNumbers(locked);
+  };
+
+  // ── Slice D — Charge le cycle actif (in_progress, cycle_number ≥ 1) + VR pending
+  // Règle §0.3a : l'Ébauche (cycle_number=0) est exclue — jamais de verification_request
+  const fetchCurrentCycleState = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Récupère tous les user_cycles in_progress avec leur cycle metadata
+      const { data: ucRows } = await supabase
+        .from("user_cycles")
+        .select("id, cycle_id, status, cycles(id, cycle_number, name)")
+        .eq("user_id", user.id)
+        .eq("status", "in_progress");
+
+      // Filtre côté JS pour exclure l'Ébauche (cycle_number=0)
+      const activeReal = (ucRows || []).find((uc: any) => {
+        const c = uc.cycles as any;
+        return c && c.cycle_number >= 1;
+      });
+
+      if (!activeReal) {
+        setCurrentCycleDb(null);
+        setPendingVerif(null);
+        return;
+      }
+
+      const cycle = activeReal.cycles as any;
+      setCurrentCycleDb({
+        cycleId: activeReal.cycle_id,
+        userCycleId: activeReal.id,
+        cycleNumber: cycle.cycle_number,
+        cycleName: cycle.name,
+      });
+
+      // Vérifie s'il y a une verification_request pending pour ce cycle
+      const { data: vr } = await supabase
+        .from("verification_requests")
+        .select("id, requested_at")
+        .eq("user_id", user.id)
+        .eq("cycle_id", activeReal.cycle_id)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      setPendingVerif(vr ? { id: vr.id, requestedAt: vr.requested_at } : null);
+    } catch (err) {
+      console.warn("[UserDataEntry] fetchCurrentCycleState:", err);
+    }
+  };
+
+  // ── Slice D — Soumet une demande de vérification (anti-doublon 3 couches)
+  const handleRequestVerification = async () => {
+    if (!currentCycleDb || !cycleInfo.isComplete || submittingVerifRef.current) return;
+    submittingVerifRef.current = true;
+    setSubmittingVerif(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Couche 1 — check DB avant INSERT (anti-doublon)
+      const { data: existing } = await supabase
+        .from("verification_requests")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("cycle_id", currentCycleDb.cycleId)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (existing) {
+        setPendingVerif({ id: existing.id, requestedAt: new Date().toISOString() });
+        toast({ title: "Déjà soumis", description: "Une demande est déjà en attente pour ce cycle." });
+        return;
+      }
+
+      // INSERT avec user_cycle_id NOT NULL requis en DB
+      const { data: inserted, error } = await supabase
+        .from("verification_requests")
+        .insert({
+          user_id: user.id,
+          cycle_id: currentCycleDb.cycleId,
+          user_cycle_id: currentCycleDb.userCycleId,
+          status: "pending",
+        } as any)
+        .select("id, requested_at")
+        .single();
+
+      if (error) {
+        // Couche 2 — contrainte unique DB (code 23505) → déjà soumis
+        if (error.code === "23505") {
+          toast({ title: "Déjà soumis", description: "La demande a déjà été envoyée." });
+          await fetchCurrentCycleState();
+          return;
+        }
+        throw error;
+      }
+
+      setPendingVerif({ id: inserted.id, requestedAt: inserted.requested_at });
+      // Refresh locked cycles pour verrouiller les trades
+      await fetchLockedCycles();
+      toast({
+        title: "Demande envoyée ✓",
+        description: "L'admin a été notifié. Vous pouvez annuler tant que la vérification n'a pas débuté.",
+      });
+    } catch (err: any) {
+      console.error("[UserDataEntry] handleRequestVerification:", err);
+      toast({ title: "Erreur", description: "Impossible d'envoyer la demande. Réessayez.", variant: "destructive" });
+    } finally {
+      submittingVerifRef.current = false;
+      setSubmittingVerif(false);
+    }
+  };
+
+  // ── Slice D — Annule une demande de vérification (RPC retract_verification_request)
+  const handleRetractVerification = async () => {
+    if (!pendingVerif || retractingVerif) return;
+    setRetractingVerif(true);
+
+    try {
+      const { error } = await supabase.rpc("retract_verification_request", {
+        p_request_id: pendingVerif.id,
+      } as any);
+
+      if (error) throw error;
+
+      setPendingVerif(null);
+      // Déverrouille les trades
+      await fetchLockedCycles();
+      toast({ title: "Demande annulée", description: "Vous pouvez à nouveau modifier vos trades." });
+    } catch (err: any) {
+      console.error("[UserDataEntry] handleRetractVerification:", err);
+      toast({
+        title: "Impossible d'annuler",
+        description: "La vérification est peut-être déjà en cours. Contactez un admin.",
+        variant: "destructive",
+      });
+      // Resync avec la DB
+      await fetchCurrentCycleState();
+    } finally {
+      setRetractingVerif(false);
+    }
   };
 
   // Get next trade number
@@ -908,6 +1068,63 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
               </div>
             </div>
             <Progress value={cycleInfo.progress} className="h-1.5 md:h-2" />
+
+            {/* Vérification banner — cycles 1-8 uniquement (§0.3a : pas d'Ébauche) */}
+            {currentCycleDb && (
+              <div className="mt-2.5 pt-2.5 border-t border-border/20 flex flex-wrap items-center justify-between gap-2">
+                {pendingVerif ? (
+                  /* État pending — demande en attente, annulation possible */
+                  <>
+                    <div className="flex items-center gap-1.5 text-amber-400">
+                      <Clock className="w-3.5 h-3.5 shrink-0" />
+                      <span className="text-xs font-medium">
+                        Vérification en attente —{" "}
+                        {new Date(pendingVerif.requestedAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRetractVerification}
+                      disabled={retractingVerif}
+                      className="h-7 gap-1.5 text-xs text-amber-400 border-amber-400/30 hover:bg-amber-400/10 shrink-0"
+                    >
+                      {retractingVerif
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : <X className="w-3 h-3" />}
+                      Annuler la demande
+                    </Button>
+                  </>
+                ) : (
+                  /* État normal — bouton grisé ou actif selon completion */
+                  <>
+                    {cycleInfo.isComplete ? (
+                      <span className="text-xs text-emerald-400 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Cycle complet — prêt pour vérification
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        Complétez le cycle ({cycleInfo.current}/{cycleInfo.target} trades) pour débloquer la vérification
+                      </span>
+                    )}
+                    <Button
+                      size="sm"
+                      onClick={handleRequestVerification}
+                      disabled={!cycleInfo.isComplete || submittingVerif}
+                      className="h-7 gap-1.5 text-xs shrink-0"
+                    >
+                      {submittingVerif
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : cycleInfo.isComplete
+                          ? <Send className="w-3 h-3" />
+                          : <Lock className="w-3 h-3" />}
+                      {submittingVerif ? "Envoi..." : "Demander une vérification"}
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Session Timer - compact on mobile */}
