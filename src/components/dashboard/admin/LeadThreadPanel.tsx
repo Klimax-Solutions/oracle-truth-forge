@@ -13,6 +13,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { CRMLead } from "@/lib/admin/types";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 interface LeadEvent {
   id: string;
@@ -120,6 +121,10 @@ const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
 // ============================================
 
 export default function LeadThreadPanel({ lead }: { lead: CRMLead }) {
+  const { state } = useUserRoles();
+  const isAdmin = state.status === "ready" && (state.data.isAdmin || state.data.isSuperAdmin);
+  const isSetter = state.status === "ready" && state.data.isSetter;
+
   const [events, setEvents] = useState<LeadEvent[]>([]);
   const [comments, setComments] = useState<LeadComment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -205,8 +210,7 @@ export default function LeadThreadPanel({ lead }: { lead: CRMLead }) {
       if (!user) return;
       const { data: profile } = await supabase.from("profiles").select("display_name, first_name").eq("user_id", user.id).single();
       const authorName = profile?.first_name || profile?.display_name || "Admin";
-      const [adminRes, setterRes] = await Promise.all([supabase.rpc("is_admin"), supabase.rpc("is_setter")]);
-      const role = adminRes.data ? "admin" : setterRes.data ? "setter" : "admin";
+      const role = isAdmin ? "admin" : isSetter ? "setter" : "admin";
       await supabase.from("lead_comments").insert({
         request_id: lead.id, author_id: user.id, author_name: authorName, author_role: role,
         content: newComment.trim(), comment_type: "manual",
