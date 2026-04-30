@@ -63,6 +63,13 @@ import { ScreenshotLink } from "./ScreenshotLink";
 import { SignedImageCard } from "./SignedImageCard";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 import { OracleTradeDialog } from "./OracleTradeDialog";
+import { TradeExpandCard } from "./TradeExpandCard";
+import {
+  OracleExecution as OracleExecutionData,
+  TradeCardData,
+  toOracleTradeCard,
+  isOracleTrade,
+} from "@/lib/trade/types";
 
 interface UserExecution {
   id: string;
@@ -286,7 +293,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
   const [entryLinkUrl, setEntryLinkUrl] = useState("");
   // Screenshot validation state
   const [screenshotError, setScreenshotError] = useState(false);
-  const [selectedExecution, setSelectedExecution] = useState<UserExecution | null>(null);
+  const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const contextFileRef = useRef<HTMLInputElement>(null);
   const entryFileRef = useRef<HTMLInputElement>(null);
@@ -524,6 +531,13 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
     setEditingId(execution.id);
     setEditingExec(execution);
     setIsDialogOpen(true);
+  };
+
+  // Called by TradeExpandCard onEdit — receives TradeCardData, forwards to handleEdit
+  const handleEditFromCard = (trade: TradeCardData) => {
+    if (isOracleTrade(trade)) {
+      handleEdit(trade as unknown as UserExecution);
+    }
   };
 
   // Auto-sync exit_date when trade_date changes
@@ -1067,11 +1081,15 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
         ) : (
           <div className="space-y-2">
             {executions.map((execution, execIdx) => {
-              const isSelected = selectedExecution?.id === execution.id;
               const cycleInfo = getCycleLabelForTrade(execution.trade_number);
               const prevExecution = execIdx > 0 ? executions[execIdx - 1] : null;
               const prevCycleInfo = prevExecution ? getCycleLabelForTrade(prevExecution.trade_number) : null;
               const showCycleHeader = cycleInfo && cycleInfo.label !== prevCycleInfo?.label;
+
+              // Convert to discriminated union (cast safe — select("*") fetches all DB fields)
+              const tradeCard = toOracleTradeCard(execution as unknown as OracleExecutionData);
+              // scopeTrades = all executions (cycle scope computed inside TradeExpandCard)
+              const scopeTrades = executions.map(e => toOracleTradeCard(e as unknown as OracleExecutionData));
 
               return (
                 <React.Fragment key={execution.id}>
@@ -1086,355 +1104,15 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
                       <div className="flex-1 border-t border-border/40" />
                     </div>
                   )}
-                <div
-                  className={cn(
-                    "border transition-all rounded-md overflow-hidden",
-                    isSelected
-                      ? "border-foreground/20 bg-accent/40"
-                      : "border-border hover:bg-accent/30 bg-transparent"
-                  )}
-                >
-                  {/* Main row - clickable */}
-                  <div 
-                    onClick={() => setSelectedExecution(isSelected ? null : execution)}
-                    className="px-3 md:px-5 py-2.5 md:py-3 flex items-center justify-between cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3 md:gap-5">
-                      <div className="flex items-center gap-1.5 md:gap-2">
-                        <span className="text-sm md:text-lg font-bold text-muted-foreground/50 w-8 md:w-10">
-                          {String(execution.trade_number).padStart(3, "0")}
-                        </span>
-                      </div>
-
-                      <div
-                        className={cn(
-                          "flex items-center gap-1.5 md:gap-2",
-                          execution.direction === "Long" ? "text-emerald-500" : "text-red-500"
-                        )}
-                      >
-                        {execution.direction === "Long" ? (
-                          <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                        ) : (
-                          <TrendingDown className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                        )}
-                        <span className="text-[10px] md:text-xs font-mono uppercase">{execution.direction}</span>
-                      </div>
-
-                      <div className="hidden md:block">
-                        <p className="text-sm text-foreground">{new Date(execution.trade_date).toLocaleDateString("fr-FR")}</p>
-                        <p className="text-[10px] text-muted-foreground">{execution.entry_time || "—"}</p>
-                      </div>
-
-                      <div className="hidden lg:block">
-                        <p className="text-[10px] text-muted-foreground font-mono">{execution.setup_type || "—"}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 md:gap-4">
-                      <div className="text-right">
-                        <p className={cn(
-                          "text-sm font-bold",
-                          (execution.rr || 0) >= 0 ? "text-emerald-500" : "text-red-500"
-                        )}>
-                          {execution.rr !== null ? `${execution.rr >= 0 ? "+" : ""}${execution.rr.toFixed(1)}` : "—"}
-                        </p>
-                        <p className="text-[9px] text-muted-foreground font-mono uppercase">RR</p>
-                      </div>
-                      
-                      <div className="flex items-center gap-1">
-                        {lockedCycleTradeNumbers.has(execution.trade_number) ? (
-                          // Phase 1.B — trade verrouillé : vérification en cours
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 md:h-8 md:w-8 text-orange-400/70"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEdit(execution); // ouvre le dialog en mode readOnly
-                            }}
-                            title="Vérification en cours — lecture seule"
-                          >
-                            <Lock className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                          </Button>
-                        ) : (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 md:h-8 md:w-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(execution);
-                              }}
-                            >
-                              <Edit2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 md:h-8 md:w-8 text-red-400 hover:text-red-300"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(execution.id, execution.trade_number);
-                              }}
-                            >
-                              <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Expanded details */}
-                  {isSelected && (
-                    <div className="border-t border-border p-3 md:p-4 space-y-3 md:space-y-4 bg-transparent">
-                      {/* Trade header */}
-                      <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 p-3 md:p-4 border border-border bg-transparent rounded-md">
-                        <div className={cn(
-                          "w-10 h-10 md:w-12 md:h-12 flex items-center justify-center border rounded-md flex-shrink-0",
-                          execution.direction === "Long" 
-                            ? "border-emerald-500/50 bg-emerald-500/10" 
-                            : "border-red-500/50 bg-red-500/10"
-                        )}>
-                          {execution.direction === "Long" 
-                            ? <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" />
-                            : <TrendingDown className="w-5 h-5 md:w-6 md:h-6 text-red-500" />
-                          }
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-base md:text-lg font-bold text-foreground">
-                            Trade #{execution.trade_number}
-                          </p>
-                          <p className="text-xs md:text-sm text-muted-foreground truncate">
-                            {execution.setup_type || "Setup"} • {execution.entry_model || "Model"}
-                          </p>
-                        </div>
-                        <div className="text-left md:text-right">
-                          <p className={cn(
-                            "text-lg md:text-xl font-bold",
-                            (execution.rr || 0) >= 0 ? "text-emerald-500" : "text-red-500"
-                          )}>
-                            {execution.rr !== null ? `${execution.rr >= 0 ? "+" : ""}${execution.rr.toFixed(2)} RR` : "—"}
-                          </p>
-                          <p className="text-xs md:text-sm text-muted-foreground">
-                            {new Date(execution.trade_date).toLocaleDateString("fr-FR")}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Stats row - 2x2 grid on mobile */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-                        <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                          <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
-                            <Clock className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
-                            <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Entrée</span>
-                          </div>
-                          <p className="text-sm md:text-base font-bold text-foreground">{execution.entry_time || "—"}</p>
-                        </div>
-                        <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                          <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
-                            <Clock className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
-                            <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Sortie</span>
-                          </div>
-                          <p className="text-sm md:text-base font-bold text-foreground">{execution.exit_time || "—"}</p>
-                        </div>
-                        <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                          <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
-                            <Target className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
-                            <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Résultat</span>
-                          </div>
-                          <p className={cn(
-                            "text-sm md:text-base font-bold",
-                            execution.result === "Win" ? "text-emerald-400" 
-                              : execution.result === "Loss" ? "text-red-400" 
-                              : "text-foreground"
-                          )}>
-                            {execution.result || "—"}
-                          </p>
-                        </div>
-                        <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                          <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2">
-                            <Calendar className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
-                            <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Date Sortie</span>
-                          </div>
-                          <p className="text-sm md:text-base font-bold text-foreground">
-                            {execution.exit_date ? new Date(execution.exit_date).toLocaleDateString("fr-FR") : "—"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Additional info - responsive */}
-                      <div className="grid grid-cols-3 gap-2 md:gap-3">
-                        <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                          <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Contexte</span>
-                          <p className="text-xs md:text-sm font-medium text-foreground mt-0.5 md:mt-1">{execution.direction_structure || "—"}</p>
-                        </div>
-                        <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                          <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Entry</span>
-                          <p className="text-xs md:text-sm font-medium text-foreground mt-0.5 md:mt-1">{execution.entry_timing || "—"}</p>
-                        </div>
-                        <div className="border border-border bg-transparent p-2 md:p-3 rounded-md">
-                          <span className="text-[8px] md:text-[10px] text-muted-foreground font-mono uppercase">Model</span>
-                          <p className="text-xs md:text-sm font-medium text-foreground mt-0.5 md:mt-1">{execution.entry_model || "—"}</p>
-                        </div>
-                      </div>
-
-                      {/* RR charts - vertical stack on mobile (like OracleDatabase) */}
-                      {(() => {
-                        const context = getTradeContext(execution);
-                        return (
-                          <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                              {/* Bar chart - individual RR per trade */}
-                              <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
-                                <div className="flex items-center justify-between mb-3 md:mb-4">
-                                  <h4 className="text-[9px] md:text-xs font-mono uppercase tracking-wider text-muted-foreground">
-                                    RR par Trade
-                                  </h4>
-                                </div>
-                                <div className="h-28 md:h-36">
-                                  <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={context.chartData}>
-                                      <XAxis 
-                                        dataKey="trade" 
-                                        tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
-                                        axisLine={{ stroke: "var(--chart-axis-line)" }}
-                                        tickLine={false}
-                                      />
-                                      <YAxis 
-                                        tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
-                                        axisLine={{ stroke: "var(--chart-axis-line)" }}
-                                        tickLine={false}
-                                      />
-                                      <Tooltip
-                                        contentStyle={{
-                                          backgroundColor: "var(--chart-tooltip-bg)",
-                                          border: "1px solid var(--chart-tooltip-border)",
-                                          borderRadius: 4,
-                                          color: "var(--chart-tooltip-text)",
-                                        }}
-                                        itemStyle={{ color: "var(--chart-tooltip-text)" }}
-                                        labelStyle={{ color: "var(--chart-tooltip-text)" }}
-                                        formatter={(value: number, name: string, props: any) => [
-                                          `${value.toFixed(2)} RR`,
-                                          `Trade #${props.payload.tradeNum}`
-                                        ]}
-                                      />
-                                      <Bar 
-                                        dataKey="individual" 
-                                        radius={[3, 3, 0, 0]}
-                                      >
-                                        {context.chartData.map((entry, index) => (
-                                          <Cell 
-                                            key={`cell-${index}`} 
-                                            fill={entry.current ? "var(--chart-bar)" : "#22c55e"}
-                                          />
-                                        ))}
-                                      </Bar>
-                                    </BarChart>
-                                  </ResponsiveContainer>
-                                </div>
-                              </div>
-
-                              {/* Isolated cumulative RR chart */}
-                              <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
-                                <div className="flex items-center justify-between mb-3 md:mb-4">
-                                  <h4 className="text-[9px] md:text-xs font-mono uppercase tracking-wider text-muted-foreground">
-                                    Cumul Isolé
-                                  </h4>
-                                  <span className="text-sm md:text-base font-bold text-emerald-500">
-                                    +{context.isolatedTotal.toFixed(2)}
-                                  </span>
-                                </div>
-                                <div className="h-28 md:h-36">
-                                  <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={context.chartData}>
-                                      <defs>
-                                        <linearGradient id={`colorIsolatedRR-${execution.id}`} x1="0" y1="0" x2="0" y2="1">
-                                          <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                                          <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                                        </linearGradient>
-                                      </defs>
-                                      <XAxis 
-                                        dataKey="trade" 
-                                        tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
-                                        axisLine={{ stroke: "var(--chart-axis-line)" }}
-                                        tickLine={false}
-                                      />
-                                      <YAxis 
-                                        tick={{ fill: "var(--chart-axis)", fontSize: 9 }}
-                                        axisLine={{ stroke: "var(--chart-axis-line)" }}
-                                        tickLine={false}
-                                      />
-                                      <Tooltip
-                                        contentStyle={{
-                                          backgroundColor: "var(--chart-tooltip-bg)",
-                                          border: "1px solid var(--chart-tooltip-border)",
-                                          borderRadius: 4,
-                                          color: "var(--chart-tooltip-text)",
-                                        }}
-                                        itemStyle={{ color: "var(--chart-tooltip-text)" }}
-                                        labelStyle={{ color: "var(--chart-tooltip-text)" }}
-                                        formatter={(value: number, name: string, props: any) => [
-                                          `${value.toFixed(2)} RR`,
-                                          `Trade #${props.payload.tradeNum}`
-                                        ]}
-                                      />
-                                      <Area 
-                                        type="monotone" 
-                                        dataKey="rr" 
-                                        stroke="#22c55e" 
-                                        fillOpacity={1}
-                                        fill={`url(#colorIsolatedRR-${execution.id})`}
-                                      />
-                                    </AreaChart>
-                                  </ResponsiveContainer>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Total cumulative RR note */}
-                            <div className="flex items-center justify-between p-2 md:p-3 border border-border bg-card rounded-md">
-                              <span className="text-[9px] md:text-xs text-muted-foreground font-mono uppercase">Cumul Total</span>
-                              <span className={cn(
-                                "text-sm md:text-base font-bold",
-                                context.cumulativeRR >= 0 ? "text-emerald-500" : "text-red-500"
-                              )}>
-                                {context.cumulativeRR >= 0 ? "+" : ""}{context.cumulativeRR.toFixed(2)} RR
-                              </span>
-                            </div>
-                          </>
-                        );
-                      })()}
-
-                      {/* Screenshots - same display as Oracle Database */}
-                      {(execution.screenshot_url || (execution as any).screenshot_entry_url) && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                          <SignedImageCard
-                            storagePath={execution.screenshot_url}
-                            alt={`Trade #${execution.trade_number} M15`}
-                            label="M15 / Contexte"
-                          />
-                          <SignedImageCard
-                            storagePath={(execution as any).screenshot_entry_url}
-                            alt={`Trade #${execution.trade_number} M5`}
-                            label="M5 / Entrée"
-                          />
-                        </div>
-                      )}
-
-                      {/* Notes */}
-                      {execution.notes && (
-                        <div className="border border-border p-3 md:p-4 bg-transparent rounded-md">
-                          <span className="text-[9px] md:text-xs text-muted-foreground font-mono uppercase block mb-2">Notes</span>
-                          <p className="text-xs md:text-sm text-foreground">{execution.notes}</p>
-                        </div>
-                      )}
-
-                    </div>
-                  )}
-                </div>
+                  <TradeExpandCard
+                    trade={tradeCard}
+                    isExpanded={expandedTradeId === execution.id}
+                    onToggle={() => setExpandedTradeId(expandedTradeId === execution.id ? null : execution.id)}
+                    onEdit={handleEditFromCard}
+                    onDelete={handleDelete}
+                    scopeTrades={scopeTrades}
+                    isLocked={lockedCycleTradeNumbers.has(execution.trade_number)}
+                  />
                 </React.Fragment>
               );
             })}
