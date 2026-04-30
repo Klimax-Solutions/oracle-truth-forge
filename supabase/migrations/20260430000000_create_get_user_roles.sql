@@ -17,7 +17,7 @@
 --   round-trip. Source de vérité unique pour la logique rôles côté client.
 --
 -- RÉFÉRENCES :
---   - Audit complet : /projets/oracle/docs/audit-roles-architecture.md
+--   - Audit complet : docs au niveau projet (Slice A architecture)
 --   - Décision Option B actée : 2026-04-30 (Charles + Claude)
 --
 -- DESIGN :
@@ -76,11 +76,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_user_roles() TO authenticated;
 
 COMMENT ON FUNCTION public.get_user_roles() IS
-'Single round-trip role check for Option B architecture (2026-04-30).
-Returns all role flags + EA timer in 1 RPC call.
-Reuses existing is_* functions for consistency with RLS policies (60+ policies depend on them).
-SECURITY DEFINER + auth.uid() = scoped to caller. Idempotent.
-Doc : /projets/oracle/docs/audit-roles-architecture.md';
+'Single round-trip role check for Option B architecture (Slice A, 2026-04-30). Returns all role flags + EA timer in 1 RPC call. Reuses existing is_ functions for consistency with RLS policies. SECURITY DEFINER + auth.uid() = scoped to caller. Idempotent.';
 
 COMMIT;
 
