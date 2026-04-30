@@ -18,7 +18,6 @@ import FunnelApply from "./pages/funnel/FunnelApply";
 import FunnelDiscovery from "./pages/funnel/FunnelDiscovery";
 import FunnelFinal from "./pages/funnel/FunnelFinal";
 import { SuccessNotification } from "./components/dashboard/SuccessNotification";
-import { MaintenanceLock } from "./components/MaintenanceLock";
 import { UserRolesProvider } from "./hooks/useUserRoles";
 
 const queryClient = new QueryClient({
@@ -58,7 +57,6 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           <SuccessNotification />
-          <MaintenanceLock />
         </UserRolesProvider>
       </BrowserRouter>
     </TooltipProvider>
