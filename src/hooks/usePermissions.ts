@@ -2,16 +2,24 @@
 // usePermissions — Hook consommable dans n'importe quel composant
 //
 // Slice : A — IDENTITY
-// Source des rôles : useSidebarRoles (JWT → cache → RPC)
+// Source des rôles : useUserRoles (Option B — single RPC get_user_roles)
 //
 // Usage :
 //   const { can, allowedTabs, isLoading } = usePermissions()
 //   { can('tab.crm') && <CRMTab /> }
 //   { can('crm.edit.call') && <CallEditButton /> }
+//
+// Comportement :
+//   - state ready    → can() retourne la vraie capability
+//   - state loading  → can() retourne false (pas de permission par défaut)
+//   - state error    → can() retourne false (sécurité par défaut, le caller
+//                      est responsable d'afficher un écran d'erreur)
+//   - state unauth   → can() retourne false (le caller est responsable du
+//                      redirect /auth)
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useMemo } from "react"
-import { useSidebarRoles } from "@/components/dashboard/DashboardSidebar"
+import { useUserRoles } from "@/hooks/useUserRoles"
 import {
   type Capability,
   type RolesInput,
@@ -22,37 +30,51 @@ import {
 
 export type { Capability }
 
-export function usePermissions() {
-  const { isAdmin, isSuperAdmin, isSetter, isCloser, loadingRoles } =
-    useSidebarRoles()
+const EMPTY_ROLES: RolesInput = {
+  isAdmin: false,
+  isSuperAdmin: false,
+  isSetter: false,
+  isCloser: false,
+}
 
-  const roles: RolesInput = { isAdmin, isSuperAdmin, isSetter, isCloser }
+export function usePermissions() {
+  const { state } = useUserRoles()
+
+  const roles: RolesInput = state.status === "ready"
+    ? {
+        isAdmin: state.data.isAdmin,
+        isSuperAdmin: state.data.isSuperAdmin,
+        isSetter: state.data.isSetter,
+        isCloser: state.data.isCloser,
+      }
+    : EMPTY_ROLES
 
   const capabilities = useMemo(() => getRolesCapabilities(roles), [
-    isAdmin,
-    isSuperAdmin,
-    isSetter,
-    isCloser,
+    roles.isAdmin,
+    roles.isSuperAdmin,
+    roles.isSetter,
+    roles.isCloser,
   ])
 
   const allowedTabs = useMemo(() => getAllowedTabs(roles), [
-    isAdmin,
-    isSuperAdmin,
-    isSetter,
-    isCloser,
+    roles.isAdmin,
+    roles.isSuperAdmin,
+    roles.isSetter,
+    roles.isCloser,
   ])
 
   const defaultTab = useMemo(() => getDefaultTab(roles), [
-    isAdmin,
-    isSuperAdmin,
-    isSetter,
-    isCloser,
+    roles.isAdmin,
+    roles.isSuperAdmin,
+    roles.isSetter,
+    roles.isCloser,
   ])
 
   const can = (capability: Capability): boolean => {
-    // Pendant le chargement des rôles : on ne donne AUCUNE permission
-    // Évite d'afficher des actions non autorisées pendant la résolution async
-    if (loadingRoles) return false
+    // Sécurité par défaut : aucune capability accordée hors de l'état 'ready'.
+    // Le caller (typiquement Dashboard.tsx) doit gérer les états 'loading',
+    // 'error', 'unauthenticated' avec ses propres gates UI.
+    if (state.status !== "ready") return false
     return capabilities.has(capability)
   }
 
@@ -60,6 +82,6 @@ export function usePermissions() {
     can,
     allowedTabs,
     defaultTab,
-    isLoading: loadingRoles,
+    isLoading: state.status === "loading",
   }
 }
