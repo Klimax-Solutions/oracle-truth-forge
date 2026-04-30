@@ -472,7 +472,8 @@ export default function GestionPanel() {
         supabase.from("user_sessions").select("user_id"),
         supabase.from("ea_activity_tracking").select("user_id, last_heartbeat"),
         supabase.from("user_roles").select("user_id, role, expires_at, early_access_type"),
-        supabase.from("verification_requests").select("*").eq("status", "pending").order("requested_at"),
+        // GAP-05 : inclure in_review et on_hold dans la queue active (pas seulement pending)
+        supabase.from("verification_requests").select("*").in("status", ["pending", "in_review", "on_hold"]).order("requested_at"),
         fetchAll(() => supabase.from("verification_requests").select("user_id, cycle_id").order("requested_at")),
         supabase.from("verification_requests").select("*").neq("status", "pending").order("reviewed_at", { ascending: false }).limit(50),
         supabase.from("security_alerts").select("*").eq("resolved", false).order("created_at", { ascending: false }),
@@ -782,6 +783,23 @@ export default function GestionPanel() {
       const d: any = { verification_request_id: requestId, execution_id: executionId, admin_id: user.id, note, is_valid: isValid };
       if (supplementaryNote !== undefined) d.supplementary_note = supplementaryNote;
       await supabase.from("admin_trade_notes").upsert(d, { onConflict: "verification_request_id,execution_id" });
+
+      // GAP-05 — Auto-transition vers in_review sur la 1ère note admin
+      // WHERE status = 'pending' → idempotent, ne déclenche que si encore pending
+      await supabase
+        .from("verification_requests")
+        .update({ status: "in_review" })
+        .eq("id", requestId)
+        .eq("status", "pending");
+
+      // Mise à jour optimiste du state local (la request passe de pending → in_review)
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.id === requestId && r.status === "pending"
+            ? { ...r, status: "in_review" }
+            : r
+        )
+      );
     } catch (error) {
       toast({ title: "Erreur", description: "Impossible de sauvegarder.", variant: "destructive" });
     } finally {
@@ -825,6 +843,21 @@ export default function GestionPanel() {
       const val     = trades.filter((t) => t.verdict === true);
       const rej     = trades.filter((t) => t.verdict === false);
       const neutral = trades.filter((t) => t.verdict === null);
+
+      // GAP-09 — Seuil 80% : au moins 80% des trades doivent être ✓ validés pour valider le cycle
+      const total = trades.length;
+      const validatedPct = total > 0 ? val.length / total : 0;
+      if (total > 0 && validatedPct < 0.8) {
+        const pctDisplay = Math.round(validatedPct * 100);
+        toast({
+          title: "Seuil 80% non atteint",
+          description: `${val.length}/${total} trades validés (${pctDisplay}%). Marque au moins 80% comme ✓ avant de valider le cycle.`,
+          variant: "destructive",
+        });
+        setProcessing(null);
+        return;
+      }
+
       let msg = `✅ ${request.cycle.name} validé !\n${val.length} validé(s), ${rej.length} refusé(s)${neutral.length > 0 ? `, ${neutral.length} non noté(s)` : ""}.\n`;
       if (rej.length > 0) { msg += "\nTrades refusés :\n"; rej.forEach((t) => { msg += `• Trade #${t.trade_number}${t.note ? ` — ${t.note}` : ""}\n`; }); }
       if (fb) msg += `\nCommentaire : ${fb}`;
@@ -1826,7 +1859,12 @@ export default function GestionPanel() {
                 {requests.length > 0 && (
                   <div className="flex items-center gap-3 flex-wrap">
                     <AlertTriangle className="w-4 h-4 text-orange-400" />
-                    <span className="text-xs font-mono uppercase text-muted-foreground">{filteredRequests.length} en attente</span>
+                    <span className="text-xs font-mono uppercase text-muted-foreground">
+                      {filteredRequests.filter((r) => r.status === "pending").length} en attente
+                      {filteredRequests.filter((r) => r.status === "in_review" || r.status === "on_hold").length > 0 && (
+                        <> · <span className="text-sky-400/80">{filteredRequests.filter((r) => r.status === "in_review" || r.status === "on_hold").length} en examen</span></>
+                      )}
+                    </span>
                     {verificationUserFilter && (() => {
                       const filteredUser = users.find((u) => u.id === verificationUserFilter);
                       return (
@@ -1845,23 +1883,39 @@ export default function GestionPanel() {
                   </div>
                 )}
 
-                {/* Pending requests */}
+                {/* Queue — pending + in_review + on_hold */}
                 {filteredRequests.map((request) => {
                   const stats = calculateStats(request.executions);
                   const isExpanded = expandedRequest === request.id;
                   const isProcessing = processing === request.id;
                   const assignedAdmin = adminProfiles.find((p) => p.user_id === request.assigned_to);
+                  // GAP-05 — badge visuel selon l'avancement de l'examen
+                  const vrStatus = request.status; // 'pending' | 'in_review' | 'on_hold'
+                  const isInReview = vrStatus === "in_review" || vrStatus === "on_hold";
 
                   return (
-                    <div key={request.id} className="border border-orange-500/40 bg-orange-500/5 rounded-xl overflow-hidden">
-                      <div className="p-4 cursor-pointer hover:bg-orange-500/10 transition-colors" onClick={() => { const nid = isExpanded ? null : request.id; setExpandedRequest(nid); if (nid) loadTradeNotes(nid); }}>
+                    <div key={request.id} className={cn(
+                      "border rounded-xl overflow-hidden",
+                      isInReview
+                        ? "border-sky-500/40 bg-sky-500/5"
+                        : "border-orange-500/40 bg-orange-500/5"
+                    )}>
+                      <div className={cn("p-4 cursor-pointer transition-colors", isInReview ? "hover:bg-sky-500/10" : "hover:bg-orange-500/10")} onClick={() => { const nid = isExpanded ? null : request.id; setExpandedRequest(nid); if (nid) loadTradeNotes(nid); }}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center"><User className="w-5 h-5 text-orange-400" /></div>
+                            <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isInReview ? "bg-sky-500/20" : "bg-orange-500/20")}>
+                              <User className={cn("w-5 h-5", isInReview ? "text-sky-400" : "text-orange-400")} />
+                            </div>
                             <div>
                               <h4 className="font-semibold flex items-center gap-2">
                                 {request.userName} — {request.cycle?.name || "?"}
                                 {request.attemptNumber > 1 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 font-mono">{request.attemptNumber}ème</span>}
+                                {/* Badge statut VR — visible dans la queue */}
+                                {isInReview ? (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/25 font-mono uppercase tracking-wide">Examen en cours</span>
+                                ) : (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/25 font-mono uppercase tracking-wide">En attente</span>
+                                )}
                               </h4>
                               <div className="flex items-center gap-3 mt-0.5">
                                 <p className="text-xs text-muted-foreground font-mono">{fmtDateLong(request.requested_at)}</p>
@@ -2049,9 +2103,30 @@ export default function GestionPanel() {
                           <div className="space-y-3">
                             <Textarea value={feedback[request.id] || ""} onChange={(e) => setFeedback((prev) => ({ ...prev, [request.id]: e.target.value }))} placeholder="Feedback (requis pour refus)..." className="resize-none bg-card text-sm" rows={2} />
                             <div className="flex gap-3">
-                              <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 h-10" onClick={() => handleApprove(request)} disabled={isProcessing}>
-                                {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}Valider
-                              </Button>
+                              {/* GAP-09 — seuil 80% : désactiver Valider si insuffisant */}
+                              {(() => {
+                                const totalT = request.executions.length;
+                                const validatedT = request.executions.filter((e) => tradeValidity[`${request.id}_${e.id}`] === true).length;
+                                const pct = totalT > 0 ? Math.round((validatedT / totalT) * 100) : 0;
+                                const belowThreshold = totalT > 0 && validatedT / totalT < 0.8;
+                                return (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="flex-1">
+                                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 h-10" onClick={() => handleApprove(request)} disabled={isProcessing || belowThreshold}>
+                                          {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                                          Valider{belowThreshold ? ` (${pct}%/80%)` : ""}
+                                        </Button>
+                                      </span>
+                                    </TooltipTrigger>
+                                    {belowThreshold && (
+                                      <TooltipContent side="top" className="text-xs max-w-[220px] text-center">
+                                        Seuil 80% requis — {validatedT}/{totalT} trades ✓ ({pct}%).<br />Valide plus de trades pour débloquer.
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                );
+                              })()}
                               <Button variant="destructive" className="flex-1 h-10" onClick={() => handleReject(request)} disabled={isProcessing}>
                                 {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}Refuser
                               </Button>

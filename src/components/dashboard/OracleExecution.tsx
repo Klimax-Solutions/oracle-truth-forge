@@ -584,13 +584,23 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
         title: "Demande retirée",
         description: "Ta demande de vérification a été annulée. Tu peux en soumettre une nouvelle quand tu es prêt.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error retracting verification:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'annuler la demande. Réessaie dans un instant.",
-        variant: "destructive",
-      });
+      // GAP-03 — messages spécifiques selon le code erreur retourné par le RPC
+      const msg = error?.message || "";
+      if (msg.includes("admin_started") || msg.includes("notes_exist")) {
+        toast({
+          title: "Retrait impossible",
+          description: "L'admin a déjà commencé l'examen de ce cycle. Attends le verdict.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Impossible d'annuler la demande. Réessaie dans un instant.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setRetractingCycleId(null);
     }
