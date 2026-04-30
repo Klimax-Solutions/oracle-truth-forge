@@ -36,6 +36,7 @@ import PeriodSelector, { type PeriodMode } from "./PeriodSelector";
 import { LoadingFallback } from "@/components/LoadingFallback";
 import { withTimeout, isAuthError, clearStaleSession } from "@/lib/safeFetch";
 import type { LeadModalView } from "./LeadDetailModal";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 // ── Types — CRMLead imported from @/lib/admin/types (source de verite unique) ──
 type PipelineLead = CRMLead; // Alias local pour compatibilite
@@ -299,6 +300,9 @@ interface CRMDashboardProps {
 }
 
 export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) {
+  const { state: rolesState } = useUserRoles();
+  const dbRoles = rolesState.status === "ready" ? rolesState.data : null;
+
   const [leads, setLeads] = useState<PipelineLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -311,10 +315,6 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
   const [modalView, setModalView] = useState<LeadModalView>("lead");
   const [refreshing, setRefreshing] = useState(false);
   const [isSetterOnly, setIsSetterOnly] = useState(false);
-  const [_isSuperAdmin, _setIsSuperAdmin] = useState(false);
-  const [_isAdminRole, _setIsAdminRole] = useState(false);
-  const [_isSetterRole, _setIsSetterRole] = useState(false);
-  const [_isCloserRole, _setIsCloserRole] = useState(false);
   const [currentSetterName, setCurrentSetterName] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [closingId, setClosingId] = useState<string | null>(null);
@@ -329,45 +329,25 @@ export default function CRMDashboard({ overrideRoles }: CRMDashboardProps = {}) 
   }>>({});
   const { toast } = useToast();
 
-  // Effective roles: overrideRoles (from RoleSwitcher) prend le dessus sur les valeurs DB
-  const isSuperAdmin = overrideRoles ? overrideRoles.isSuperAdmin : _isSuperAdmin;
-  const isAdminRole  = overrideRoles ? overrideRoles.isAdmin     : _isAdminRole;
-  const isSetterRole = overrideRoles ? overrideRoles.isSetter    : _isSetterRole;
-  const isCloserRole = overrideRoles ? overrideRoles.isCloser    : _isCloserRole;
+  // Effective roles: overrideRoles (from RoleSwitcher) prend le dessus sur les valeurs du contexte
+  const isSuperAdmin = overrideRoles ? overrideRoles.isSuperAdmin : (dbRoles?.isSuperAdmin ?? false);
+  const isAdminRole  = overrideRoles ? overrideRoles.isAdmin      : (dbRoles?.isAdmin ?? false);
+  const isSetterRole = overrideRoles ? overrideRoles.isSetter     : (dbRoles?.isSetter ?? false);
+  const isCloserRole = overrideRoles ? overrideRoles.isCloser     : (dbRoles?.isCloser ?? false);
 
-  // Detect current user's real roles (toujours depuis DB — pas overridé)
+  // Setter-only : fetch le nom du profil pour filtrer les leads (pas de RPC rôle ici)
   useEffect(() => {
-    (async () => {
-      try {
-        const [setterRes, adminRes, superRes, closerRes] = await Promise.all([
-          supabase.rpc("is_setter"),
-          supabase.rpc("is_admin"),
-          supabase.rpc("is_super_admin"),
-          supabase.rpc("is_closer" as any),
-        ]);
-        const isSetter = setterRes.data === true;
-        const isAdmin = adminRes.data === true;
-        const superAdmin = superRes.data === true;
-        const isCloser = closerRes.data === true;
-        _setIsSuperAdmin(superAdmin);
-        _setIsAdminRole(isAdmin);
-        _setIsSetterRole(isSetter);
-        _setIsCloserRole(isCloser);
-        if (isSetter && !isAdmin && !superAdmin) {
-          setIsSetterOnly(true);
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("display_name, first_name")
-              .eq("user_id", user.id)
-              .single();
-            if (profile) setCurrentSetterName(profile.display_name || profile.first_name || null);
-          }
-        }
-      } catch { /* admin/superadmin by default */ }
-    })();
-  }, []);
+    if (!dbRoles) return;
+    if (!dbRoles.isSetter || dbRoles.isAdmin || dbRoles.isSuperAdmin) return;
+    setIsSetterOnly(true);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      supabase.from("profiles").select("display_name, first_name").eq("user_id", session.user.id).single()
+        .then(({ data: profile }) => {
+          if (profile) setCurrentSetterName(profile.display_name || profile.first_name || null);
+        });
+    });
+  }, [dbRoles?.isSetter, dbRoles?.isAdmin, dbRoles?.isSuperAdmin]);
 
   const openLead = (lead: PipelineLead, view: LeadModalView = "lead") => {
     setSelectedLead(lead);
