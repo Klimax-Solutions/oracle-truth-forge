@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { UserPlus, Clock, X, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 interface PendingEA {
   id: string;
@@ -16,10 +17,11 @@ interface EAPendingPopupProps {
 }
 
 export const EAPendingPopup = ({ onNavigateToEA }: EAPendingPopupProps) => {
+  const { state } = useUserRoles();
+  const isSuperAdmin = state.status === "ready" && state.data.isSuperAdmin;
+
   const [pending, setPending] = useState<PendingEA[]>([]);
   const [dismissed, setDismissed] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [animateIn, setAnimateIn] = useState(false);
 
   const buildPendingSignature = (items: PendingEA[]) => {
@@ -43,11 +45,9 @@ export const EAPendingPopup = ({ onNavigateToEA }: EAPendingPopupProps) => {
   };
 
   useEffect(() => {
-    const check = async () => {
-      const { data: sa } = await supabase.rpc("is_super_admin");
-      if (!sa) { setLoaded(true); return; }
-      setIsSuperAdmin(true);
+    if (!isSuperAdmin) return;
 
+    const fetchPending = async () => {
       const { data } = await supabase
         .from("early_access_requests" as any)
         .select("id, first_name, email, created_at")
@@ -67,13 +67,12 @@ export const EAPendingPopup = ({ onNavigateToEA }: EAPendingPopupProps) => {
           setDismissed(false);
         }
       }
-      setLoaded(true);
       setTimeout(() => setAnimateIn(true), 200);
     };
-    check();
-  }, []);
+    fetchPending();
+  }, [isSuperAdmin]);
 
-  if (!loaded || !isSuperAdmin || pending.length === 0 || dismissed) return null;
+  if (!isSuperAdmin || pending.length === 0 || dismissed) return null;
 
   return (
     <div className={cn(

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import { Bell, CheckCircle, XCircle, User, Mail, Phone, Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -16,23 +17,21 @@ interface EANotif {
 const DEFAULT_DURATION_HOURS = 168; // 7 jours par défaut
 
 export const EAApprovalNotification = () => {
+  const { state } = useUserRoles();
+  const isSuperAdmin = state.status === "ready" && state.data.isSuperAdmin;
+
   const [pending, setPending] = useState<EANotif[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [processing, setProcessing] = useState<string | null>(null);
   const [durations, setDurations] = useState<Record<string, number>>({});
   const { toast } = useToast();
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Initial fetch when roles are ready
   useEffect(() => {
-    const init = async () => {
-      const { data } = await supabase.rpc("is_super_admin");
-      if (!data) return;
-      setIsSuperAdmin(true);
-      fetchPending();
-    };
-    init();
-  }, []);
+    if (!isSuperAdmin) return;
+    fetchPending();
+  }, [isSuperAdmin]);
 
   // Realtime for new requests
   useEffect(() => {
