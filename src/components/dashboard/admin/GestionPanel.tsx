@@ -433,7 +433,7 @@ export default function GestionPanel() {
       // En lançant ici, il sera résolu bien avant qu'on en ait besoin (~200ms vs ~2500ms d'attente).
       const tradesPromise = supabase
         .from("trades")
-        .select("id, trade_number, trade_date, entry_time, direction, rr, screenshot_m15_m5, screenshot_m1")
+        .select("id, trade_number, trade_date, entry_time, direction, rr")
         .order("trade_number");
       // Helper : Supabase plafonne à 1000 rows par requête. Pour les tables
       // qui dépassent ce seuil avec les imports prod, on pagine.
@@ -510,12 +510,6 @@ export default function GestionPanel() {
       const allExecutions = (executionsData || []) as UserExecution[];
       tlog(`Phase B done (cycles: ${userCycles.length}, execs: ${allExecutions.length})`);
 
-      // trades : démarré en parallèle avec Phase A+B, devrait être résolu depuis longtemps
-      const { data: tradesData } = await tradesPromise;
-      const oracleData = (tradesData || []) as OracleTrade[];
-      setOracleTrades(oracleData);
-      tlog("Trades resolved");
-
       const sessions = sessionsRes.data || [];
       const activity = activityRes.data || [];
       const allRoles = rolesRes.data || [];
@@ -529,7 +523,6 @@ export default function GestionPanel() {
       crmLeads.forEach((l: any) => { if (l.user_id) crmMap[l.user_id] = l; });
 
       setCycles(cyclesData);
-      setOracleTrades(oracleData);
 
       const profileMap = Object.fromEntries(profiles.map((p: any) => [p.user_id, p]));
 
@@ -687,15 +680,21 @@ export default function GestionPanel() {
       const attemptCounts: Record<string, number> = {};
       allVrs.forEach((r: any) => { const k = `${r.user_id}_${r.cycle_id}`; attemptCounts[k] = (attemptCounts[k] || 0) + 1; });
 
-      const enrichedRequests: PendingRequest[] = pendingVrs.map((request: any) => {
-        const userCycle = userCycles.find((uc) => uc.id === request.user_cycle_id) || null;
-        const cycle = cyclesData.find((c) => c.id === request.cycle_id) || null;
-        const profile = profileMap[request.user_id];
-        const executions = allExecutions.filter((e) => e.user_id === request.user_id && cycle && e.trade_number >= cycle.trade_start && e.trade_number <= cycle.trade_end) as UserExecution[];
-        const comparisons = executions.map((exec) => compareExecution(exec, oracleData));
-        return { ...request, cycle, userCycle, executions, comparisons, userName: profile?.display_name || `User ${request.user_id.slice(0, 8)}`, attemptNumber: attemptCounts[`${request.user_id}_${request.cycle_id}`] || 1 };
-      });
-      setRequests(enrichedRequests);
+      // Helper : construit les vérifications avec les comparaisons oracle.
+      // Appelé 2× : une fois sans trades (vide → liste visible immédiatement),
+      // une fois avec les trades réels quand ils arrivent en async (~1s plus tard).
+      const buildEnrichedRequests = (oracleData: OracleTrade[]): PendingRequest[] =>
+        pendingVrs.map((request: any) => {
+          const userCycle = userCycles.find((uc) => uc.id === request.user_cycle_id) || null;
+          const cycle = cyclesData.find((c) => c.id === request.cycle_id) || null;
+          const profile = profileMap[request.user_id];
+          const executions = allExecutions.filter((e) => e.user_id === request.user_id && cycle && e.trade_number >= cycle.trade_start && e.trade_number <= cycle.trade_end) as UserExecution[];
+          const comparisons = executions.map((exec) => compareExecution(exec, oracleData));
+          return { ...request, cycle, userCycle, executions, comparisons, userName: profile?.display_name || `User ${request.user_id.slice(0, 8)}`, attemptNumber: attemptCounts[`${request.user_id}_${request.cycle_id}`] || 1 };
+        });
+      // Passe initiale sans trades : l'onglet Vérifications est accessible immédiatement
+      // (comparaisons = "no-match" par défaut, se rempliront dans quelques centaines de ms)
+      setRequests(buildEnrichedRequests([]));
 
       // Build processed requests
       const processed: ProcessedRequest[] = processedVrs.map((vr: any) => {
@@ -719,13 +718,27 @@ export default function GestionPanel() {
       // Build alerts
       setAlerts(alertsData.map((a: any) => ({ ...a, userName: profileMap[a.user_id]?.display_name || a.user_id.slice(0, 8) })));
 
-      // Admin profiles
+      // Admin profiles (non-bloquant — peu d'impact sur le rendu principal)
       const adminIds = [...new Set(adminRoles.map((r: any) => r.user_id))];
       if (adminIds.length > 0) {
-        const { data } = await supabase.from("profiles").select("*").in("user_id", adminIds);
-        if (data) setAdminProfiles(data as Profile[]);
+        supabase.from("profiles").select("*").in("user_id", adminIds).then(({ data }) => {
+          if (data) setAdminProfiles(data as Profile[]);
+        });
       }
-      tlog("Total");
+
+      tlog("Total (core — trades async)");
+      setLoading(false); // ← UI visible ici, skeleton disparaît
+
+      // Trades : démarré en parallèle dès le début, résolu ici en fire-and-forget.
+      // Sans colonnes screenshot (retirées pour speed), ~300ms vs ~2900ms avant.
+      // Met à jour oracleTrades + reconstruit les comparaisons de vérification.
+      tradesPromise.then(({ data: tradesData, error: tradesError }) => {
+        if (tradesError || !tradesData) return;
+        const oracleData = tradesData as OracleTrade[];
+        setOracleTrades(oracleData);
+        setRequests(buildEnrichedRequests(oracleData)); // Comparaisons réelles
+        tlog("Trades resolved (async)");
+      }).catch(() => { /* best-effort */ });
     } catch (err) {
       console.error("[Gestion] Load error:", err);
       // Auto-cleanup si la session est morte → évite le "vider cache + reco" manuel
