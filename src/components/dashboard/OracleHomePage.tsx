@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Play, Database, ShieldCheck, ExternalLink,
-  Check, Clock, AlertCircle, Send, Loader2, Lock,
+  Check, Clock, AlertCircle, Lock,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -157,8 +157,6 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [currentCycle, setCurrentCycle] = useState<CycleInfo | null>(null);
   const [allCycles, setAllCycles] = useState<CycleInfo[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   // ── Data loading
   useEffect(() => {
@@ -168,7 +166,6 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { return; }
-        setUserId(user.id);
 
         const [profileRes, videosRes, viewsRes, execLastRes, execCountRes, cyclesRes, userCyclesRes] = await Promise.all([
           supabase.from("profiles").select("first_name, display_name").eq("user_id", user.id).single(),
@@ -250,43 +247,6 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
 
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [slide]);
-
-  // ── Verification request
-  const handleRequestVerification = async () => {
-    if (!currentCycle || !userId) return;
-    setSubmitting(true);
-    try {
-      // user_cycle_id est NOT NULL en DB → on doit le résoudre (et créer la row user_cycles si elle n'existe pas)
-      let userCycleId = currentCycle.userCycleId;
-      if (!userCycleId) {
-        const { data: existing } = await supabase
-          .from("user_cycles")
-          .select("id")
-          .eq("user_id", userId)
-          .eq("cycle_id", currentCycle.id)
-          .maybeSingle();
-        if (existing?.id) {
-          userCycleId = existing.id;
-        } else {
-          const { data: created, error: createErr } = await supabase
-            .from("user_cycles")
-            .insert({ user_id: userId, cycle_id: currentCycle.id, status: "in_progress" } as any)
-            .select("id")
-            .single();
-          if (createErr) throw createErr;
-          userCycleId = created.id;
-        }
-      }
-      const { error } = await supabase
-        .from("verification_requests")
-        .insert({ user_id: userId, cycle_id: currentCycle.id, user_cycle_id: userCycleId, status: "pending" } as any);
-      if (error) throw error;
-      setCurrentCycle(prev => prev ? { ...prev, userCycleId, userStatus: "pending" } : prev);
-      toast({ title: "Demande envoyée", description: "Un admin va vérifier votre cycle." });
-    } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally { setSubmitting(false); }
-  };
 
   const meta = SLIDES[slide];
   const isComplete = !!currentCycle && currentCycle.userProgress >= currentCycle.total_trades;
@@ -560,10 +520,10 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
               )}
               {slide === 2 && isComplete && !isPending && !isValidated && (
                 <ActionButton
-                  onClick={handleRequestVerification}
+                  onClick={onNavigateToRecolte}
                   bg={meta.ctaBg} shadow={meta.ctaShadow}
-                  icon={submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  label={submitting ? "Envoi..." : "Soumettre mon cycle"}
+                  icon={<ExternalLink className="w-4 h-4" />}
+                  label="Aller soumettre dans Saisie →"
                 />
               )}
               {slide === 2 && !isComplete && (
