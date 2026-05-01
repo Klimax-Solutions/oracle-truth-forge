@@ -670,22 +670,13 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
   // Determine if verification popup should show
   const verificationPopupData = useMemo(() => {
     if (loading || isStaff || verificationDismissed) return null;
-    // Check ébauche: complete + still in_progress + no existing request
-    if (
-      ebauche &&
-      ebauche.userCycle?.status === 'in_progress' &&
-      questData?.ebaucheComplete &&
-      !requestedCycleIds.has(ebauche.id)
-    ) {
-      return {
-        cycleName: "Phase d'ébauche",
-        cycleNumber: 0,
-        progress: questData.ebaucheTradesAnalyzed,
-        total: ebauche.total_trades,
-        handler: () => handleRequestVerification(ebauche),
-      };
-    }
-    // Check active cycle: complete + still in_progress + no existing request
+    // §0.3a (DANS LE MARBRE) — l'Ébauche (cycle_number=0) ne déclenche JAMAIS
+    // de popup de vérification. Pas de VR créée. Auto-unlock Cycle 1 si user=member
+    // et 15/15 trades saisis (RPC auto_unlock_cycle_one_if_eligible — Vague B).
+    // EA : reste bloqué, mur upgrade /vip/discovery (Vague C).
+    // Bloc Ébauche supprimé volontairement — voir CLAUDE.md §0.3a.
+
+    // Check active cycle (1-8): complete + still in_progress + no existing request
     if (
       currentCycle &&
       currentCycle.userCycle?.status === 'in_progress' &&
@@ -701,7 +692,7 @@ export const OracleExecution = ({ trades, dataGeneraleTrades, onNavigateToVideos
       };
     }
     return null;
-  }, [loading, isStaff, verificationDismissed, ebauche, currentCycle, requestedCycleIds, questData?.ebaucheComplete, questData?.ebaucheTradesAnalyzed]);
+  }, [loading, isStaff, verificationDismissed, currentCycle, requestedCycleIds]);
 
   // ── Time helper ──────────────────────────────────────────────────────────────
   const formatTimeSince = (dateStr: string): string => {

@@ -155,15 +155,39 @@ export function deriveOracleCycleWindows(
 }
 
 /**
- * R1 — Retourne le numéro de trade Oracle maximum visible pour un utilisateur
- * ayant `totalUserTrades` trades saisis.
+ * R1 — Retourne le numéro de trade Oracle maximum visible pour un utilisateur,
+ * basé sur les CYCLES DÉBLOQUÉS (recommandé — version status-driven).
  *
- * Règle §0.3a (DANS LE MARBRE) — l'Ébauche (trades 1-15) est en accès DIRECT
- * dès J1, indépendamment du nombre de trades saisis. Le membre doit pouvoir
- * voir les 15 trades de référence pour les recopier.
+ * SOURCE DE VÉRITÉ depuis Phase 7.3 (2026-05-01) — un cycle est "débloqué"
+ * dès que user_cycles[N].status != 'locked' (in_progress, pending_review,
+ * validated, rejected). Le statut 'rejected' garde le cycle accessible
+ * pour permettre la re-soumission.
  *
- * Au-delà : R1 standard — l'utilisateur voit les cycles précédents au fur et
- * à mesure qu'il atteint les seuils USER_CYCLE_THRESHOLDS.
+ * Règle §0.3a (DANS LE MARBRE) — l'Ébauche (trades 1-15) est TOUJOURS
+ * visible (plancher 15), même si user_cycles[0] n'apparaît pas dans la liste.
+ *
+ * @param unlockedCycleNumbers liste des cycle_number où status != 'locked'
+ */
+export function getOracleAccessLimitByCycles(unlockedCycleNumbers: number[]): number {
+  // Plancher : Ébauche toujours visible (§0.3a)
+  let maxOracleTrade = ORACLE_CYCLE_BOUNDARIES[0].tradeEnd; // 15
+  for (const boundary of ORACLE_CYCLE_BOUNDARIES) {
+    if (boundary.cycleNum === 0) continue; // déjà couvert par le plancher
+    if (unlockedCycleNumbers.includes(boundary.cycleNum) && boundary.tradeEnd > maxOracleTrade) {
+      maxOracleTrade = boundary.tradeEnd;
+    }
+  }
+  return maxOracleTrade;
+}
+
+/**
+ * @deprecated Utiliser getOracleAccessLimitByCycles avec user_cycles.status.
+ * Conservé pour rétrocompatibilité — gating par count user_executions.
+ *
+ * Bug connu : si admin unlock Cycle N manuellement mais user n'a pas atteint
+ * USER_CYCLE_THRESHOLDS[N], les trades de référence Cycle N restent masqués.
+ *
+ * Règle §0.3a — plancher Ébauche toujours respecté.
  */
 export function getOracleAccessLimit(totalUserTrades: number): number {
   // Plancher : Ébauche toujours visible (§0.3a)

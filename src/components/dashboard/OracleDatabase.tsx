@@ -1,6 +1,6 @@
 import React from "react";
 import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X, CheckSquare, Lock, Pencil, EyeOff } from "lucide-react";
-import { getOracleAccessLimit, ORACLE_CYCLE_BOUNDARIES } from "@/lib/oracle-cycle-windows";
+import { getOracleAccessLimit, getOracleAccessLimitByCycles, ORACLE_CYCLE_BOUNDARIES } from "@/lib/oracle-cycle-windows";
 import { SignedImageCard } from "./SignedImageCard";
 import { cn } from "@/lib/utils";
 import { useState, useMemo, useEffect } from "react";
@@ -57,10 +57,16 @@ interface OracleDatabaseProps {
   onTradeUpdated?: () => void;
   /**
    * R1 — Nombre total de trades saisis par l'utilisateur.
-   * Quand fourni (vue utilisateur), les cycles Oracle non encore débloqués
-   * sont masqués. Si absent (vue admin), tous les cycles sont visibles.
+   * @deprecated depuis Phase 7.3 — préférer unlockedCycleNumbers (gating par status).
+   * Conservé pour rétrocompatibilité — fallback si unlockedCycleNumbers absent.
    */
   userTotalTrades?: number;
+  /**
+   * R1 (status-driven, §0.3a) — liste des cycle_number où user_cycles.status != 'locked'.
+   * Source de vérité depuis Phase 7.3 (2026-05-01). Si fourni, prend le pas sur
+   * userTotalTrades. Cycle 0 (Ébauche) est implicite (toujours visible).
+   */
+  unlockedCycleNumbers?: number[];
 }
 
 interface Filters {
@@ -125,7 +131,7 @@ const cycleColor = (phase: number) => {
   };
 };
 
-export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [], onAnalysisToggle, isDataGenerale, isAdmin, onTradeUpdated, userTotalTrades }: OracleDatabaseProps) => {
+export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [], onAnalysisToggle, isDataGenerale, isAdmin, onTradeUpdated, userTotalTrades, unlockedCycleNumbers }: OracleDatabaseProps) => {
   const chartColors = useChartColors();
   const { isEarlyAccess } = useEarlyAccess();
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
@@ -167,12 +173,16 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
     contributor: [...new Set(trades.map(t => t.contributor).filter(Boolean))],
   }), [trades]);
 
-  // R1 — Accès Oracle limité au cycle précédent (règle hard)
-  // Admin (isAdmin = true) et vues sans userTotalTrades voient tout.
+  // R1 — Accès Oracle limité (règle hard, §0.3a)
+  // Priorité : unlockedCycleNumbers (status-driven, source de vérité Phase 7.3)
+  //            → userTotalTrades (fallback count-based, deprecated)
+  //            → Infinity (admin ou vue sans contexte user)
   const accessLimit = useMemo(() => {
-    if (isAdmin || userTotalTrades === undefined) return Infinity;
-    return getOracleAccessLimit(userTotalTrades);
-  }, [isAdmin, userTotalTrades]);
+    if (isAdmin) return Infinity;
+    if (unlockedCycleNumbers !== undefined) return getOracleAccessLimitByCycles(unlockedCycleNumbers);
+    if (userTotalTrades !== undefined) return getOracleAccessLimit(userTotalTrades);
+    return Infinity;
+  }, [isAdmin, unlockedCycleNumbers, userTotalTrades]);
 
   // Cycles Oracle verrouillés (à afficher en placeholder "locked")
   const lockedCycles = useMemo(() => {

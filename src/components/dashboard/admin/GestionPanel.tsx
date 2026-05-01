@@ -904,6 +904,18 @@ export default function GestionPanel() {
   // ── Inline cycle status change ──
   const handleCycleStatusChangeDirectly = async (userId: string, cycle: Cycle, userCycle: UserCycleData | undefined, targetStatus: string) => {
     if (!userCycle) { toast({ title: "Erreur", description: "Cycle non initialisé.", variant: "destructive" }); return; }
+    // §0.3a (DANS LE MARBRE) — l'Ébauche (cycle_number=0) ne peut jamais passer
+    // à 'validated' ou 'rejected'. Reste 'in_progress' indéfiniment.
+    // Pour débloquer Cycle 1 d'un member : auto-unlock si 15/15 trades saisis (Vague B).
+    // Pour reset Ébauche : utiliser 'in_progress' (déjà l'état par défaut).
+    if (cycle.cycle_number === 0 && (targetStatus === "validated" || targetStatus === "rejected")) {
+      toast({
+        title: "Action interdite",
+        description: "L'Ébauche ne peut pas être validée/rejetée (§0.3a). Elle reste 'in_progress' indéfiniment.",
+        variant: "destructive"
+      });
+      return;
+    }
     try {
       const ud: any = { status: targetStatus };
       if (targetStatus === "validated") { ud.verified_at = new Date().toISOString(); ud.completed_at = new Date().toISOString(); }

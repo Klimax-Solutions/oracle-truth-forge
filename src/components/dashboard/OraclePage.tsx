@@ -64,6 +64,8 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
     } catch { return "verification"; }
   });
   const [userExecutions, setUserExecutions] = useState<UserExecution[]>([]);
+  // Phase 7.3 (§0.3a) — gating Database par user_cycles.status (et non par count)
+  const [unlockedCycleNumbers, setUnlockedCycleNumbers] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const handleSubTabChange = (value: string) => {
     setActiveSubTab(value);
@@ -89,13 +91,34 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
       setLoading(false);
     };
 
+    // Phase 7.3 — fetch user_cycles débloqués (status != 'locked') pour gater Database (§0.3a)
+    const fetchUnlockedCycles = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("user_cycles")
+        .select("status, cycles(cycle_number)")
+        .eq("user_id", user.id)
+        .neq("status", "locked");
+      if (data) {
+        const nums = (data as any[])
+          .map(row => row.cycles?.cycle_number)
+          .filter((n): n is number => typeof n === "number");
+        setUnlockedCycleNumbers(nums);
+      }
+    };
+
     fetchUserExecutions();
+    fetchUnlockedCycles();
 
     // Subscribe to changes
     const channel = supabase
       .channel('user_executions_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_executions' }, () => {
         fetchUserExecutions();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_cycles' }, () => {
+        fetchUnlockedCycles();
       })
       .subscribe();
 
@@ -242,14 +265,14 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
 
         {/* Content */}
         <TabsContent value="verification" className="flex-1 m-0 data-[state=inactive]:hidden">
-          {/* R1 — userTotalTrades limite l'accès Oracle aux cycles complétés */}
+          {/* R1 §0.3a — gating par user_cycles.status (Phase 7.3) */}
           <OracleDatabase
             trades={trades}
             initialFilters={initialFilters}
             analyzedTradeNumbers={analyzedTradeNumbers}
             onAnalysisToggle={onAnalysisToggle}
             isAdmin={isAdmin}
-            userTotalTrades={isAdmin ? undefined : userExecutions.length}
+            unlockedCycleNumbers={isAdmin ? undefined : unlockedCycleNumbers}
           />
         </TabsContent>
 
