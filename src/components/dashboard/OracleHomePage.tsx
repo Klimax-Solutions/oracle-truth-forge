@@ -29,6 +29,7 @@ interface CycleInfo { id: string; name: string; total_trades: number; cycle_numb
 interface OracleHomePageProps {
   onNavigateToVideos: () => void;
   onNavigateToRecolte: () => void;
+  onNavigateToOracleSaisie: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -116,7 +117,7 @@ function getContextualMessage(
   if (slideIndex === 2) {
     if (!currentCycle) return "Complétez un cycle pour soumettre une vérification.";
     if (currentCycle.userStatus === "validated") return "Cycle validé — félicitations. Passez au suivant.";
-    if (currentCycle.userStatus === "pending") return "Vérification en cours. Un admin examine votre cycle.";
+    if (currentCycle.userStatus === "pending_review") return "Vérification en cours. Un admin examine votre cycle.";
     if (currentCycle.userStatus === "rejected") return "Cycle rejeté. Revoyez les points de feedback et recommencez.";
     if (currentCycle.userProgress >= currentCycle.total_trades) return "Cycle terminé. Soumettez-le pour validation.";
     return `${currentCycle.userProgress}/${currentCycle.total_trades} trades — continuez la récolte avant de soumettre.`;
@@ -129,7 +130,7 @@ function getContextualMessage(
 // COMPOSANT PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: OracleHomePageProps) => {
+export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte, onNavigateToOracleSaisie }: OracleHomePageProps) => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -157,6 +158,8 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [currentCycle, setCurrentCycle] = useState<CycleInfo | null>(null);
   const [allCycles, setAllCycles] = useState<CycleInfo[]>([]);
+  const [verifStatus, setVerifStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
+  const [verifAssignedTo, setVerifAssignedTo] = useState<string | null>(null);
 
   // ── Data loading
   useEffect(() => {
@@ -204,8 +207,32 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
             return { id: c.id, name: c.name, total_trades: c.total_trades, cycle_number: c.cycle_number, userStatus: uc?.status || null, userProgress: uc?.status === "validated" ? c.total_trades : prog, userCycleId: uc?.id || null };
           });
           setAllCycles(enriched);
-          resolvedCurrent = enriched.find(c => c.userStatus === "in_progress") || enriched.find(c => !c.userStatus) || enriched[0] || null;
+          resolvedCurrent =
+            enriched.find(c => c.userStatus === "in_progress") ||
+            enriched.find(c => c.userStatus === "pending_review") ||
+            enriched.find(c => !c.userStatus) ||
+            enriched[0] || null;
           setCurrentCycle(resolvedCurrent);
+
+          // Fetch VR pour affichage dynamique du statut (lecture seule, pas d'action ici)
+          if (resolvedCurrent) {
+            const { data: vrData } = await supabase
+              .from("verification_requests")
+              .select("id, status, assigned_to")
+              .eq("user_id", user.id)
+              .eq("cycle_id", resolvedCurrent.id)
+              .in("status", ["pending", "approved"])
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (vrData) {
+              setVerifStatus(vrData.status as "pending" | "approved");
+              setVerifAssignedTo((vrData as any).assigned_to || null);
+            } else {
+              setVerifStatus(null);
+              setVerifAssignedTo(null);
+            }
+          }
         }
 
         // Always compute initial slide — regardless of whether cycles exist
@@ -250,7 +277,7 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
 
   const meta = SLIDES[slide];
   const isComplete = !!currentCycle && currentCycle.userProgress >= currentCycle.total_trades;
-  const isPending = currentCycle?.userStatus === "pending";
+  const isPending = currentCycle?.userStatus === "pending_review" || verifStatus === "pending";
   const isValidated = currentCycle?.userStatus === "validated";
   const isRejected = currentCycle?.userStatus === "rejected";
   const contextMsg = getContextualMessage(slide, firstName, viewedCount, totalVideos, totalExecs, currentCycle);
@@ -520,7 +547,7 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
               )}
               {slide === 2 && isComplete && !isPending && !isValidated && (
                 <ActionButton
-                  onClick={onNavigateToRecolte}
+                  onClick={onNavigateToOracleSaisie}
                   bg={meta.ctaBg} shadow={meta.ctaShadow}
                   icon={<ExternalLink className="w-4 h-4" />}
                   label="Aller soumettre dans Saisie →"
@@ -543,17 +570,25 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte }: Orac
                 </div>
               )}
               {slide === 2 && isPending && (
-                <div style={{
-                  display: "inline-flex", alignItems: "center", gap: "8px",
-                  padding: "11px 18px", borderRadius: "12px",
-                  border: `1px solid ${meta.accent}30`,
-                  background: `${meta.accent}0a`,
-                  fontSize: "13px", fontWeight: 500,
-                  fontFamily: "'Inter', system-ui, sans-serif",
-                  color: meta.accent,
-                }}>
-                  <Clock className="w-3.5 h-3.5" />
-                  En attente de validation
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-start" }}>
+                  <div style={{
+                    display: "inline-flex", alignItems: "center", gap: "8px",
+                    padding: "8px 14px", borderRadius: "10px",
+                    border: `1px solid ${meta.accent}30`,
+                    background: `${meta.accent}0a`,
+                    fontSize: "12px", fontWeight: 500,
+                    fontFamily: "'Inter', system-ui, sans-serif",
+                    color: meta.accent,
+                  }}>
+                    <Clock className="w-3.5 h-3.5" />
+                    {verifAssignedTo ? "Vérification en cours — admin assigné" : "En attente de vérification"}
+                  </div>
+                  <ActionButton
+                    onClick={onNavigateToOracleSaisie}
+                    bg={meta.ctaBg} shadow={meta.ctaShadow}
+                    icon={<ExternalLink className="w-4 h-4" />}
+                    label="Voir ma demande dans Saisie →"
+                  />
                 </div>
               )}
               {slide === 2 && isValidated && (

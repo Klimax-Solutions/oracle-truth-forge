@@ -523,7 +523,11 @@ const Dashboard = () => {
   // Loading gate removed — dashboard always renders.
   // Individual tabs handle their own loading states.
 
-
+  const handleNavigateToOracleSaisie = () => {
+    try { localStorage.setItem("oracle_active_subtab", "saisie"); } catch {}
+    setRecolteView("oracle");
+    setActiveTab("recolte-donnees");
+  };
 
   const getDisplayTrades = () => {
     if (dataSource === "data-generale" && showDataGenerale) {
@@ -619,7 +623,7 @@ const Dashboard = () => {
     // Bloque toute manipulation d'URL qui aurait passé l'useEffect de redirection.
     const allowed = getAllowedTabs({ isAdmin, isSuperAdmin, isSetter, isCloser });
     if (!allowed.has(activeTab)) {
-      return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} />;
+      return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} onNavigateToOracleSaisie={handleNavigateToOracleSaisie} />;
     }
 
     // ── Setter / Closer sans admin → uniquement CRM ──────────────────────────
@@ -627,7 +631,7 @@ const Dashboard = () => {
 
     switch (activeTab) {
       case "execution":
-        return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} />;
+        return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} onNavigateToOracleSaisie={handleNavigateToOracleSaisie} />;
       case "recolte-donnees":
         if (recolteView === "oracle") {
           return <OraclePage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} isAdmin={isAdmin || isSuperAdmin} onBack={() => setRecolteView("landing")} />;
@@ -689,7 +693,7 @@ const Dashboard = () => {
       case "config":
         return <React.Suspense fallback={<AdminLazyFallback />}><ConfigPanel /></React.Suspense>;
       default:
-        return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} />;
+        return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} onNavigateToOracleSaisie={handleNavigateToOracleSaisie} />;
     }
   };
 

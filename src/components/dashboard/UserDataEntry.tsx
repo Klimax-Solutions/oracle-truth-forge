@@ -533,6 +533,12 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
       }
 
       setPendingVerif({ id: inserted.id, requestedAt: inserted.requested_at });
+      // Mettre user_cycles en pending_review pour verrouiller les trades côté admin et OracleHomePage
+      await supabase
+        .from("user_cycles")
+        .update({ status: "pending_review" } as any)
+        .eq("id", currentCycleDb.userCycleId)
+        .eq("user_id", user.id);
       // Refresh locked cycles pour verrouiller les trades
       await fetchLockedCycles();
       toast({
