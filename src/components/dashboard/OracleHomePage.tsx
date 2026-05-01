@@ -116,6 +116,11 @@ function getContextualMessage(
 
   if (slideIndex === 2) {
     if (!currentCycle) return "Complétez un cycle pour soumettre une vérification.";
+    // Ébauche — accès direct, pas de vérification requise (§0.3a)
+    if (currentCycle.cycle_number === 0) {
+      if (currentCycle.userProgress >= currentCycle.total_trades) return "Ébauche complète — continuez dans Saisie.";
+      return `Ébauche ${currentCycle.userProgress}/${currentCycle.total_trades} — recopiez les trades pour tester l'interface.`;
+    }
     if (currentCycle.userStatus === "validated") return "Cycle validé — félicitations. Passez au suivant.";
     if (currentCycle.userStatus === "pending_review") return "Vérification en cours. Un admin examine votre cycle.";
     if (currentCycle.userStatus === "rejected") return "Cycle rejeté. Revoyez les points de feedback et recommencez.";
@@ -170,7 +175,7 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte, onNavi
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { return; }
 
-        const [profileRes, videosRes, viewsRes, execLastRes, execCountRes, cyclesRes, userCyclesRes] = await Promise.all([
+        const [profileRes, videosRes, viewsRes, execLastRes, execCountRes, cyclesRes, userCyclesRes, ebaucheRes] = await Promise.all([
           supabase.from("profiles").select("first_name, display_name").eq("user_id", user.id).single(),
           supabase.from("videos").select("id, title, embed_url, sort_order").order("sort_order"),
           supabase.from("user_video_views").select("video_id").eq("user_id", user.id),
@@ -178,6 +183,8 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte, onNavi
           supabase.from("user_executions").select("id", { count: "exact", head: true }).eq("user_id", user.id),
           supabase.from("cycles").select("id, name, total_trades, cycle_number").order("cycle_number").gte("cycle_number", 1),
           supabase.from("user_cycles").select("id, cycle_id, status").eq("user_id", user.id),
+          // Ébauche (cycle_number=0) fetchée séparément — accès direct, pas de vérification (§0.3a)
+          supabase.from("cycles").select("id, name, total_trades, cycle_number").eq("cycle_number", 0).maybeSingle(),
         ]);
 
         const name = profileRes.data?.first_name || profileRes.data?.display_name || "";
@@ -198,41 +205,77 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte, onNavi
         }
 
         let resolvedCurrent: CycleInfo | null = null;
+        const ucMap = Object.fromEntries((userCyclesRes.data || []).map(uc => [uc.cycle_id, { status: uc.status, id: uc.id }]));
+
         if (cyclesRes.data?.length) {
-          const ucMap = Object.fromEntries((userCyclesRes.data || []).map(uc => [uc.cycle_id, { status: uc.status, id: uc.id }]));
           const enriched: CycleInfo[] = cyclesRes.data.map((c, i) => {
+            // Calcul de progression : nombre de trades après les cycles précédents (hors Ébauche — séparé)
             const priorTotal = cyclesRes.data!.slice(0, i).reduce((s, pc) => s + pc.total_trades, 0);
-            const prog = Math.min(Math.max(count - priorTotal, 0), c.total_trades);
+            const ebaucheTotal = ebaucheRes.data?.total_trades ?? 15;
+            const countAfterEbauche = Math.max(count - ebaucheTotal, 0);
+            const prog = Math.min(Math.max(countAfterEbauche - priorTotal, 0), c.total_trades);
             const uc = ucMap[c.id];
             return { id: c.id, name: c.name, total_trades: c.total_trades, cycle_number: c.cycle_number, userStatus: uc?.status || null, userProgress: uc?.status === "validated" ? c.total_trades : prog, userCycleId: uc?.id || null };
           });
           setAllCycles(enriched);
+
+          // Priorité : cycle 1-8 actif (in_progress ou pending_review)
           resolvedCurrent =
             enriched.find(c => c.userStatus === "in_progress") ||
             enriched.find(c => c.userStatus === "pending_review") ||
-            enriched.find(c => !c.userStatus) ||
-            enriched[0] || null;
-          setCurrentCycle(resolvedCurrent);
+            null;
+        }
 
-          // Fetch VR pour affichage dynamique du statut (lecture seule, pas d'action ici)
-          if (resolvedCurrent) {
-            const { data: vrData } = await supabase
-              .from("verification_requests")
-              .select("id, status, assigned_to")
-              .eq("user_id", user.id)
-              .eq("cycle_id", resolvedCurrent.id)
-              .in("status", ["pending", "approved"])
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            if (vrData) {
-              setVerifStatus(vrData.status as "pending" | "approved");
-              setVerifAssignedTo((vrData as any).assigned_to || null);
-            } else {
-              setVerifStatus(null);
-              setVerifAssignedTo(null);
-            }
+        // Si aucun cycle 1-8 actif : vérifier si l'Ébauche est en cours (§0.3a)
+        // L'Ébauche est le point de départ de tous les nouveaux membres
+        if (!resolvedCurrent && ebaucheRes.data) {
+          const ebaucheUc = ucMap[ebaucheRes.data.id];
+          if (ebaucheUc?.status === "in_progress") {
+            const ebaucheTotal = ebaucheRes.data.total_trades ?? 15;
+            const ebaucheProg = Math.min(count, ebaucheTotal);
+            resolvedCurrent = {
+              id: ebaucheRes.data.id,
+              name: "Ébauche",
+              total_trades: ebaucheTotal,
+              cycle_number: 0,
+              userStatus: "in_progress",
+              userProgress: ebaucheProg,
+              userCycleId: ebaucheUc.id,
+            };
           }
+        }
+
+        // Si toujours rien (cycles 1-8 tous locked, pas d'Ébauche détectée) → fallback cycle 1
+        if (!resolvedCurrent && cyclesRes.data?.length) {
+          const ucMapLocal = Object.fromEntries((userCyclesRes.data || []).map(uc => [uc.cycle_id, { status: uc.status, id: uc.id }]));
+          const c = cyclesRes.data[0];
+          const uc = ucMapLocal[c.id];
+          resolvedCurrent = { id: c.id, name: c.name, total_trades: c.total_trades, cycle_number: c.cycle_number, userStatus: uc?.status || null, userProgress: 0, userCycleId: uc?.id || null };
+        }
+
+        setCurrentCycle(resolvedCurrent);
+
+        // Fetch VR pour affichage dynamique du statut — uniquement pour cycles 1-8 (pas Ébauche)
+        if (resolvedCurrent && resolvedCurrent.cycle_number >= 1) {
+          const { data: vrData } = await supabase
+            .from("verification_requests")
+            .select("id, status, assigned_to")
+            .eq("user_id", user.id)
+            .eq("cycle_id", resolvedCurrent.id)
+            .in("status", ["pending", "approved"])
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (vrData) {
+            setVerifStatus(vrData.status as "pending" | "approved");
+            setVerifAssignedTo((vrData as any).assigned_to || null);
+          } else {
+            setVerifStatus(null);
+            setVerifAssignedTo(null);
+          }
+        } else {
+          setVerifStatus(null);
+          setVerifAssignedTo(null);
         }
 
         // Always compute initial slide — regardless of whether cycles exist
@@ -545,7 +588,31 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte, onNavi
                   }
                 />
               )}
-              {slide === 2 && isComplete && !isPending && !isValidated && (
+              {/* Slide 2 — Ébauche : accès direct, pas de vérification (§0.3a) */}
+              {slide === 2 && currentCycle?.cycle_number === 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-start" }}>
+                  <div style={{
+                    display: "inline-flex", alignItems: "center", gap: "8px",
+                    padding: "8px 14px", borderRadius: "10px",
+                    border: `1px solid ${meta.accent}30`,
+                    background: `${meta.accent}0a`,
+                    fontSize: "12px", fontWeight: 500,
+                    fontFamily: "'Inter', system-ui, sans-serif",
+                    color: meta.accent,
+                  }}>
+                    <Database className="w-3.5 h-3.5" />
+                    Ébauche — accès direct, pas de vérification requise
+                  </div>
+                  <ActionButton
+                    onClick={onNavigateToOracleSaisie}
+                    bg={meta.ctaBg} shadow={meta.ctaShadow}
+                    icon={<ExternalLink className="w-4 h-4" />}
+                    label={isComplete ? "Ébauche complète — continuer dans Saisie →" : "Aller saisir dans Récolte →"}
+                  />
+                </div>
+              )}
+              {/* Slide 2 — Cycles 1-8 : CTA de soumission */}
+              {slide === 2 && currentCycle?.cycle_number !== 0 && isComplete && !isPending && !isValidated && (
                 <ActionButton
                   onClick={onNavigateToOracleSaisie}
                   bg={meta.ctaBg} shadow={meta.ctaShadow}
@@ -553,7 +620,7 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte, onNavi
                   label="Aller soumettre dans Saisie →"
                 />
               )}
-              {slide === 2 && !isComplete && (
+              {slide === 2 && currentCycle?.cycle_number !== 0 && !isComplete && (
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   <div style={{
                     display: "inline-flex", alignItems: "center", gap: "8px",
@@ -569,7 +636,7 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte, onNavi
                   </div>
                 </div>
               )}
-              {slide === 2 && isPending && (
+              {slide === 2 && currentCycle?.cycle_number !== 0 && isPending && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-start" }}>
                   <div style={{
                     display: "inline-flex", alignItems: "center", gap: "8px",
@@ -591,7 +658,7 @@ export const OracleHomePage = ({ onNavigateToVideos, onNavigateToRecolte, onNavi
                   />
                 </div>
               )}
-              {slide === 2 && isValidated && (
+              {slide === 2 && currentCycle?.cycle_number !== 0 && isValidated && (
                 <div style={{
                   display: "inline-flex", alignItems: "center", gap: "8px",
                   padding: "11px 18px", borderRadius: "12px",
