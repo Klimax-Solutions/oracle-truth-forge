@@ -282,6 +282,12 @@ export const TradeEntryDialog = ({
   const { toast } = useToast();
   const { globalVariables, personalVariables, refetch: refetchVariables } = useCustomVariables();
 
+  // §13 dans le marbre (2026-05-01) — Oracle = options DB admin-only, perso interdit.
+  // Personal = globalOptions DB + perso user (autorisé en backtesting/live).
+  // Doc référence : src/lib/oracle-trade-options.ts
+  const personalOptionsFor = (key: keyof typeof personalVariables): string[] =>
+    mode === "oracle" ? [] : (personalVariables[key] || []);
+
   const tradeDuration = calculateDuration(
     formData.trade_date, formData.entry_time,
     formData.exit_date,  formData.exit_time,
@@ -688,31 +694,31 @@ export const TradeEntryDialog = ({
                   <Field label="Type de Config." required={mode === "oracle"}>
                     <CustomizableMultiSelect compact singleSelect canManage={isAdmin}
                       value={formData.setup_type} onChange={(v) => set("setup_type", v)}
-                      globalOptions={globalVariables.setup_type} personalOptions={personalVariables.setup_type}
+                      globalOptions={globalVariables.setup_type} personalOptions={personalOptionsFor("setup_type")}
                       variableType="setup_type" placeholder="Sélectionne..." onOptionsChanged={refetchVariables} />
                   </Field>
                   <Field label="Contexte" required={mode === "oracle"}>
                     <CustomizableMultiSelect compact singleSelect canManage={isAdmin}
                       value={formData.direction_structure} onChange={(v) => set("direction_structure", v)}
-                      globalOptions={globalVariables.direction_structure} personalOptions={personalVariables.direction_structure}
+                      globalOptions={globalVariables.direction_structure} personalOptions={personalOptionsFor("direction_structure")}
                       variableType="direction_structure" placeholder="Sélectionne..." onOptionsChanged={refetchVariables} />
                   </Field>
                   <Field label="Entry Model" required={mode === "oracle"}>
                     <CustomizableMultiSelect compact canManage={isAdmin}
                       value={formData.entry_model} onChange={(v) => set("entry_model", v)}
-                      globalOptions={globalVariables.entry_model} personalOptions={personalVariables.entry_model}
+                      globalOptions={globalVariables.entry_model} personalOptions={personalOptionsFor("entry_model")}
                       variableType="entry_model" placeholder="Sélectionne..." onOptionsChanged={refetchVariables} />
                   </Field>
                   <Field label="Timing">
                     <CustomizableMultiSelect compact singleSelect canManage={isAdmin}
                       value={formData.entry_timing} onChange={(v) => set("entry_timing", v)}
-                      globalOptions={globalVariables.entry_timing} personalOptions={personalVariables.entry_timing}
+                      globalOptions={globalVariables.entry_timing} personalOptions={personalOptionsFor("entry_timing")}
                       variableType="entry_timing" placeholder="Sélectionne..." onOptionsChanged={refetchVariables} />
                   </Field>
                   <Field label="Time Frame d'entrée">
                     <CustomizableMultiSelect compact singleSelect canManage={isAdmin}
                       value={formData.entry_timeframe} onChange={(v) => set("entry_timeframe", v)}
-                      globalOptions={globalVariables.entry_timeframe} personalOptions={personalVariables.entry_timeframe}
+                      globalOptions={globalVariables.entry_timeframe} personalOptions={personalOptionsFor("entry_timeframe")}
                       variableType="entry_timeframe" placeholder="Sélectionne..." onOptionsChanged={refetchVariables} />
                   </Field>
                 </div>
@@ -786,13 +792,13 @@ export const TradeEntryDialog = ({
                 <Field label="Placement du SL">
                   <CustomizableMultiSelect compact singleSelect canManage={isAdmin}
                     value={formData.sl_placement} onChange={(v) => set("sl_placement", v)}
-                    globalOptions={globalVariables.sl_placement || []} personalOptions={personalVariables.sl_placement || []}
+                    globalOptions={globalVariables.sl_placement || []} personalOptions={personalOptionsFor("sl_placement")}
                     variableType="sl_placement" placeholder="Sélectionner..." onOptionsChanged={refetchVariables} />
                 </Field>
                 <Field label="Placement du TP">
                   <CustomizableMultiSelect compact singleSelect canManage={isAdmin}
                     value={formData.tp_placement} onChange={(v) => set("tp_placement", v)}
-                    globalOptions={globalVariables.tp_placement || []} personalOptions={personalVariables.tp_placement || []}
+                    globalOptions={globalVariables.tp_placement || []} personalOptions={personalOptionsFor("tp_placement")}
                     variableType="tp_placement" placeholder="Sélectionner..." onOptionsChanged={refetchVariables} />
                 </Field>
                 <div className="space-y-2.5 pt-[28px]">
