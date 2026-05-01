@@ -84,8 +84,10 @@ export const ORACLE_CYCLE_BOUNDARIES = [
 
 // Seuils de complétion des cycles côté utilisateur.
 // Un cycle i est "complété" quand userTrades >= USER_CYCLE_THRESHOLDS[i].
-// Ces valeurs correspondent à CYCLE_THRESHOLDS.max dans UserDataEntry.
-export const USER_CYCLE_THRESHOLDS = [15, 40, 65, 90, 115, 165, 229, 293, 357];
+// SOURCE DE VÉRITÉ : ORACLE_CYCLE_BOUNDARIES ci-dessus (tradeEnd de chaque cycle).
+// Ne JAMAIS modifier ces valeurs indépendamment de ORACLE_CYCLE_BOUNDARIES.
+// Correspondance : max CYCLE_THRESHOLDS dans UserDataEntry doit être identique.
+export const USER_CYCLE_THRESHOLDS = [15, 40, 65, 90, 115, 165, 215, 265, 314];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES

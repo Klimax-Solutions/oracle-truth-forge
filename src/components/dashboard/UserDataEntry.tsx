@@ -184,17 +184,19 @@ function calculateDuration(entryDate: string, entryTime: string, exitDate: strin
   }
 }
 
-// Cycle thresholds - comparison status only revealed after completing each cycle
+// Cycle thresholds — source de vérité : ORACLE_CYCLE_BOUNDARIES dans oracle-cycle-windows.ts
+// Règle §13 (dans le marbre) : 314 trades au total. Cycles 6-8 = 50/50/49 trades.
+// Ne JAMAIS modifier ces valeurs sans mettre à jour ORACLE_CYCLE_BOUNDARIES en même temps.
 const CYCLE_THRESHOLDS = [
-  { max: 15, name: "Ébauche" },      // Trades 1-15
-  { max: 40, name: "Cycle 1" },      // Trades 16-40 (25 trades)
-  { max: 65, name: "Cycle 2" },      // Trades 41-65 (25 trades)
-  { max: 90, name: "Cycle 3" },      // Trades 66-90 (25 trades)
+  { max: 15,  name: "Ébauche" },     // Trades 1-15   (15 trades)
+  { max: 40,  name: "Cycle 1" },     // Trades 16-40  (25 trades)
+  { max: 65,  name: "Cycle 2" },     // Trades 41-65  (25 trades)
+  { max: 90,  name: "Cycle 3" },     // Trades 66-90  (25 trades)
   { max: 115, name: "Cycle 4" },     // Trades 91-115 (25 trades)
   { max: 165, name: "Cycle 5" },     // Trades 116-165 (50 trades)
-  { max: 229, name: "Cycle 6" },     // Trades 166-229 (64 trades)
-  { max: 293, name: "Cycle 7" },     // Trades 230-293 (64 trades)
-  { max: 357, name: "Cycle 8" },     // Trades 294-357 (64 trades)
+  { max: 215, name: "Cycle 6" },     // Trades 166-215 (50 trades)
+  { max: 265, name: "Cycle 7" },     // Trades 216-265 (50 trades)
+  { max: 314, name: "Cycle 8" },     // Trades 266-314 (49 trades)
 ];
 
 // Get cycle label and range for a trade number (for visual grouping)
@@ -415,7 +417,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
 
     const { data, error } = await supabase
       .from("user_cycles")
-      .select("cycle_id, status, cycles(range_start, range_end)")
+      .select("cycle_id, status, cycles(trade_start, trade_end)")
       .eq("user_id", user.id)
       .in("status", ["pending_review", "in_review", "on_hold"]);
 
@@ -427,8 +429,8 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
     const locked = new Set<number>();
     (data || []).forEach((row: any) => {
       const c = row.cycles;
-      if (c && c.range_start != null && c.range_end != null) {
-        for (let n = c.range_start; n <= c.range_end; n++) {
+      if (c && c.trade_start != null && c.trade_end != null) {
+        for (let n = c.trade_start; n <= c.trade_end; n++) {
           locked.add(n);
         }
       }
@@ -448,7 +450,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
         .from("user_cycles")
         .select("id, cycle_id, status, cycles(id, cycle_number, name)")
         .eq("user_id", user.id)
-        .eq("status", "in_progress");
+        .in("status", ["in_progress", "pending_review"]);
 
       // Filtre côté JS pour exclure l'Ébauche (cycle_number=0)
       const activeReal = (ucRows || []).find((uc: any) => {

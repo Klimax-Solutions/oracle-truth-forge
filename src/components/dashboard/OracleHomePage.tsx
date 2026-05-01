@@ -81,7 +81,7 @@ function getInitialSlide(
   const cycleReady =
     currentCycle &&
     currentCycle.userProgress >= currentCycle.total_trades &&
-    currentCycle.userStatus !== "pending" &&
+    currentCycle.userStatus !== "pending_review" &&
     currentCycle.userStatus !== "validated";
 
   if (cycleReady) return 2;
