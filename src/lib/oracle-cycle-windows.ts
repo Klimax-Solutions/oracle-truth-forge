@@ -157,10 +157,17 @@ export function deriveOracleCycleWindows(
 /**
  * R1 — Retourne le numéro de trade Oracle maximum visible pour un utilisateur
  * ayant `totalUserTrades` trades saisis.
- * Retourne 0 si aucun cycle n'est encore débloqué.
+ *
+ * Règle §0.3a (DANS LE MARBRE) — l'Ébauche (trades 1-15) est en accès DIRECT
+ * dès J1, indépendamment du nombre de trades saisis. Le membre doit pouvoir
+ * voir les 15 trades de référence pour les recopier.
+ *
+ * Au-delà : R1 standard — l'utilisateur voit les cycles précédents au fur et
+ * à mesure qu'il atteint les seuils USER_CYCLE_THRESHOLDS.
  */
 export function getOracleAccessLimit(totalUserTrades: number): number {
-  let maxOracleTrade = 0;
+  // Plancher : Ébauche toujours visible (§0.3a)
+  let maxOracleTrade = ORACLE_CYCLE_BOUNDARIES[0].tradeEnd; // 15
   for (let i = 0; i < USER_CYCLE_THRESHOLDS.length; i++) {
     if (totalUserTrades >= USER_CYCLE_THRESHOLDS[i]) {
       const boundary = ORACLE_CYCLE_BOUNDARIES[i];
