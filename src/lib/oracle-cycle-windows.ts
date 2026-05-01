@@ -180,28 +180,9 @@ export function getOracleAccessLimitByCycles(unlockedCycleNumbers: number[]): nu
   return maxOracleTrade;
 }
 
-/**
- * @deprecated Utiliser getOracleAccessLimitByCycles avec user_cycles.status.
- * Conservé pour rétrocompatibilité — gating par count user_executions.
- *
- * Bug connu : si admin unlock Cycle N manuellement mais user n'a pas atteint
- * USER_CYCLE_THRESHOLDS[N], les trades de référence Cycle N restent masqués.
- *
- * Règle §0.3a — plancher Ébauche toujours respecté.
- */
-export function getOracleAccessLimit(totalUserTrades: number): number {
-  // Plancher : Ébauche toujours visible (§0.3a)
-  let maxOracleTrade = ORACLE_CYCLE_BOUNDARIES[0].tradeEnd; // 15
-  for (let i = 0; i < USER_CYCLE_THRESHOLDS.length; i++) {
-    if (totalUserTrades >= USER_CYCLE_THRESHOLDS[i]) {
-      const boundary = ORACLE_CYCLE_BOUNDARIES[i];
-      if (boundary) maxOracleTrade = boundary.tradeEnd;
-    } else {
-      break;
-    }
-  }
-  return maxOracleTrade;
-}
+// ⚠️ getOracleAccessLimit (count-driven) supprimé le 2026-05-01.
+// Règle §0.3b master CLAUDE.md : gating Oracle DB STATUS-DRIVEN uniquement.
+// Utiliser getOracleAccessLimitByCycles(unlockedCycleNumbers) — voir ci-dessus.
 
 /**
  * Retourne le numéro de cycle (0 = Ébauche) dans lequel l'utilisateur

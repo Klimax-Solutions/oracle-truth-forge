@@ -1,6 +1,6 @@
 import React from "react";
 import { TrendingUp, TrendingDown, Filter, Clock, Target, Calendar, Image, ChevronDown, X, CheckSquare, Lock, Pencil, EyeOff } from "lucide-react";
-import { getOracleAccessLimit, getOracleAccessLimitByCycles, ORACLE_CYCLE_BOUNDARIES } from "@/lib/oracle-cycle-windows";
+import { getOracleAccessLimitByCycles, ORACLE_CYCLE_BOUNDARIES } from "@/lib/oracle-cycle-windows";
 import { SignedImageCard } from "./SignedImageCard";
 import { cn } from "@/lib/utils";
 import { useState, useMemo, useEffect } from "react";
@@ -56,15 +56,17 @@ interface OracleDatabaseProps {
   isAdmin?: boolean;
   onTradeUpdated?: () => void;
   /**
-   * R1 — Nombre total de trades saisis par l'utilisateur.
-   * @deprecated depuis Phase 7.3 — préférer unlockedCycleNumbers (gating par status).
-   * Conservé pour rétrocompatibilité — fallback si unlockedCycleNumbers absent.
-   */
-  userTotalTrades?: number;
-  /**
-   * R1 (status-driven, §0.3a) — liste des cycle_number où user_cycles.status != 'locked'.
-   * Source de vérité depuis Phase 7.3 (2026-05-01). Si fourni, prend le pas sur
-   * userTotalTrades. Cycle 0 (Ébauche) est implicite (toujours visible).
+   * R1 (STATUS-DRIVEN, §0.3b DANS LE MARBRE) — liste des cycle_number où
+   * user_cycles.status != 'locked'. SOURCE UNIQUE de gating Oracle DB.
+   *
+   * Contrat (§0.3b master CLAUDE.md) :
+   *   - isAdmin === true       → Infinity (admin/super_admin voit tout)
+   *   - isDataGenerale === true → Infinity (vue agrégée community/curated)
+   *   - sinon                   → unlockedCycleNumbers OBLIGATOIRE
+   *   - fail-safe (aucun)       → 0 trades (jamais Infinity, jamais count-driven)
+   *
+   * ⚠️ Ne jamais réintroduire un gating count-driven (par nb d'executions) :
+   * la règle est status-driven uniquement.
    */
   unlockedCycleNumbers?: number[];
 }
@@ -131,7 +133,7 @@ const cycleColor = (phase: number) => {
   };
 };
 
-export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [], onAnalysisToggle, isDataGenerale, isAdmin, onTradeUpdated, userTotalTrades, unlockedCycleNumbers }: OracleDatabaseProps) => {
+export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = [], onAnalysisToggle, isDataGenerale, isAdmin, onTradeUpdated, unlockedCycleNumbers }: OracleDatabaseProps) => {
   const chartColors = useChartColors();
   const { isEarlyAccess } = useEarlyAccess();
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
@@ -175,20 +177,20 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
 
   // R1 — Accès Oracle limité (règle DANS LE MARBRE, §0.3b master CLAUDE.md)
   // Un membre ne voit JAMAIS plus de trades que son cycle débloqué le plus haut.
-  // Priorité de résolution :
-  //   1. isAdmin                  → Infinity (admin/super_admin voit tout)
-  //   2. isDataGenerale           → Infinity (vue agrégée community/curated, table différente sémantiquement)
-  //   3. unlockedCycleNumbers     → status-driven (source de vérité Phase 7.3)
-  //   4. userTotalTrades          → fallback count-based (@deprecated)
-  //   5. fail-safe                → 0 (pas de contexte = pas d'accès, JAMAIS Infinity)
-  // ⚠️ Le fallback final EST 0, pas Infinity. Toute fuite passée venait de Infinity en fallback.
+  // Priorité de résolution (STATUS-DRIVEN UNIQUEMENT) :
+  //   1. isAdmin              → Infinity (admin/super_admin voit tout)
+  //   2. isDataGenerale       → Infinity (vue agrégée community/curated, table différente sémantiquement)
+  //   3. unlockedCycleNumbers → status-driven (source de vérité)
+  //   4. fail-safe            → 0 trades (pas de contexte = pas d'accès)
+  //
+  // ⚠️ NEVER reintroduce count-driven gating (userTotalTrades / nb executions).
+  // ⚠️ NEVER fallback to Infinity. Any breach found in the past came from such fallback.
   const accessLimit = useMemo(() => {
     if (isAdmin) return Infinity;
     if (isDataGenerale) return Infinity;
     if (unlockedCycleNumbers !== undefined) return getOracleAccessLimitByCycles(unlockedCycleNumbers);
-    if (userTotalTrades !== undefined) return getOracleAccessLimit(userTotalTrades);
     return 0;
-  }, [isAdmin, isDataGenerale, unlockedCycleNumbers, userTotalTrades]);
+  }, [isAdmin, isDataGenerale, unlockedCycleNumbers]);
 
   // Cycles Oracle verrouillés (à afficher en placeholder "locked")
   const lockedCycles = useMemo(() => {
