@@ -80,6 +80,8 @@ export function SetupOracleLanding({
 }: SetupOracleLandingProps) {
   const [view, setView] = useState<LandingView>("landing");
   const [executionCount, setExecutionCount] = useState(0);
+  // §0.3b — gating Oracle DB par user_cycles.status (status-driven, jamais count-driven)
+  const [unlockedCycleNumbers, setUnlockedCycleNumbers] = useState<number[]>([]);
   const { isAdmin, isSuperAdmin } = useSidebarRoles();
 
   // Fetch user's personal harvest count
@@ -94,6 +96,35 @@ export function SetupOracleLanding({
       setExecutionCount(count ?? 0);
     };
     fetchCount();
+  }, []);
+
+  // §0.3b — fetch user_cycles débloqués (status != 'locked') pour gater Oracle DB
+  useEffect(() => {
+    const fetchUnlockedCycles = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("user_cycles")
+        .select("status, cycles(cycle_number)")
+        .eq("user_id", user.id)
+        .neq("status", "locked");
+      if (data) {
+        const nums = (data as any[])
+          .map(row => row.cycles?.cycle_number)
+          .filter((n): n is number => typeof n === "number");
+        setUnlockedCycleNumbers(nums);
+      }
+    };
+    fetchUnlockedCycles();
+
+    // Realtime sub : si admin débloque un cycle, refléter immédiatement
+    const channel = supabase
+      .channel("setup_oracle_landing_user_cycles")
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_cycles" }, () => {
+        fetchUnlockedCycles();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   // ─── Computed stats ───────────────────────────────────────────────────
@@ -127,6 +158,7 @@ export function SetupOracleLanding({
             trades={trades}
             isDataGenerale={false}
             isAdmin={isAdmin || isSuperAdmin}
+            unlockedCycleNumbers={(isAdmin || isSuperAdmin) ? undefined : unlockedCycleNumbers}
             onTradeUpdated={() => window.location.reload()}
           />
         </div>

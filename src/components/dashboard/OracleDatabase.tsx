@@ -173,16 +173,22 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
     contributor: [...new Set(trades.map(t => t.contributor).filter(Boolean))],
   }), [trades]);
 
-  // R1 — Accès Oracle limité (règle hard, §0.3a)
-  // Priorité : unlockedCycleNumbers (status-driven, source de vérité Phase 7.3)
-  //            → userTotalTrades (fallback count-based, deprecated)
-  //            → Infinity (admin ou vue sans contexte user)
+  // R1 — Accès Oracle limité (règle DANS LE MARBRE, §0.3b master CLAUDE.md)
+  // Un membre ne voit JAMAIS plus de trades que son cycle débloqué le plus haut.
+  // Priorité de résolution :
+  //   1. isAdmin                  → Infinity (admin/super_admin voit tout)
+  //   2. isDataGenerale           → Infinity (vue agrégée community/curated, table différente sémantiquement)
+  //   3. unlockedCycleNumbers     → status-driven (source de vérité Phase 7.3)
+  //   4. userTotalTrades          → fallback count-based (@deprecated)
+  //   5. fail-safe                → 0 (pas de contexte = pas d'accès, JAMAIS Infinity)
+  // ⚠️ Le fallback final EST 0, pas Infinity. Toute fuite passée venait de Infinity en fallback.
   const accessLimit = useMemo(() => {
     if (isAdmin) return Infinity;
+    if (isDataGenerale) return Infinity;
     if (unlockedCycleNumbers !== undefined) return getOracleAccessLimitByCycles(unlockedCycleNumbers);
     if (userTotalTrades !== undefined) return getOracleAccessLimit(userTotalTrades);
-    return Infinity;
-  }, [isAdmin, unlockedCycleNumbers, userTotalTrades]);
+    return 0;
+  }, [isAdmin, isDataGenerale, unlockedCycleNumbers, userTotalTrades]);
 
   // Cycles Oracle verrouillés (à afficher en placeholder "locked")
   const lockedCycles = useMemo(() => {
