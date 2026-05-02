@@ -162,6 +162,18 @@ const Dashboard = () => {
   );
   const [activeTab, setActiveTab] = useState(DASHBOARD_DEFAULT_TAB);
   const tabInitialized = useRef(false); // true dès que les rôles ont validé le 1er tab
+
+  // ── Keep-alive tabs ──────────────────────────────────────────────────────────
+  // Ces onglets restent montés (CSS display:none) après leur 1ère visite pour
+  // préserver l'état des formulaires (dialog saisie trade, filtres, sous-vue, etc.).
+  // Onglets admin (crm, gestion, config, …) non inclus : état non critique.
+  const KEEP_ALIVE_TABS = ["execution","recolte-donnees","setup","data-analysis","videos","successes","results"] as const;
+  type KeepAliveTab = typeof KEEP_ALIVE_TABS[number];
+  const mountedTabsRef = useRef(new Set<KeepAliveTab>());
+  // Mutation de ref pendant le render — safe (pas un setState, pas de re-render déclenché).
+  if (tabInitialized.current && (KEEP_ALIVE_TABS as readonly string[]).includes(activeTab)) {
+    mountedTabsRef.current.add(activeTab as KeepAliveTab);
+  }
   const [databaseFilters, setDatabaseFilters] = useState<any>(() => persistedState.databaseFilters ?? null);
   const [dataSource, setDataSource] = useState<DataSource>(() => persistedState.dataSource || "oracle");
   const [displayName, setDisplayName] = useState<string>("");
@@ -685,6 +697,47 @@ const Dashboard = () => {
   // data-analysis now uses the new in-page SessionAnalysisSelector; the legacy DataSourceSelector is hidden there.
   const showDataSourceSelector = false && ["data-analysis"].includes(activeTab) && !isEarlyAccess && !isSetterOnly && (isAdmin || isSuperAdmin);
 
+  // Hissé hors du switch pour être accessible dans renderKeepAliveTab
+  const dataAnalysisTrades = isEarlyAccess ? dataGenerale : displayTrades;
+
+  // ── Rendu des onglets keep-alive ─────────────────────────────────────────────
+  const renderKeepAliveTab = (tabId: KeepAliveTab) => {
+    switch (tabId) {
+      case "execution":
+        return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} onNavigateToOracleSaisie={handleNavigateToOracleSaisie} />;
+      case "recolte-donnees":
+        if (recolteView === "oracle") {
+          return <OraclePage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} isAdmin={isAdmin || isSuperAdmin} onBack={() => setRecolteView("landing")} onNavigateToAnalysis={(source) => { setDataSource(source); setActiveTab("data-analysis"); }} />;
+        }
+        if (recolteView === "oracle-max") {
+          return <OracleMaxPage trades={dataGenerale} isAdmin={isAdmin || isSuperAdmin} onBack={() => setRecolteView("landing")} />;
+        }
+        return <RecolteDonneesPage onNavigateToSetupOracle={() => setRecolteView("oracle")} overrideIsEarlyAccess={simulatedRole !== "none" ? isEarlyAccess : undefined} isAdmin={isAdmin || isSuperAdmin} onConsultOracleMax={() => setRecolteView("oracle-max")} onNavigateToAnalysis={() => { setDataSource("perso"); setActiveTab("data-analysis"); }} />;
+      case "setup":
+        return <SetupOracleLanding trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} onBack={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => { setDataSource("oracle"); setActiveTab("data-analysis"); }} />;
+      case "data-analysis":
+        return (
+          <DataAnalysisPage
+            trades={dataAnalysisTrades}
+            onNavigateToDatabase={handleNavigateToDatabase}
+            isEarlyAccess={isEarlyAccess}
+            isExpired={isEarlyAccessExpired}
+            isPersoOnly={false}
+            onNavigateToRecolte={() => setActiveTab("recolte-donnees")}
+            dataSource={dataSource}
+            onDataSourceChange={setDataSource}
+            showDataGenerale={showDataGenerale}
+          />
+        );
+      case "videos":
+        return <VideoSetup overrideIsEarlyAccess={simulatedRole !== "none" ? isEarlyAccess : undefined} overrideRoles={simulatedRolesForVideos} />;
+      case "successes":
+        return <SuccessPage />;
+      case "results":
+        return <ResultsPage isAdmin={isAdmin || isSuperAdmin} />;
+    }
+  };
+
   const renderContent = () => {
     // ── GATE EXPLICITE — 4 ÉTATS (Option B, Phase 3) ─────────────────────────
     // Aucun render UI tant que l'état d'auth n'est pas confirmé. Pas de
@@ -906,7 +959,37 @@ const Dashboard = () => {
         {/* Content area */}
         <main className="flex-1 overflow-auto bg-background">
           <div className="h-full">
-            {renderContent()}
+            {/*
+              ── Stratégie de rendu ─────────────────────────────────────────
+              Cas A — guards (loading/error/unauth) ou setter-only ou onglet admin :
+                renderContent() gère tout (comportement précédent).
+              Cas B — onglets utilisateur (keep-alive) :
+                Tous les onglets visités restent montés. L'inactif est caché
+                via style={{ display: "none" }}. L'état React (dialog ouvert,
+                champs, filtres, sous-vue) survit au changement d'onglet.
+              ────────────────────────────────────────────────────────────── */}
+
+            {/* Cas A */}
+            {(!tabInitialized.current
+              || rolesState.status !== "ready"
+              || isSetterOnly
+              || !(KEEP_ALIVE_TABS as readonly string[]).includes(activeTab)) && renderContent()}
+
+            {/* Cas B — keep-alive pour les onglets utilisateur */}
+            {tabInitialized.current && rolesState.status === "ready" && !isSetterOnly
+              && (KEEP_ALIVE_TABS as readonly string[]).includes(activeTab)
+              && KEEP_ALIVE_TABS.map((tabId) =>
+                mountedTabsRef.current.has(tabId) ? (
+                  <div
+                    key={tabId}
+                    className="h-full"
+                    style={{ display: activeTab === tabId ? undefined : "none" }}
+                  >
+                    {renderKeepAliveTab(tabId)}
+                  </div>
+                ) : null
+              )
+            }
           </div>
         </main>
       </div>
