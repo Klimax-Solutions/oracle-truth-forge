@@ -89,17 +89,77 @@ function calculateDuration(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Draft helpers — persiste le brouillon dans localStorage pour survivre aux
-// changements d'onglet navigateur, rechargements accidentels, etc.
-// Clé séparée par mode pour éviter les collisions oracle / personal.
+// Draft helpers — persiste TOUS les brouillons dans localStorage pour survivre :
+//   - changements d'onglet navigateur (Chrome ↔ TradingView)
+//   - rechargements accidentels, crashs React, fermeture/réouverture tab
+//   - tab discardé par Chrome après inactivité
+//
+// Couverture (2026-05-02 — étendu) :
+//   ✅ Mode CRÉATION (clé : <mode>_trade_draft_create)
+//   ✅ Mode ÉDITION (clé : <mode>_trade_draft_edit_<tradeId>) — par trade
+//   ✅ formData complet
+//   ✅ contextLinkUrl, entryLinkUrl (liens externes TradingView, etc.)
+//   ❌ Files (impossible — non sérialisable, > 5MB localStorage limit). L'user
+//      réuploade les screenshots si refresh, mais conserve toutes les autres infos.
+//
+// Drafts > 7 jours ignorés (stale).
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DRAFT_KEY_ORACLE   = "oracle_trade_draft";
-const DRAFT_KEY_PERSONAL = "personal_trade_draft";
-const getDraftKey = (mode: "oracle" | "personal") => mode === "oracle" ? DRAFT_KEY_ORACLE : DRAFT_KEY_PERSONAL;
-const saveDraft    = (mode: "oracle" | "personal", data: FormData) => { try { localStorage.setItem(getDraftKey(mode), JSON.stringify(data)); } catch {} };
-const loadDraft    = (mode: "oracle" | "personal"): FormData | null => { try { const r = localStorage.getItem(getDraftKey(mode)); return r ? JSON.parse(r) : null; } catch { return null; } };
-const clearDraft   = (mode: "oracle" | "personal") => { try { localStorage.removeItem(getDraftKey(mode)); } catch {} };
+interface SavedDraft {
+  formData: FormData;
+  contextLinkUrl: string;
+  entryLinkUrl: string;
+  savedAt: number;
+}
+
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 jours
+
+const getDraftKey = (mode: "oracle" | "personal", editingTradeId?: string): string =>
+  editingTradeId
+    ? `${mode}_trade_draft_edit_${editingTradeId}`
+    : `${mode}_trade_draft_create`;
+
+const saveDraft = (
+  mode: "oracle" | "personal",
+  editingTradeId: string | undefined,
+  payload: { formData: FormData; contextLinkUrl: string; entryLinkUrl: string }
+) => {
+  try {
+    const draft: SavedDraft = { ...payload, savedAt: Date.now() };
+    localStorage.setItem(getDraftKey(mode, editingTradeId), JSON.stringify(draft));
+  } catch {}
+};
+
+const loadDraft = (
+  mode: "oracle" | "personal",
+  editingTradeId?: string
+): SavedDraft | null => {
+  try {
+    const raw = localStorage.getItem(getDraftKey(mode, editingTradeId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Compat ancien format (juste FormData, pas d'enveloppe SavedDraft)
+    if (parsed && parsed.formData) {
+      // Stale check
+      if (parsed.savedAt && Date.now() - parsed.savedAt > DRAFT_TTL_MS) {
+        localStorage.removeItem(getDraftKey(mode, editingTradeId));
+        return null;
+      }
+      return parsed as SavedDraft;
+    }
+    // Ancien format brut — on le wrap pour rétrocompat
+    if (parsed && typeof parsed === "object" && "trade_number" in parsed) {
+      return { formData: parsed as FormData, contextLinkUrl: "", entryLinkUrl: "", savedAt: Date.now() };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const clearDraft = (mode: "oracle" | "personal", editingTradeId?: string) => {
+  try { localStorage.removeItem(getDraftKey(mode, editingTradeId)); } catch {}
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -390,57 +450,75 @@ export const TradeEntryDialog = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!isOpen) return;
+    const editingTradeId = editingTrade?.id;
+
     if (editingTrade) {
-      // Populate from existing trade
-      const t = editingTrade;
-      setFormData({
-        trade_number:       t.trade_number.toString(),
-        trade_date:         t.trade_date,
-        exit_date:          t.exit_date || t.trade_date,
-        direction:          (t.direction as "Long" | "Short") || "Long",
-        direction_structure: t.direction_structure || "",
-        entry_time:         t.entry_time || "",
-        exit_time:          t.exit_time  || "",
-        setup_type:         t.setup_type  || "",
-        entry_model:        t.entry_model || "",
-        entry_timing:       t.entry_timing || "",
-        entry_timeframe:    t.entry_timeframe || "",
-        rr:                 t.rr?.toString() || "",
-        entry_price:        t.entry_price?.toString() || "",
-        exit_price:         t.exit_price?.toString()  || "",
-        stop_loss:          t.stop_loss?.toString()   || "",
-        take_profit:        t.take_profit?.toString() || "",
-        result:             (t.result as "Win" | "Loss" | "BE") || "",
-        notes:              isOracleTrade(t) ? (t.notes || "") : "",
-        comment:            isPersonalTrade(t) ? (t.comment || "") : "",
-        news_day:           t.news_day || false,
-        news_label:         t.news_label || "",
-        sl_placement:       t.sl_placement || "",
-        tp_placement:       t.tp_placement || "",
-        context_timeframe:  t.context_timeframe || "",
-        stop_loss_size:     t.stop_loss_size || "",
-        asset:              isPersonalTrade(t) ? (t.asset || "") : "",
-      });
-      const ctxUrl = t.screenshot_url || null;
-      const entUrl = t.screenshot_entry_url || null;
-      setExistingContextUrl(ctxUrl);
-      setExistingEntryUrl(entUrl);
-      // Pré-remplir les champs lien si l'URL existante est externe
-      const isExt = (u: string | null) => u?.startsWith("http://") || u?.startsWith("https://");
-      setContextLinkUrl(isExt(ctxUrl) ? ctxUrl! : "");
-      setEntryLinkUrl(isExt(entUrl) ? entUrl! : "");
+      // Mode édition — vérifier d'abord s'il y a un draft pour CE trade précis
+      const editDraft = loadDraft(mode, editingTradeId);
+      if (editDraft) {
+        // Restaurer le draft (modifications non sauvegardées)
+        setFormData(editDraft.formData);
+        setContextLinkUrl(editDraft.contextLinkUrl || "");
+        setEntryLinkUrl(editDraft.entryLinkUrl || "");
+        // Les screenshots existants viennent toujours du trade DB (les fichiers en cours
+        // d'upload ne sont pas persistables — l'user devra réuploader si refresh).
+        setExistingContextUrl(editingTrade.screenshot_url || null);
+        setExistingEntryUrl(editingTrade.screenshot_entry_url || null);
+      } else {
+        // Pas de draft — populate depuis le trade
+        const t = editingTrade;
+        setFormData({
+          trade_number:       t.trade_number.toString(),
+          trade_date:         t.trade_date,
+          exit_date:          t.exit_date || t.trade_date,
+          direction:          (t.direction as "Long" | "Short") || "Long",
+          direction_structure: t.direction_structure || "",
+          entry_time:         t.entry_time || "",
+          exit_time:          t.exit_time  || "",
+          setup_type:         t.setup_type  || "",
+          entry_model:        t.entry_model || "",
+          entry_timing:       t.entry_timing || "",
+          entry_timeframe:    t.entry_timeframe || "",
+          rr:                 t.rr?.toString() || "",
+          entry_price:        t.entry_price?.toString() || "",
+          exit_price:         t.exit_price?.toString()  || "",
+          stop_loss:          t.stop_loss?.toString()   || "",
+          take_profit:        t.take_profit?.toString() || "",
+          result:             (t.result as "Win" | "Loss" | "BE") || "",
+          notes:              isOracleTrade(t) ? (t.notes || "") : "",
+          comment:            isPersonalTrade(t) ? (t.comment || "") : "",
+          news_day:           t.news_day || false,
+          news_label:         t.news_label || "",
+          sl_placement:       t.sl_placement || "",
+          tp_placement:       t.tp_placement || "",
+          context_timeframe:  t.context_timeframe || "",
+          stop_loss_size:     t.stop_loss_size || "",
+          asset:              isPersonalTrade(t) ? (t.asset || "") : "",
+        });
+        const ctxUrl = t.screenshot_url || null;
+        const entUrl = t.screenshot_entry_url || null;
+        setExistingContextUrl(ctxUrl);
+        setExistingEntryUrl(entUrl);
+        // Pré-remplir les champs lien si l'URL existante est externe
+        const isExt = (u: string | null) => u?.startsWith("http://") || u?.startsWith("https://");
+        setContextLinkUrl(isExt(ctxUrl) ? ctxUrl! : "");
+        setEntryLinkUrl(isExt(entUrl) ? entUrl! : "");
+      }
     } else {
+      // Mode création — restaurer draft si existe
       const today = new Date().toISOString().split("T")[0];
       const draft = loadDraft(mode);
       if (draft) {
-        setFormData({ ...draft, trade_number: nextTradeNumberRef.current.toString() });
+        setFormData({ ...draft.formData, trade_number: nextTradeNumberRef.current.toString() });
+        setContextLinkUrl(draft.contextLinkUrl || "");
+        setEntryLinkUrl(draft.entryLinkUrl || "");
       } else {
         setFormData({ ...initialFormData, trade_number: nextTradeNumberRef.current.toString(), trade_date: today, exit_date: today });
+        setContextLinkUrl("");
+        setEntryLinkUrl("");
       }
       setExistingContextUrl(null);
       setExistingEntryUrl(null);
-      setContextLinkUrl("");
-      setEntryLinkUrl("");
     }
     setContextFile(null); setContextPreview(null);
     setEntryFile(null);   setEntryPreview(null);
@@ -448,13 +526,28 @@ export const TradeEntryDialog = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, editingTrade, mode]);
 
-  // Auto-save draft (creation only — oracle + personal)
-  // Persiste le formulaire dans localStorage pour survivre aux changements
-  // d'onglet navigateur, rechargements accidentels, crashs React, etc.
+  // ── Autosave draft — création ET édition ────────────────────────────────────
+  // Persiste formData + link URLs à chaque modification. Survie garantie sur :
+  //   - switch onglet Chrome (Oracle ↔ TradingView)
+  //   - refresh accidentel, crash React, tab discard Chrome
+  //   - close/reopen du navigateur
+  // Files non persistables (binaire trop gros pour localStorage).
   useEffect(() => {
-    if (!isOpen || editingTrade) return;
-    saveDraft(mode, formData);
-  }, [formData, isOpen, editingTrade, mode]);
+    if (!isOpen) return;
+    const editingTradeId = editingTrade?.id;
+    saveDraft(mode, editingTradeId, { formData, contextLinkUrl, entryLinkUrl });
+  }, [formData, contextLinkUrl, entryLinkUrl, isOpen, editingTrade, mode]);
+
+  // Sauvegarde de dernière chance avant unload (close, refresh, navigation)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleBeforeUnload = () => {
+      const editingTradeId = editingTrade?.id;
+      saveDraft(mode, editingTradeId, { formData, contextLinkUrl, entryLinkUrl });
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isOpen, editingTrade, mode, formData, contextLinkUrl, entryLinkUrl]);
 
   const handleEntryDateChange = (newDate: string) => {
     setFormData(prev => ({
@@ -581,6 +674,7 @@ export const TradeEntryDialog = ({
           const { error } = await supabase.from("user_executions").update(tradeData).eq("id", editingTrade.id);
           if (error) throw error;
           toast({ title: "Trade mis à jour", description: `Trade #${tradeNum} modifié.` });
+          clearDraft(mode, editingTrade.id);
         } else {
           const { error } = await supabase.from("user_executions").insert(tradeData);
           if (error) {
@@ -635,6 +729,7 @@ export const TradeEntryDialog = ({
           const { error } = await supabase.from("user_personal_trades").update(tradeData).eq("id", editingTrade.id);
           if (error) throw error;
           toast({ title: "Trade mis à jour", description: `Trade #${tradeNum} modifié.` });
+          clearDraft(mode, editingTrade.id);
         } else {
           const { error } = await supabase.from("user_personal_trades").insert(tradeData);
           if (error) {
