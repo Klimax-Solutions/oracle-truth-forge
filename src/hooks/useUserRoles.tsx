@@ -87,10 +87,76 @@ const ALL_FALSE_DATA: UserRolesData = {
   eaType: null,
 };
 
+// Timeout (ms) pour les fetches Supabase. Au-delà, on tombe sur le fallback.
+// 2026-05-02 : ajouté suite à un bug où `get_user_roles()` hangait en prod
+// et bloquait l'écran "Connexion impossible" indéfiniment.
+const RPC_TIMEOUT_MS = 8000;
+
+const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
+  Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`[useUserRoles] ${label} timeout after ${ms}ms`)), ms),
+    ),
+  ]);
+
+// Fallback : si `get_user_roles()` plante ou hang, on tente les 6 is_*() RPCs
+// individuelles EN PARALLÈLE. Au moins un sous-ensemble marchera probablement.
+// Tout ce qui échoue est traité comme "false". Source : Phase 4 du refacto roles
+// (les is_*() existent toujours en DB pour rétrocompat, ne pas supprimer).
+const fetchRolesViaLegacyRpcs = async (): Promise<UserRolesData> => {
+  const safe = async (rpc: string): Promise<boolean> => {
+    try {
+      const { data, error } = await withTimeout(
+        supabase.rpc(rpc as any),
+        RPC_TIMEOUT_MS,
+        `legacy ${rpc}`,
+      );
+      if (error) return false;
+      return !!data;
+    } catch {
+      return false;
+    }
+  };
+  const [isAdmin, isSuperAdmin, isSetter, isCloser, isEarlyAccess, isInstitute] = await Promise.all([
+    safe("is_admin"),
+    safe("is_super_admin"),
+    safe("is_setter"),
+    safe("is_closer"),
+    safe("is_early_access"),
+    safe("is_institute"),
+  ]);
+  // Lecture best-effort de l'expires_at depuis user_roles (pour le timer EA)
+  let eaExpiresAt: Date | null = null;
+  let eaType: string | null = null;
+  try {
+    const { data } = await withTimeout(
+      supabase
+        .from("user_roles")
+        .select("expires_at, early_access_type")
+        .eq("role", "early_access")
+        .maybeSingle(),
+      RPC_TIMEOUT_MS,
+      "legacy ea_row",
+    );
+    if (data) {
+      eaExpiresAt = (data as any).expires_at ? new Date((data as any).expires_at) : null;
+      eaType = (data as any).early_access_type ?? null;
+    }
+  } catch {
+    // ignore — best effort
+  }
+  return { isAdmin, isSuperAdmin, isSetter, isCloser, isEarlyAccess, isInstitute, eaExpiresAt, eaType };
+};
+
 const fetchRolesViaRpc = async (): Promise<UserRolesData> => {
   // `get_user_roles` retourne SETOF de 1 row (RETURNS TABLE).
   // Supabase JS retourne donc `data` en tant que tableau.
-  const { data, error } = await supabase.rpc("get_user_roles" as any);
+  const { data, error } = await withTimeout(
+    supabase.rpc("get_user_roles" as any),
+    RPC_TIMEOUT_MS,
+    "get_user_roles",
+  );
   if (error) throw error;
 
   if (!data || (Array.isArray(data) && data.length === 0)) {
@@ -133,10 +199,14 @@ const _useUserRolesInternal = (): UseUserRolesReturn => {
 
     try {
       // 1. Vérifier qu'il y a une session active.
-      //    PAS DE TIMEOUT VOLONTAIRE — getSession est censé être synchrone (lecture
-      //    localStorage) mais peut faire un refresh token réseau si proche expiry.
-      //    Si ça hang vraiment, on reste en "loading" et l'user peut retry manuellement.
-      const { data: { session } } = await supabase.auth.getSession();
+      //    Timeout ajouté 2026-05-02 : getSession peut hang lors d'un refresh
+      //    token réseau (proche expiry). Sans timeout, l'écran "Connexion impossible"
+      //    reste bloqué indéfiniment pour l'utilisateur.
+      const { data: { session } } = await withTimeout(
+        supabase.auth.getSession(),
+        RPC_TIMEOUT_MS,
+        "getSession",
+      );
       if (id !== requestIdRef.current || !mountedRef.current) return;
 
       if (!session) {
@@ -144,15 +214,36 @@ const _useUserRolesInternal = (): UseUserRolesReturn => {
         return;
       }
 
-      // 2. Récupérer les rôles via la RPC consolidée.
-      const rolesData = await fetchRolesViaRpc();
+      // 2. Récupérer les rôles via la RPC consolidée (avec timeout interne).
+      //    Si elle échoue / timeout : fallback sur les is_*() legacy (Phase 4
+      //    a éliminé leur usage côté composants mais elles existent toujours en DB).
+      let rolesData: UserRolesData;
+      try {
+        rolesData = await fetchRolesViaRpc();
+      } catch (primaryErr) {
+        console.error(
+          "[useUserRoles] get_user_roles failed, falling back to legacy is_*() RPCs:",
+          primaryErr,
+        );
+        try {
+          rolesData = await fetchRolesViaLegacyRpcs();
+        } catch (fallbackErr) {
+          console.error("[useUserRoles] legacy fallback also failed:", fallbackErr);
+          // Dernier recours : passer en "ready" avec ALL_FALSE plutôt que de
+          // bloquer l'utilisateur indéfiniment sur "Connexion impossible".
+          // L'app s'affichera en mode dégradé (pas de capacités admin) mais
+          // l'utilisateur peut au moins accéder au dashboard.
+          rolesData = { ...ALL_FALSE_DATA };
+        }
+      }
       if (id !== requestIdRef.current || !mountedRef.current) return;
 
       setState({ status: "ready", data: rolesData });
     } catch (err) {
       if (id !== requestIdRef.current || !mountedRef.current) return;
-      // Tout échec (réseau, RPC, parsing) atterrit ici. L'UI affichera un écran
-      // de retry. Pas de fallback silencieux vers des valeurs par défaut.
+      console.error("[useUserRoles] fetch failed:", err);
+      // Échec à un niveau où on ne peut pas continuer (ex: getSession plante).
+      // L'UI affichera l'écran de retry.
       setState({
         status: "error",
         error: err instanceof Error ? err : new Error(String(err)),
