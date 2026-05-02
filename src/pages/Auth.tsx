@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import VortexTransition from "@/components/auth/VortexTransition";
 import LoginProgressBar from "@/components/auth/LoginProgressBar";
+import { prefetchDashboardData } from "@/lib/prefetchCache";
 
 type AuthMode = "login" | "forgot-password" | "magic-link";
 
@@ -203,6 +204,11 @@ const Auth = () => {
 
         setIsLoading(false);
         setIsProgressActive(true);
+
+        // Prefetch données critiques Dashboard pendant l'animation (~3.5s).
+        // Fire-and-forget : ne jamais await, ne bloque pas l'animation.
+        // En cas d'erreur : Dashboard fait ses propres fetches normalement (cache miss = fallback).
+        prefetchDashboardData(data.user.id).catch(() => {});
       }
     } catch (error: any) {
       toast({

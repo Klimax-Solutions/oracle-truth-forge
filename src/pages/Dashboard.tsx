@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { consumeCachedTrades, consumeCachedUserExecutionNumbers } from "@/lib/prefetchCache";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { LogOut, ExternalLink } from "lucide-react";
@@ -502,6 +503,14 @@ const Dashboard = () => {
   const fetchTrades = async () => {
     if (!user) return;
 
+    // Consommer le cache prefetch si disponible (chargé pendant l'animation login).
+    // Invalide l'entrée après lecture → les fetches suivants (realtime, retry) font un vrai appel.
+    const cached = consumeCachedTrades<Trade>();
+    if (cached) {
+      setTrades(cached);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("trades")
       .select("*")
@@ -517,6 +526,14 @@ const Dashboard = () => {
   // On stocke un Set léger, ensuite on filtre `trades` côté client → zéro double fetch lourd.
   const fetchUserExecutionTradeIds = async () => {
     if (!user) return;
+
+    // Consommer le cache prefetch si disponible (chargé pendant l'animation login).
+    const cached = consumeCachedUserExecutionNumbers(user.id);
+    if (cached) {
+      setUserExecutionTradeIds(new Set(cached));
+      return;
+    }
+
     const { data, error } = await supabase
       .from("user_executions")
       .select("trade_number")
