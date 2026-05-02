@@ -499,9 +499,9 @@ export const TradeEntryDialog = ({
       if (!formData.trade_date)          missingFields.push("Date Entrée");
       if (!formData.exit_date)           missingFields.push("Date Sortie");
       if (!formData.direction)           missingFields.push("Direction");
-      if (!formData.setup_type)          missingFields.push("Type de Config.");
+      if (!formData.setup_type)          missingFields.push("Type de TP");
       if (!formData.direction_structure) missingFields.push("Contexte");
-      if (!formData.entry_model)         missingFields.push("Entry Model");
+      if (!formData.entry_model)         missingFields.push("Modèle d'entrée");
       if (!formData.result)              missingFields.push("Résultat");
       if (!formData.rr)                  missingFields.push("RR");
       if (!formData.entry_time)          missingFields.push("Heure d'entrée");
@@ -781,7 +781,7 @@ export const TradeEntryDialog = ({
               />
               <div className={cn(setupFieldsLocked && "opacity-50 pointer-events-none select-none")}>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <Field label="Type de Config." required={mode === "oracle"}>
+                  <Field label="Type de TP" required={mode === "oracle"}>
                     <CustomizableMultiSelect compact singleSelect canManage={isAdmin}
                       value={formData.setup_type} onChange={(v) => set("setup_type", v)}
                       globalOptions={globalVariables.setup_type} personalOptions={personalOptionsFor("setup_type")}
@@ -793,7 +793,7 @@ export const TradeEntryDialog = ({
                       globalOptions={globalVariables.direction_structure} personalOptions={personalOptionsFor("direction_structure")}
                       variableType="direction_structure" placeholder="Sélectionne..." onOptionsChanged={refetchVariables} />
                   </Field>
-                  <Field label="Entry Model" required={mode === "oracle"}>
+                  <Field label="Modèle d'entrée" required={mode === "oracle"}>
                     <CustomizableMultiSelect compact canManage={isAdmin}
                       value={formData.entry_model} onChange={(v) => set("entry_model", v)}
                       globalOptions={globalVariables.entry_model} personalOptions={personalOptionsFor("entry_model")}
@@ -805,7 +805,7 @@ export const TradeEntryDialog = ({
                       globalOptions={globalVariables.entry_timing} personalOptions={personalOptionsFor("entry_timing")}
                       variableType="entry_timing" placeholder="Sélectionne..." onOptionsChanged={refetchVariables} />
                   </Field>
-                  <Field label="Time Frame d'entrée">
+                  <Field label="TF d'entrée">
                     <CustomizableMultiSelect compact singleSelect canManage={isAdmin}
                       value={formData.entry_timeframe} onChange={(v) => set("entry_timeframe", v)}
                       globalOptions={globalVariables.entry_timeframe} personalOptions={personalOptionsFor("entry_timeframe")}

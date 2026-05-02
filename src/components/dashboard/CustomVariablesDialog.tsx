@@ -36,7 +36,7 @@ interface CustomVariableType {
 const DEFAULT_VARIABLE_TYPES = [
   { value: "direction_structure", label: "Structure" },
   { value: "setup_type", label: "Type de Setup" },
-  { value: "entry_model", label: "Entry Model" },
+  { value: "entry_model", label: "Modèle d'entrée" },
   { value: "entry_timing", label: "Entry Timing" },
 ];
 

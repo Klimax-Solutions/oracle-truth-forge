@@ -940,7 +940,7 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
         "Trade #", "Date Entrée", "Date Sortie", "Direction",
         "Heure Entrée", "Heure Sortie", "Prix Entrée", "Prix Sortie",
         "Stop Loss", "Take Profit", "RR", "Résultat",
-        "Setup", "Entry Model", "Structure", "Timing",
+        "Setup", "Modèle d'entrée", "Structure", "Timing",
         "Screenshot Contexte", "Screenshot Entrée", "Notes",
       ];
       const escape = (v: string | number | null | undefined) => {

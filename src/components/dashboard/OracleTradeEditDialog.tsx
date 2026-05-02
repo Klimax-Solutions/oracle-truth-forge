@@ -269,7 +269,7 @@ export const OracleTradeEditDialog = ({ isOpen, onClose, onSaved, trade }: Oracl
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
-              <Label>Entry Model</Label>
+              <Label>Modèle d'entrée</Label>
               <CustomizableMultiSelect value={formData.entry_model} onChange={(v) => setFormData({ ...formData, entry_model: v })} fixedOptions={ENTRY_MODEL_FIXED_OPTIONS} customOptions={variables.entry_model} variableType="entry_model" placeholder="Sélectionner..." onOptionsChanged={refetchVariables} />
             </div>
             <div className="space-y-2">
