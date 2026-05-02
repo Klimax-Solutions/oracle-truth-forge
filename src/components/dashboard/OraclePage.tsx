@@ -264,24 +264,32 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
                 )}
               </div>
             )}
-            {/* CTA pont → Data Analysis */}
-            {onNavigateToAnalysis && (
-              <button
-                type="button"
-                onClick={() => onNavigateToAnalysis(activeSubTab === "saisie" ? "my-oracle" : "oracle")}
-                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all hover:opacity-90 flex-shrink-0"
-                style={{
-                  background: "rgba(139,92,246,0.15)",
-                  border: "1px solid rgba(139,92,246,0.30)",
-                  color: "rgba(196,168,255,0.90)",
-                }}
-                title={activeSubTab === "saisie" ? "Analyser My Oracle dans Data Analysis" : "Analyser Oracle Référence dans Data Analysis"}
-              >
-                <BarChart3 className="w-3.5 h-3.5" />
-                <span>{activeSubTab === "saisie" ? "My Oracle" : "Référence"}</span>
-                <span className="opacity-50">→</span>
-              </button>
-            )}
+            {/* CTA pont → Data Analysis — mini-pill calqué sur OraclePill (DataAnalysisPage) */}
+            {onNavigateToAnalysis && (() => {
+              const isSaisie = activeSubTab === "saisie";
+              // Couleurs source de vérité = DataAnalysisPage.tsx constantes
+              const color = isSaisie ? "#A855F7" : "#1AAFA0"; // VIOLET | TEAL
+              const label = isSaisie ? "My Oracle" : "Référence";
+              return (
+                <button
+                  type="button"
+                  onClick={() => onNavigateToAnalysis(isSaisie ? "my-oracle" : "oracle")}
+                  className="ml-auto flex items-stretch gap-0 rounded-lg border overflow-hidden transition-opacity hover:opacity-80 flex-shrink-0"
+                  style={{ borderColor: `${color}40`, backgroundColor: "transparent" }}
+                  title={isSaisie ? "Analyser My Oracle dans Data Analysis" : "Analyser Oracle Référence dans Data Analysis"}
+                >
+                  <div className="flex items-center justify-center px-2.5 py-1.5"
+                    style={{ backgroundColor: `${color}22`, color }}>
+                    <BarChart3 className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  </div>
+                  <div className="flex items-center gap-1 px-2.5 py-1.5">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] leading-none"
+                      style={{ color }}>{label}</span>
+                    <span className="text-[10px]" style={{ color, opacity: 0.5 }}>→</span>
+                  </div>
+                </button>
+              );
+            })()}
           </div>
         </div>
 
@@ -304,7 +312,6 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
             tradeComparisons={tradeComparisons}
             oracleTrades={trades}
             oracleCycleWindows={oracleCycleWindows}
-            onNavigateToAnalysis={onNavigateToAnalysis ? () => onNavigateToAnalysis("my-oracle") : undefined}
           />
         </TabsContent>
       </Tabs>

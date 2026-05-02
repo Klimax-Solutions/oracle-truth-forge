@@ -279,14 +279,9 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
                 `radial-gradient(circle at 20% 0%, ${TEAL}18, transparent 55%), radial-gradient(circle at 80% 100%, rgba(249,115,22,0.06), transparent 55%)`,
             }}
           >
-            <div className="space-y-1">
-              <p className="text-[10px] md:text-[11px] font-mono uppercase tracking-[0.25em] text-muted-foreground/80">
-                Setup à analyser
-              </p>
-              <h3 className="text-base md:text-lg font-semibold text-foreground">
-                Choisissez le dataset que vous voulez analyser
-              </h3>
-            </div>
+            <h3 className="text-base md:text-lg font-semibold text-foreground">
+              Choisissez le dataset que vous voulez analyser
+            </h3>
 
             <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 w-full">
               {/* Oracle pills */}

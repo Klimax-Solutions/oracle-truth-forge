@@ -41,7 +41,6 @@ import {
   X,
   Loader2,
   FileSpreadsheet,
-  BarChart3,
   TrendingUp,
   TrendingDown,
   Target,
@@ -241,8 +240,6 @@ interface UserDataEntryProps {
   oracleTrades?: OracleTrade[];
   /** Fenêtres temporelles Oracle dérivées des trades réels — pour le guidage R4 */
   oracleCycleWindows?: OracleCycleWindow[];
-  /** CTA pont → Data Analysis (My Oracle) */
-  onNavigateToAnalysis?: () => void;
 }
 
 const initialFormData: FormData = {
@@ -273,7 +270,7 @@ const initialFormData: FormData = {
 };
 
 
-export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracleCycleWindows = [], onNavigateToAnalysis }: UserDataEntryProps) => {
+export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracleCycleWindows = [] }: UserDataEntryProps) => {
   const [executions, setExecutions] = useState<UserExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1047,12 +1044,6 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
             </p>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
-            {onNavigateToAnalysis && (
-              <Button variant="outline" size="sm" onClick={onNavigateToAnalysis} className="gap-1.5 flex-1 md:flex-none border-violet-500/30 text-violet-300 hover:bg-violet-500/10 hover:text-violet-200">
-                <BarChart3 className="w-4 h-4" />
-                <span className="hidden sm:inline">My Oracle →</span>
-              </Button>
-            )}
             <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting} className="gap-1.5 flex-1 md:flex-none">
               {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               <span className="hidden sm:inline">{isExporting ? "Export..." : "Export"}</span>

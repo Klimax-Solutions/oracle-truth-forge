@@ -95,11 +95,13 @@ interface SetupPersoProps {
   customSetupId?: string;
   customSetupName?: string;
   sessionId?: string; // Récolte de données : si défini, filtre les trades sur cette session
+  /** Type de session — pour la couleur du CTA (backtesting=#10B981, live=#F97316) */
+  sessionType?: "backtesting" | "live_trading";
   /** CTA pont → Data Analysis (Setup Perso) */
   onNavigateToAnalysis?: () => void;
 }
 
-export const SetupPerso = ({ customSetupId, customSetupName, sessionId, onNavigateToAnalysis }: SetupPersoProps = {}) => {
+export const SetupPerso = ({ customSetupId, customSetupName, sessionId, sessionType, onNavigateToAnalysis }: SetupPersoProps = {}) => {
   const [trades, setTrades] = useState<PersonalTrade[]>([]);
   const [allTradesCount, setAllTradesCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -652,18 +654,30 @@ export const SetupPerso = ({ customSetupId, customSetupName, sessionId, onNaviga
           
           {/* Actions - scrollable on mobile */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-            {/* CTA pont → Data Analysis */}
-            {onNavigateToAnalysis && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onNavigateToAnalysis}
-                className="gap-1.5 flex-shrink-0 border-violet-500/30 text-violet-300 hover:bg-violet-500/10 hover:text-violet-200"
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span className="hidden sm:inline">Analyser →</span>
-              </Button>
-            )}
+            {/* CTA pont → Data Analysis — mini-pill calqué sur OraclePill (DataAnalysisPage) */}
+            {onNavigateToAnalysis && (() => {
+              const color = sessionType === "live_trading" ? "#F97316" : "#10B981";
+              const label = sessionType === "live_trading" ? "Live" : "Backtesting";
+              return (
+                <button
+                  type="button"
+                  onClick={onNavigateToAnalysis}
+                  className="flex items-stretch gap-0 rounded-lg border overflow-hidden flex-shrink-0 transition-opacity hover:opacity-80"
+                  style={{ borderColor: `${color}40`, backgroundColor: "transparent" }}
+                  title="Analyser dans Data Analysis"
+                >
+                  <div className="flex items-center justify-center px-2.5 py-1.5"
+                    style={{ backgroundColor: `${color}22`, color }}>
+                    <BarChart3 className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  </div>
+                  <div className="flex items-center gap-1 px-2.5 py-1.5">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] leading-none hidden sm:inline"
+                      style={{ color }}>{label}</span>
+                    <span className="text-[10px]" style={{ color, opacity: 0.5 }}>→</span>
+                  </div>
+                </button>
+              );
+            })()}
             {/* Variables Button */}
             <Button
               variant="outline"
