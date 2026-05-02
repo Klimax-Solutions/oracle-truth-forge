@@ -612,10 +612,15 @@ const Dashboard = () => {
     setUserExecutionTradeIds(ids);
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
+    // Nettoyer l'état local immédiatement
     localStorage.removeItem(getDashboardStateStorageKey());
     localStorage.removeItem("oracle_session_token");
-    await supabase.auth.signOut();
+    // Fire-and-forget : ne pas await signOut.
+    // Si Supabase est injoignable (refresh token hang), await bloque navigate indéfiniment.
+    // La session Supabase locale est effacée par signOut côté client même sans réseau.
+    supabase.auth.signOut().catch(() => {});
+    // Redirection immédiate — pas d'attente réseau
     navigate("/auth");
   };
 

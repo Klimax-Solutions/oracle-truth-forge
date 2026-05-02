@@ -87,10 +87,15 @@ const ALL_FALSE_DATA: UserRolesData = {
   eaType: null,
 };
 
-// Timeout (ms) pour les fetches Supabase. Au-delà, on tombe sur le fallback.
-// 2026-05-02 : ajouté suite à un bug où `get_user_roles()` hangait en prod
-// et bloquait l'écran "Connexion impossible" indéfiniment.
+// Timeout (ms) pour les RPCs rôles (get_user_roles, is_*).
+// 2026-05-02 : ajouté suite à un bug où `get_user_roles()` hangait en prod.
 const RPC_TIMEOUT_MS = 8000;
+
+// Timeout (ms) spécifique à getSession.
+// Plus court : getSession depuis localStorage est quasi-instantané si le token est frais.
+// Si ça dépasse 5s, le refresh token est probablement expiré (Supabase essaie de le
+// renouveler via réseau et la requête hang). Dans ce cas → unauthenticated, pas error.
+const GETSESSION_TIMEOUT_MS = 5000;
 
 const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
   Promise.race([
@@ -199,14 +204,25 @@ const _useUserRolesInternal = (): UseUserRolesReturn => {
 
     try {
       // 1. Vérifier qu'il y a une session active.
-      //    Timeout ajouté 2026-05-02 : getSession peut hang lors d'un refresh
-      //    token réseau (proche expiry). Sans timeout, l'écran "Connexion impossible"
-      //    reste bloqué indéfiniment pour l'utilisateur.
-      const { data: { session } } = await withTimeout(
-        supabase.auth.getSession(),
-        RPC_TIMEOUT_MS,
-        "getSession",
-      );
+      //    Timeout court (5s) : getSession depuis localStorage est < 1ms si le token
+      //    est frais. Si ça dépasse 5s, Supabase essaie de rafraîchir un token expiré
+      //    via réseau et la requête hang → traiter comme "unauthenticated" (pas "error")
+      //    pour rediriger directement vers /auth sans bloquer l'utilisateur.
+      let session: any = null;
+      try {
+        const { data } = await withTimeout(
+          supabase.auth.getSession(),
+          GETSESSION_TIMEOUT_MS,
+          "getSession",
+        );
+        session = data.session;
+      } catch (sessionErr) {
+        if (id !== requestIdRef.current || !mountedRef.current) return;
+        const msg = sessionErr instanceof Error ? sessionErr.message : String(sessionErr);
+        console.warn("[useUserRoles] getSession failed →", msg, "— treating as unauthenticated");
+        setState({ status: "unauthenticated" });
+        return;
+      }
       if (id !== requestIdRef.current || !mountedRef.current) return;
 
       if (!session) {
