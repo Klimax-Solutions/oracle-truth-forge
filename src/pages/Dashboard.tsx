@@ -167,6 +167,9 @@ const Dashboard = () => {
   const [displayName, setDisplayName] = useState<string>("");
   const [needsName, setNeedsName] = useState<boolean>(false);
   const { trades: personalTrades } = usePersonalTrades();
+  // navigate doit être déclaré AVANT useUserRoles pour éviter le TDZ
+  // dans les useEffects qui le référencent en dep array.
+  const navigate = useNavigate();
   // ── Auth/rôles : machine d'état explicite (Option B, Phase 3) ─────────────
   // 4 états possibles : loading | ready | error | unauthenticated.
   // Pas de safety timeout, pas de fallback render avec valeurs par défaut.
@@ -221,7 +224,6 @@ const Dashboard = () => {
   const questData = useQuestData();
   const { isEarlyAccess: realIsEarlyAccess, expiresAt } = useEarlyAccess();
   const { settings: eaSettings } = useEarlyAccessSettings();
-  const navigate = useNavigate();
   const { timezone, setTimezone: setUserTimezone } = useUserTimezone();
   
   // Role switching for super admins
