@@ -410,31 +410,55 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
   };
 
   // Phase 1.B — Récupère les cycles verrouillés (vérification en cours)
-  // et construit un Set des numéros de trade non modifiables
+  // et construit un Set des numéros de trade non modifiables.
+  //
+  // ⚠️ Important (fix 2026-05-02) : `user_cycles.status` n'accepte QUE les valeurs
+  // {locked, in_progress, pending_review, validated, rejected}. Les statuts
+  // 'in_review' et 'on_hold' vivent UNIQUEMENT sur `verification_requests.status`
+  // (cf. décision design dans OracleExecution.tsx). Filtrer user_cycles dessus
+  // → PostgREST renvoie 400 et bloque le rendu.
+  //
+  // Logique correcte : un cycle est "verrouillé" pour l'user dès que sa row
+  //   user_cycles.status = 'pending_review' (= il a soumis sa vérification),
+  // OU s'il existe une verification_request en cours (pending/in_review/on_hold)
+  // pour ce cycle. On combine les deux sources.
   const fetchLockedCycles = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase
+    // Source 1 : user_cycles avec status = pending_review (verrouillage côté user)
+    const ucPromise = supabase
       .from("user_cycles")
       .select("cycle_id, status, cycles(trade_start, trade_end)")
       .eq("user_id", user.id)
-      .in("status", ["pending_review", "in_review", "on_hold"]);
+      .eq("status", "pending_review");
 
-    if (error) {
-      console.error("[Phase1B] Error fetching locked cycles:", error);
-      return;
-    }
+    // Source 2 : verification_requests actives → cycle_id concernés
+    const vrPromise = supabase
+      .from("verification_requests")
+      .select("cycle_id, cycles(trade_start, trade_end)")
+      .eq("user_id", user.id)
+      .in("status", ["pending", "in_review", "on_hold"]);
+
+    const [{ data: ucData, error: ucErr }, { data: vrData, error: vrErr }] =
+      await Promise.all([ucPromise, vrPromise]);
+
+    if (ucErr) console.error("[Phase1B] Error fetching locked cycles (user_cycles):", ucErr);
+    if (vrErr) console.error("[Phase1B] Error fetching locked cycles (verification_requests):", vrErr);
 
     const locked = new Set<number>();
-    (data || []).forEach((row: any) => {
-      const c = row.cycles;
-      if (c && c.trade_start != null && c.trade_end != null) {
-        for (let n = c.trade_start; n <= c.trade_end; n++) {
-          locked.add(n);
+    const consume = (rows: any[] | null | undefined) => {
+      (rows || []).forEach((row: any) => {
+        const c = row.cycles;
+        if (c && c.trade_start != null && c.trade_end != null) {
+          for (let n = c.trade_start; n <= c.trade_end; n++) {
+            locked.add(n);
+          }
         }
-      }
-    });
+      });
+    };
+    consume(ucData);
+    consume(vrData);
     setLockedCycleTradeNumbers(locked);
   };
 
