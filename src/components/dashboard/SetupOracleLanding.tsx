@@ -159,7 +159,7 @@ export function SetupOracleLanding({
             isDataGenerale={false}
             isAdmin={isAdmin || isSuperAdmin}
             unlockedCycleNumbers={(isAdmin || isSuperAdmin) ? undefined : unlockedCycleNumbers}
-            onTradeUpdated={() => window.location.reload()}
+            onTradeUpdated={() => { /* no-op — données rechargées via realtime sub */ }}
           />
         </div>
       </div>

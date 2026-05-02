@@ -604,6 +604,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
             </div>
             <div className="flex items-center gap-1 p-0.5 rounded-md border border-border bg-background">
               <button
+                type="button"
                 onClick={() => setOnly("all")}
                 className={cn(
                   "px-2.5 py-1 text-[10px] font-medium rounded transition-colors",
@@ -613,6 +614,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                 Tous
               </button>
               <button
+                type="button"
                 onClick={() => setOnly("oracle")}
                 className={cn(
                   "px-2.5 py-1 text-[10px] font-medium rounded transition-colors inline-flex items-center gap-1",
@@ -623,6 +625,7 @@ export const OracleDatabase = ({ trades, initialFilters, analyzedTradeNumbers = 
                 Oracle
               </button>
               <button
+                type="button"
                 onClick={() => setOnly("comp")}
                 disabled={compContribs.length === 0}
                 className={cn(

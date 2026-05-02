@@ -278,9 +278,7 @@ export const SetupPage = ({ trades, initialFilters, analyzedTradeNumbers, onAnal
             trades={viewTrades}
             isDataGenerale={true}
             isAdmin={isAdmin || isSuperAdmin}
-            onTradeUpdated={() => {
-              window.location.reload();
-            }}
+            onTradeUpdated={() => { /* no-op — données rechargées via realtime sub */ }}
           />
         </div>
       </div>

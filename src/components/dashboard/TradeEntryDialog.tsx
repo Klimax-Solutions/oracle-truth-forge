@@ -89,13 +89,17 @@ function calculateDuration(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Draft helpers (Oracle only)
+// Draft helpers — persiste le brouillon dans localStorage pour survivre aux
+// changements d'onglet navigateur, rechargements accidentels, etc.
+// Clé séparée par mode pour éviter les collisions oracle / personal.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DRAFT_KEY = "oracle_trade_draft";
-const saveDraft    = (data: FormData) => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch {} };
-const loadDraft    = (): FormData | null => { try { const r = localStorage.getItem(DRAFT_KEY); return r ? JSON.parse(r) : null; } catch { return null; } };
-const clearDraft   = () => { try { localStorage.removeItem(DRAFT_KEY); } catch {} };
+const DRAFT_KEY_ORACLE   = "oracle_trade_draft";
+const DRAFT_KEY_PERSONAL = "personal_trade_draft";
+const getDraftKey = (mode: "oracle" | "personal") => mode === "oracle" ? DRAFT_KEY_ORACLE : DRAFT_KEY_PERSONAL;
+const saveDraft    = (mode: "oracle" | "personal", data: FormData) => { try { localStorage.setItem(getDraftKey(mode), JSON.stringify(data)); } catch {} };
+const loadDraft    = (mode: "oracle" | "personal"): FormData | null => { try { const r = localStorage.getItem(getDraftKey(mode)); return r ? JSON.parse(r) : null; } catch { return null; } };
+const clearDraft   = (mode: "oracle" | "personal") => { try { localStorage.removeItem(getDraftKey(mode)); } catch {} };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -205,45 +209,118 @@ const Field = ({ label, required, children, className }: {
 
 const ScreenshotUploadField = ({
   label, file, preview, existingUrl, uploading, onFileSelect, onClear, required,
+  linkUrl, onLinkUrlChange,
 }: {
   label: string; file: File | null; preview: string | null; existingUrl: string | null;
   uploading: boolean; onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClear: () => void; required?: boolean;
+  /** URL saisie en mode lien (optionnel — si absent, le toggle lien est masqué) */
+  linkUrl?: string;
+  /** Callback quand l'URL change en mode lien */
+  onLinkUrlChange?: (url: string) => void;
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [inputMode, setInputMode] = useState<"file" | "link">(
+    // Si existingUrl est un lien externe → ouvrir en mode lien
+    existingUrl && (existingUrl.startsWith("http://") || existingUrl.startsWith("https://")) ? "link" : "file"
+  );
   const current = preview || existingUrl;
+  // En mode lien, l'URL est soit linkUrl (saisie en cours) soit existingUrl (existant)
+  const effectiveLinkUrl = linkUrl || (inputMode === "link" ? existingUrl : null);
+  const isExternalUrl = (url: string | null) => url?.startsWith("http://") || url?.startsWith("https://");
+
   return (
     <div className="space-y-2">
-      <label className="block text-xs font-medium text-foreground/60 leading-none">
-        {label}
-        {required && <span className="text-destructive/80 ml-0.5">*</span>}
-      </label>
-      <input ref={fileInputRef} type="file" accept="image/*" onChange={onFileSelect} className="hidden" />
-      {current ? (
-        <div className="relative border border-white/[.12] rounded-xl p-2.5 bg-white/[.02]">
-          <img src={current} alt={label} className="max-h-48 w-full object-contain rounded-lg" />
-          <button
-            type="button"
-            onClick={onClear}
-            className="absolute top-2 right-2 h-7 w-7 rounded-md bg-destructive/85 hover:bg-destructive flex items-center justify-center transition-colors shadow-lg"
-          >
-            <X className="w-3.5 h-3.5 text-white" />
-          </button>
+      <div className="flex items-center justify-between">
+        <label className="block text-xs font-medium text-foreground/60 leading-none">
+          {label}
+          {required && <span className="text-destructive/80 ml-0.5">*</span>}
+        </label>
+        {onLinkUrlChange && (
+          <div className="flex items-center gap-0.5 p-0.5 rounded-md bg-white/[.04] border border-white/[.08]">
+            <button
+              type="button"
+              onClick={() => setInputMode("file")}
+              className={cn(
+                "px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors",
+                inputMode === "file"
+                  ? "bg-white/[.12] text-foreground/80"
+                  : "text-foreground/30 hover:text-foreground/50"
+              )}
+              title="Uploader un fichier"
+            >
+              📁
+            </button>
+            <button
+              type="button"
+              onClick={() => setInputMode("link")}
+              className={cn(
+                "px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors",
+                inputMode === "link"
+                  ? "bg-white/[.12] text-foreground/80"
+                  : "text-foreground/30 hover:text-foreground/50"
+              )}
+              title="Coller un lien (TradingView, Lightshot...)"
+            >
+              🔗
+            </button>
+          </div>
+        )}
+      </div>
+
+      {inputMode === "link" && onLinkUrlChange ? (
+        /* ── Mode lien : input URL ── */
+        <div className="space-y-2">
+          <Input
+            type="url"
+            value={linkUrl ?? ""}
+            onChange={(e) => onLinkUrlChange(e.target.value)}
+            placeholder="https://www.tradingview.com/x/..."
+            className="h-9 text-xs border-white/[.18] bg-white/[.04]"
+          />
+          {effectiveLinkUrl && isExternalUrl(effectiveLinkUrl) && (
+            <div className="relative border border-white/[.12] rounded-xl p-2.5 bg-white/[.02]">
+              <img
+                src={effectiveLinkUrl}
+                alt={label}
+                className="max-h-48 w-full object-contain rounded-lg"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+              <p className="text-[9px] text-foreground/30 mt-1 truncate">{effectiveLinkUrl}</p>
+            </div>
+          )}
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className={cn(
-            "w-full h-32 rounded-xl border border-dashed border-white/[.15] bg-white/[.02]",
-            "flex flex-col items-center justify-center gap-2.5 text-foreground/40",
-            "hover:border-white/30 hover:bg-white/[.05] hover:text-foreground/60 transition-all text-xs font-medium",
+        /* ── Mode fichier : upload classique ── */
+        <>
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={onFileSelect} className="hidden" />
+          {current && !isExternalUrl(current) ? (
+            <div className="relative border border-white/[.12] rounded-xl p-2.5 bg-white/[.02]">
+              <img src={current} alt={label} className="max-h-48 w-full object-contain rounded-lg" />
+              <button
+                type="button"
+                onClick={onClear}
+                className="absolute top-2 right-2 h-7 w-7 rounded-md bg-destructive/85 hover:bg-destructive flex items-center justify-center transition-colors shadow-lg"
+              >
+                <X className="w-3.5 h-3.5 text-white" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className={cn(
+                "w-full h-32 rounded-xl border border-dashed border-white/[.15] bg-white/[.02]",
+                "flex flex-col items-center justify-center gap-2.5 text-foreground/40",
+                "hover:border-white/30 hover:bg-white/[.05] hover:text-foreground/60 transition-all text-xs font-medium",
+              )}
+            >
+              {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <ImageIcon className="w-6 h-6" />}
+              <span>{label}</span>
+            </button>
           )}
-        >
-          {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <ImageIcon className="w-6 h-6" />}
-          <span>{label}</span>
-        </button>
+        </>
       )}
     </div>
   );
@@ -278,6 +355,10 @@ export const TradeEntryDialog = ({
   const [entryFile,        setEntryFile]        = useState<File | null>(null);
   const [entryPreview,     setEntryPreview]      = useState<string | null>(null);
   const [existingEntryUrl, setExistingEntryUrl]  = useState<string | null>(null);
+
+  // Mode lien — URL externe (TradingView, Lightshot, etc.)
+  const [contextLinkUrl,   setContextLinkUrl]    = useState("");
+  const [entryLinkUrl,     setEntryLinkUrl]      = useState("");
 
   const { toast } = useToast();
   const { globalVariables, personalVariables, refetch: refetchVariables } = useCustomVariables();
@@ -330,31 +411,37 @@ export const TradeEntryDialog = ({
         stop_loss_size:     t.stop_loss_size || "",
         asset:              isPersonalTrade(t) ? (t.asset || "") : "",
       });
-      setExistingContextUrl(t.screenshot_url || null);
-      setExistingEntryUrl(t.screenshot_entry_url || null);
+      const ctxUrl = t.screenshot_url || null;
+      const entUrl = t.screenshot_entry_url || null;
+      setExistingContextUrl(ctxUrl);
+      setExistingEntryUrl(entUrl);
+      // Pré-remplir les champs lien si l'URL existante est externe
+      const isExt = (u: string | null) => u?.startsWith("http://") || u?.startsWith("https://");
+      setContextLinkUrl(isExt(ctxUrl) ? ctxUrl! : "");
+      setEntryLinkUrl(isExt(entUrl) ? entUrl! : "");
     } else {
       const today = new Date().toISOString().split("T")[0];
-      if (mode === "oracle") {
-        const draft = loadDraft();
-        if (draft) {
-          setFormData({ ...draft, trade_number: nextTradeNumber.toString() });
-        } else {
-          setFormData({ ...initialFormData, trade_number: nextTradeNumber.toString(), trade_date: today, exit_date: today });
-        }
+      const draft = loadDraft(mode);
+      if (draft) {
+        setFormData({ ...draft, trade_number: nextTradeNumber.toString() });
       } else {
         setFormData({ ...initialFormData, trade_number: nextTradeNumber.toString(), trade_date: today, exit_date: today });
       }
       setExistingContextUrl(null);
       setExistingEntryUrl(null);
+      setContextLinkUrl("");
+      setEntryLinkUrl("");
     }
     setContextFile(null); setContextPreview(null);
     setEntryFile(null);   setEntryPreview(null);
   }, [isOpen, editingTrade, nextTradeNumber, mode]);
 
-  // Auto-save draft (Oracle creation only)
+  // Auto-save draft (creation only — oracle + personal)
+  // Persiste le formulaire dans localStorage pour survivre aux changements
+  // d'onglet navigateur, rechargements accidentels, crashs React, etc.
   useEffect(() => {
-    if (!isOpen || editingTrade || mode !== "oracle") return;
-    saveDraft(formData);
+    if (!isOpen || editingTrade) return;
+    saveDraft(mode, formData);
   }, [formData, isOpen, editingTrade, mode]);
 
   const handleEntryDateChange = (newDate: string) => {
@@ -384,8 +471,10 @@ export const TradeEntryDialog = ({
 
   const uploadScreenshot = async (
     userId: string, tradeNumber: number,
-    file: File | null, existingUrl: string | null, suffix: string,
+    file: File | null, existingUrl: string | null, linkUrl: string, suffix: string,
   ): Promise<string | null> => {
+    // Mode lien : si une URL est renseignée et pas de fichier uploadé, utiliser l'URL directement
+    if (!file && linkUrl) return linkUrl;
     if (!file) return existingUrl;
     const prefix = mode === "oracle" ? "execution" : "perso";
     const ext = file.name.split(".").pop();
@@ -422,8 +511,8 @@ export const TradeEntryDialog = ({
         toast({ title: "Champs requis manquants", description: missingFields.join(", "), variant: "destructive" });
         return;
       }
-      const hasContext = !!contextFile || !!existingContextUrl;
-      const hasEntry   = !!entryFile   || !!existingEntryUrl;
+      const hasContext = !!contextFile || !!existingContextUrl || !!contextLinkUrl;
+      const hasEntry   = !!entryFile   || !!existingEntryUrl   || !!entryLinkUrl;
       if (!hasContext || !hasEntry) {
         toast({ title: "Action requise", description: "Vous devez fournir 2 screenshots (Contexte + Entrée).", variant: "destructive" });
         return;
@@ -438,8 +527,8 @@ export const TradeEntryDialog = ({
 
     setSaving(true); setUploading(true);
     const [contextUrl, entryUrl] = await Promise.all([
-      uploadScreenshot(user.id, tradeNum, contextFile, existingContextUrl, "context"),
-      uploadScreenshot(user.id, tradeNum, entryFile,   existingEntryUrl,   "entry"),
+      uploadScreenshot(user.id, tradeNum, contextFile, existingContextUrl, contextLinkUrl, "context"),
+      uploadScreenshot(user.id, tradeNum, entryFile,   existingEntryUrl,   entryLinkUrl,   "entry"),
     ]);
     setUploading(false);
 
@@ -490,7 +579,7 @@ export const TradeEntryDialog = ({
             throw error;
           }
           toast({ title: "Trade créé", description: `Trade #${tradeNum} ajouté.` });
-          clearDraft();
+          clearDraft(mode);
         }
 
       } else {
@@ -544,6 +633,7 @@ export const TradeEntryDialog = ({
             throw error;
           }
           toast({ title: "Trade créé", description: `Trade #${tradeNum} ajouté.` });
+          clearDraft(mode);
         }
       }
 
@@ -860,6 +950,8 @@ export const TradeEntryDialog = ({
                 uploading={uploading} required={mode === "oracle"}
                 onFileSelect={(e) => handleFileSelect(e, setContextFile, setContextPreview)}
                 onClear={() => { setContextFile(null); setContextPreview(null); setExistingContextUrl(null); }}
+                linkUrl={contextLinkUrl}
+                onLinkUrlChange={setContextLinkUrl}
               />
               <ScreenshotUploadField
                 label="Entrée (TF modèle d'entrée)"
@@ -867,6 +959,8 @@ export const TradeEntryDialog = ({
                 uploading={uploading} required={mode === "oracle"}
                 onFileSelect={(e) => handleFileSelect(e, setEntryFile, setEntryPreview)}
                 onClear={() => { setEntryFile(null); setEntryPreview(null); setExistingEntryUrl(null); }}
+                linkUrl={entryLinkUrl}
+                onLinkUrlChange={setEntryLinkUrl}
               />
             </div>
 

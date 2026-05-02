@@ -287,11 +287,8 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
   const [entryFile, setEntryFile] = useState<File | null>(null);
   const [entryPreview, setEntryPreview] = useState<string | null>(null);
   const [existingEntryUrl, setExistingEntryUrl] = useState<string | null>(null);
-  // Screenshot mode: file upload vs. direct URL link
-  const [contextMode, setContextMode] = useState<"file" | "link">("file");
-  const [entryMode, setEntryMode] = useState<"file" | "link">("file");
-  const [contextLinkUrl, setContextLinkUrl] = useState("");
-  const [entryLinkUrl, setEntryLinkUrl] = useState("");
+  // Dead code nettoyé : contextMode/entryMode/contextLinkUrl/entryLinkUrl supprimés.
+  // Le toggle fichier/lien est géré dans TradeEntryDialog.tsx (composant partagé).
   // Screenshot validation state
   const [screenshotError, setScreenshotError] = useState(false);
   const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
@@ -736,8 +733,8 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
     }
 
     // Hard constraint: both screenshots required before submit
-    const hasContext = contextMode === "link" ? !!contextLinkUrl.trim() : !!(contextFile || existingContextUrl);
-    const hasEntry = entryMode === "link" ? !!entryLinkUrl.trim() : !!(entryFile || existingEntryUrl);
+    const hasContext = !!(contextFile || existingContextUrl);
+    const hasEntry = !!(entryFile || existingEntryUrl);
     if (!hasContext || !hasEntry) {
       setScreenshotError(true);
       return;
@@ -750,12 +747,8 @@ export const UserDataEntry = ({ tradeComparisons = [], oracleTrades = [], oracle
     const tradeNum = parseInt(formData.trade_number);
     // Upload dual screenshots (or resolve external links directly)
     const [contextResult, entryResult] = await Promise.all([
-      contextMode === "link"
-        ? Promise.resolve({ path: contextLinkUrl.trim() || null, error: false })
-        : uploadScreenshot(user.id, tradeNum, contextFile, existingContextUrl, "context"),
-      entryMode === "link"
-        ? Promise.resolve({ path: entryLinkUrl.trim() || null, error: false })
-        : uploadScreenshot(user.id, tradeNum, entryFile, existingEntryUrl, "entry"),
+      uploadScreenshot(user.id, tradeNum, contextFile, existingContextUrl, "context"),
+      uploadScreenshot(user.id, tradeNum, entryFile, existingEntryUrl, "entry"),
     ]);
     setUploading(false);
 

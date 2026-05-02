@@ -193,6 +193,7 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
             {/* Back chevron */}
             {onBack && (
               <button
+                type="button"
                 onClick={onBack}
                 className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-white/8 transition-colors flex-shrink-0"
                 style={{ color: "rgba(255,255,255,0.45)" }}
@@ -215,6 +216,7 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
             >
               {(["verification", "saisie"] as const).map(tab => (
                 <button
+                  type="button"
                   key={tab}
                   onClick={() => handleSubTabChange(tab)}
                   style={{
