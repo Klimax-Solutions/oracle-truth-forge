@@ -259,7 +259,17 @@ const _useUserRolesInternal = (): UseUserRolesReturn => {
     mountedRef.current = true;
     performFetch();
 
-    // Re-fetch sur changements d'état d'authentification (login, token refresh, etc.)
+    // Re-fetch sur changements d'état d'authentification.
+    //
+    // ⚠️ Bug fix 2026-05-02 :
+    //   - INITIAL_SESSION : retiré — déjà couvert par le performFetch() initial au mount.
+    //     Sinon double-fetch concurrent à chaque montage.
+    //   - TOKEN_REFRESHED : retiré — un refresh de JWT ne change pas les rôles
+    //     (seul le token change, pas la table user_roles). Garder cet event flippait
+    //     state→"loading" périodiquement → spinner pouvait ré-apparaître pendant
+    //     le chargement de page.
+    // Les vrais changements de rôles sont déjà couverts par le realtime channel
+    // sur `user_roles` ci-dessous.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (!mountedRef.current) return;
@@ -267,9 +277,7 @@ const _useUserRolesInternal = (): UseUserRolesReturn => {
           setState({ status: "unauthenticated" });
           return;
         }
-        if (
-          ["SIGNED_IN", "INITIAL_SESSION", "USER_UPDATED", "TOKEN_REFRESHED"].includes(event)
-        ) {
+        if (["SIGNED_IN", "USER_UPDATED"].includes(event)) {
           performFetch();
         }
       },

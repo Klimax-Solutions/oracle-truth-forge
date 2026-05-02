@@ -193,7 +193,16 @@ const Dashboard = () => {
   
   // Sync activeTab → URL (?tab=crm, ?tab=agenda, etc.)
   // Only depend on activeTab — not searchParams (would cause infinite loop)
+  //
+  // ⚠️ Bug fix 2026-05-02 : NE JAMAIS écraser l'URL avant que tabInitialized.current
+  // soit true. Au mount, activeTab démarre à "execution" (default) tandis que l'URL
+  // peut contenir ?tab=data-analysis (ou autre). Si on écrasait, on perdrait
+  // l'intention de l'utilisateur AVANT que les rôles aient eu le temps de valider
+  // la requête → spinner infini sur charge directe d'une URL avec tab.
+  // _requestedTab garde l'intention en mémoire React, mais l'URL doit aussi
+  // refléter cette intention pendant tout le chargement.
   useEffect(() => {
+    if (!tabInitialized.current) return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('tab') !== activeTab) {
       params.set('tab', activeTab);
