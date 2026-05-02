@@ -694,7 +694,7 @@ const Dashboard = () => {
         return <OracleHomePage onNavigateToVideos={() => setActiveTab("videos")} onNavigateToRecolte={() => setActiveTab("recolte-donnees")} onNavigateToOracleSaisie={handleNavigateToOracleSaisie} />;
       case "recolte-donnees":
         if (recolteView === "oracle") {
-          return <OraclePage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} isAdmin={isAdmin || isSuperAdmin} onBack={() => setRecolteView("landing")} />;
+          return <OraclePage trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} isAdmin={isAdmin || isSuperAdmin} onBack={() => setRecolteView("landing")} onNavigateToAnalysis={(source) => { setDataSource(source); setActiveTab("data-analysis"); }} />;
         }
         if (recolteView === "oracle-max") {
           return <OracleMaxPage trades={dataGenerale} isAdmin={isAdmin || isSuperAdmin} onBack={() => setRecolteView("landing")} />;
@@ -704,9 +704,10 @@ const Dashboard = () => {
           overrideIsEarlyAccess={simulatedRole !== "none" ? isEarlyAccess : undefined}
           isAdmin={isAdmin || isSuperAdmin}
           onConsultOracleMax={() => setRecolteView("oracle-max")}
+          onNavigateToAnalysis={() => { setDataSource("perso"); setActiveTab("data-analysis"); }}
         />;
       case "setup":
-        return <SetupOracleLanding trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} onBack={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => setActiveTab("data-analysis")} />;
+        return <SetupOracleLanding trades={trades} initialFilters={databaseFilters} analyzedTradeNumbers={questData.analyzedTradeNumbers} onAnalysisToggle={questData.toggleTradeAnalysis} ebaucheComplete={questData.ebaucheComplete} onBack={() => setActiveTab("recolte-donnees")} onNavigateToAnalysis={() => { setDataSource("oracle"); setActiveTab("data-analysis"); }} />;
       case "data-analysis": {
         // All non-EA users now use the unified dataSource-driven displayTrades (so regular members
         // can also analyse Setup Oracle, not only their own perso trades).

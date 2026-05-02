@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { OracleDatabase } from "./OracleDatabase";
 import { UserDataEntry } from "./UserDataEntry";
-import { Database, PenLine, AlertTriangle, AlertCircle, CheckCircle2, ChevronLeft } from "lucide-react";
+import { Database, PenLine, AlertTriangle, AlertCircle, CheckCircle2, ChevronLeft, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { deriveOracleCycleWindows } from "@/lib/oracle-cycle-windows";
@@ -47,6 +47,8 @@ interface OraclePageProps {
   onAnalysisToggle?: (tradeNumber: number, checked: boolean) => void;
   isAdmin?: boolean;
   onBack?: () => void;
+  /** CTA pont → Data Analysis. Source = "oracle" (vérif) ou "my-oracle" (saisie) */
+  onNavigateToAnalysis?: (source: "oracle" | "my-oracle") => void;
 }
 
 interface TradeComparison {
@@ -56,7 +58,7 @@ interface TradeComparison {
   status: 'match' | 'warning' | 'error' | 'no-match';
 }
 
-export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAnalysisToggle, isAdmin, onBack }: OraclePageProps) => {
+export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAnalysisToggle, isAdmin, onBack, onNavigateToAnalysis }: OraclePageProps) => {
   const [activeSubTab, setActiveSubTab] = useState(() => {
     try {
       const saved = localStorage.getItem("oracle_active_subtab");
@@ -262,6 +264,24 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
                 )}
               </div>
             )}
+            {/* CTA pont → Data Analysis */}
+            {onNavigateToAnalysis && (
+              <button
+                type="button"
+                onClick={() => onNavigateToAnalysis(activeSubTab === "saisie" ? "my-oracle" : "oracle")}
+                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all hover:opacity-90 flex-shrink-0"
+                style={{
+                  background: "rgba(139,92,246,0.15)",
+                  border: "1px solid rgba(139,92,246,0.30)",
+                  color: "rgba(196,168,255,0.90)",
+                }}
+                title={activeSubTab === "saisie" ? "Analyser My Oracle dans Data Analysis" : "Analyser Oracle Référence dans Data Analysis"}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>{activeSubTab === "saisie" ? "My Oracle" : "Référence"}</span>
+                <span className="opacity-50">→</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -284,6 +304,7 @@ export const OraclePage = ({ trades, initialFilters, analyzedTradeNumbers, onAna
             tradeComparisons={tradeComparisons}
             oracleTrades={trades}
             oracleCycleWindows={oracleCycleWindows}
+            onNavigateToAnalysis={onNavigateToAnalysis ? () => onNavigateToAnalysis("my-oracle") : undefined}
           />
         </TabsContent>
       </Tabs>

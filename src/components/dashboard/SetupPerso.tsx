@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
   X,
   ChevronDown,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -94,9 +95,11 @@ interface SetupPersoProps {
   customSetupId?: string;
   customSetupName?: string;
   sessionId?: string; // Récolte de données : si défini, filtre les trades sur cette session
+  /** CTA pont → Data Analysis (Setup Perso) */
+  onNavigateToAnalysis?: () => void;
 }
 
-export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupPersoProps = {}) => {
+export const SetupPerso = ({ customSetupId, customSetupName, sessionId, onNavigateToAnalysis }: SetupPersoProps = {}) => {
   const [trades, setTrades] = useState<PersonalTrade[]>([]);
   const [allTradesCount, setAllTradesCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -649,10 +652,22 @@ export const SetupPerso = ({ customSetupId, customSetupName, sessionId }: SetupP
           
           {/* Actions - scrollable on mobile */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+            {/* CTA pont → Data Analysis */}
+            {onNavigateToAnalysis && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onNavigateToAnalysis}
+                className="gap-1.5 flex-shrink-0 border-violet-500/30 text-violet-300 hover:bg-violet-500/10 hover:text-violet-200"
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span className="hidden sm:inline">Analyser →</span>
+              </Button>
+            )}
             {/* Variables Button */}
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setIsVariablesDialogOpen(true)}
               className="gap-1.5 flex-shrink-0"
             >

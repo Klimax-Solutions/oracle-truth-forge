@@ -52,9 +52,11 @@ interface RecolteDonneesPageProps {
   /** Admin-only : action de consultation Oracle Max (Data Analysis) */
   isAdmin?: boolean;
   onConsultOracleMax?: () => void;
+  /** CTA pont → Data Analysis (Setup Perso) */
+  onNavigateToAnalysis?: () => void;
 }
 
-export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIsEarlyAccess, isAdmin, onConsultOracleMax }: RecolteDonneesPageProps = {}) {
+export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIsEarlyAccess, isAdmin, onConsultOracleMax, onNavigateToAnalysis }: RecolteDonneesPageProps = {}) {
   const { isEarlyAccess: isEarlyAccessFromDB } = useEarlyAccess();
   const isEarlyAccess = overrideIsEarlyAccess !== undefined ? overrideIsEarlyAccess : isEarlyAccessFromDB;
   const [sessions, setSessions] = useState<TradingSession[]>([]);
@@ -222,7 +224,7 @@ export default function RecolteDonneesPage({ onNavigateToSetupOracle, overrideIs
 
         {/* Session content : SetupPerso filtered by sessionId */}
         <div className="flex-1 overflow-auto">
-          <SetupPerso sessionId={activeSessionId} customSetupName={session?.name} />
+          <SetupPerso sessionId={activeSessionId} customSetupName={session?.name} onNavigateToAnalysis={onNavigateToAnalysis} />
         </div>
       </div>
     );
