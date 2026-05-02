@@ -528,8 +528,10 @@ const Dashboard = () => {
     if (!user) return;
 
     // Consommer le cache prefetch si disponible (chargé pendant l'animation login).
+    // IMPORTANT: ignorer le cache s'il est vide ([] truthy mais incorrect si l'user a des trades
+    // saisis dans la session courante — la publication realtime user_executions assure la fraîcheur).
     const cached = consumeCachedUserExecutionNumbers(user.id);
-    if (cached) {
+    if (cached !== null && cached.length > 0) {
       setUserExecutionTradeIds(new Set(cached));
       return;
     }
