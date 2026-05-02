@@ -99,9 +99,14 @@ interface BonusVideo {
 interface BonusVideoViewerProps {
   userRoles?: string[];
   isEaExpired?: boolean;
+  /**
+   * Si fourni, n'affiche que les vidéos de cette catégorie (ex: "formation" ou "live").
+   * Les sous-onglets catégorie sont masqués — chaque section top-level a son propre viewer.
+   */
+  categoryFilter?: string;
 }
 
-export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false }: BonusVideoViewerProps) => {
+export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false, categoryFilter }: BonusVideoViewerProps) => {
   const [allVideos, setAllVideos] = useState<BonusVideo[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<BonusVideo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -125,7 +130,11 @@ export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false }: BonusV
     fetchVideos();
   }, [userRoles]);
 
-  const videos = allVideos.filter(v => (v.category || "formation") === activeCategory);
+  // Si categoryFilter fourni → filtre direct, pas de sous-onglets (chaque section top-level gère sa catégorie).
+  // Sinon → comportement legacy avec sous-onglets formation/live.
+  const videos = categoryFilter
+    ? allVideos.filter(v => (v.category || "formation") === categoryFilter)
+    : allVideos.filter(v => (v.category || "formation") === activeCategory);
 
   useEffect(() => {
     if (videos.length > 0 && (!selectedVideo || !videos.find(v => v.id === selectedVideo.id))) {
@@ -159,7 +168,8 @@ export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false }: BonusV
 
   const formationCount = allVideos.filter(v => (v.category || "formation") === "formation").length;
   const liveCount = allVideos.filter(v => (v.category || "formation") === "live").length;
-  const showCategoryTabs = formationCount > 0 && liveCount > 0;
+  // Sous-onglets masqués quand categoryFilter est fourni (les sections top-level remplacent cette logique)
+  const showCategoryTabs = !categoryFilter && formationCount > 0 && liveCount > 0;
 
   if (allVideos.length === 0) {
     return (

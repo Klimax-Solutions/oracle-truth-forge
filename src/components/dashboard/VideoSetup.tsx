@@ -36,6 +36,14 @@ const PALETTE = {
     badgeText: "#E8B96A",
     ctaBg:  "#A8701C",
   },
+  live: {
+    accent: "#22C55E",
+    glow:   "rgba(34,197,94,0.15)",
+    border: "rgba(34,197,94,0.20)",
+    badgeBg:"rgba(34,197,94,0.09)",
+    badgeText: "#86EFAC",
+    ctaBg:  "#16A34A",
+  },
 };
 
 interface VideoData {
@@ -64,7 +72,7 @@ export const VideoSetup = ({ overrideIsEarlyAccess, overrideRoles }: VideoSetupP
   const [viewedIds, setViewedIds]         = useState<Set<string>>(new Set());
   const [loading, setLoading]             = useState(true);
   const [userRoles, setUserRoles]         = useState<string[]>([]);
-  const [section, setSection] = useState<"oracle" | "mercure">("oracle");
+  const [section, setSection] = useState<"oracle" | "mercure" | "live">("oracle");
   const [entered, setEntered] = useState(false);
   const { isEarlyAccess: isEarlyAccessFromDB, isExpired: isEaExpiredFromDB } = useEarlyAccess();
   const isEarlyAccess = overrideIsEarlyAccess !== undefined ? overrideIsEarlyAccess : isEarlyAccessFromDB;
@@ -229,9 +237,10 @@ export const VideoSetup = ({ overrideIsEarlyAccess, overrideRoles }: VideoSetupP
       {/* ── Navigation sections — style progress tracks (comme le bas d'OracleHomePage) ── */}
       <div className="relative z-10 shrink-0 px-3 md:px-10 pt-4 pb-2">
         <div className="flex gap-3 md:gap-6 max-w-5xl">
-          {(["oracle", "mercure"] as const).map((s) => {
+          {(["oracle", "mercure", "live"] as const).map((s) => {
             const p = PALETTE[s];
             const isActive = section === s;
+            const label = s === "oracle" ? "Fondations Oracle" : s === "mercure" ? "Sessions Mercure" : "Live";
             return (
               <button
                 key={s}
@@ -243,7 +252,7 @@ export const VideoSetup = ({ overrideIsEarlyAccess, overrideRoles }: VideoSetupP
                     className="text-[10px] font-mono uppercase tracking-[0.16em] transition-colors duration-300"
                     style={{ color: isActive ? "rgba(255,255,255,0.60)" : "rgba(255,255,255,0.18)" }}
                   >
-                    {s === "oracle" ? "Fondations Oracle" : "Sessions Mercure"}
+                    {label}
                   </span>
                   {/* Pulse dot — vivant, identique OracleHomePage badge */}
                   {isActive && (
@@ -292,8 +301,10 @@ export const VideoSetup = ({ overrideIsEarlyAccess, overrideRoles }: VideoSetupP
             onSelect={handleSelect}
             onToggleViewed={toggleViewed}
           />
+        ) : section === "mercure" ? (
+          <MercureSection userRoles={userRoles} isEaExpired={isEaExpired} palette={PALETTE.mercure} />
         ) : (
-          <MercureSection userRoles={userRoles} isEaExpired={isEaExpired} palette={pal} />
+          <LiveSection userRoles={userRoles} isEaExpired={isEaExpired} palette={PALETTE.live} />
         )}
       </div>
 
@@ -613,15 +624,44 @@ const MercureSection = ({
     <div className="px-3 md:px-10 pt-4 md:pt-5 pb-4 shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.045)" }}>
       <div className="flex items-center gap-3">
         <StepBadge
-          index="01"
-          label="Fondations"
+          index="02"
+          label="Institut Mercure"
           accent={palette.accent}
-          sub="· Institut Mercure"
+          sub="· Sessions de formation"
         />
       </div>
     </div>
     <div className="flex-1 overflow-hidden">
-      <BonusVideoViewer userRoles={userRoles} isEaExpired={isEaExpired} />
+      {/* categoryFilter="formation" : n'affiche que les vidéos Mercure, pas les Lives (promus top-level) */}
+      <BonusVideoViewer userRoles={userRoles} isEaExpired={isEaExpired} categoryFilter="formation" />
+    </div>
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LIVE SECTION — wrap BonusVideoViewer filtré sur category="live"
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LiveSection = ({
+  userRoles, isEaExpired, palette,
+}: {
+  userRoles: string[];
+  isEaExpired: boolean;
+  palette: typeof PALETTE.live;
+}) => (
+  <div className="h-full flex flex-col overflow-hidden">
+    <div className="px-3 md:px-10 pt-4 md:pt-5 pb-4 shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.045)" }}>
+      <div className="flex items-center gap-3">
+        <StepBadge
+          index="03"
+          label="Live"
+          accent={palette.accent}
+          sub="· Sessions en direct"
+        />
+      </div>
+    </div>
+    <div className="flex-1 overflow-hidden">
+      <BonusVideoViewer userRoles={userRoles} isEaExpired={isEaExpired} categoryFilter="live" />
     </div>
   </div>
 );
