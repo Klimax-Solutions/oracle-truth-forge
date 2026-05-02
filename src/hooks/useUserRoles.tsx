@@ -197,10 +197,13 @@ const _useUserRolesInternal = (): UseUserRolesReturn => {
   const mountedRef = useRef(true);
   const requestIdRef = useRef(0);
 
-  const performFetch = useCallback(async () => {
+  // performFetch(silent=false) : flip vers "loading" puis fetch (1er mount, retry user).
+  // performFetch(silent=true)  : fetch en arrière-plan sans flip "loading" (refresh discret
+  //   suite à un événement auth ou realtime, pour ne PAS unmount l'arbre keep-alive).
+  const performFetch = useCallback(async (silent = false) => {
     const id = ++requestIdRef.current;
     if (!mountedRef.current) return;
-    setState({ status: "loading" });
+    if (!silent) setState({ status: "loading" });
 
     try {
       // 1. Vérifier qu'il y a une session active.
@@ -277,15 +280,20 @@ const _useUserRolesInternal = (): UseUserRolesReturn => {
 
     // Re-fetch sur changements d'état d'authentification.
     //
-    // ⚠️ Bug fix 2026-05-02 :
+    // ⚠️ Bug fix 2026-05-02 (révisé) :
     //   - INITIAL_SESSION : retiré — déjà couvert par le performFetch() initial au mount.
-    //     Sinon double-fetch concurrent à chaque montage.
-    //   - TOKEN_REFRESHED : retiré — un refresh de JWT ne change pas les rôles
-    //     (seul le token change, pas la table user_roles). Garder cet event flippait
-    //     state→"loading" périodiquement → spinner pouvait ré-apparaître pendant
-    //     le chargement de page.
-    // Les vrais changements de rôles sont déjà couverts par le realtime channel
-    // sur `user_roles` ci-dessous.
+    //   - TOKEN_REFRESHED : retiré — un refresh JWT ne change pas les rôles.
+    //   - SIGNED_IN : déclenche un refresh **silencieux** (pas de flip "loading").
+    //     Pourquoi : Supabase fire SIGNED_IN à CHAQUE retour d'onglet Chrome (le SDK
+    //     re-vérifie la session sur visibility change). Si on flippait "loading",
+    //     toute la branche keep-alive du Dashboard unmount → state perdu (dialog
+    //     en cours, brouillons, formulaires). Le silent fetch garde l'UI intacte.
+    //   - USER_UPDATED : silent aussi — l'utilisateur ne doit pas voir de spinner
+    //     parce qu'il a changé son email ou son mot de passe.
+    //   - !session : flip vers "unauthenticated" reste OK (intentionnel, redirige /auth).
+    //
+    // Les vrais changements de rôles (admin promote/revoke) sont couverts par le
+    // realtime channel ci-dessous, qui fait aussi un refresh silencieux.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (!mountedRef.current) return;
@@ -294,21 +302,20 @@ const _useUserRolesInternal = (): UseUserRolesReturn => {
           return;
         }
         if (["SIGNED_IN", "USER_UPDATED"].includes(event)) {
-          performFetch();
+          performFetch(true); // silent — pas de flip "loading"
         }
       },
     );
 
     // Re-fetch sur changement de la table user_roles (révocation/promotion par admin).
-    // Si un admin change le rôle d'un user actuellement connecté, le user voit
-    // la mise à jour quasi-instantanément sans avoir besoin de recharger.
+    // Silent : pas de flip "loading" pour ne pas casser un dialog en cours.
     const channel = supabase
       .channel("user_roles_self_sync")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "user_roles" },
         () => {
-          performFetch();
+          performFetch(true);
         },
       )
       .subscribe();
