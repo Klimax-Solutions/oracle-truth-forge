@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Calendar, BarChart3, ChevronUp, ChevronDown, Lock, Info, Plus, Database, Globe, FlaskConical, Radio } from "lucide-react";
+import { Calendar, BarChart3, ChevronUp, ChevronDown, Lock, Info, Plus, Database, Globe, FlaskConical, Radio, UserCircle2 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuRadioGroup, DropdownMenuRadioItem,
@@ -46,7 +46,7 @@ interface DataAnalysisPageProps {
   isExpired?: boolean;
   isPersoOnly?: boolean;
   onNavigateToRecolte?: () => void;
-  // Unified dataset selector (Oracle Core / Étendu / Sessions)
+  // Unified dataset selector (Oracle Référence / My Oracle / Oracle Max / Sessions)
   dataSource?: DataSource;
   onDataSourceChange?: (v: DataSource) => void;
   showDataGenerale?: boolean;
@@ -99,7 +99,7 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
         type: (s.type === "live_trading" ? "live" : s.type) as AnalysisSession["type"],
       }));
       setSessions(list);
-      // NOTE: we no longer auto-preselect a session here. The default dataset is Setup Oracle Core
+      // NOTE: we no longer auto-preselect a session here. The default dataset is Setup Oracle Référence
       // (driven by dataSource). User explicitly picks a session to switch to personal analysis.
       setSessionsLoaded(true);
     })();
@@ -218,8 +218,9 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
   }
 
   // Couleurs dataset (source de vérité)
-  const TEAL  = "#1AAFA0"; // Oracle Core — cohérent avec RecolteDonneesPage
-  const AMBER = "#C8882A"; // Oracle Max  — tier premium
+  const TEAL   = "#1AAFA0"; // Oracle Référence — cohérent avec RecolteDonneesPage
+  const VIOLET = "#A855F7"; // My Oracle       — saisies de l'utilisateur
+  const AMBER  = "#C8882A"; // Oracle Max      — tier premium (admin only)
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -231,11 +232,15 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
           <span className="text-[11px] font-semibold" style={{
             color: selectedSessionId
               ? (sessions.find(s => s.id === selectedSessionId)?.type === "backtesting" ? "#10B981" : "#F97316")
-              : dataSource === "data-generale" ? AMBER : TEAL,
+              : dataSource === "data-generale" ? AMBER
+              : dataSource === "my-oracle" ? VIOLET
+              : TEAL,
           }}>
             {selectedSessionId
               ? (sessions.find(s => s.id === selectedSessionId)?.name ?? "Session")
-              : dataSource === "data-generale" ? "Oracle Max" : "Oracle Core"}
+              : dataSource === "data-generale" ? "Oracle Max"
+              : dataSource === "my-oracle" ? "My Oracle"
+              : "Oracle Référence"}
           </span>
           <span className="text-border/60 text-[11px]">·</span>
           {/* Stats */}
@@ -294,10 +299,18 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
                     <OraclePill
                       active={dataSource === "oracle" && !selectedSessionId}
                       icon={Database}
-                      label="Core"
+                      label="Référence"
                       sublabel="314 trades"
                       color={TEAL}
                       onClick={() => { setSelectedSessionId(null); onDataSourceChange("oracle"); }}
+                    />
+                    <OraclePill
+                      active={dataSource === "my-oracle" && !selectedSessionId}
+                      icon={UserCircle2}
+                      label="My Oracle"
+                      sublabel="mes saisies"
+                      color={VIOLET}
+                      onClick={() => { setSelectedSessionId(null); onDataSourceChange("my-oracle"); }}
                     />
                     {showDataGenerale && (
                       <OraclePill

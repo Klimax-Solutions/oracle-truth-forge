@@ -94,7 +94,7 @@ interface TimingFilters {
 }
 
 const DASHBOARD_DEFAULT_TAB = "execution";
-const DASHBOARD_DATA_SOURCE_VALUES: DataSource[] = ["all", "perso", "oracle", "data-generale"];
+const DASHBOARD_DATA_SOURCE_VALUES: DataSource[] = ["all", "perso", "oracle", "my-oracle", "data-generale"];
 const DASHBOARD_STATE_VERSION = 1;
 
 const getDashboardStateStorageKey = () => {
@@ -140,6 +140,10 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [trades, setTrades] = useState<Trade[]>([]);
+  // Set des trade IDs Oracle déjà saisis par l'utilisateur (pour MY ORACLE).
+  // Source : public.user_executions filtrée sur user_id courant.
+  // Filtré côté client en intersection avec `trades` pour produire myOracleTrades.
+  const [userExecutionTradeIds, setUserExecutionTradeIds] = useState<Set<string>>(new Set());
   const [searchParams, setSearchParams] = useSearchParams();
 
   // ── Tab initialization — anti race condition ─────────────────────────────
@@ -442,7 +446,8 @@ const Dashboard = () => {
   useEffect(() => {
     if (!userId) return;
     fetchTrades();
-    
+    fetchUserExecutionTradeIds();
+
     const channel = supabase
       .channel('trades_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'trades' }, () => {
@@ -450,8 +455,20 @@ const Dashboard = () => {
       })
       .subscribe();
 
+    // ── Realtime user_executions du user courant (pour MY ORACLE) ──
+    // Re-fetch les trade_ids saisis dès qu'une exécution est ajoutée/supprimée.
+    const userExecChannel = supabase
+      .channel('user_executions_my_oracle')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_executions', filter: `user_id=eq.${userId}` },
+        () => { fetchUserExecutionTradeIds(); },
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(userExecChannel);
     };
   }, [userId]);
 
@@ -483,7 +500,7 @@ const Dashboard = () => {
 
   const fetchTrades = async () => {
     if (!user) return;
-    
+
     const { data, error } = await supabase
       .from("trades")
       .select("*")
@@ -492,6 +509,22 @@ const Dashboard = () => {
     if (data) {
       setTrades(data as Trade[]);
     }
+  };
+
+  // Récupère les trade_id Oracle saisis par l'user (pour MY ORACLE dans Data Analysis).
+  // On stocke un Set léger, ensuite on filtre `trades` côté client → zéro double fetch lourd.
+  const fetchUserExecutionTradeIds = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("user_executions")
+      .select("trade_id")
+      .eq("user_id", user.id);
+    if (error) {
+      console.error("[my-oracle] fetchUserExecutionTradeIds error:", error.message);
+      return;
+    }
+    const ids = new Set<string>((data ?? []).map((r: any) => r.trade_id).filter(Boolean));
+    setUserExecutionTradeIds(ids);
   };
 
   const handleLogout = async () => {
@@ -564,6 +597,12 @@ const Dashboard = () => {
     }
     if (dataSource === "oracle") {
       return trades;
+    }
+    if (dataSource === "my-oracle") {
+      // Trades Oracle effectivement saisis par l'utilisateur (intersection trades × user_executions).
+      // Si aucune saisie → array vide (le composant en aval gère l'empty state).
+      if (userExecutionTradeIds.size === 0) return [];
+      return trades.filter((t) => userExecutionTradeIds.has(t.id));
     }
     return [...trades, ...personalTradesFormatted];
   };
