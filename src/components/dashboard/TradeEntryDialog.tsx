@@ -799,12 +799,6 @@ export const TradeEntryDialog = ({
                       globalOptions={globalVariables.entry_model} personalOptions={personalOptionsFor("entry_model")}
                       variableType="entry_model" placeholder="Sélectionne..." onOptionsChanged={refetchVariables} />
                   </Field>
-                  <Field label="Timing">
-                    <CustomizableMultiSelect compact singleSelect canManage={isAdmin}
-                      value={formData.entry_timing} onChange={(v) => set("entry_timing", v)}
-                      globalOptions={globalVariables.entry_timing} personalOptions={personalOptionsFor("entry_timing")}
-                      variableType="entry_timing" placeholder="Sélectionne..." onOptionsChanged={refetchVariables} />
-                  </Field>
                   <Field label="TF d'entrée">
                     <CustomizableMultiSelect compact singleSelect canManage={isAdmin}
                       value={formData.entry_timeframe} onChange={(v) => set("entry_timeframe", v)}
