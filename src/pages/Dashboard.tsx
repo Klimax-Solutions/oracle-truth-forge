@@ -172,6 +172,47 @@ const Dashboard = () => {
   // Pas de safety timeout, pas de fallback render avec valeurs par défaut.
   // Voir docs/audit-roles-architecture.md
   const { state: rolesState, retry: retryRoles } = useUserRoles();
+
+  // ── Retry counter — auto-signout après 3 échecs consécutifs ─────────────────
+  const retryCountRef = useRef(0);
+  const handleRetryRoles = () => {
+    retryCountRef.current += 1;
+    console.warn(`[Dashboard] retry roles (tentative ${retryCountRef.current}/3)`);
+    if (retryCountRef.current > 3) {
+      console.warn("[Dashboard] 3 retries échoués → signOut automatique");
+      handleLogout();
+      return;
+    }
+    retryRoles();
+  };
+  // Réinitialise le compteur dès que les rôles chargent correctement
+  useEffect(() => {
+    if (rolesState.status === "ready") retryCountRef.current = 0;
+  }, [rolesState.status]);
+
+  // ── Redirection immédiate sur session expirée ─────────────────────────────
+  // Ne jamais laisser l'UI dans un spinner vide en attendant onAuthStateChange.
+  // Si useUserRoles détecte "unauthenticated" → navigate directement.
+  useEffect(() => {
+    if (rolesState.status === "unauthenticated") {
+      console.warn("[Dashboard] session invalide (unauthenticated) → /auth");
+      navigate("/auth");
+    }
+  }, [rolesState.status, navigate]);
+
+  // Console transparency — log chaque transition de la machine d'état
+  useEffect(() => {
+    if (rolesState.status === "loading") {
+      console.info("[Dashboard:roles] ⏳ loading…");
+    } else if (rolesState.status === "ready") {
+      console.info("[Dashboard:roles] ✅ ready", rolesState.data);
+    } else if (rolesState.status === "error") {
+      console.error("[Dashboard:roles] ❌ error", rolesState.error?.message);
+    } else if (rolesState.status === "unauthenticated") {
+      console.warn("[Dashboard:roles] 🚫 unauthenticated");
+    }
+  }, [rolesState.status]);
+
   const realIsAdmin      = rolesState.status === "ready" ? rolesState.data.isAdmin      : false;
   const realIsSuperAdmin = rolesState.status === "ready" ? rolesState.data.isSuperAdmin : false;
   const realIsSetter     = rolesState.status === "ready" ? rolesState.data.isSetter     : false;
@@ -647,8 +688,11 @@ const Dashboard = () => {
     // Aucun render UI tant que l'état d'auth n'est pas confirmé. Pas de
     // fallback silencieux, pas de valeurs par défaut.
 
-    // Erreur réseau/RPC : écran retry explicite, pas de UI fantôme.
+    // Erreur réseau/RPC : écran retry EXPLICITE.
+    // Deux options : retry (max 3 tentatives) OU déconnexion immédiate.
+    // Jamais de spinner infini, jamais d'état fantôme.
     if (rolesState.status === "error") {
+      const errMsg = (rolesState as any).error?.message || "Erreur inconnue";
       return (
         <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4 px-6 text-center">
           <div className="w-12 h-12 rounded-full bg-destructive/10 border border-destructive/30 flex items-center justify-center">
@@ -657,26 +701,35 @@ const Dashboard = () => {
           <div className="space-y-1.5">
             <p className="text-sm font-semibold text-foreground">Connexion impossible</p>
             <p className="text-xs text-muted-foreground max-w-sm">
-              Impossible de récupérer tes rôles. Vérifie ta connexion puis réessaye.
+              Impossible de récupérer tes droits d'accès. Vérifie ta connexion puis réessaye.
+            </p>
+            {/* Détail technique visible en console — lisible en prod DevTools */}
+            <p className="text-[10px] text-muted-foreground/50 font-mono max-w-sm break-all hidden">
+              {errMsg}
             </p>
           </div>
-          <button
-            onClick={retryRoles}
-            className="px-4 py-2 rounded-md text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Réessayer
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleRetryRoles}
+              className="px-4 py-2 rounded-md text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Réessayer
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 rounded-md text-xs font-semibold bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+            >
+              Se déconnecter
+            </button>
+          </div>
         </div>
       );
     }
 
-    // Session morte : redirect géré par onAuthStateChange. Splash en attendant.
+    // Session morte : le useEffect ci-dessus appelle navigate("/auth") immédiatement.
+    // Ici on ne rend rien — pas de spinner d'attente, pas d'état fantôme.
     if (rolesState.status === "unauthenticated") {
-      return (
-        <div className="flex items-center justify-center h-full min-h-[400px]">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
-      );
+      return null;
     }
 
     // Loading des rôles ou validation initiale du tab : splash neutre.
