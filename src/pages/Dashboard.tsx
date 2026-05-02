@@ -143,7 +143,8 @@ const Dashboard = () => {
   // Set des trade IDs Oracle déjà saisis par l'utilisateur (pour MY ORACLE).
   // Source : public.user_executions filtrée sur user_id courant.
   // Filtré côté client en intersection avec `trades` pour produire myOracleTrades.
-  const [userExecutionTradeIds, setUserExecutionTradeIds] = useState<Set<string>>(new Set());
+  // Clé de jointure : trade_number (int) — user_executions n'a PAS de colonne trade_id.
+  const [userExecutionTradeIds, setUserExecutionTradeIds] = useState<Set<number>>(new Set());
   const [searchParams, setSearchParams] = useSearchParams();
 
   // ── Tab initialization — anti race condition ─────────────────────────────
@@ -511,19 +512,20 @@ const Dashboard = () => {
     }
   };
 
-  // Récupère les trade_id Oracle saisis par l'user (pour MY ORACLE dans Data Analysis).
+  // Récupère les trade_number Oracle saisis par l'user (pour MY ORACLE dans Data Analysis).
+  // Clé de jointure : trade_number (int) — user_executions.trade_id n'existe PAS en DB.
   // On stocke un Set léger, ensuite on filtre `trades` côté client → zéro double fetch lourd.
   const fetchUserExecutionTradeIds = async () => {
     if (!user) return;
     const { data, error } = await supabase
       .from("user_executions")
-      .select("trade_id")
+      .select("trade_number")
       .eq("user_id", user.id);
     if (error) {
       console.error("[my-oracle] fetchUserExecutionTradeIds error:", error.message);
       return;
     }
-    const ids = new Set<string>((data ?? []).map((r: any) => r.trade_id).filter(Boolean));
+    const ids = new Set<number>((data ?? []).map((r: any) => r.trade_number).filter((n: any) => n != null));
     setUserExecutionTradeIds(ids);
   };
 
@@ -602,7 +604,7 @@ const Dashboard = () => {
       // Trades Oracle effectivement saisis par l'utilisateur (intersection trades × user_executions).
       // Si aucune saisie → array vide (le composant en aval gère l'empty state).
       if (userExecutionTradeIds.size === 0) return [];
-      return trades.filter((t) => userExecutionTradeIds.has(t.id));
+      return trades.filter((t) => userExecutionTradeIds.has(t.trade_number));
     }
     return [...trades, ...personalTradesFormatted];
   };
