@@ -348,6 +348,11 @@ export const TradeEntryDialog = ({
   const [saving,   setSaving]   = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  // Ref pour nextTradeNumber — évite que le useEffect de reset ne se déclenche si
+  // la prop change pendant que le dialog est ouvert (re-render parent) → Bug #6.
+  const nextTradeNumberRef = useRef(nextTradeNumber);
+  nextTradeNumberRef.current = nextTradeNumber;
+
   const [contextFile,        setContextFile]        = useState<File | null>(null);
   const [contextPreview,     setContextPreview]      = useState<string | null>(null);
   const [existingContextUrl, setExistingContextUrl]  = useState<string | null>(null);
@@ -378,6 +383,11 @@ export const TradeEntryDialog = ({
   const setupFieldsLocked = !!editingTrade && !isAdmin && mode === "oracle";
 
   // ── Reset form on open ──────────────────────────────────────────────────
+  // ⚠️ Bug #6 fix : nextTradeNumber est intentionnellement ABSENT des deps.
+  // On utilise un ref (nextTradeNumberRef) pour toujours lire la valeur fraîche
+  // sans que le changement de cette prop déclenche un reset du formulaire pendant
+  // que le dialog est ouvert (re-render parent → nextTradeNumber change → form reset).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!isOpen) return;
     if (editingTrade) {
@@ -423,9 +433,9 @@ export const TradeEntryDialog = ({
       const today = new Date().toISOString().split("T")[0];
       const draft = loadDraft(mode);
       if (draft) {
-        setFormData({ ...draft, trade_number: nextTradeNumber.toString() });
+        setFormData({ ...draft, trade_number: nextTradeNumberRef.current.toString() });
       } else {
-        setFormData({ ...initialFormData, trade_number: nextTradeNumber.toString(), trade_date: today, exit_date: today });
+        setFormData({ ...initialFormData, trade_number: nextTradeNumberRef.current.toString(), trade_date: today, exit_date: today });
       }
       setExistingContextUrl(null);
       setExistingEntryUrl(null);
@@ -434,7 +444,9 @@ export const TradeEntryDialog = ({
     }
     setContextFile(null); setContextPreview(null);
     setEntryFile(null);   setEntryPreview(null);
-  }, [isOpen, editingTrade, nextTradeNumber, mode]);
+    // nextTradeNumber intentionally excluded — see comment above
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, editingTrade, mode]);
 
   // Auto-save draft (creation only — oracle + personal)
   // Persiste le formulaire dans localStorage pour survivre aux changements
@@ -662,6 +674,11 @@ export const TradeEntryDialog = ({
     setFormData(prev => ({ ...prev, [key]: value }));
 
   // ── Disable submit button ───────────────────────────────────────────────
+  // Bug #6 fix : les URLs de lien (TradingView, Lightshot…) comptent comme
+  // screenshots valides — on les inclut dans la vérification contextuel + entrée.
+  const hasContextScreenshot = !!(contextFile || existingContextUrl || contextLinkUrl);
+  const hasEntryScreenshot   = !!(entryFile   || existingEntryUrl   || entryLinkUrl);
+
   const submitDisabled =
     saving || uploading ||
     (mode === "oracle" && (
@@ -669,7 +686,7 @@ export const TradeEntryDialog = ({
       !formData.direction || !formData.setup_type || !formData.direction_structure ||
       !formData.entry_model || !formData.result || !formData.rr ||
       !formData.entry_time || !formData.exit_time || !formData.stop_loss_size ||
-      !((contextFile || existingContextUrl) && (entryFile || existingEntryUrl))
+      !(hasContextScreenshot && hasEntryScreenshot)
     ));
 
   // ── Render ─────────────────────────────────────────────────────────────
