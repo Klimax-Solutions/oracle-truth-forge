@@ -1,6 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -44,28 +42,22 @@ const ScriptEmbedPlayer = ({ embedCode, videoId }: { embedCode: string; videoId:
     const container = containerRef.current;
     if (!container) return;
 
-    // Clear previous content
     container.innerHTML = '';
 
-    // Parse HTML from embed code, extract scripts, and inject
     const temp = document.createElement('div');
     temp.innerHTML = embedCode;
 
-    // Append non-script elements first
     const nonScriptNodes = Array.from(temp.childNodes).filter(
       node => !(node instanceof HTMLScriptElement)
     );
     nonScriptNodes.forEach(node => container.appendChild(node.cloneNode(true)));
 
-    // Execute script tags
     const scripts = temp.querySelectorAll('script');
     scripts.forEach(origScript => {
       const newScript = document.createElement('script');
-      // Copy attributes
       Array.from(origScript.attributes).forEach(attr => {
         newScript.setAttribute(attr.name, attr.value);
       });
-      // Copy inline content
       if (origScript.textContent) {
         newScript.textContent = origScript.textContent;
       }
@@ -86,13 +78,12 @@ const ScriptEmbedPlayer = ({ embedCode, videoId }: { embedCode: string; videoId:
   );
 };
 
-interface BonusVideo {
+interface VideoRow {
   id: string;
   title: string;
   description: string | null;
   embed_code: string;
   sort_order: number;
-  category: string;
   accessible_roles: string[];
 }
 
@@ -100,49 +91,39 @@ interface BonusVideoViewerProps {
   userRoles?: string[];
   isEaExpired?: boolean;
   /**
-   * Si fourni, n'affiche que les vidéos de cette catégorie (ex: "formation" ou "live").
-   * Les sous-onglets catégorie sont masqués — chaque section top-level a son propre viewer.
+   * Table Supabase à lire : "mercure_videos" | "live_videos"
+   * Chaque section top-level a sa propre table — pas de discriminant category.
    */
-  categoryFilter?: string;
+  tableName: "mercure_videos" | "live_videos";
 }
 
-export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false, categoryFilter }: BonusVideoViewerProps) => {
-  const [allVideos, setAllVideos] = useState<BonusVideo[]>([]);
-  const [selectedVideo, setSelectedVideo] = useState<BonusVideo | null>(null);
+export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false, tableName }: BonusVideoViewerProps) => {
+  const [videos, setVideos] = useState<VideoRow[]>([]);
+  const [selectedVideo, setSelectedVideo] = useState<VideoRow | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState("formation");
 
   useEffect(() => {
     const fetchVideos = async () => {
+      setLoading(true);
       const { data } = await supabase
-        .from("bonus_videos")
+        .from(tableName as any)
         .select("*")
         .order("sort_order", { ascending: true });
+
       if (data) {
-        const accessible = (data as any[]).filter((v: BonusVideo) => {
+        const accessible = (data as VideoRow[]).filter((v) => {
           const roles = v.accessible_roles || [];
+          if (roles.length === 0) return true;
           return userRoles.some(r => roles.includes(r));
         });
-        setAllVideos(accessible);
+        setVideos(accessible);
+        // Reset selection when table changes or on first load
+        setSelectedVideo(accessible[0] ?? null);
       }
       setLoading(false);
     };
     fetchVideos();
-  }, [userRoles]);
-
-  // Si categoryFilter fourni → filtre direct, pas de sous-onglets (chaque section top-level gère sa catégorie).
-  // Sinon → comportement legacy avec sous-onglets formation/live.
-  const videos = categoryFilter
-    ? allVideos.filter(v => (v.category || "formation") === categoryFilter)
-    : allVideos.filter(v => (v.category || "formation") === activeCategory);
-
-  useEffect(() => {
-    if (videos.length > 0 && (!selectedVideo || !videos.find(v => v.id === selectedVideo.id))) {
-      setSelectedVideo(videos[0]);
-    } else if (videos.length === 0) {
-      setSelectedVideo(null);
-    }
-  }, [activeCategory, allVideos]);
+  }, [tableName, userRoles.slice().sort().join(",")]);
 
   if (loading) {
     return (
@@ -166,12 +147,7 @@ export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false, category
     );
   }
 
-  const formationCount = allVideos.filter(v => (v.category || "formation") === "formation").length;
-  const liveCount = allVideos.filter(v => (v.category || "formation") === "live").length;
-  // Sous-onglets masqués quand categoryFilter est fourni (les sections top-level remplacent cette logique)
-  const showCategoryTabs = !categoryFilter && formationCount > 0 && liveCount > 0;
-
-  if (allVideos.length === 0) {
+  if (videos.length === 0) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
         Aucune vidéo disponible pour le moment.
@@ -179,10 +155,9 @@ export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false, category
     );
   }
 
-  const renderPlayer = (video: BonusVideo) => {
+  const renderPlayer = (video: VideoRow) => {
     const code = video.embed_code;
 
-    // Google Drive link
     if (isGoogleDriveLink(code)) {
       const embedUrl = getGoogleDriveEmbedUrl(code);
       return (
@@ -197,7 +172,6 @@ export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false, category
       );
     }
 
-    // Script embed (VDO Cipher etc.)
     if (isScriptEmbed(code)) {
       return (
         <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: "56.25%" }}>
@@ -206,7 +180,6 @@ export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false, category
       );
     }
 
-    // Standard iframe embed
     return (
       <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: "56.25%" }}>
         <div
@@ -227,18 +200,6 @@ export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false, category
           <span className="font-semibold text-amber-400">Attention :</span> Les vidéos bonus du Mercure Institut sont consultables uniquement et exclusivement sur <span className="font-semibold text-amber-400">Google Chrome</span>, par souci de sécurité.
         </p>
       </div>
-      {/* Category tabs — affichés uniquement si les deux catégories ont du contenu */}
-      {showCategoryTabs && (
-        <div className="px-4 md:px-6 py-3 border-b border-border flex items-center justify-between gap-3">
-          <Tabs value={activeCategory} onValueChange={setActiveCategory}>
-            <TabsList className="h-8">
-              <TabsTrigger value="formation" className="text-[10px] px-3 h-7">Formation ({formationCount})</TabsTrigger>
-              <TabsTrigger value="live" className="text-[10px] px-3 h-7">Live ({liveCount})</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <Badge variant="secondary" className="font-mono text-[10px]">{videos.length} vidéos</Badge>
-        </div>
-      )}
 
       {/* Split layout: Player + Playlist */}
       <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
@@ -258,7 +219,7 @@ export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false, category
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-              Aucune vidéo dans cette catégorie.
+              Aucune vidéo disponible.
             </div>
           )}
         </div>
@@ -267,7 +228,7 @@ export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false, category
         <div className="lg:w-80 xl:w-96 border-t lg:border-t-0 lg:border-l border-border bg-card/50 flex flex-col">
           <div className="p-3 md:p-4 border-b border-border">
             <h4 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-              Playlist · {videos.length} vidéos
+              Playlist · {videos.length} vidéo{videos.length > 1 ? "s" : ""}
             </h4>
           </div>
           <div className="flex-1 overflow-auto scrollbar-hide">
@@ -284,10 +245,7 @@ export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false, category
                       : "hover:bg-accent/50 border-l-2 border-l-transparent"
                   )}
                 >
-                  <div className={cn(
-                    "w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-mono",
-                    "bg-muted text-muted-foreground"
-                  )}>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-mono bg-muted text-muted-foreground">
                     {index + 1}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -306,11 +264,6 @@ export const BonusVideoViewer = ({ userRoles = [], isEaExpired = false, category
                 </button>
               );
             })}
-            {videos.length === 0 && (
-              <div className="p-6 text-center text-muted-foreground text-sm">
-                Aucune vidéo dans cette catégorie.
-              </div>
-            )}
           </div>
         </div>
       </div>

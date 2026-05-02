@@ -632,8 +632,7 @@ const MercureSection = ({
       </div>
     </div>
     <div className="flex-1 overflow-hidden">
-      {/* categoryFilter="formation" : n'affiche que les vidéos Mercure, pas les Lives (promus top-level) */}
-      <BonusVideoViewer userRoles={userRoles} isEaExpired={isEaExpired} categoryFilter="formation" />
+      <BonusVideoViewer userRoles={userRoles} isEaExpired={isEaExpired} tableName="mercure_videos" />
     </div>
   </div>
 );
@@ -661,7 +660,7 @@ const LiveSection = ({
       </div>
     </div>
     <div className="flex-1 overflow-hidden">
-      <BonusVideoViewer userRoles={userRoles} isEaExpired={isEaExpired} categoryFilter="live" />
+      <BonusVideoViewer userRoles={userRoles} isEaExpired={isEaExpired} tableName="live_videos" />
     </div>
   </div>
 );

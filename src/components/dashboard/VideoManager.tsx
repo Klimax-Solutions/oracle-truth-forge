@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
-import { Plus, GripVertical, Pencil, Trash2, Save, X, Film, Layers, ChevronRight } from "lucide-react";
+import { Plus, GripVertical, Pencil, Trash2, Save, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,13 +19,13 @@ interface OracleVideo {
   accessible_roles: string[];
 }
 
-interface BonusVideo {
+// mercure_videos et live_videos ont la même structure (pas de champ category)
+interface EmbedVideo {
   id: string;
   title: string;
   description: string | null;
   embed_code: string;
   sort_order: number;
-  category: string;
   accessible_roles: string[];
 }
 
@@ -251,26 +249,26 @@ function OracleVideoList({ accent, videos, dragIndex, overIndex, editingId, onDr
   );
 }
 
-// ─── Bonus Video List ──────────────────────────────────────────────────────────
+// ─── Embed Video List (partagé Mercure + Live — pas de badge catégorie) ─────────
 
-interface BonusPanelProps {
+interface EmbedPanelProps {
   accent: string;
-  videos: BonusVideo[];
+  videos: EmbedVideo[];
   dragIndex: number | null;
   overIndex: number | null;
   editingId: string | null;
   onDragStart: (i: number) => void;
   onDragOver: (e: React.DragEvent, i: number) => void;
   onDragEnd: () => void;
-  onEdit: (v: BonusVideo) => void;
+  onEdit: (v: EmbedVideo) => void;
   onDelete: (id: string) => void;
 }
 
-function BonusVideoList({ accent, videos, dragIndex, overIndex, editingId, onDragStart, onDragOver, onDragEnd, onEdit, onDelete }: BonusPanelProps) {
+function EmbedVideoList({ accent, videos, dragIndex, overIndex, editingId, onDragStart, onDragOver, onDragEnd, onEdit, onDelete }: EmbedPanelProps) {
   if (videos.length === 0) {
     return (
       <div style={{ textAlign: "center", padding: "60px 0", color: "rgba(255,255,255,0.18)", fontSize: "13px" }}>
-        Aucune vidéo bonus. Cliquez sur "Ajouter" pour commencer.
+        Aucune vidéo. Cliquez sur "Ajouter" pour commencer.
       </div>
     );
   }
@@ -300,19 +298,9 @@ function BonusVideoList({ accent, videos, dragIndex, overIndex, editingId, onDra
           >
             <GripVertical style={{ width: "14px", height: "14px", color: "rgba(255,255,255,0.18)", flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px" }}>
-                <p style={{ fontSize: "13px", fontWeight: 600, color: "rgba(255,255,255,0.80)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {video.title}
-                </p>
-                <span style={{
-                  fontSize: "9px", padding: "2px 6px", borderRadius: "4px", flexShrink: 0,
-                  background: video.category === "live" ? "rgba(239,68,68,0.12)" : "rgba(99,102,241,0.12)",
-                  color: video.category === "live" ? "#f87171" : "#a5b4fc",
-                  fontWeight: 600,
-                }}>
-                  {video.category === "live" ? "Live" : "Formation"}
-                </span>
-              </div>
+              <p style={{ fontSize: "13px", fontWeight: 600, color: "rgba(255,255,255,0.80)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: "6px" }}>
+                {video.title}
+              </p>
               <RoleChips roles={video.accessible_roles || []} />
             </div>
             <div style={{ display: "flex", gap: "2px", flexShrink: 0 }}>
@@ -344,27 +332,30 @@ function BonusVideoList({ accent, videos, dragIndex, overIndex, editingId, onDra
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export const VideoManager = () => {
-  const [section, setSection] = useState<"oracle" | "bonus" | "live">("oracle");
+  const [section, setSection] = useState<"oracle" | "mercure" | "live">("oracle");
 
-  // Oracle videos state
+  // Oracle videos
   const [oracleVideos, setOracleVideos] = useState<OracleVideo[]>([]);
   const [oracleLoading, setOracleLoading] = useState(true);
   const [oracleDragIndex, setOracleDragIndex] = useState<number | null>(null);
   const [oracleOverIndex, setOracleOverIndex] = useState<number | null>(null);
 
-  // Bonus videos state (toutes les bonus_videos — mercure + live)
-  const [bonusVideos, setBonusVideos] = useState<BonusVideo[]>([]);
-  const [bonusLoading, setBonusLoading] = useState(true);
-  const [bonusDragIndex, setBonusDragIndex] = useState<number | null>(null);
-  const [bonusOverIndex, setBonusOverIndex] = useState<number | null>(null);
-  // Live videos drag state (indépendant — filtre sur bonusVideos)
+  // Mercure videos (table: mercure_videos)
+  const [mercureVideos, setMercureVideos] = useState<EmbedVideo[]>([]);
+  const [mercureLoading, setMercureLoading] = useState(true);
+  const [mercureDragIndex, setMercureDragIndex] = useState<number | null>(null);
+  const [mercureOverIndex, setMercureOverIndex] = useState<number | null>(null);
+
+  // Live videos (table: live_videos)
+  const [liveVideos, setLiveVideos] = useState<EmbedVideo[]>([]);
+  const [liveLoading, setLiveLoading] = useState(true);
   const [liveDragIndex, setLiveDragIndex] = useState<number | null>(null);
   const [liveOverIndex, setLiveOverIndex] = useState<number | null>(null);
 
   // Edit panel
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingOracle, setEditingOracle] = useState<OracleVideo | null>(null);
-  const [editingBonus, setEditingBonus] = useState<BonusVideo | null>(null);
+  const [editingEmbed, setEditingEmbed] = useState<EmbedVideo | null>(null);
   const [isNew, setIsNew] = useState(false);
 
   // Oracle form
@@ -374,17 +365,16 @@ export const VideoManager = () => {
   const [oOpen, setOOpen] = useState("");
   const [oRoles, setORoles] = useState<string[]>(["member", "early_access", "admin", "super_admin"]);
 
-  // Bonus form
-  const [bTitle, setBTitle] = useState("");
-  const [bDesc, setBDesc] = useState("");
-  const [bEmbed, setBEmbed] = useState("");
-  const [bCategory, setBCategory] = useState("formation");
-  const [bRoles, setBRoles] = useState<string[]>(["member", "early_access", "admin", "super_admin"]);
+  // Embed form (mercure + live)
+  const [eTitle, setETitle] = useState("");
+  const [eDesc, setEDesc] = useState("");
+  const [eEmbed, setEEmbed] = useState("");
+  const [eRoles, setERoles] = useState<string[]>(["member", "early_access", "admin", "super_admin"]);
 
-  const ORACLE_ACCENT = "#4F78CC";
-  const BONUS_ACCENT  = "#C8882A";
-  const LIVE_ACCENT   = "#22C55E";
-  const accent = section === "oracle" ? ORACLE_ACCENT : section === "bonus" ? BONUS_ACCENT : LIVE_ACCENT;
+  const ORACLE_ACCENT  = "#4F78CC";
+  const MERCURE_ACCENT = "#C8882A";
+  const LIVE_ACCENT    = "#22C55E";
+  const accent = section === "oracle" ? ORACLE_ACCENT : section === "mercure" ? MERCURE_ACCENT : LIVE_ACCENT;
 
   // ── Fetch ────────────────────────────────────────────────────────────────────
 
@@ -394,26 +384,32 @@ export const VideoManager = () => {
     setOracleLoading(false);
   };
 
-  const fetchBonus = async () => {
-    const { data } = await supabase.from("bonus_videos").select("*").order("sort_order", { ascending: true });
-    if (data) setBonusVideos(data as any);
-    setBonusLoading(false);
+  const fetchMercure = async () => {
+    const { data } = await supabase.from("mercure_videos" as any).select("*").order("sort_order", { ascending: true });
+    if (data) setMercureVideos(data as EmbedVideo[]);
+    setMercureLoading(false);
   };
 
-  useEffect(() => { fetchOracle(); fetchBonus(); }, []);
+  const fetchLive = async () => {
+    const { data } = await supabase.from("live_videos" as any).select("*").order("sort_order", { ascending: true });
+    if (data) setLiveVideos(data as EmbedVideo[]);
+    setLiveLoading(false);
+  };
+
+  useEffect(() => { fetchOracle(); fetchMercure(); fetchLive(); }, []);
 
   // ── Panel helpers ─────────────────────────────────────────────────────────────
 
   const closePanel = () => {
     setPanelOpen(false);
     setEditingOracle(null);
-    setEditingBonus(null);
+    setEditingEmbed(null);
     setIsNew(false);
   };
 
   const openOracleNew = () => {
     setSection("oracle");
-    setEditingOracle(null); setEditingBonus(null);
+    setEditingOracle(null); setEditingEmbed(null);
     setOTitle(""); setODesc(""); setOEmbed(""); setOOpen("");
     setORoles(["member", "early_access", "admin", "super_admin"]);
     setIsNew(true); setPanelOpen(true);
@@ -421,44 +417,41 @@ export const VideoManager = () => {
 
   const openOracleEdit = (v: OracleVideo) => {
     setSection("oracle");
-    setEditingBonus(null);
-    setEditingOracle(v);
+    setEditingEmbed(null); setEditingOracle(v);
     setOTitle(v.title); setODesc(v.description || ""); setOEmbed(v.embed_url); setOOpen(v.open_url || "");
     setORoles(v.accessible_roles || ["member", "early_access", "admin", "super_admin"]);
     setIsNew(false); setPanelOpen(true);
   };
 
-  const openBonusNew = () => {
-    setSection("bonus");
-    setEditingOracle(null); setEditingBonus(null);
-    setBTitle(""); setBDesc(""); setBEmbed(""); setBCategory("formation");
-    setBRoles(["member", "early_access", "admin", "super_admin"]);
+  const openMercureNew = () => {
+    setSection("mercure");
+    setEditingOracle(null); setEditingEmbed(null);
+    setETitle(""); setEDesc(""); setEEmbed("");
+    setERoles(["member", "early_access", "admin", "super_admin"]);
     setIsNew(true); setPanelOpen(true);
   };
 
-  const openBonusEdit = (v: BonusVideo) => {
-    setSection("bonus");
-    setEditingOracle(null);
-    setEditingBonus(v);
-    setBTitle(v.title); setBDesc(v.description || ""); setBEmbed(v.embed_code); setBCategory(v.category || "formation");
-    setBRoles(v.accessible_roles || ["member", "early_access", "admin", "super_admin"]);
+  const openMercureEdit = (v: EmbedVideo) => {
+    setSection("mercure");
+    setEditingOracle(null); setEditingEmbed(v);
+    setETitle(v.title); setEDesc(v.description || ""); setEEmbed(v.embed_code);
+    setERoles(v.accessible_roles || ["member", "early_access", "admin", "super_admin"]);
     setIsNew(false); setPanelOpen(true);
   };
 
   const openLiveNew = () => {
     setSection("live");
-    setEditingOracle(null); setEditingBonus(null);
-    setBTitle(""); setBDesc(""); setBEmbed(""); setBCategory("live");
-    setBRoles(["member", "early_access", "admin", "super_admin"]);
+    setEditingOracle(null); setEditingEmbed(null);
+    setETitle(""); setEDesc(""); setEEmbed("");
+    setERoles(["member", "early_access", "admin", "super_admin"]);
     setIsNew(true); setPanelOpen(true);
   };
 
-  const openLiveEdit = (v: BonusVideo) => {
+  const openLiveEdit = (v: EmbedVideo) => {
     setSection("live");
-    setEditingOracle(null);
-    setEditingBonus(v);
-    setBTitle(v.title); setBDesc(v.description || ""); setBEmbed(v.embed_code); setBCategory("live");
-    setBRoles(v.accessible_roles || ["member", "early_access", "admin", "super_admin"]);
+    setEditingOracle(null); setEditingEmbed(v);
+    setETitle(v.title); setEDesc(v.description || ""); setEEmbed(v.embed_code);
+    setERoles(v.accessible_roles || ["member", "early_access", "admin", "super_admin"]);
     setIsNew(false); setPanelOpen(true);
   };
 
@@ -487,32 +480,35 @@ export const VideoManager = () => {
     closePanel(); fetchOracle();
   };
 
-  const saveBonus = async () => {
-    if (!bTitle.trim() || !bEmbed.trim()) {
+  const saveEmbed = async () => {
+    if (!eTitle.trim() || !eEmbed.trim()) {
       toast({ title: "Champs requis", description: "Titre et code embed sont obligatoires.", variant: "destructive" });
       return;
     }
-    const cleanEmbed = bEmbed.trim()
+    const tableName = section === "mercure" ? "mercure_videos" : "live_videos";
+    const videoList = section === "mercure" ? mercureVideos : liveVideos;
+    const cleanEmbed = eEmbed.trim()
       .replace(/\s*width\s*=\s*["']\d+["']/gi, "")
       .replace(/\s*height\s*=\s*["']\d+["']/gi, "")
       .replace(/width:\s*\d+px\s*;?/gi, "width:100%;")
       .replace(/height:\s*\d+px\s*;?/gi, "height:100%;");
 
     const payload = {
-      title: bTitle.trim(), description: bDesc.trim() || null,
-      embed_code: cleanEmbed, category: bCategory, accessible_roles: bRoles,
+      title: eTitle.trim(), description: eDesc.trim() || null,
+      embed_code: cleanEmbed, accessible_roles: eRoles,
     };
-    if (editingBonus) {
-      const { error } = await supabase.from("bonus_videos").update(payload as any).eq("id", editingBonus.id);
+    if (editingEmbed) {
+      const { error } = await supabase.from(tableName as any).update(payload as any).eq("id", editingEmbed.id);
       if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Vidéo mise à jour" });
     } else {
-      const nextOrder = bonusVideos.length > 0 ? Math.max(...bonusVideos.map(v => v.sort_order)) + 1 : 1;
-      const { error } = await supabase.from("bonus_videos").insert({ ...payload, sort_order: nextOrder } as any);
+      const nextOrder = videoList.length > 0 ? Math.max(...videoList.map(v => v.sort_order)) + 1 : 1;
+      const { error } = await supabase.from(tableName as any).insert({ ...payload, sort_order: nextOrder } as any);
       if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
-      toast({ title: "Vidéo bonus ajoutée" });
+      toast({ title: "Vidéo ajoutée" });
     }
-    closePanel(); fetchBonus();
+    closePanel();
+    if (section === "mercure") fetchMercure(); else fetchLive();
   };
 
   // ── Delete ────────────────────────────────────────────────────────────────────
@@ -525,12 +521,20 @@ export const VideoManager = () => {
     fetchOracle();
   };
 
-  const deleteBonus = async (id: string) => {
-    if (!confirm("Supprimer cette vidéo bonus ?")) return;
-    await supabase.from("bonus_videos").delete().eq("id", id);
+  const deleteMercure = async (id: string) => {
+    if (!confirm("Supprimer cette vidéo Mercure ?")) return;
+    await supabase.from("mercure_videos" as any).delete().eq("id", id);
     toast({ title: "Vidéo supprimée" });
-    if (editingBonus?.id === id) closePanel();
-    fetchBonus();
+    if (editingEmbed?.id === id) closePanel();
+    fetchMercure();
+  };
+
+  const deleteLive = async (id: string) => {
+    if (!confirm("Supprimer cette vidéo Live ?")) return;
+    await supabase.from("live_videos" as any).delete().eq("id", id);
+    toast({ title: "Vidéo supprimée" });
+    if (editingEmbed?.id === id) closePanel();
+    fetchLive();
   };
 
   // ── Drag Oracle ───────────────────────────────────────────────────────────────
@@ -549,23 +553,19 @@ export const VideoManager = () => {
     toast({ title: "Ordre mis à jour" });
   };
 
-  // ── Drag Bonus (Mercure — catégorie "formation") ──────────────────────────────
+  // ── Drag Mercure ──────────────────────────────────────────────────────────────
 
-  const handleBonusDragEnd = async () => {
-    if (bonusDragIndex === null || bonusOverIndex === null || bonusDragIndex === bonusOverIndex) {
-      setBonusDragIndex(null); setBonusOverIndex(null); return;
+  const handleMercureDragEnd = async () => {
+    if (mercureDragIndex === null || mercureOverIndex === null || mercureDragIndex === mercureOverIndex) {
+      setMercureDragIndex(null); setMercureOverIndex(null); return;
     }
-    const mercureVids = bonusVideos.filter(v => (v.category || "formation") === "formation");
-    const next = [...mercureVids];
-    const [moved] = next.splice(bonusDragIndex, 1);
-    next.splice(bonusOverIndex, 0, moved);
+    const next = [...mercureVideos];
+    const [moved] = next.splice(mercureDragIndex, 1);
+    next.splice(mercureOverIndex, 0, moved);
     const updates = next.map((v, i) => ({ ...v, sort_order: i + 1 }));
-    setBonusVideos(prev => {
-      const others = prev.filter(v => (v.category || "formation") !== "formation");
-      return [...others, ...updates].sort((a, b) => a.sort_order - b.sort_order);
-    });
-    setBonusDragIndex(null); setBonusOverIndex(null);
-    await Promise.all(updates.map(v => supabase.from("bonus_videos").update({ sort_order: v.sort_order } as any).eq("id", v.id)));
+    setMercureVideos(updates);
+    setMercureDragIndex(null); setMercureOverIndex(null);
+    await Promise.all(updates.map(v => supabase.from("mercure_videos" as any).update({ sort_order: v.sort_order } as any).eq("id", v.id)));
     toast({ title: "Ordre mis à jour" });
   };
 
@@ -575,23 +575,19 @@ export const VideoManager = () => {
     if (liveDragIndex === null || liveOverIndex === null || liveDragIndex === liveOverIndex) {
       setLiveDragIndex(null); setLiveOverIndex(null); return;
     }
-    const liveVids = bonusVideos.filter(v => v.category === "live");
-    const next = [...liveVids];
+    const next = [...liveVideos];
     const [moved] = next.splice(liveDragIndex, 1);
     next.splice(liveOverIndex, 0, moved);
     const updates = next.map((v, i) => ({ ...v, sort_order: i + 1 }));
-    setBonusVideos(prev => {
-      const others = prev.filter(v => v.category !== "live");
-      return [...others, ...updates].sort((a, b) => a.sort_order - b.sort_order);
-    });
+    setLiveVideos(updates);
     setLiveDragIndex(null); setLiveOverIndex(null);
-    await Promise.all(updates.map(v => supabase.from("bonus_videos").update({ sort_order: v.sort_order } as any).eq("id", v.id)));
+    await Promise.all(updates.map(v => supabase.from("live_videos" as any).update({ sort_order: v.sort_order } as any).eq("id", v.id)));
     toast({ title: "Ordre mis à jour" });
   };
 
   // ── Loading ───────────────────────────────────────────────────────────────────
 
-  if (oracleLoading && bonusLoading) {
+  if (oracleLoading && mercureLoading && liveLoading) {
     return (
       <div style={{ ...S.page, alignItems: "center", justifyContent: "center" }}>
         <div style={{
@@ -618,7 +614,7 @@ export const VideoManager = () => {
         </div>
         <AddBtn
           accent={accent}
-          onClick={section === "oracle" ? openOracleNew : section === "live" ? openLiveNew : openBonusNew}
+          onClick={section === "oracle" ? openOracleNew : section === "mercure" ? openMercureNew : openLiveNew}
         />
       </div>
 
@@ -630,13 +626,13 @@ export const VideoManager = () => {
           onClick={() => setSection("oracle")}
         />
         <TabBtn
-          active={section === "bonus"} accent={BONUS_ACCENT}
-          label="Mercure Institut" count={bonusVideos.filter(v => (v.category || "formation") === "formation").length}
-          onClick={() => setSection("bonus")}
+          active={section === "mercure"} accent={MERCURE_ACCENT}
+          label="Mercure Institut" count={mercureVideos.length}
+          onClick={() => setSection("mercure")}
         />
         <TabBtn
           active={section === "live"} accent={LIVE_ACCENT}
-          label="Live" count={bonusVideos.filter(v => v.category === "live").length}
+          label="Live" count={liveVideos.length}
           onClick={() => setSection("live")}
         />
       </div>
@@ -659,36 +655,36 @@ export const VideoManager = () => {
               onEdit={openOracleEdit}
               onDelete={deleteOracle}
             />
-          ) : section === "bonus" ? (
-            <BonusVideoList
-              accent={BONUS_ACCENT}
-              videos={bonusVideos.filter(v => (v.category || "formation") === "formation")}
-              dragIndex={bonusDragIndex}
-              overIndex={bonusOverIndex}
-              editingId={editingBonus?.id ?? null}
-              onDragStart={setBonusDragIndex}
-              onDragOver={(e, i) => { e.preventDefault(); setBonusOverIndex(i); }}
-              onDragEnd={handleBonusDragEnd}
-              onEdit={openBonusEdit}
-              onDelete={deleteBonus}
+          ) : section === "mercure" ? (
+            <EmbedVideoList
+              accent={MERCURE_ACCENT}
+              videos={mercureVideos}
+              dragIndex={mercureDragIndex}
+              overIndex={mercureOverIndex}
+              editingId={editingEmbed?.id ?? null}
+              onDragStart={setMercureDragIndex}
+              onDragOver={(e, i) => { e.preventDefault(); setMercureOverIndex(i); }}
+              onDragEnd={handleMercureDragEnd}
+              onEdit={openMercureEdit}
+              onDelete={deleteMercure}
             />
           ) : (
-            <BonusVideoList
+            <EmbedVideoList
               accent={LIVE_ACCENT}
-              videos={bonusVideos.filter(v => v.category === "live")}
+              videos={liveVideos}
               dragIndex={liveDragIndex}
               overIndex={liveOverIndex}
-              editingId={editingBonus?.id ?? null}
+              editingId={editingEmbed?.id ?? null}
               onDragStart={setLiveDragIndex}
               onDragOver={(e, i) => { e.preventDefault(); setLiveOverIndex(i); }}
               onDragEnd={handleLiveDragEnd}
               onEdit={openLiveEdit}
-              onDelete={deleteBonus}
+              onDelete={deleteLive}
             />
           )}
         </div>
 
-        {/* Edit panel — slides in */}
+        {/* Edit panel */}
         {panelOpen && (
           <div style={S.panel}>
             {/* Panel header */}
@@ -739,39 +735,25 @@ export const VideoManager = () => {
               </>
             )}
 
-            {/* Bonus / Live form — partagé, seul le sélecteur catégorie diffère */}
-            {(section === "bonus" || section === "live") && (
+            {/* Mercure / Live form — identique, table déterminée par section */}
+            {(section === "mercure" || section === "live") && (
               <>
                 <FieldGroup label="Titre *">
-                  <Input value={bTitle} onChange={e => setBTitle(e.target.value)} placeholder="Ex : Module 1 – Introduction" style={inputStyle} />
+                  <Input value={eTitle} onChange={e => setETitle(e.target.value)} placeholder="Ex : Module 1 – Introduction" style={inputStyle} />
                 </FieldGroup>
                 <FieldGroup label="Description">
-                  <Textarea value={bDesc} onChange={e => setBDesc(e.target.value)} placeholder="Description…" rows={2} style={{ ...inputStyle, resize: "none" as const }} />
+                  <Textarea value={eDesc} onChange={e => setEDesc(e.target.value)} placeholder="Description…" rows={2} style={{ ...inputStyle, resize: "none" as const }} />
                 </FieldGroup>
                 <FieldGroup label="Code Embed / Lien *" hint="iFrame, script Vidalytics, ou lien Google Drive">
-                  <Textarea value={bEmbed} onChange={e => setBEmbed(e.target.value)} placeholder={'<iframe src="https://…"></iframe>\nou\nhttps://drive.google.com/…/view'} rows={4} style={{ ...inputStyle, resize: "none" as const, fontFamily: "monospace", fontSize: "11px" }} />
+                  <Textarea value={eEmbed} onChange={e => setEEmbed(e.target.value)} placeholder={'<iframe src="https://…"></iframe>\nou\nhttps://drive.google.com/…/view'} rows={4} style={{ ...inputStyle, resize: "none" as const, fontFamily: "monospace", fontSize: "11px" }} />
                 </FieldGroup>
-                {/* Catégorie — visible uniquement dans l'onglet Mercure.
-                    Dans l'onglet Live, la catégorie est implicitement "live" (bCategory pré-fixé). */}
-                {section === "bonus" && (
-                  <FieldGroup label="Catégorie">
-                    <Select value={bCategory} onValueChange={setBCategory}>
-                      <SelectTrigger style={inputStyle}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="formation">Vidéo de formation</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FieldGroup>
-                )}
                 <FieldGroup label="Rôles autorisés">
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     {ROLE_OPTIONS.map(role => (
                       <label key={role.value} style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", fontSize: "13px", color: "rgba(255,255,255,0.55)" }}>
                         <Checkbox
-                          checked={bRoles.includes(role.value)}
-                          onCheckedChange={checked => setBRoles(prev => checked ? [...prev, role.value] : prev.filter(r => r !== role.value))}
+                          checked={eRoles.includes(role.value)}
+                          onCheckedChange={checked => setERoles(prev => checked ? [...prev, role.value] : prev.filter(r => r !== role.value))}
                         />
                         {role.label}
                       </label>
@@ -783,7 +765,7 @@ export const VideoManager = () => {
 
             {/* Save button */}
             <button
-              onClick={section === "oracle" ? saveOracle : saveBonus}  /* saveBonus gère bonus + live via bCategory */
+              onClick={section === "oracle" ? saveOracle : saveEmbed}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
                 padding: "11px 0", borderRadius: "10px", border: "none", cursor: "pointer",
