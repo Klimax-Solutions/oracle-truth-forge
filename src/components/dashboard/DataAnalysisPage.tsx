@@ -292,7 +292,7 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
               {/* Oracle pills */}
               {onDataSourceChange && (
                 <div className="flex flex-col items-center gap-2">
-                  <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60">
+                  <p className="text-xs md:text-sm font-mono font-semibold uppercase tracking-[0.2em] text-foreground">
                     Setup Oracle
                   </p>
                   <div className="flex items-center gap-2 flex-wrap justify-center">
@@ -334,7 +334,7 @@ export const DataAnalysisPage = ({ trades, onNavigateToDatabase, isEarlyAccess =
 
               {/* Sessions */}
               <div className="flex flex-col items-center gap-2">
-                <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/60">
+                <p className="text-xs md:text-sm font-mono font-semibold uppercase tracking-[0.2em] text-foreground">
                   Mes sessions
                 </p>
                 <SessionAnalysisSelector
